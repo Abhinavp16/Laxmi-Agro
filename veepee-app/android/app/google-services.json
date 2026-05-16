@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "639746337160",
+    "project_id": "agrimart-1ae15",
+    "storage_bucket": "agrimart-1ae15.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639746337160:android:3f9aa0182ecdc09fe4323d",
+        "android_client_info": {
+          "package_name": "com.enchanted.veepeeimpex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDx9NdFF5PlRQlwnf-EMzq5BD0LqJu1wE0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639746337160:android:8861e66edc40ce82e4323d",
+        "android_client_info": {
+          "package_name": "com.veepeeimpex.oxon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDx9NdFF5PlRQlwnf-EMzq5BD0LqJu1wE0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
