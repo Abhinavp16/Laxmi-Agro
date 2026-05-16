@@ -1,0 +1,529 @@
+const { Product, Analytics, WebsiteSettings, Company } = require('../models');
+const { NotFoundError } = require('../utils/errors');
+const { paginate, formatPaginationResponse } = require('../utils/helpers');
+const { PRODUCT_STATUS, ANALYTICS_EVENTS } = require('../utils/constants');
+const mongoose = require('mongoose');
+
+// Helper to get price based on user role
+const getPriceForUser = (product, userRole) => {
+  if (userRole === 'wholesaler') {
+    return {
+      price: product.wholesalePrice,
+      mrp: product.mrp,
+      retailPrice: product.retailPrice,
+      wholesalePrice: product.wholesalePrice,
+      minWholesaleQuantity: product.minWholesaleQuantity,
+      negotiationEnabled: product.negotiationEnabled,
+      canNegotiate: true,
+    };
+  }
+  // For buyers and guests - show retail price
+  return {
+    price: product.retailPrice,
+    mrp: product.mrp,
+    canNegotiate: false,
+  };
+};
+
+exports.getProducts = async (req, res, next) => {
+  try {
+    const { category, brand, minPrice, maxPrice, inStock, featured, sort } = req.query;
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const userRole = req.user?.role || 'guest';
+
+    console.log('getProducts request - category:', category, 'brand:', brand);
+
+    const query = { status: PRODUCT_STATUS.ACTIVE };
+
+    // Price filter based on user role
+    const priceField = userRole === 'wholesaler' ? 'wholesalePrice' : 'retailPrice';
+    
+    if (category) query.category = { $regex: new RegExp(category, 'i') };
+    
+    // Filter by brand (checks both product.brand and product.company)
+    if (brand) {
+      const matchingCompanies = await Company.find({
+        name: { $regex: new RegExp(brand, 'i') }
+      }).select('_id');
+      const companyIds = matchingCompanies.map(c => c._id);
+      
+      query.$or = [
+        { brand: { $regex: new RegExp(brand, 'i') } },
+        { company: { $in: companyIds } }
+      ];
+    }
+    
+    if (minPrice) query[priceField] = { ...query[priceField], $gte: Number(minPrice) };
+    if (maxPrice) query[priceField] = { ...query[priceField], $lte: Number(maxPrice) };
+    if (inStock === 'true') query.stock = { $gt: 0 };
+    if (featured === 'true') query.isFeatured = true;
+
+    console.log('getProducts final query:', JSON.stringify(query));
+
+    let sortOption = { createdAt: -1 };
+    if (sort) {
+      let sortField = sort.startsWith('-') ? sort.slice(1) : sort;
+      // Map 'price' to appropriate field based on role
+      if (sortField === 'price') sortField = priceField;
+      const sortOrder = sort.startsWith('-') ? -1 : 1;
+      sortOption = { [sortField]: sortOrder };
+    }
+
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .populate('company', 'name')
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(query),
+    ]);
+
+    const formattedProducts = products.map(p => {
+      const pricing = getPriceForUser(p, userRole);
+      return {
+        id: p._id,
+        name: p.name,
+        nameHindi: p.nameHindi,
+        slug: p.slug,
+        shortDescription: p.shortDescription,
+        category: p.category,
+        brand: p.brand || p.company?.name || '',
+        ...pricing,
+        stock: p.stock,
+        inStock: p.stock > 0,
+        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
+        isFeatured: p.isFeatured,
+        isHot: p.isHot,
+        isNew: p.isNew,
+        rating: p.rating,
+        purchaseCountMin: p.purchaseCountMin,
+        purchaseCountMax: p.purchaseCountMax,
+      };
+    });
+
+    res.json({
+      success: true,
+      ...formatPaginationResponse(formattedProducts, total, page, limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getProductBySlug = async (req, res, next) => {
+  try {
+    const userRole = req.user?.role || 'guest';
+    const param = req.params.slug;
+
+    // Try public lookup by active slug first.
+    let product = await Product.findOne({
+      slug: param,
+      status: PRODUCT_STATUS.ACTIVE,
+    }).lean();
+
+    // If opened from cart/order history, ID may point to a non-active product.
+    // Allow ID lookup regardless of status so users can still view item details.
+    if (!product && param.match(/^[0-9a-fA-F]{24}$/)) {
+      product = await Product.findById(param).lean();
+    }
+
+    if (!product) {
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+
+    // Build response with role-based pricing
+    const pricing = getPriceForUser(product, userRole);
+    let resolvedLabels = [];
+    if (Array.isArray(product.labelIds) && product.labelIds.length > 0) {
+      const settings = await WebsiteSettings.getSettings();
+      const labelMap = new Map(
+        (settings.labels || []).map((label) => [
+          String(label?.id || ''),
+          {
+            id: String(label?.id || ''),
+            title: String(label?.title || '').trim(),
+            sourceType: label?.sourceType === 'image' ? 'image' : 'icon',
+            image: String(label?.image || '').trim(),
+            icon: String(label?.icon || '').trim(),
+            order: Number.isFinite(label?.order) ? label.order : 0,
+          },
+        ])
+      );
+
+      const labelsByTitle = new Map(
+        (settings.labels || []).map((label) => [
+          String(label?.title || '').trim(),
+          {
+            id: String(label?.id || ''),
+            title: String(label?.title || '').trim(),
+            sourceType: label?.sourceType === 'image' ? 'image' : 'icon',
+            image: String(label?.image || '').trim(),
+            icon: String(label?.icon || '').trim(),
+            order: Number.isFinite(label?.order) ? label.order : 0,
+          },
+        ])
+      );
+
+      resolvedLabels = product.labelIds
+        .map((labelId) => {
+          const value = String(labelId || '').trim();
+          return labelMap.get(value) || labelsByTitle.get(value);
+        })
+        .filter(Boolean);
+    }
+
+    const responseData = {
+      ...product,
+      id: product._id,
+      ...pricing,
+      labels: resolvedLabels,
+    };
+
+    // Remove raw price fields for non-admin users, but keep for wholesalers so they can see customer price
+    if (userRole !== 'admin' && userRole !== 'wholesaler') {
+      delete responseData.retailPrice;
+      delete responseData.wholesalePrice;
+    }
+
+    res.json({
+      success: true,
+      data: responseData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getCategories = async (req, res, next) => {
+  try {
+    const categories = await Product.aggregate([
+      { $match: { status: PRODUCT_STATUS.ACTIVE } },
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          subCategories: { $addToSet: '$subCategory' },
+        },
+      },
+      {
+        $project: {
+          name: '$_id',
+          count: 1,
+          subCategories: {
+            $filter: {
+              input: '$subCategories',
+              cond: { $ne: ['$$this', null] },
+            },
+          },
+        },
+      },
+      { $sort: { name: 1 } },
+    ]);
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getFeaturedProducts = async (req, res, next) => {
+  try {
+    const userRole = req.user?.role || 'guest';
+
+    const products = await Product.find({
+      status: PRODUCT_STATUS.ACTIVE,
+      isFeatured: true,
+    })
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax')
+      .limit(10)
+      .lean();
+
+    const formattedProducts = products.map(p => {
+      const pricing = getPriceForUser(p, userRole);
+      return {
+        id: p._id,
+        name: p.name,
+        slug: p.slug,
+        shortDescription: p.shortDescription,
+        category: p.category,
+        ...pricing,
+        stock: p.stock,
+        inStock: p.stock > 0,
+        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
+        isHot: p.isHot,
+        isNew: p.isNew,
+        rating: p.rating,
+        purchaseCountMin: p.purchaseCountMin,
+        purchaseCountMax: p.purchaseCountMax,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: formattedProducts,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.searchProducts = async (req, res, next) => {
+  try {
+    const { q, category, brand } = req.query;
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const userRole = req.user?.role || 'guest';
+
+    console.log('Search request - q:', q, 'category:', category, 'brand:', brand);
+
+    // Build base query
+    const query = { status: PRODUCT_STATUS.ACTIVE };
+
+    // Use $and if we have multiple major conditions (q, category, brand)
+    const andConditions = [];
+
+    // Search query condition
+    if (q && q.trim().length > 0) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const words = escaped.trim().split(/\s+/).filter(Boolean);
+      const regexPattern = words.map(w => `(?=.*${w})`).join('') + '.*';
+      const regex = new RegExp(regexPattern, 'i');
+
+      andConditions.push({
+        $or: [
+          { name: regex },
+          { description: regex },
+          { shortDescription: regex },
+          { category: regex },
+          { tags: { $in: [new RegExp(escaped, 'i')] } },
+          { sku: regex },
+        ]
+      });
+    }
+
+    // Category condition
+    if (category) {
+      andConditions.push({ category: { $regex: new RegExp(category, 'i') } });
+    }
+    
+    // Brand condition (checks both product.brand and product.company)
+    if (brand) {
+      const matchingCompanies = await Company.find({
+        name: { $regex: new RegExp(brand, 'i') }
+      }).select('_id');
+      const companyIds = matchingCompanies.map(c => c._id);
+      
+      andConditions.push({
+        $or: [
+          { brand: { $regex: new RegExp(brand, 'i') } },
+          { company: { $in: companyIds } }
+        ]
+      });
+    }
+
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
+    }
+
+    console.log('Final search query:', JSON.stringify(query));
+
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .populate('company', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(query),
+    ]);
+
+    const formattedProducts = products.map(p => {
+      const pricing = getPriceForUser(p, userRole);
+      return {
+        id: p._id,
+        name: p.name,
+        nameHindi: p.nameHindi,
+        slug: p.slug,
+        shortDescription: p.shortDescription,
+        category: p.category,
+        brand: p.brand || p.company?.name || '',
+        ...pricing,
+        stock: p.stock,
+        inStock: p.stock > 0,
+        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
+        isHot: p.isHot,
+        isNew: p.isNew,
+        rating: p.rating,
+        purchaseCountMin: p.purchaseCountMin,
+        purchaseCountMax: p.purchaseCountMax,
+      };
+    });
+
+    res.json({
+      success: true,
+      ...formatPaginationResponse(formattedProducts, total, page, limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.trackProductView = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { source, sessionId } = req.body;
+
+    await Product.findByIdAndUpdate(id, { $inc: { viewCount: 1 } });
+
+    await Analytics.create({
+      productId: id,
+      userId: req.user?._id || null,
+      eventType: ANALYTICS_EVENTS.VIEW,
+      source: source || 'direct',
+      sessionId,
+      deviceInfo: {
+        platform: req.headers['x-platform'],
+        appVersion: req.headers['x-app-version'],
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'View tracked',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.trackProductEvent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { event, source, sessionId } = req.body;
+
+    const allowedEvents = [ANALYTICS_EVENTS.CART_ADD, ANALYTICS_EVENTS.WISHLIST_ADD, ANALYTICS_EVENTS.SHARE];
+    if (!allowedEvents.includes(event)) {
+      return res.status(400).json({ success: false, message: 'Invalid event type' });
+    }
+
+    await Analytics.create({
+      productId: id,
+      userId: req.user?._id || null,
+      eventType: event,
+      source: source || 'direct',
+      sessionId,
+      deviceInfo: {
+        platform: req.headers['x-platform'],
+        appVersion: req.headers['x-app-version'],
+      },
+    });
+
+    res.json({ success: true, message: 'Event tracked' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateProductNameHindi = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { nameHindi } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid product id',
+        code: 'INVALID_PRODUCT_ID',
+      });
+    }
+
+    if (!nameHindi) {
+      return res.status(400).json({ success: false, message: 'nameHindi is required' });
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { nameHindi },
+      { new: true, runValidators: true }
+    );
+
+    if (!product) {
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: product._id,
+        name: product.name,
+        nameHindi: product.nameHindi,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+exports.getRelatedProducts = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role || 'guest';
+    const limit = parseInt(req.query.limit) || 8;
+
+    const isObjectId = require('mongoose').Types.ObjectId.isValid(id);
+    let productQuery = { status: 'active' };
+    if (isObjectId && id.length === 24) {
+      productQuery._id = id;
+    } else {
+      productQuery.slug = id;
+    }
+
+    const currentProduct = await Product.findOne(productQuery).select('category _id');
+    if (!currentProduct) return res.json({ success: true, data: [] });
+
+    const relatedProducts = await Product.find({
+      status: 'active',
+      category: currentProduct.category,
+      _id: { $ne: currentProduct._id }
+    })
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company')
+      .populate('company', 'name')
+      .limit(limit)
+      .lean();
+
+    const formattedProducts = relatedProducts.map(p => {
+      const pricing = userRole === 'wholesaler'
+        ? { price: p.wholesalePrice, mrp: p.mrp, retailPrice: p.retailPrice, wholesalePrice: p.wholesalePrice, minWholesaleQuantity: p.minWholesaleQuantity }
+        : { price: p.retailPrice, mrp: p.mrp };
+      return {
+        id: p._id,
+        name: p.name,
+        nameHindi: p.nameHindi,
+        slug: p.slug,
+        shortDescription: p.shortDescription,
+        category: p.category,
+        brand: p.brand || p.company?.name || '',
+        ...pricing,
+        stock: p.stock,
+        inStock: p.stock > 0,
+        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
+        isFeatured: p.isFeatured,
+        isHot: p.isHot,
+        isNew: p.isNew,
+        rating: p.rating,
+        purchaseCountMin: p.purchaseCountMin,
+        purchaseCountMax: p.purchaseCountMax,
+      };
+    });
+
+    res.json({ success: true, data: formattedProducts });
+  } catch (error) {
+    next(error);
+  }
+};
