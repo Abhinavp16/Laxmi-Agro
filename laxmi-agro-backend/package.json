@@ -1,13 +1,14 @@
 {
-  "name": "agri-mart-backend",
+  "name": "laxmi-agro-backend",
   "version": "1.0.0",
-  "description": "AgriMart - Agricultural Machinery E-Commerce API",
+  "description": "Laxmi Agro E-Commerce API",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/scripts/seed.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:local": "node src/scripts/seedLocalCatalog.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [

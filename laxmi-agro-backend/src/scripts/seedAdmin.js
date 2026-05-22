@@ -2,9 +2,9 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { USER_ROLES, AUTH_PROVIDERS } = require('../utils/constants');
 
-const ADMIN_EMAIL = 'admin@agrimart.com';
+const ADMIN_EMAIL = 'admin@laxmiagro.com';
 const ADMIN_PASSWORD = 'Admin@123';
-const ADMIN_NAME = 'AgriMart Admin';
+const ADMIN_NAME = 'Laxmi Agro Admin';
 const ADMIN_PHONE = '+919999999999';
 
 const seedAdmin = async () => {
@@ -16,7 +16,12 @@ const seedAdmin = async () => {
     const User = require('../models/User');
 
     // Delete existing admin to reset password
-    await User.deleteOne({ email: ADMIN_EMAIL });
+    await User.deleteMany({
+      $or: [
+        { email: ADMIN_EMAIL },
+        { phone: ADMIN_PHONE },
+      ],
+    });
     console.log('🗑️  Cleared existing admin (if any)');
 
     // Create new admin - model's pre-save hook will hash the password

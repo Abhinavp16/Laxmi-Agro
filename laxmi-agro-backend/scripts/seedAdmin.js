@@ -7,7 +7,7 @@ const seedAdmin = async () => {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to MongoDB');
 
-        const adminEmail = 'admin@agrimart.com';
+        const adminEmail = 'admin@laxmiagro.com';
         const existingAdmin = await User.findOne({ email: adminEmail });
 
         if (existingAdmin) {
@@ -16,10 +16,10 @@ const seedAdmin = async () => {
         }
 
         const adminUser = await User.create({
-            name: 'AgriMart Admin',
+            name: 'Laxmi Agro Admin',
             email: adminEmail,
             phone: '9999999999',
-            passwordHash: 'admin123', // Will be hashed by pre-save hook
+            passwordHash: 'Admin@123', // Will be hashed by pre-save hook
             authProvider: 'email',
             role: 'admin',
             isActive: true,

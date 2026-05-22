@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 
 let firebaseApp = null;
+let lastPrivateKeyPreview = 'undefined';
 
 const initializeFirebase = () => {
   if (firebaseApp) {
@@ -31,6 +32,7 @@ const initializeFirebase = () => {
         privateKey = privateKey + '\n-----END PRIVATE KEY-----';
       }
     }
+    lastPrivateKeyPreview = privateKey ? privateKey.substring(0, 50) : 'undefined';
 
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert({
@@ -45,8 +47,7 @@ const initializeFirebase = () => {
     return firebaseApp;
   } catch (error) {
     console.error('Firebase initialization error:', error.message);
-    const keyPreview = privateKey ? privateKey.substring(0, 50) : 'undefined';
-    console.error('Private key starts with:', keyPreview);
+    console.error('Private key starts with:', lastPrivateKeyPreview);
     return null;
   }
 };

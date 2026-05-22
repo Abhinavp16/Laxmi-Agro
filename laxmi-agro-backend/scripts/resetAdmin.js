@@ -7,15 +7,15 @@ const resetAdmin = async () => {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to MongoDB');
 
-        const adminEmail = 'admin@agrimart.com';
+        const adminEmail = 'admin@laxmiagro.com';
         await User.deleteOne({ email: adminEmail });
         console.log('Deleted existing admin user');
 
         const adminUser = await User.create({
-            name: 'AgriMart Admin',
+            name: 'Laxmi Agro Admin',
             email: adminEmail,
             phone: '9999999999',
-            passwordHash: 'admin123',
+            passwordHash: 'Admin@123',
             authProvider: 'email',
             role: 'admin',
             isActive: true,

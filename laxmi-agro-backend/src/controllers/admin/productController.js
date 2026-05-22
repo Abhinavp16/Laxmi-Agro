@@ -2,7 +2,7 @@ const { Product, StockLog, WebsiteSettings } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
 const { deleteImage } = require('../../config/cloudinary');
-const { getStorage } = require('../../config/firebase');
+const { saveBuffer } = require('../../config/storage');
 const { transliterateToHindi } = require('../../services/hindiTransliterationService');
 const { PRODUCT_STATUS } = require('../../utils/constants');
 const { updateProductCount } = require('../categoryController');
@@ -10,32 +10,23 @@ const { v4: uuidv4 } = require('uuid');
 const sharp = require('sharp');
 const slugify = require('slugify');
 const { encode } = require('blurhash');
+const {
+  normalizeVariantsForPersistence,
+  applyVariantSummaryToProduct,
+} = require('../../utils/productVariants');
 
-async function uploadFilesToFirebase(files, folder = 'products') {
-  const bucket = getStorage();
-  if (!bucket) throw new BadRequestError('Firebase Storage not configured', 'STORAGE_NOT_CONFIGURED');
-
+async function uploadFilesToStorage(files, folder = 'products') {
   const results = [];
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const webpBuffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
-    const filename = `${folder}/${uuidv4()}.webp`;
-    const fileUpload = bucket.file(filename);
-
-    await new Promise((resolve, reject) => {
-      const stream = fileUpload.createWriteStream({
-        metadata: {
-          contentType: 'image/webp',
-          metadata: { originalName: file.originalname },
-        },
-      });
-      stream.on('error', reject);
-      stream.on('finish', resolve);
-      stream.end(webpBuffer);
+    const saved = await saveBuffer({
+      buffer: webpBuffer,
+      folder,
+      filename: `${uuidv4()}.webp`,
+      contentType: 'image/webp',
+      metadata: { originalName: file.originalname },
     });
-
-    await fileUpload.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
 
     // Generate BlurHash for preview
     let blurHash = null;
@@ -51,7 +42,7 @@ async function uploadFilesToFirebase(files, folder = 'products') {
       console.error('Error generating blurhash:', err);
     }
 
-    results.push({ url: publicUrl, publicId: filename, blurHash });
+    results.push({ url: saved.url, publicId: saved.publicId, blurHash });
   }
   return results;
 }
@@ -116,6 +107,37 @@ async function normalizeProductLabelIds(labelIds = []) {
   return [...new Set(matchedIds)];
 }
 
+function parseStructuredField(value, fallback) {
+  if (typeof value !== 'string') return value ?? fallback;
+
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function prepareProductData(productData) {
+  const prepared = { ...productData };
+
+  if (typeof prepared.specifications === 'string') {
+    prepared.specifications = parseStructuredField(prepared.specifications, []);
+  }
+  if (typeof prepared.tags === 'string') {
+    prepared.tags = parseStructuredField(prepared.tags, []);
+  }
+  if (typeof prepared.variants === 'string') {
+    prepared.variants = parseStructuredField(prepared.variants, []);
+  }
+
+  prepared.variants = normalizeVariantsForPersistence(prepared.variants, prepared);
+  if (prepared.variants.length > 0) {
+    applyVariantSummaryToProduct(prepared);
+  }
+
+  return prepared;
+}
+
 exports.getProducts = async (req, res, next) => {
   try {
     const { status, category, search, sort } = req.query;
@@ -128,6 +150,7 @@ exports.getProducts = async (req, res, next) => {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { sku: { $regex: search, $options: 'i' } },
+        { 'variants.sku': { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -169,16 +192,16 @@ exports.getProductById = async (req, res, next) => {
 
 exports.createProduct = async (req, res, next) => {
   try {
-    const productData = { ...req.body };
+    const productData = prepareProductData(req.body);
 
-    if (!productData.sku) {
+    if (!productData.sku && (!Array.isArray(productData.variants) || productData.variants.length === 0)) {
       productData.sku = generateSKU(productData.category, productData.name);
     }
 
     productData.slug = slugify(productData.name, { lower: true, strict: true });
 
     if (req.files && req.files.length > 0) {
-      const uploaded = await uploadFilesToFirebase(req.files, 'products');
+      const uploaded = await uploadFilesToStorage(req.files, 'products');
       productData.images = uploaded.map((img, index) => ({
         url: img.url,
         publicId: img.publicId,
@@ -187,12 +210,6 @@ exports.createProduct = async (req, res, next) => {
       }));
     }
 
-    if (typeof productData.specifications === 'string') {
-      productData.specifications = JSON.parse(productData.specifications);
-    }
-    if (typeof productData.tags === 'string') {
-      productData.tags = JSON.parse(productData.tags);
-    }
     if (productData.labelIds !== undefined) {
       productData.labelIds = await normalizeProductLabelIds(productData.labelIds);
     }
@@ -220,14 +237,14 @@ exports.updateProduct = async (req, res, next) => {
     }
 
     const previousCategory = product.category;
-    const updateData = { ...req.body };
+    const updateData = prepareProductData(req.body);
 
     if (updateData.name && updateData.name !== product.name) {
       updateData.slug = slugify(updateData.name, { lower: true, strict: true });
     }
 
     if (req.files && req.files.length > 0) {
-      const uploaded = await uploadFilesToFirebase(req.files, 'products');
+      const uploaded = await uploadFilesToStorage(req.files, 'products');
       const newImages = uploaded.map((img, index) => ({
         url: img.url,
         publicId: img.publicId,
@@ -237,12 +254,6 @@ exports.updateProduct = async (req, res, next) => {
       updateData.images = [...product.images, ...newImages];
     }
 
-    if (typeof updateData.specifications === 'string') {
-      updateData.specifications = JSON.parse(updateData.specifications);
-    }
-    if (typeof updateData.tags === 'string') {
-      updateData.tags = JSON.parse(updateData.tags);
-    }
     if (updateData.labelIds !== undefined) {
       updateData.labelIds = await normalizeProductLabelIds(updateData.labelIds);
     }

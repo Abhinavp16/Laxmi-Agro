@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const { getFirebaseApp, getMessaging, getStorage } = require('../config/firebase');
+const { getStorageDriver } = require('../config/storage');
 const connectDB = require('../config/database');
 const { getDatabaseHealth } = require('../config/database');
 const { PRODUCT_STATUS } = require('../utils/constants');
@@ -158,6 +159,7 @@ const getFirebaseHealth = () => {
     initialized: false,
     messaging: false,
     storage: false,
+    activeStorageDriver: getStorageDriver(),
     projectId: process.env.FIREBASE_PROJECT_ID || null,
     ok: false,
     details: null,
@@ -165,7 +167,11 @@ const getFirebaseHealth = () => {
 
   if (!configured) {
     result.ok = true; // Optional service in this API
-    result.details = 'Firebase not configured (optional)';
+    result.storage = result.activeStorageDriver === 'local';
+    result.details =
+      result.activeStorageDriver === 'local'
+        ? 'Firebase not configured; using local file storage'
+        : 'Firebase not configured (optional)';
     return result;
   }
 
@@ -188,7 +194,7 @@ const getFirebaseHealth = () => {
 router.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'AgriMart API v1',
+    message: 'Laxmi Agro API v1',
     version: '1.0.0',
     endpoints: {
       auth: '/api/v1/auth',
@@ -239,6 +245,7 @@ router.get('/health', async (req, res) => {
       jwtConfigured: Boolean(process.env.JWT_SECRET),
       razorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
       mongodbUriConfigured: Boolean(process.env.MONGODB_URI),
+      fileStorageDriver: getStorageDriver(),
     },
   };
 
@@ -266,8 +273,21 @@ router.get('/settings/banners', async (req, res, next) => {
     const promoBanners = (settings.promoBanners || [])
       .filter(b => b.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-    const whatsapp = settings.socialLinks?.whatsapp || settings.businessPhone || '';
-    res.json({ success: true, data: { heroBanners, promoBanners, whatsapp } });
+    const whatsapp = settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '';
+    res.json({
+      success: true,
+      data: {
+        heroBanners,
+        promoBanners,
+        whatsapp,
+        checkout: {
+          mode: settings.checkout?.mode || 'whatsapp',
+          requireLoginForCheckout: settings.checkout?.requireLoginForCheckout !== false,
+          createOrderBeforeRedirect: settings.checkout?.createOrderBeforeRedirect !== false,
+          allowNegotiationCheckout: settings.checkout?.allowNegotiationCheckout !== false,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -422,10 +442,11 @@ router.get('/settings/payment-options', async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        razorpayEnabled,
+        checkoutMode: settings.checkout?.mode || 'whatsapp',
+        razorpayEnabled: (settings.checkout?.mode || 'whatsapp') === 'payment' ? razorpayEnabled : false,
         razorpayKeyId: razorpayEnabled ? razorpayKeyId : null,
-        bankTransferEnabled: settings.bankTransferEnabled !== false,
-        bankDetails: settings.bankTransferEnabled !== false ? {
+        bankTransferEnabled: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false,
+        bankDetails: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false ? {
           bankName: settings.bankName || '',
           accountNumber: settings.bankAccountNumber || '',
           ifscCode: settings.bankIfscCode || '',
@@ -433,6 +454,7 @@ router.get('/settings/payment-options', async (req, res, next) => {
         } : null,
         upiId: settings.upiId || '',
         upiDisplayName: settings.upiDisplayName || '',
+        whatsappNumber: settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '',
       },
     });
   } catch (error) {

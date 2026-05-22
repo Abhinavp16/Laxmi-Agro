@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const routes = require('./routes');
 const connectDB = require('./config/database');
@@ -27,7 +28,6 @@ const defaultOrigins = [
   "http://127.0.0.1:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3001",
-  "https://veepee-admin.vercel.app",
 ];
 
 const allowedOrigins = [
@@ -102,6 +102,7 @@ app.use('/api', limiter);
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/uploads', express.static(path.resolve(process.cwd(), process.env.LOCAL_UPLOADS_DIR || 'uploads')));
 
 // Logging
 if (process.env.NODE_ENV === 'development') {
@@ -114,7 +115,7 @@ if (process.env.NODE_ENV === 'development') {
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'AgriMart API is running',
+    message: 'Laxmi Agro API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV
   });
@@ -124,7 +125,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'AgriMart API is running',
+    message: 'Laxmi Agro API is running',
     docs: '/api/v1',
     health: '/health',
     apiHealth: '/api/v1/health',
