@@ -20,7 +20,7 @@ export async function generateMetadata({ params }) {
     const product = category ? findProductBySlug(category, resolvedParams.productSlug) : null;
 
     return {
-        title: product ? `${product.name} - Veepee Impex` : 'Product Details - Veepee Impex',
+        title: product ? `${product.name} - Laxmi Agro` : 'Product Details - Laxmi Agro',
         description: product?.shortDescription || product?.description || 'View product details and send an inquiry.',
     };
 }

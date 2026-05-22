@@ -17,7 +17,7 @@ export async function generateMetadata({ params }) {
     const product = findFeaturedProductBySlug(products, resolvedParams.slug);
 
     return {
-        title: product ? `${product.name} - Veepee Impex` : 'Product Details - Veepee Impex',
+        title: product ? `${product.name} - Laxmi Agro` : 'Product Details - Laxmi Agro',
         description: product ? getFeaturedDescription(product) : 'View detailed product information and request the latest price.',
     };
 }

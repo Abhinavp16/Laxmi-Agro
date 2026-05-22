@@ -1,24 +1,20 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## Local Setup
 
-## Getting Started
-
-First, run the development server:
+Create `.env.local` from `.env.example`, then run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Expected local API:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000`.
+
+The site reads website content from the backend API and falls back to local placeholder content if the backend is unavailable.
 
 ## Learn More
 

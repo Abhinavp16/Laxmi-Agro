@@ -16,7 +16,7 @@ export async function generateMetadata({ params }) {
     const category = findCategoryBySlug(categories, resolvedParams.slug);
 
     return {
-        title: category ? `${category.name} - Veepee Impex` : 'Category Products - Veepee Impex',
+        title: category ? `${category.name} - Laxmi Agro` : 'Category Products - Laxmi Agro',
         description: category ? category.description : 'Browse our products in this category.',
     };
 }
