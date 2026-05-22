@@ -97,7 +97,7 @@ export default function ProductsPage() {
 
                     if (missingRatingIds.length > 0) {
                         const detailResults = await Promise.all(
-                            missingRatingIds.map(async (productId) => {
+                            missingRatingIds.map(async (productId: string) => {
                                 try {
                                     const detailRes = await apiFetch(`/admin/products/${productId}`)
                                     const detailData = await detailRes.json()
@@ -134,7 +134,7 @@ export default function ProductsPage() {
 
                     if (missingRatingIds.length > 0) {
                         const detailResults = await Promise.all(
-                            missingRatingIds.map(async (productId) => {
+                            missingRatingIds.map(async (productId: string) => {
                                 try {
                                     const detailRes = await apiFetch(`/admin/products/${productId}`)
                                     const detailData = await detailRes.json()

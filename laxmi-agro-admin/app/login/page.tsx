@@ -82,14 +82,14 @@ export default function LoginPage() {
                 <CardHeader className="space-y-1">
                     <div className="flex justify-center pb-2">
                         <Image
-                            src="/oxon-logo.jpeg"
-                            alt="OXON logo"
+                            src="/icon.svg"
+                            alt="Laxmi Agro logo"
                             width={56}
                             height={56}
                             className="h-14 w-14 rounded-xl object-cover"
                         />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white text-center">OXON Admin</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-white text-center">Laxmi Agro Admin</CardTitle>
                     <CardDescription className="text-gray-400 text-center">
                         Enter your credentials to access the dashboard
                     </CardDescription>
@@ -104,7 +104,7 @@ export default function LoginPage() {
                                     <FormItem>
                                         <FormLabel className="text-white">Email</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="admin@oxon.com" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                            <Input placeholder="admin@laxmiagro.com" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

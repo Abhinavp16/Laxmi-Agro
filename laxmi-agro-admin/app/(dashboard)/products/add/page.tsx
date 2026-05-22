@@ -92,6 +92,20 @@ interface ProductImage {
     savings?: string
 }
 
+interface ProductVariantForm {
+    name: string
+    sku: string
+    mrp: string
+    retailPrice: string
+    wholesalePrice: string
+    stock: string
+    lowStockThreshold: string
+    minOrderQuantity: string
+    priceUnit: string
+    packing: string
+    isActive: boolean
+}
+
 const productSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     description: z.string().optional().default(""),
@@ -141,6 +155,7 @@ export default function AddProductPage() {
     const [images, setImages] = useState<ProductImage[]>([])
     const [newImageUrl, setNewImageUrl] = useState("")
     const [bulletPoints, setBulletPoints] = useState<string[]>([""])
+    const [variants, setVariants] = useState<ProductVariantForm[]>([])
     const [imageUploadMode, setImageUploadMode] = useState<'url' | 'file'>('url')
     const [isUploadingImage, setIsUploadingImage] = useState(false)
     const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
@@ -170,6 +185,20 @@ export default function AddProductPage() {
             purchaseCountMin: "0",
             purchaseCountMax: "0",
         },
+    })
+
+    const createEmptyVariant = (): ProductVariantForm => ({
+        name: "",
+        sku: "",
+        mrp: "",
+        retailPrice: "",
+        wholesalePrice: "",
+        stock: "0",
+        lowStockThreshold: "5",
+        minOrderQuantity: "1",
+        priceUnit: "",
+        packing: "",
+        isActive: true,
     })
 
     useEffect(() => {
@@ -234,6 +263,24 @@ export default function AddProductPage() {
             // Set images
             if (product.images && product.images.length > 0) {
                 setImages(product.images)
+            }
+
+            if (Array.isArray(product.variants) && product.variants.length > 0) {
+                setVariants(product.variants.map((variant: any) => ({
+                    name: String(variant.name || ""),
+                    sku: String(variant.sku || ""),
+                    mrp: String(variant.mrp ?? ""),
+                    retailPrice: String(variant.retailPrice ?? ""),
+                    wholesalePrice: String(variant.wholesalePrice ?? ""),
+                    stock: String(variant.stock ?? "0"),
+                    lowStockThreshold: String(variant.lowStockThreshold ?? "5"),
+                    minOrderQuantity: String(variant.minOrderQuantity ?? "1"),
+                    priceUnit: String(variant.priceUnit || ""),
+                    packing: String(variant.packing || ""),
+                    isActive: variant.isActive !== false,
+                })))
+            } else {
+                setVariants([])
             }
 
             // Set bullet points from specifications
@@ -440,6 +487,20 @@ export default function AddProductPage() {
         setBulletPoints(bulletPoints.filter((_, i) => i !== index))
     }
 
+    const addVariant = () => {
+        setVariants(prev => [...prev, createEmptyVariant()])
+    }
+
+    const updateVariant = (index: number, field: keyof ProductVariantForm, value: string | boolean) => {
+        setVariants(prev => prev.map((variant, i) => (
+            i === index ? { ...variant, [field]: value } : variant
+        )))
+    }
+
+    const removeVariant = (index: number) => {
+        setVariants(prev => prev.filter((_, i) => i !== index))
+    }
+
     async function createNewCompany() {
         if (!newCompanyName.trim()) {
             toast.error("Company name is required")
@@ -523,6 +584,22 @@ export default function AddProductPage() {
             // Filter out empty bullet points
             const validBulletPoints = bulletPoints.filter(bp => bp.trim() !== "")
             const normalizedLabelIds = normalizeSelectedLabelIds(values.labelIds, availableLabels)
+            const normalizedVariants = variants
+                .filter((variant) => variant.name.trim() && variant.sku.trim())
+                .map((variant, index) => ({
+                    name: variant.name.trim(),
+                    sku: variant.sku.trim(),
+                    mrp: Number(variant.mrp || 0),
+                    retailPrice: Number(variant.retailPrice || 0),
+                    wholesalePrice: Number(variant.wholesalePrice || 0),
+                    stock: Number(variant.stock || 0),
+                    lowStockThreshold: Number(variant.lowStockThreshold || 5),
+                    minOrderQuantity: Number(variant.minOrderQuantity || 1),
+                    priceUnit: variant.priceUnit.trim(),
+                    packing: variant.packing.trim(),
+                    isActive: variant.isActive,
+                    order: index,
+                }))
 
             // Construct payload matching backend expectation
             const payload = {
@@ -551,6 +628,7 @@ export default function AddProductPage() {
                 rating: Number(values.rating),
                 purchaseCountMin: Number(values.purchaseCountMin),
                 purchaseCountMax: Number(values.purchaseCountMax),
+                variants: normalizedVariants,
             }
 
             const endpoint = isEditMode
@@ -1166,6 +1244,130 @@ export default function AddProductPage() {
                                                 </FormItem>
                                             )}
                                         />
+                                    </div>
+
+                                    <div className="rounded-2xl border border-[#2c2c2c] bg-[#101010] p-4 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-white font-semibold">Product Variants</h4>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Add size/spec variants with separate price and stock. The base pricing above is kept as the fallback/default summary.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={addVariant}
+                                                className="border-[#333] text-white"
+                                            >
+                                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                                Add Variant
+                                            </Button>
+                                        </div>
+
+                                        {variants.length === 0 ? (
+                                            <div className="rounded-xl border border-dashed border-[#333] px-4 py-6 text-sm text-gray-500">
+                                                No variants added yet. If this product has multiple capacities, packings, or wire sizes, add them here.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {variants.map((variant, index) => (
+                                                    <div key={`${variant.sku}-${index}`} className="rounded-2xl border border-[#333] bg-[#0D0D0D] p-4 space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h5 className="text-sm font-semibold text-white">Variant {index + 1}</h5>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => removeVariant(index)}
+                                                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                                Remove
+                                                            </Button>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <Input
+                                                                placeholder="Variant name"
+                                                                value={variant.name}
+                                                                onChange={(e) => updateVariant(index, "name", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                placeholder="Variant SKU"
+                                                                value={variant.sku}
+                                                                onChange={(e) => updateVariant(index, "sku", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="MRP"
+                                                                value={variant.mrp}
+                                                                onChange={(e) => updateVariant(index, "mrp", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Customer price"
+                                                                value={variant.retailPrice}
+                                                                onChange={(e) => updateVariant(index, "retailPrice", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Wholesale price"
+                                                                value={variant.wholesalePrice}
+                                                                onChange={(e) => updateVariant(index, "wholesalePrice", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Stock"
+                                                                value={variant.stock}
+                                                                onChange={(e) => updateVariant(index, "stock", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Low stock threshold"
+                                                                value={variant.lowStockThreshold}
+                                                                onChange={(e) => updateVariant(index, "lowStockThreshold", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Min order quantity"
+                                                                value={variant.minOrderQuantity}
+                                                                onChange={(e) => updateVariant(index, "minOrderQuantity", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                placeholder="Price unit (e.g. meter)"
+                                                                value={variant.priceUnit}
+                                                                onChange={(e) => updateVariant(index, "priceUnit", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                            <Input
+                                                                placeholder="Packing (e.g. 90m coil)"
+                                                                value={variant.packing}
+                                                                onChange={(e) => updateVariant(index, "packing", e.target.value)}
+                                                                className="bg-[#141414] border-[#333] text-white"
+                                                            />
+                                                        </div>
+
+                                                        <label className="flex items-center gap-3 text-sm text-gray-300">
+                                                            <Checkbox
+                                                                checked={variant.isActive}
+                                                                onCheckedChange={(checked) => updateVariant(index, "isActive", checked === true)}
+                                                            />
+                                                            Variant is active and selectable in the app
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <FormField

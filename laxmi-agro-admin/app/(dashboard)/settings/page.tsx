@@ -43,7 +43,14 @@ const settingsSchema = z.object({
     bankAccountHolderName: z.string().optional(),
     bankTransferEnabled: z.boolean().optional(),
     avatar: z.string().optional(),
-    features: z.record(z.any()).optional()
+    features: z.record(z.any()).optional(),
+    checkout: z.object({
+        mode: z.string().optional(),
+        orderWhatsappNumber: z.string().optional(),
+        requireLoginForCheckout: z.boolean().optional(),
+        createOrderBeforeRedirect: z.boolean().optional(),
+        allowNegotiationCheckout: z.boolean().optional(),
+    }).optional(),
 }).passthrough()
 
 export default function SettingsPage() {
@@ -72,7 +79,14 @@ export default function SettingsPage() {
             bankAccountHolderName: "",
             bankTransferEnabled: true,
             avatar: "",
-            features: {}
+            features: {},
+            checkout: {
+                mode: "whatsapp",
+                orderWhatsappNumber: "",
+                requireLoginForCheckout: true,
+                createOrderBeforeRedirect: true,
+                allowNegotiationCheckout: true,
+            }
         }
     })
 
@@ -281,6 +295,77 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
 
+                    <Card className="bg-[#161616] border-[#333]">
+                        <CardHeader>
+                            <CardTitle className="text-white">WhatsApp Checkout</CardTitle>
+                            <CardDescription>Control where app orders are sent and whether an order record is created before redirecting.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="checkout.orderWhatsappNumber"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-white">Primary Order WhatsApp Number</FormLabel>
+                                        <FormControl>
+                                            <Input className="bg-[#0D0D0D] border-[#333] text-white" placeholder="e.g. 9179110159" {...field} value={field.value || ''} />
+                                        </FormControl>
+                                        <FormDescription>Used by cart checkout, buy now, and negotiation checkout links.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="checkout.requireLoginForCheckout"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base text-white">Require Login Before Checkout</FormLabel>
+                                            <FormDescription>Keep the current login gate before opening WhatsApp.</FormDescription>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="checkout.createOrderBeforeRedirect"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base text-white">Create Backend Order Before WhatsApp</FormLabel>
+                                            <FormDescription>Recommended while the client finalizes whether every enquiry should be recorded first.</FormDescription>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="checkout.allowNegotiationCheckout"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base text-white">Allow Negotiation Checkout</FormLabel>
+                                            <FormDescription>Lets accepted wholesaler negotiations continue through the same WhatsApp flow.</FormDescription>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
+
                     {/* Razorpay Settings */}
                         {/* <CardHeader>
                             <CardTitle className="text-white flex items-center gap-2">
@@ -380,7 +465,7 @@ export default function SettingsPage() {
                                         <FormItem>
                                             <FormLabel className="text-white">Account Holder Name</FormLabel>
                                             <FormControl>
-                                                <Input className="bg-[#0D0D0D] border-[#333] text-white" placeholder="e.g. OXON Pvt Ltd" {...field} value={field.value || ''} />
+                                                <Input className="bg-[#0D0D0D] border-[#333] text-white" placeholder="e.g. Laxmi Agro Pvt Ltd" {...field} value={field.value || ''} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -436,7 +521,7 @@ export default function SettingsPage() {
                                             <FormItem>
                                                 <FormLabel className="text-white">Display Name</FormLabel>
                                                 <FormControl>
-                                                    <Input className="bg-[#0D0D0D] border-[#333] text-white" placeholder="OXON Business" {...field} />
+                                                    <Input className="bg-[#0D0D0D] border-[#333] text-white" placeholder="Laxmi Agro Business" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

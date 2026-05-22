@@ -7,8 +7,8 @@ import './globals.css'
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'OXON Admin',
-  description: 'OXON Admin Dashboard - Manage products, orders, and negotiations',
+  title: 'Laxmi Agro Admin',
+  description: 'Laxmi Agro Admin Dashboard - Manage products, orders, and negotiations',
   generator: 'v0.app',
   robots: {
     index: false,
@@ -25,11 +25,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/oxon-logo.jpeg',
-        type: 'image/jpeg',
+        url: '/icon.svg',
+        type: 'image/svg+xml',
       },
     ],
-    apple: '/oxon-logo.jpeg',
+    apple: '/icon.svg',
   },
 }
 

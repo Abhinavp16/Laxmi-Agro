@@ -169,7 +169,7 @@ const defaultCategoriesSection: SectionConfig = {
 const defaultFeaturedSection: SectionConfig = {
     eyebrow: "PRECISION ENGINEERING",
     title: "Our Popular Product",
-    sideText: "Genuine Oxon products engineered for durability, performance, and maximum ROI.",
+    sideText: "Reliable agricultural products engineered for durability, performance, and strong field results.",
     buttonText: "Get Quote",
 }
 
