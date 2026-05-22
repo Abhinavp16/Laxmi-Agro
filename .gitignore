@@ -6,3 +6,6 @@
 **/.vercel
 **/playwright-report
 **/test-results
+.local
+veepee-app
+**/uploads
