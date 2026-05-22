@@ -1,5 +1,5 @@
 const multer = require('multer');
-const { getStorage } = require('./firebase');
+const { deleteFile } = require('./storage');
 
 // All file uploads use memory storage — Firebase Storage handles persistence
 const memoryStorage = multer.memoryStorage();
@@ -30,19 +30,9 @@ const uploadAvatar = multer({
 
 const deleteImage = async (publicId) => {
   try {
-    const bucket = getStorage();
-    if (!bucket) {
-      console.warn('Firebase Storage not configured, cannot delete image');
-      return false;
-    }
-    const file = bucket.file(publicId);
-    const [exists] = await file.exists();
-    if (exists) {
-      await file.delete();
-    }
-    return true;
+    return await deleteFile(publicId);
   } catch (error) {
-    console.error('Error deleting image from Firebase Storage:', error);
+    console.error('Error deleting image from storage:', error);
     return false;
   }
 };

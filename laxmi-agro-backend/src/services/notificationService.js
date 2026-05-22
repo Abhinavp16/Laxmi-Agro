@@ -35,7 +35,7 @@ class NotificationService {
         android: {
           priority: 'high',
           notification: {
-            channelId: 'agrimart_default',
+            channelId: 'laxmi_agro_default',
             priority: 'high',
             defaultSound: true,
           },
@@ -89,7 +89,7 @@ class NotificationService {
         android: {
           priority: 'high',
           notification: {
-            channelId: 'agrimart_default',
+            channelId: 'laxmi_agro_default',
             priority: 'high',
             defaultSound: true,
           },
@@ -273,7 +273,7 @@ class NotificationService {
   async sendNewProductAlert(productName, productId) {
     return this.sendToTopic('new_products', {
       title: 'New Product Available!',
-      body: `Check out ${productName} - now available on AgriMart`,
+      body: `Check out ${productName} - now available on Laxmi Agro`,
     }, {
       type: 'new_product',
       productId: productId.toString(),
