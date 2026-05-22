@@ -7,6 +7,27 @@ const discountRuleSchema = Joi.object({
   maxDiscountAmount: Joi.number().min(0).allow('', null),
 });
 
+const variantAttributeValidationSchema = Joi.object({
+  key: Joi.string().required(),
+  value: Joi.string().required(),
+});
+
+const variantValidationSchema = Joi.object({
+  name: Joi.string().required().max(120),
+  sku: Joi.string().required(),
+  attributes: Joi.array().items(variantAttributeValidationSchema).default([]),
+  mrp: Joi.number().min(0).required(),
+  retailPrice: Joi.number().min(0).required(),
+  wholesalePrice: Joi.number().min(0).required(),
+  stock: Joi.number().integer().min(0).default(0),
+  lowStockThreshold: Joi.number().integer().min(0).default(5),
+  minOrderQuantity: Joi.number().integer().min(1).default(1),
+  priceUnit: Joi.string().allow('', null),
+  packing: Joi.string().allow('', null),
+  isActive: Joi.boolean().default(true),
+  order: Joi.number().integer().default(0),
+});
+
 const authValidation = {
   register: Joi.object({
     name: Joi.string().required().max(100),
@@ -114,6 +135,7 @@ const productValidation = {
 const cartValidation = {
   addItem: Joi.object({
     productId: Joi.string().required(),
+    variantId: Joi.string().allow('', null),
     quantity: Joi.number().integer().min(1).default(1),
   }),
 
@@ -125,6 +147,7 @@ const cartValidation = {
 const negotiationValidation = {
   create: Joi.object({
     productId: Joi.string().required(),
+    variantId: Joi.string().allow('', null),
     quantity: Joi.number().integer().min(1).required(),
     pricePerUnit: Joi.number().min(0).required(),
     message: Joi.string().max(500).allow('', null),
@@ -151,6 +174,7 @@ const orderValidation = {
     items: Joi.array().items(
       Joi.object({
         productId: Joi.string().required(),
+        variantId: Joi.string().allow('', null),
         quantity: Joi.number().integer().min(1).required(),
       })
     ).min(1),
@@ -199,14 +223,15 @@ const adminValidation = {
     subCategory: Joi.string().allow('', null),
     tags: Joi.array().items(Joi.string()),
     // 3-Tier Pricing
-    mrp: Joi.number().min(0).required(),
-    retailPrice: Joi.number().min(0).required(),
-    wholesalePrice: Joi.number().min(0).required(),
+    mrp: Joi.number().min(0),
+    retailPrice: Joi.number().min(0),
+    wholesalePrice: Joi.number().min(0),
     minWholesaleQuantity: Joi.number().integer().min(1).default(10),
     negotiationEnabled: Joi.boolean().default(true),
-    sku: Joi.string().required(),
+    sku: Joi.string(),
     stock: Joi.number().integer().min(0).default(0),
     lowStockThreshold: Joi.number().integer().min(0).default(5),
+    variants: Joi.array().items(variantValidationSchema).default([]),
     images: Joi.array().items(Joi.object({
       url: Joi.string().required(),
       publicId: Joi.string().required(),
@@ -227,6 +252,17 @@ const adminValidation = {
     company: Joi.string().allow('', null),
     videoUrl: Joi.string().allow('', null),
     shippingTerms: Joi.string().allow('', null),
+  }).custom((value, helpers) => {
+    const hasVariants = Array.isArray(value.variants) && value.variants.length > 0;
+    if (hasVariants) return value;
+
+    if (value.mrp === undefined || value.retailPrice === undefined || value.wholesalePrice === undefined || !value.sku) {
+      return helpers.error('any.invalid', {
+        message: 'Provide either variants or base SKU/pricing fields',
+      });
+    }
+
+    return value;
   }),
 
   updateProduct: Joi.object({
@@ -244,6 +280,7 @@ const adminValidation = {
     negotiationEnabled: Joi.boolean(),
     stock: Joi.number().integer().min(0),
     lowStockThreshold: Joi.number().integer().min(0),
+    variants: Joi.array().items(variantValidationSchema),
     images: Joi.array().items(Joi.object({
       url: Joi.string().required(),
       publicId: Joi.string().required(),
@@ -342,6 +379,13 @@ const adminValidation = {
       whatsapp: Joi.string().allow('', null),
       instagram: Joi.string().allow('', null),
       facebook: Joi.string().allow('', null),
+    }),
+    checkout: Joi.object({
+      mode: Joi.string().valid('payment', 'whatsapp'),
+      orderWhatsappNumber: Joi.string().allow('', null),
+      requireLoginForCheckout: Joi.boolean(),
+      createOrderBeforeRedirect: Joi.boolean(),
+      allowNegotiationCheckout: Joi.boolean(),
     }),
   }),
 

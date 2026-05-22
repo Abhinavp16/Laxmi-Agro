@@ -8,10 +8,25 @@ const orderItemSchema = new mongoose.Schema({
     ref: 'Product',
     required: true,
   },
+  variantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
   productSnapshot: {
     name: { type: String, required: true },
     sku: { type: String, required: true },
     image: String,
+  },
+  variantSnapshot: {
+    name: { type: String, default: '' },
+    displayName: { type: String, default: '' },
+    sku: { type: String, default: '' },
+    attributes: [{
+      key: { type: String, required: true },
+      value: { type: String, required: true },
+    }],
+    packing: String,
+    priceUnit: String,
   },
   quantity: {
     type: Number,
@@ -174,6 +189,7 @@ orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ orderType: 1 });
 orderSchema.index({ negotiationId: 1 }, { sparse: true });
 orderSchema.index({ 'items.productId': 1 });
+orderSchema.index({ 'items.variantId': 1 });
 
 orderSchema.pre('save', function (next) {
   if (!this.orderNumber) {

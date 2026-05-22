@@ -39,11 +39,18 @@ const negotiationSchema = new mongoose.Schema({
     ref: 'Product',
     required: true,
   },
+  variantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
   productSnapshot: {
     name: { type: String, required: true },
+    variantName: { type: String, default: '' },
+    variantDisplayName: { type: String, default: '' },
     price: { type: Number, required: true },
     image: String,
     sku: String,
+    variantSku: String,
   },
 
   requestedQuantity: {
@@ -105,6 +112,7 @@ const negotiationSchema = new mongoose.Schema({
 negotiationSchema.index({ negotiationNumber: 1 }, { unique: true });
 negotiationSchema.index({ wholesalerId: 1, status: 1 });
 negotiationSchema.index({ productId: 1 });
+negotiationSchema.index({ variantId: 1 });
 negotiationSchema.index({ status: 1, createdAt: -1 });
 negotiationSchema.index({ expiresAt: 1 });
 
