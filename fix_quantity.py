@@ -1,4 +1,8 @@
-path = r'c:\Users\hp\Desktop\Veepee\veepee-app\lib\screens\home\marketplace_home_screen.dart'
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parent
+path = project_root / 'laxmi-agro-app' / 'lib' / 'screens' / 'home' / 'marketplace_home_screen.dart'
+
 with open(path, 'rb') as f:
     content = f.read()
 
