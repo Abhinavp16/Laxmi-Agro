@@ -36,6 +36,7 @@ exports.updateSettings = async (req, res, next) => {
       'heroBanners',
       'promoBanners',
       'socialLinks',
+      'checkout',
       'razorpayKeyId',
       'razorpayKeySecret',
       'razorpayEnabled',

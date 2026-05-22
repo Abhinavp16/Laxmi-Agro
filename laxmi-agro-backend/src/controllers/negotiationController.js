@@ -1,7 +1,13 @@
 const { Negotiation, Product, Settings } = require('../models');
-const { NotFoundError, BadRequestError, ForbiddenError } = require('../utils/errors');
+const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
-const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS, USER_ROLES } = require('../utils/constants');
+const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../utils/constants');
+const {
+  getVariantById,
+  getPriceForUser,
+  getVariantDisplayName,
+  normalizeObjectIdLike,
+} = require('../utils/productVariants');
 
 exports.getMyNegotiations = async (req, res, next) => {
   try {
@@ -20,25 +26,26 @@ exports.getMyNegotiations = async (req, res, next) => {
       Negotiation.countDocuments(query),
     ]);
 
-    const formatted = negotiations.map(n => ({
-      id: n._id,
-      negotiationNumber: n.negotiationNumber,
+    const formatted = negotiations.map((negotiation) => ({
+      id: negotiation._id,
+      negotiationNumber: negotiation.negotiationNumber,
       product: {
-        id: n.productId,
-        name: n.productSnapshot.name,
-        image: n.productSnapshot.image,
-        currentPrice: n.productSnapshot.price,
+        id: negotiation.productId,
+        variantId: negotiation.variantId || null,
+        name: negotiation.productSnapshot.variantDisplayName || negotiation.productSnapshot.name,
+        image: negotiation.productSnapshot.image,
+        currentPrice: negotiation.productSnapshot.price,
       },
-      requestedQuantity: n.requestedQuantity,
-      requestedPricePerUnit: n.requestedPricePerUnit,
-      requestedTotalPrice: n.requestedTotalPrice,
-      currentPricePerUnit: n.currentPricePerUnit,
-      currentTotalPrice: n.currentTotalPrice,
-      status: n.status,
-      currentOfferBy: n.currentOfferBy,
-      expiresAt: n.expiresAt,
-      canPay: n.status === NEGOTIATION_STATUS.ACCEPTED && !n.orderId,
-      createdAt: n.createdAt,
+      requestedQuantity: negotiation.requestedQuantity,
+      requestedPricePerUnit: negotiation.requestedPricePerUnit,
+      requestedTotalPrice: negotiation.requestedTotalPrice,
+      currentPricePerUnit: negotiation.currentPricePerUnit,
+      currentTotalPrice: negotiation.currentTotalPrice,
+      status: negotiation.status,
+      currentOfferBy: negotiation.currentOfferBy,
+      expiresAt: negotiation.expiresAt,
+      canPay: negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId,
+      createdAt: negotiation.createdAt,
     }));
 
     res.json({
@@ -52,7 +59,7 @@ exports.getMyNegotiations = async (req, res, next) => {
 
 exports.createNegotiation = async (req, res, next) => {
   try {
-    const { productId, quantity, pricePerUnit, message } = req.body;
+    const { productId, variantId, quantity, pricePerUnit, message } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
@@ -63,6 +70,12 @@ exports.createNegotiation = async (req, res, next) => {
       throw new BadRequestError('Negotiation is not enabled for this product', 'NEGOTIATION_DISABLED');
     }
 
+    const resolved = getVariantById(product, variantId);
+    if (!resolved) {
+      throw new NotFoundError('Product variant not found', 'VARIANT_NOT_FOUND');
+    }
+
+    const pricing = getPriceForUser(product, req.user.role, resolved.variant);
     const settings = await Settings.getSettings();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + settings.negotiationExpiryDays);
@@ -72,11 +85,15 @@ exports.createNegotiation = async (req, res, next) => {
     const negotiation = await Negotiation.create({
       wholesalerId: req.user._id,
       productId,
+      variantId: normalizeObjectIdLike(resolved.variantId),
       productSnapshot: {
         name: product.name,
-        price: product.retailPrice,
+        variantName: resolved.variant.name,
+        variantDisplayName: getVariantDisplayName(product, resolved.variant),
+        price: pricing.price,
         image: product.primaryImage,
         sku: product.sku,
+        variantSku: resolved.variant.sku,
       },
       requestedQuantity: quantity,
       requestedPricePerUnit: pricePerUnit,
@@ -96,8 +113,6 @@ exports.createNegotiation = async (req, res, next) => {
     });
 
     await Product.findByIdAndUpdate(productId, { $inc: { negotiationCount: 1 } });
-
-    // TODO: Send notification to admin
 
     res.status(201).json({
       success: true,
@@ -175,8 +190,6 @@ exports.counterOffer = async (req, res, next) => {
 
     await negotiation.save();
 
-    // TODO: Notify admin
-
     res.json({
       success: true,
       message: 'Counter offer submitted',
@@ -221,7 +234,7 @@ exports.acceptOffer = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Offer accepted. You can now proceed to payment.',
+      message: 'Offer accepted. You can now continue through WhatsApp checkout.',
       data: {
         negotiationId: negotiation._id,
         finalPricePerUnit: negotiation.finalPricePerUnit,

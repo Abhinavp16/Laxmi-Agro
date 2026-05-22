@@ -3,25 +3,39 @@ const { NotFoundError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS, ANALYTICS_EVENTS } = require('../utils/constants');
 const mongoose = require('mongoose');
+const {
+  getPriceForUser,
+  serializeVariantForUser,
+  getProductStockTotal,
+  getDefaultVariant,
+} = require('../utils/productVariants');
 
-// Helper to get price based on user role
-const getPriceForUser = (product, userRole) => {
-  if (userRole === 'wholesaler') {
-    return {
-      price: product.wholesalePrice,
-      mrp: product.mrp,
-      retailPrice: product.retailPrice,
-      wholesalePrice: product.wholesalePrice,
-      minWholesaleQuantity: product.minWholesaleQuantity,
-      negotiationEnabled: product.negotiationEnabled,
-      canNegotiate: true,
-    };
-  }
-  // For buyers and guests - show retail price
+const formatProductCard = (product, userRole) => {
+  const defaultVariant = getDefaultVariant(product);
+  const pricing = getPriceForUser(product, userRole, defaultVariant);
+  const stock = getProductStockTotal(product);
+
   return {
-    price: product.retailPrice,
-    mrp: product.mrp,
-    canNegotiate: false,
+    id: product._id,
+    name: product.name,
+    nameHindi: product.nameHindi,
+    slug: product.slug,
+    shortDescription: product.shortDescription,
+    category: product.category,
+    brand: product.brand || product.company?.name || '',
+    ...pricing,
+    stock,
+    inStock: stock > 0,
+    primaryImage: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
+    isFeatured: product.isFeatured,
+    isHot: product.isHot,
+    isNew: product.isNew,
+    rating: product.rating,
+    purchaseCountMin: product.purchaseCountMin,
+    purchaseCountMax: product.purchaseCountMax,
+    hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
+    variantCount: Array.isArray(product.variants) ? product.variants.length : 0,
+    defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
   };
 };
 
@@ -71,7 +85,7 @@ exports.getProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company variants')
         .populate('company', 'name')
         .sort(sortOption)
         .skip(skip)
@@ -80,28 +94,7 @@ exports.getProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => {
-      const pricing = getPriceForUser(p, userRole);
-      return {
-        id: p._id,
-        name: p.name,
-        nameHindi: p.nameHindi,
-        slug: p.slug,
-        shortDescription: p.shortDescription,
-        category: p.category,
-        brand: p.brand || p.company?.name || '',
-        ...pricing,
-        stock: p.stock,
-        inStock: p.stock > 0,
-        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
-        isFeatured: p.isFeatured,
-        isHot: p.isHot,
-        isNew: p.isNew,
-        rating: p.rating,
-        purchaseCountMin: p.purchaseCountMin,
-        purchaseCountMax: p.purchaseCountMax,
-      };
-    });
+    const formattedProducts = products.map(p => formatProductCard(p, userRole));
 
     res.json({
       success: true,
@@ -134,7 +127,8 @@ exports.getProductBySlug = async (req, res, next) => {
     }
 
     // Build response with role-based pricing
-    const pricing = getPriceForUser(product, userRole);
+    const defaultVariant = getDefaultVariant(product);
+    const pricing = getPriceForUser(product, userRole, defaultVariant);
     let resolvedLabels = [];
     if (Array.isArray(product.labelIds) && product.labelIds.length > 0) {
       const settings = await WebsiteSettings.getSettings();
@@ -179,6 +173,12 @@ exports.getProductBySlug = async (req, res, next) => {
       id: product._id,
       ...pricing,
       labels: resolvedLabels,
+      stock: getProductStockTotal(product),
+      hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
+      defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
+      variants: Array.isArray(product.variants)
+        ? product.variants.map((variant) => serializeVariantForUser(product, variant, userRole))
+        : [],
     };
 
     // Remove raw price fields for non-admin users, but keep for wholesalers so they can see customer price
@@ -239,29 +239,11 @@ exports.getFeaturedProducts = async (req, res, next) => {
       status: PRODUCT_STATUS.ACTIVE,
       isFeatured: true,
     })
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax variants')
       .limit(10)
       .lean();
 
-    const formattedProducts = products.map(p => {
-      const pricing = getPriceForUser(p, userRole);
-      return {
-        id: p._id,
-        name: p.name,
-        slug: p.slug,
-        shortDescription: p.shortDescription,
-        category: p.category,
-        ...pricing,
-        stock: p.stock,
-        inStock: p.stock > 0,
-        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
-        isHot: p.isHot,
-        isNew: p.isNew,
-        rating: p.rating,
-        purchaseCountMin: p.purchaseCountMin,
-        purchaseCountMax: p.purchaseCountMax,
-      };
-    });
+    const formattedProducts = products.map(p => formatProductCard(p, userRole));
 
     res.json({
       success: true,
@@ -301,6 +283,7 @@ exports.searchProducts = async (req, res, next) => {
           { category: regex },
           { tags: { $in: [new RegExp(escaped, 'i')] } },
           { sku: regex },
+          { 'variants.sku': regex },
         ]
       });
     }
@@ -333,7 +316,7 @@ exports.searchProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company variants')
         .populate('company', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -342,27 +325,7 @@ exports.searchProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => {
-      const pricing = getPriceForUser(p, userRole);
-      return {
-        id: p._id,
-        name: p.name,
-        nameHindi: p.nameHindi,
-        slug: p.slug,
-        shortDescription: p.shortDescription,
-        category: p.category,
-        brand: p.brand || p.company?.name || '',
-        ...pricing,
-        stock: p.stock,
-        inStock: p.stock > 0,
-        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
-        isHot: p.isHot,
-        isNew: p.isNew,
-        rating: p.rating,
-        purchaseCountMin: p.purchaseCountMin,
-        purchaseCountMax: p.purchaseCountMax,
-      };
-    });
+    const formattedProducts = products.map(p => formatProductCard(p, userRole));
 
     res.json({
       success: true,
@@ -492,35 +455,12 @@ exports.getRelatedProducts = async (req, res, next) => {
       category: currentProduct.category,
       _id: { $ne: currentProduct._id }
     })
-      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company')
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company variants')
       .populate('company', 'name')
       .limit(limit)
       .lean();
 
-    const formattedProducts = relatedProducts.map(p => {
-      const pricing = userRole === 'wholesaler'
-        ? { price: p.wholesalePrice, mrp: p.mrp, retailPrice: p.retailPrice, wholesalePrice: p.wholesalePrice, minWholesaleQuantity: p.minWholesaleQuantity }
-        : { price: p.retailPrice, mrp: p.mrp };
-      return {
-        id: p._id,
-        name: p.name,
-        nameHindi: p.nameHindi,
-        slug: p.slug,
-        shortDescription: p.shortDescription,
-        category: p.category,
-        brand: p.brand || p.company?.name || '',
-        ...pricing,
-        stock: p.stock,
-        inStock: p.stock > 0,
-        primaryImage: p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
-        isFeatured: p.isFeatured,
-        isHot: p.isHot,
-        isNew: p.isNew,
-        rating: p.rating,
-        purchaseCountMin: p.purchaseCountMin,
-        purchaseCountMax: p.purchaseCountMax,
-      };
-    });
+    const formattedProducts = relatedProducts.map(p => formatProductCard(p, userRole));
 
     res.json({ success: true, data: formattedProducts });
   } catch (error) {

@@ -8,7 +8,7 @@ const settingsSchema = new mongoose.Schema({
 
   businessName: {
     type: String,
-    default: 'AgriMart',
+    default: 'Laxmi Agro',
   },
   businessPhone: String,
   businessEmail: String,
@@ -75,6 +75,29 @@ const settingsSchema = new mongoose.Schema({
     instagram: String,
     facebook: String,
   },
+  checkout: {
+    mode: {
+      type: String,
+      enum: ['payment', 'whatsapp'],
+      default: 'whatsapp',
+    },
+    orderWhatsappNumber: {
+      type: String,
+      default: '',
+    },
+    requireLoginForCheckout: {
+      type: Boolean,
+      default: true,
+    },
+    createOrderBeforeRedirect: {
+      type: Boolean,
+      default: true,
+    },
+    allowNegotiationCheckout: {
+      type: Boolean,
+      default: true,
+    },
+  },
 
   // Razorpay Payment Gateway
   razorpayKeyId: {
@@ -109,8 +132,18 @@ settingsSchema.statics.getSettings = async function () {
   if (!settings) {
     settings = await this.create({
       _id: 'app_settings',
-      upiId: process.env.DEFAULT_UPI_ID || 'agrimart@ybl',
-      upiDisplayName: process.env.DEFAULT_UPI_NAME || 'AgriMart Payments',
+      businessPhone: '+91 9179110159',
+      businessEmail: 'ashirvadmarketing62@gmail.com',
+      businessAddress: 'Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.)',
+      upiId: process.env.DEFAULT_UPI_ID || 'laxmiagro@ybl',
+      upiDisplayName: process.env.DEFAULT_UPI_NAME || 'Laxmi Agro Payments',
+      checkout: {
+        mode: 'whatsapp',
+        orderWhatsappNumber: process.env.DEFAULT_ORDER_WHATSAPP || '9179110159',
+        requireLoginForCheckout: true,
+        createOrderBeforeRedirect: true,
+        allowNegotiationCheckout: true,
+      },
     });
   }
   

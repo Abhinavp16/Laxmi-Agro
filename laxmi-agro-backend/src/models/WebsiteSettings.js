@@ -80,17 +80,17 @@ const websiteSettingsSchema = new mongoose.Schema({
     type: websiteSectionConfigSchema,
     default: {
       eyebrow: 'PRODUCT CATEGORIES',
-      title: 'The Heart of Modern Farming',
-      description: 'Our diverse range of agriculture and industrial machines stands at the core of modern farming practices. Each piece of equipment is designed with utmost precision.',
-      buttonText: 'View All products',
+      title: 'Field Supply Categories',
+      description: 'Explore service wire, submersible cable, pipes, sprinkler sets, pump accessories, and related agriculture supply categories.',
+      buttonText: 'View Products',
     },
   },
   featuredSection: {
     type: websiteSectionConfigSchema,
     default: {
       eyebrow: 'PRECISION ENGINEERING',
-      title: 'Our Popular Product',
-      sideText: 'Genuine Oxon products engineered for durability, performance, and maximum ROI.',
+      title: 'Featured Products',
+      sideText: 'Featured agriculture supply products selected from the active Laxmi Agro catalogue.',
       buttonText: 'Get Quote',
     },
   },
@@ -110,14 +110,14 @@ websiteSettingsSchema.statics.getSettings = async function () {
       featuredProducts: [],
       categoriesSection: {
         eyebrow: 'PRODUCT CATEGORIES',
-        title: 'The Heart of Modern Farming',
-        description: 'Our diverse range of agriculture and industrial machines stands at the core of modern farming practices. Each piece of equipment is designed with utmost precision.',
-        buttonText: 'View All products',
+        title: 'Field Supply Categories',
+        description: 'Explore service wire, submersible cable, pipes, sprinkler sets, pump accessories, and related agriculture supply categories.',
+        buttonText: 'View Products',
       },
       featuredSection: {
         eyebrow: 'PRECISION ENGINEERING',
-        title: 'Our Popular Product',
-        sideText: 'Genuine Oxon products engineered for durability, performance, and maximum ROI.',
+        title: 'Featured Products',
+        sideText: 'Featured agriculture supply products selected from the active Laxmi Agro catalogue.',
         buttonText: 'Get Quote',
       },
     });
