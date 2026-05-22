@@ -6,7 +6,10 @@ import '../services/storage_service.dart';
 
 class CartItem {
   final String productId;
+  final String? variantId;
+  final String cartItemKey;
   final String name;
+  final String? variantName;
   final String? image;
   final String? nameHindi;
   final double price;
@@ -17,7 +20,10 @@ class CartItem {
 
   CartItem({
     required this.productId,
+    this.variantId,
+    required this.cartItemKey,
     required this.name,
+    this.variantName,
     this.image,
     this.nameHindi,
     required this.price,
@@ -35,7 +41,10 @@ class CartItem {
   }) {
     return CartItem(
       productId: productId,
+      variantId: variantId,
+      cartItemKey: cartItemKey,
       name: name,
+      variantName: variantName,
       image: image,
       nameHindi: nameHindi,
       price: price,
@@ -128,9 +137,16 @@ class CartNotifier extends StateNotifier<CartState> {
     final List<dynamic> rawItems = data['items'] ?? [];
     return rawItems.map<CartItem>((item) {
       final product = item['product'] as Map<String, dynamic>? ?? {};
+      final variant = item['variant'] as Map<String, dynamic>? ?? {};
+      final variantId = item['variantId']?.toString();
+      final productId = item['productId']?.toString() ?? '';
       return CartItem(
-        productId: item['productId']?.toString() ?? '',
+        productId: productId,
+        variantId: variantId,
+        cartItemKey:
+            item['cartItemKey']?.toString() ?? '${productId}:${variantId ?? 'default'}',
         name: product['name']?.toString() ?? '',
+        variantName: variant['displayName']?.toString() ?? variant['name']?.toString(),
         nameHindi: product['nameHindi']?.toString(),
         image: product['image']?.toString(),
         price: (item['currentPrice'] ?? product['price'] ?? 0).toDouble(),
@@ -142,7 +158,9 @@ class CartNotifier extends StateNotifier<CartState> {
 
   Future<bool> addItem({
     required String productId,
+    String? variantId,
     required String name,
+    String? variantName,
     String? nameHindi,
     String? image,
     required double price,
@@ -150,9 +168,10 @@ class CartNotifier extends StateNotifier<CartState> {
     required int quantity,
     int stock = 99,
   }) async {
+    final itemKey = '$productId:${variantId ?? 'default'}';
     // Optimistic local update for instant UI feedback
     final existingIndex = state.items.indexWhere(
-      (i) => i.productId == productId,
+      (i) => i.cartItemKey == itemKey,
     );
     final updatedItems = List<CartItem>.from(state.items);
 
@@ -165,7 +184,10 @@ class CartNotifier extends StateNotifier<CartState> {
       updatedItems.add(
         CartItem(
           productId: productId,
+          variantId: variantId,
+          cartItemKey: itemKey,
           name: name,
+          variantName: variantName,
           nameHindi: nameHindi,
           image: image,
           price: price,
@@ -182,7 +204,7 @@ class CartNotifier extends StateNotifier<CartState> {
       final dio = await _authedDio;
       final response = await dio.post(
         '/cart/items',
-        data: {'productId': productId, 'quantity': quantity},
+        data: {'productId': productId, 'variantId': variantId, 'quantity': quantity},
       );
       if (response.data?['data'] != null) {
         final serverItems = _parseServerCart(response.data['data']);
@@ -194,18 +216,19 @@ class CartNotifier extends StateNotifier<CartState> {
     return true;
   }
 
-  Future<String?> updateQuantity(String productId, int quantity) async {
+  Future<String?> updateQuantity(String productId, int quantity, {String? variantId}) async {
+    final itemKey = '$productId:${variantId ?? 'default'}';
     if (quantity < 1) {
       // Cancel any pending debounce and remove item
-      _quantityDebounceTimers[productId]?.cancel();
-      _quantityDebounceTimers.remove(productId);
-      removeItem(productId);
+      _quantityDebounceTimers[itemKey]?.cancel();
+      _quantityDebounceTimers.remove(itemKey);
+      removeItem(productId, variantId: variantId);
       return null;
     }
 
     // Check local stock limit first
     final item = state.items.firstWhere(
-      (i) => i.productId == productId,
+      (i) => i.cartItemKey == itemKey,
       orElse: () => state.items.first,
     );
     if (item.stock > 0 && quantity > item.stock) {
@@ -214,7 +237,7 @@ class CartNotifier extends StateNotifier<CartState> {
 
     // Optimistic local update - always apply immediately
     final updatedItems = state.items.map((i) {
-      if (i.productId == productId) {
+      if (i.cartItemKey == itemKey) {
         return i.copyWith(quantity: quantity, clearIssue: true);
       }
       return i;
@@ -222,22 +245,23 @@ class CartNotifier extends StateNotifier<CartState> {
     state = state.copyWith(items: updatedItems);
 
     // Cancel any pending debounce timer for this product
-    _quantityDebounceTimers[productId]?.cancel();
+    _quantityDebounceTimers[itemKey]?.cancel();
 
     // Debounce the API call - wait 500ms before sending to backend
     // This prevents race conditions from rapid clicks
-    _quantityDebounceTimers[productId] = Timer(const Duration(milliseconds: 500), () async {
-      await _syncQuantityToBackend(productId, quantity);
+    _quantityDebounceTimers[itemKey] = Timer(const Duration(milliseconds: 500), () async {
+      await _syncQuantityToBackend(productId, quantity, variantId: variantId);
     });
 
     return null;
   }
 
   // Separate method to sync quantity to backend (called after debounce)
-  Future<void> _syncQuantityToBackend(String productId, int quantity) async {
+  Future<void> _syncQuantityToBackend(String productId, int quantity, {String? variantId}) async {
+    final itemKey = '$productId:${variantId ?? 'default'}';
     // Find current quantity from state (may have changed since debounce started)
     final currentItem = state.items.firstWhere(
-      (i) => i.productId == productId,
+      (i) => i.cartItemKey == itemKey,
       orElse: () => state.items.first,
     );
 
@@ -248,6 +272,7 @@ class CartNotifier extends StateNotifier<CartState> {
       final dio = await _authedDio;
       final response = await dio.put(
         '/cart/items/$productId',
+        queryParameters: variantId != null ? {'variantId': variantId} : null,
         data: {'quantity': quantity},
       );
       if (response.data?['data'] != null) {
@@ -260,7 +285,7 @@ class CartNotifier extends StateNotifier<CartState> {
       if (msg != null && msg.contains('Insufficient stock')) {
         // Revert to previous quantity
         final reverted = state.items.map((i) {
-          if (i.productId == productId) {
+          if (i.cartItemKey == itemKey) {
             return i.copyWith(
               quantity: currentItem.quantity,
               stockIssue: 'Only ${currentItem.stock} available',
@@ -289,10 +314,13 @@ class CartNotifier extends StateNotifier<CartState> {
           // Update cart items with stock issues
           final issueMap = <String, Map<String, dynamic>>{};
           for (final issue in issues) {
-            issueMap[issue['productId']?.toString() ?? ''] = issue;
+            final key =
+                issue['cartItemKey']?.toString() ??
+                '${issue['productId']}:${issue['variantId'] ?? 'default'}';
+            issueMap[key] = issue;
           }
           final updatedItems = state.items.map((item) {
-            final issue = issueMap[item.productId];
+            final issue = issueMap[item.cartItemKey];
             if (issue != null) {
               final availStock = (issue['availableStock'] ?? 0) as int;
               return item.copyWith(
@@ -319,16 +347,20 @@ class CartNotifier extends StateNotifier<CartState> {
     return {'valid': true, 'issues': []};
   }
 
-  Future<void> removeItem(String productId) async {
+  Future<void> removeItem(String productId, {String? variantId}) async {
+    final itemKey = '$productId:${variantId ?? 'default'}';
     final updatedItems = state.items
-        .where((i) => i.productId != productId)
+        .where((i) => i.cartItemKey != itemKey)
         .toList();
     state = state.copyWith(items: updatedItems);
 
     // Sync with backend — use server response as source of truth
     try {
       final dio = await _authedDio;
-      final response = await dio.delete('/cart/items/$productId');
+      final response = await dio.delete(
+        '/cart/items/$productId',
+        queryParameters: variantId != null ? {'variantId': variantId} : null,
+      );
       if (response.data?['data'] != null) {
         final serverItems = _parseServerCart(response.data['data']);
         state = state.copyWith(items: serverItems);

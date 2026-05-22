@@ -9,6 +9,7 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/whatsapp_checkout_service.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -155,11 +156,27 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       setState(() => _isCheckingOut = false);
 
       if (response.data['success'] == true) {
-        final orderId = response.data['data']['orderId'];
         ref
             .read(cartProvider.notifier)
             .fetchCart(); // refresh (cart cleared server-side)
-        context.push('/payment/$orderId');
+        final opened = await WhatsAppCheckoutService.openFromResponse(
+          response.data,
+        );
+        if (!opened && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
+                    ? WhatsAppCheckoutService.extractMessage(response.data)
+                    : 'Unable to open WhatsApp',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     } on DioException catch (e) {
       if (!mounted) return;
@@ -996,7 +1013,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 item.nameHindi != null &&
                                 item.nameHindi!.isNotEmpty)
                             ? item.nameHindi!
-                            : item.name,
+                            : (item.variantName?.isNotEmpty == true
+                                  ? item.variantName!
+                                  : item.name),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -1045,6 +1064,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               .updateQuantity(
                                 item.productId,
                                 item.quantity - 1,
+                                variantId: item.variantId,
                               ),
                           child: Container(
                             width: 32,
@@ -1100,6 +1120,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       .updateQuantity(
                                         item.productId,
                                         item.quantity + 1,
+                                        variantId: item.variantId,
                                       );
                                   if (err != null && mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1146,7 +1167,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   IconButton(
                     onPressed: () => ref
                         .read(cartProvider.notifier)
-                        .removeItem(item.productId),
+                        .removeItem(
+                          item.productId,
+                          variantId: item.variantId,
+                        ),
                     icon: const Icon(
                       Icons.delete_outline_rounded,
                       color: AppColors.error,
@@ -1207,7 +1231,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           onTap: () {
                             ref
                                 .read(cartProvider.notifier)
-                                .updateQuantity(item.productId, item.stock);
+                                .updateQuantity(
+                                  item.productId,
+                                  item.stock,
+                                  variantId: item.variantId,
+                                );
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(

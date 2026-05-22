@@ -8,10 +8,13 @@ import 'package:dio/dio.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../core/services/whatsapp_checkout_service.dart';
 
 class BuyNowScreen extends ConsumerStatefulWidget {
   final String productId;
+  final String? variantId;
   final String productName;
+  final String? variantName;
   final String? productImage;
   final double price;
   final double? mrp;
@@ -21,7 +24,9 @@ class BuyNowScreen extends ConsumerStatefulWidget {
   const BuyNowScreen({
     super.key,
     required this.productId,
+    this.variantId,
     required this.productName,
+    this.variantName,
     this.productImage,
     required this.price,
     this.mrp,
@@ -217,7 +222,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Proceed to Payment',
+                                'Proceed to WhatsApp',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -287,7 +292,11 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.productName.split(' ').map((word) {
+                  (widget.variantName?.isNotEmpty == true
+                          ? widget.variantName!
+                          : widget.productName)
+                      .split(' ')
+                      .map((word) {
                     if (word.isEmpty) return word;
                     return word[0].toUpperCase() + word.substring(1).toLowerCase();
                   }).join(' '),
@@ -1111,6 +1120,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
           'items': [
             {
               'productId': widget.productId,
+              'variantId': widget.variantId,
               'quantity': widget.quantity,
             }
           ],
@@ -1124,8 +1134,24 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       setState(() => _isCheckingOut = false);
 
       if (response.data['success'] == true) {
-        final orderId = response.data['data']['orderId'];
-        context.push('/payment/$orderId');
+        final opened = await WhatsAppCheckoutService.openFromResponse(
+          response.data,
+        );
+        if (!opened && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
+                    ? WhatsAppCheckoutService.extractMessage(response.data)
+                    : 'Unable to open WhatsApp',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

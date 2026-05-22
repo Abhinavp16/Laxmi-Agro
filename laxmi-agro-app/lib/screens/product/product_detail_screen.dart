@@ -52,6 +52,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   bool _isRelatedLoading = false;
   int _bgKey = 0;
   String _whatsappNumber = '';
+  String? _selectedVariantId;
   String? _error;
   late final Dio _dio =
       Dio(
@@ -162,6 +163,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         }
         setState(() {
           _product = productData;
+          _selectedVariantId = _resolveInitialVariantId(productData);
           _isLoading = false;
         });
         _trackView();
@@ -250,6 +252,46 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   String _normalizedLabelLookup(dynamic value) =>
       value?.toString().trim().toLowerCase() ?? '';
+
+  List<Map<String, dynamic>> get _variants {
+    final raw = _product?['variants'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  String? _resolveInitialVariantId(Map<String, dynamic> product) {
+    final defaultVariant = product['defaultVariant'];
+    if (defaultVariant is Map && defaultVariant['id'] != null) {
+      return defaultVariant['id'].toString();
+    }
+
+    final variants = product['variants'];
+    if (variants is List && variants.isNotEmpty) {
+      final first = variants.first;
+      if (first is Map && first['id'] != null) {
+        return first['id'].toString();
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? get _selectedVariant {
+    if (_variants.isEmpty) return null;
+
+    if (_selectedVariantId != null) {
+      for (final variant in _variants) {
+        if (variant['id']?.toString() == _selectedVariantId) {
+          return variant;
+        }
+      }
+    }
+
+    return _variants.first;
+  }
 
   Future<void> _trackView() async {
     try {
@@ -443,13 +485,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         _product!['description']?.toString() ??
         _product!['shortDescription']?.toString() ??
         '';
-    final sku = _product!['sku']?.toString() ?? '';
-    final price = _product!['price'] ?? _product!['retailPrice'];
-    final customerPrice = _product!['retailPrice'] ?? _product!['price'];
-    final mrp = _product!['mrp'];
-    final wsPrice = _product!['wholesalePrice'];
+    final selectedVariant = _selectedVariant;
+    final sku =
+        selectedVariant?['sku']?.toString() ?? _product!['sku']?.toString() ?? '';
+    final price =
+        selectedVariant?['price'] ?? _product!['price'] ?? _product!['retailPrice'];
+    final customerPrice =
+        selectedVariant?['retailPrice'] ??
+        _product!['retailPrice'] ??
+        _product!['price'];
+    final mrp = selectedVariant?['mrp'] ?? _product!['mrp'];
+    final wsPrice =
+        selectedVariant?['wholesalePrice'] ?? _product!['wholesalePrice'];
     final minWsQty = _product!['minWholesaleQuantity'] ?? 5;
-    final stock = _product!['stock'] ?? 0;
+    final stock = selectedVariant?['stock'] ?? _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
     final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
     final negEnabled = _product!['negotiationEnabled'] == true && isWholesaler;
@@ -588,7 +637,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   final shareText =
                       'Check out $pName'
                       '${pPrice != null ? ' - ₹${_fmt(pPrice)}' : ''}'
-                      ' on AgriMart!\n\nhttps://agrimart.app/product/${widget.productId}';
+                      ' on Laxmi Agro!\n\nhttps://laxmiagro.local/product/${widget.productId}';
                   SharePlus.instance.share(ShareParams(text: shareText));
                 }),
                 Builder(
@@ -814,7 +863,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         final val = _product?[key]?.toString().trim();
         if (val != null && val.isNotEmpty) return val;
       }
-      return 'OXON';
+      return 'Laxmi Agro';
     }
     final brandDetails = getBrand();
 
@@ -921,6 +970,77 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               letterSpacing: 0.2,
             ),
           ),
+          if (_variants.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              t('Select Variant'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _txt,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _variants.map((variant) {
+                final variantId = variant['id']?.toString();
+                final isSelected = variantId == _selectedVariantId;
+                final label =
+                    variant['displayName']?.toString() ??
+                    variant['name']?.toString() ??
+                    'Variant';
+                return GestureDetector(
+                  onTap: () {
+                    if (variantId == null) return;
+                    setState(() {
+                      _selectedVariantId = variantId;
+                      _quantity = 1;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _blue : _bg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? _blue : _border,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : _txt,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹${_fmt((variant['price'] as num?)?.toDouble() ?? 0)}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.92)
+                                : _txtSec,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 8),
 
           RichText(
@@ -2159,6 +2279,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
               final price = item['price'] ?? 0;
               final mrp = item['mrp'] ?? 0;
+              final defaultVariant =
+                  item['defaultVariant'] is Map<String, dynamic>
+                  ? item['defaultVariant'] as Map<String, dynamic>
+                  : null;
               final hasMrp = mrp != null && mrp != price && (mrp as num) > 0;
               final discount = hasMrp
                   ? (((mrp - price) / mrp) * 100).round()
@@ -2311,7 +2435,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                           '/buy-now',
                                           extra: {
                                             'productId': pid,
+                                            'variantId':
+                                                defaultVariant?['id']?.toString(),
                                             'productName': displayName,
+                                            'variantName':
+                                                defaultVariant?['displayName']
+                                                    ?.toString(),
                                             'productImage': img,
                                             'price': (price is num) ? price.toDouble() : 0.0,
                                             'mrp': (mrp is num) ? mrp.toDouble() : null,
@@ -2344,11 +2473,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                     onTap: () {
                                       final pPrice = (price is num) ? price.toDouble() : 0.0;
                                       _trackEvent('related_add_to_cart_$pid');
-                                      ref.read(cartProvider.notifier).addItem(
-                                        productId: pid,
-                                        name: displayName,
-                                        price: pPrice,
-                                        image: img,
+                                       ref.read(cartProvider.notifier).addItem(
+                                         productId: pid,
+                                         variantId:
+                                             defaultVariant?['id']?.toString(),
+                                         name: displayName,
+                                         variantName:
+                                             defaultVariant?['displayName']
+                                                 ?.toString(),
+                                         price: pPrice,
+                                         image: img,
                                         quantity: 1,
                                       );
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -2530,9 +2664,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final msg =
         'Hi, I need help with this product:\n\n'
         '*$name*${pPrice.isNotEmpty ? ' - $pPrice' : ''}\n\n'
-        'https://agrimart.app/product/${widget.productId}\n\n'
+        'https://laxmiagro.local/product/${widget.productId}\n\n'
         'Please share more details.';
-    final encoded = Uri.encodeComponent(msg);
+    final selectedVariant = _selectedVariant;
+    final finalMsg =
+        selectedVariant?['displayName']?.toString().isNotEmpty == true
+        ? msg.replaceFirst(
+            '\n\nhttps://',
+            '\n*Variant:* ${selectedVariant!['displayName']}\n\nhttps://',
+          )
+        : msg;
+    final encoded = Uri.encodeComponent(finalMsg);
     final phone = _whatsappNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     final url = Uri.parse('https://wa.me/$phone?text=$encoded');
     launchUrl(url, mode: LaunchMode.externalApplication);
@@ -2546,7 +2688,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         '*SKU:* $sku\n'
         '*Price:* $pPrice\n\n'
         'Please share more details.';
-    final encoded = Uri.encodeComponent(msg);
+    final selectedVariant = _selectedVariant;
+    final finalMsg =
+        selectedVariant?['displayName']?.toString().isNotEmpty == true
+        ? msg.replaceFirst(
+            '\n*Retail Price:*',
+            '\n*Variant:* ${selectedVariant!['displayName']}\n*Retail Price:*',
+          )
+        : msg;
+    final encoded = Uri.encodeComponent(finalMsg);
     const phone = '917880080069';
     final url = Uri.parse('https://wa.me/$phone?text=$encoded');
     launchUrl(url, mode: LaunchMode.externalApplication);
@@ -2749,7 +2899,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         '*Retail Price:* $pPrice\n'
         '*Desired Quantity:* $qty\n'
         '*Requirement Details:* ${details.isEmpty ? 'N/A' : details}\n\n'
-        'View Product: https://agrimart.app/product/${widget.productId}';
+        'View Product: https://laxmiagro.local/product/${widget.productId}';
 
     final encoded = Uri.encodeComponent(msg);
     final phone = _whatsappNumber.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -2852,7 +3002,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 .read(cartProvider.notifier)
                                 .addItem(
                                   productId: widget.productId,
+                                  variantId: _selectedVariantId,
                                   name: name,
+                                  variantName:
+                                      _selectedVariant?['displayName']
+                                          ?.toString() ??
+                                      _selectedVariant?['name']?.toString(),
                                   image: img,
                                   price: (price is int)
                                       ? price.toDouble()
@@ -2929,7 +3084,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 '/buy-now',
                                 extra: {
                                   'productId': widget.productId,
+                                  'variantId': _selectedVariantId,
                                   'productName': name,
+                                  'variantName':
+                                      _selectedVariant?['displayName']
+                                          ?.toString() ??
+                                      _selectedVariant?['name']?.toString(),
                                   'productImage': img,
                                   'price': productPrice,
                                   'mrp': productMrp,

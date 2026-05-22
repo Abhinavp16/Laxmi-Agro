@@ -45,7 +45,7 @@ import '../../screens/profile/account_conversion_screen.dart';
 import '../../screens/profile/edit_profile_screen.dart';
 import '../../screens/profile/addresses_screen.dart';
 import '../../screens/profile/payment_methods_screen.dart';
-import '../../screens/profile/about_veepee_screen.dart';
+import '../../screens/profile/about_laxmi_agro_screen.dart';
 import '../../screens/profile/coupon_offer_screen.dart';
 import '../../screens/profile/legal_policy_screen.dart';
 import '../../screens/referral/referral_screen.dart';
@@ -220,7 +220,9 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         return BuyNowScreen(
           productId: extra?['productId'] ?? '',
+          variantId: extra?['variantId']?.toString(),
           productName: extra?['productName'] ?? '',
+          variantName: extra?['variantName']?.toString(),
           productImage: extra?['productImage'],
           price: (extra?['price'] ?? 0).toDouble(),
           mrp: extra?['mrp']?.toDouble(),
@@ -307,7 +309,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/about',
-      builder: (context, state) => const AboutVeepeeScreen(),
+      builder: (context, state) => const AboutLaxmiAgroScreen(),
     ),
     GoRoute(
       path: '/my-coupons',
