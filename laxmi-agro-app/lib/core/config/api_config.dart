@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   // Override at build/run time:
-  // flutter run --dart-define=API_BASE_URL=https://veepee-backend.vercel.app/api/v1
+  // flutter run --dart-define=API_BASE_URL=http://192.168.1.12:5000/api/v1
   // or
   // flutter run --dart-define=API_LOCAL_IP=<YOUR_IP>
   static const String _explicitBaseUrl = String.fromEnvironment(
@@ -28,21 +28,21 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      return productionUrl;
+      return localhostUrl;
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return productionUrl;
+      return androidUsbDebugUrl;
     }
 
-    return productionUrl;
+    return localhostUrl;
   }
 
   // Alternative URLs for reference
-  static const String productionUrl =
-      'https://veepee-backend.vercel.app/api/v1';
   static const String emulatorUrl = 'http://10.0.2.2:5000/api/v1';
   static const String localhostUrl = 'http://localhost:5000/api/v1';
+  static const String androidUsbDebugUrl = 'http://127.0.0.1:5000/api/v1';
+  static const String physicalDeviceUrl = 'http://192.168.1.12:5000/api/v1';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 15);
