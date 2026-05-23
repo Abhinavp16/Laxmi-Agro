@@ -92,6 +92,11 @@ interface ProductImage {
     savings?: string
 }
 
+interface ProductVariantAttributeForm {
+    key: string
+    value: string
+}
+
 interface ProductVariantForm {
     name: string
     sku: string
@@ -104,20 +109,28 @@ interface ProductVariantForm {
     priceUnit: string
     packing: string
     isActive: boolean
+    attributes: ProductVariantAttributeForm[]
 }
+
+const numericString = z.string().trim().refine((val) => val === "" || !isNaN(Number(val)), "Must be a number")
 
 const productSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
+    nameHindi: z.string().optional().default(""),
     description: z.string().optional().default(""),
     shortDescription: z.string().optional(),
     bulletPoints: z.array(z.string()).optional(),
     category: z.string().min(1, "Category is required"),
-    sku: z.string().min(1, "SKU is required"),
-    mrp: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
-    retailPrice: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
-    wholesalePrice: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
-    stock: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
+    subCategory: z.string().optional().default(""),
+    tags: z.string().optional().default(""),
+    sku: z.string().optional().default(""),
+    mrp: numericString.default(""),
+    retailPrice: numericString.default(""),
+    wholesalePrice: numericString.default(""),
+    stock: numericString.default("0"),
+    lowStockThreshold: numericString.default("5"),
     minWholesaleQuantity: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
+    negotiationEnabled: z.boolean().default(true),
     status: z.enum(["active", "draft", "archived"]),
     isFeatured: z.boolean().default(false),
     isHot: z.boolean().default(false),
@@ -164,16 +177,21 @@ export default function AddProductPage() {
         resolver: zodResolver(productSchema),
         defaultValues: {
             name: "",
+            nameHindi: "",
             description: "",
             shortDescription: "",
             bulletPoints: [],
             category: "",
+            subCategory: "",
+            tags: "",
             sku: "",
             mrp: "",
             retailPrice: "",
             wholesalePrice: "",
             stock: "0",
+            lowStockThreshold: "5",
             minWholesaleQuantity: "10",
+            negotiationEnabled: true,
             status: "active",
             isFeatured: false,
             isHot: false,
@@ -192,14 +210,15 @@ export default function AddProductPage() {
         sku: "",
         mrp: "",
         retailPrice: "",
-        wholesalePrice: "",
-        stock: "0",
-        lowStockThreshold: "5",
-        minOrderQuantity: "1",
-        priceUnit: "",
-        packing: "",
-        isActive: true,
-    })
+            wholesalePrice: "",
+            stock: "0",
+            lowStockThreshold: "5",
+            minOrderQuantity: "1",
+            priceUnit: "",
+            packing: "",
+            isActive: true,
+            attributes: [{ key: "", value: "" }],
+        })
 
     useEffect(() => {
         const initData = async () => {
@@ -238,16 +257,21 @@ export default function AddProductPage() {
             // Set form values
             form.reset({
                 name: product.name || "",
+                nameHindi: product.nameHindi || "",
                 description: product.description || "",
                 shortDescription: product.shortDescription || "",
                 bulletPoints: [],
                 category: product.category || "",
+                subCategory: product.subCategory || "",
+                tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
                 sku: product.sku || "",
-                mrp: String(product.mrp || "0"),
-                retailPrice: String(product.retailPrice || "0"),
-                wholesalePrice: String(product.wholesalePrice || "0"),
+                mrp: product.mrp !== undefined && product.mrp !== null ? String(product.mrp) : "",
+                retailPrice: product.retailPrice !== undefined && product.retailPrice !== null ? String(product.retailPrice) : "",
+                wholesalePrice: product.wholesalePrice !== undefined && product.wholesalePrice !== null ? String(product.wholesalePrice) : "",
                 stock: String(product.stock || "0"),
+                lowStockThreshold: String(product.lowStockThreshold ?? "5"),
                 minWholesaleQuantity: String(product.minWholesaleQuantity || "10"),
+                negotiationEnabled: product.negotiationEnabled !== false,
                 status: product.status || "draft",
                 isFeatured: product.isFeatured || false,
                 isHot: product.isHot || false,
@@ -278,6 +302,12 @@ export default function AddProductPage() {
                     priceUnit: String(variant.priceUnit || ""),
                     packing: String(variant.packing || ""),
                     isActive: variant.isActive !== false,
+                    attributes: Array.isArray(variant.attributes) && variant.attributes.length > 0
+                        ? variant.attributes.map((attribute: any) => ({
+                            key: String(attribute?.key || ""),
+                            value: String(attribute?.value || ""),
+                        }))
+                        : [{ key: "", value: "" }],
                 })))
             } else {
                 setVariants([])
@@ -501,6 +531,41 @@ export default function AddProductPage() {
         setVariants(prev => prev.filter((_, i) => i !== index))
     }
 
+    const addVariantAttribute = (variantIndex: number) => {
+        setVariants(prev => prev.map((variant, index) => (
+            index === variantIndex
+                ? { ...variant, attributes: [...variant.attributes, { key: "", value: "" }] }
+                : variant
+        )))
+    }
+
+    const updateVariantAttribute = (variantIndex: number, attributeIndex: number, field: keyof ProductVariantAttributeForm, value: string) => {
+        setVariants(prev => prev.map((variant, index) => {
+            if (index !== variantIndex) return variant
+
+            return {
+                ...variant,
+                attributes: variant.attributes.map((attribute, currentAttributeIndex) => (
+                    currentAttributeIndex === attributeIndex
+                        ? { ...attribute, [field]: value }
+                        : attribute
+                )),
+            }
+        }))
+    }
+
+    const removeVariantAttribute = (variantIndex: number, attributeIndex: number) => {
+        setVariants(prev => prev.map((variant, index) => {
+            if (index !== variantIndex) return variant
+
+            const nextAttributes = variant.attributes.filter((_, currentAttributeIndex) => currentAttributeIndex !== attributeIndex)
+            return {
+                ...variant,
+                attributes: nextAttributes.length > 0 ? nextAttributes : [{ key: "", value: "" }],
+            }
+        }))
+    }
+
     async function createNewCompany() {
         if (!newCompanyName.trim()) {
             toast.error("Company name is required")
@@ -584,36 +649,99 @@ export default function AddProductPage() {
             // Filter out empty bullet points
             const validBulletPoints = bulletPoints.filter(bp => bp.trim() !== "")
             const normalizedLabelIds = normalizeSelectedLabelIds(values.labelIds, availableLabels)
-            const normalizedVariants = variants
-                .filter((variant) => variant.name.trim() && variant.sku.trim())
-                .map((variant, index) => ({
+            const normalizedTags = String(values.tags || "")
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+            const variantDrafts = variants.map((variant) => {
+                const normalizedAttributes = variant.attributes
+                    .map((attribute) => ({
+                        key: attribute.key.trim(),
+                        value: attribute.value.trim(),
+                    }))
+                    .filter((attribute) => attribute.key && attribute.value)
+
+                return {
+                    ...variant,
+                    normalizedAttributes,
                     name: variant.name.trim(),
                     sku: variant.sku.trim(),
+                    priceUnit: variant.priceUnit.trim(),
+                    packing: variant.packing.trim(),
+                }
+            })
+
+            const incompleteVariantIndex = variantDrafts.findIndex((variant) => {
+                const hasAnyValue = Boolean(
+                    variant.name ||
+                    variant.sku ||
+                    variant.mrp ||
+                    variant.retailPrice ||
+                    variant.wholesalePrice ||
+                    variant.stock ||
+                    variant.priceUnit ||
+                    variant.packing ||
+                    variant.normalizedAttributes.length > 0
+                )
+
+                if (!hasAnyValue) {
+                    return false
+                }
+
+                return !variant.name || !variant.sku || variant.mrp === "" || variant.retailPrice === "" || variant.wholesalePrice === ""
+            })
+
+            if (incompleteVariantIndex !== -1) {
+                toast.error(`Variant ${incompleteVariantIndex + 1} is incomplete. Add name, SKU, MRP, customer price, and wholesale price.`)
+                setIsLoading(false)
+                return
+            }
+
+            const normalizedVariants = variantDrafts
+                .filter((variant) => variant.name && variant.sku && variant.mrp !== "" && variant.retailPrice !== "" && variant.wholesalePrice !== "")
+                .map((variant, index) => ({
+                    name: variant.name,
+                    sku: variant.sku,
+                    attributes: variant.normalizedAttributes,
                     mrp: Number(variant.mrp || 0),
                     retailPrice: Number(variant.retailPrice || 0),
                     wholesalePrice: Number(variant.wholesalePrice || 0),
                     stock: Number(variant.stock || 0),
                     lowStockThreshold: Number(variant.lowStockThreshold || 5),
                     minOrderQuantity: Number(variant.minOrderQuantity || 1),
-                    priceUnit: variant.priceUnit.trim(),
-                    packing: variant.packing.trim(),
+                    priceUnit: variant.priceUnit,
+                    packing: variant.packing,
                     isActive: variant.isActive,
                     order: index,
                 }))
 
+            if (
+                normalizedVariants.length === 0 &&
+                (!values.sku.trim() || values.mrp === "" || values.retailPrice === "" || values.wholesalePrice === "")
+            ) {
+                toast.error("Provide either complete base SKU/pricing fields or add at least one complete variant.")
+                setIsLoading(false)
+                return
+            }
+
             // Construct payload matching backend expectation
             const payload = {
-                name: values.name,
+                name: values.name.trim(),
+                nameHindi: values.nameHindi?.trim() || null,
                 description: values.description,
-                shortDescription: values.shortDescription || values.description.substring(0, 200),
+                shortDescription: values.shortDescription?.trim() || values.description.substring(0, 200),
                 category: values.category,
-                sku: values.sku,
+                subCategory: values.subCategory?.trim() || null,
+                tags: normalizedTags,
+                sku: values.sku.trim() || undefined,
                 status: values.status,
-                mrp: Number(values.mrp),
-                retailPrice: Number(values.retailPrice),
-                wholesalePrice: Number(values.wholesalePrice),
+                mrp: values.mrp === "" ? undefined : Number(values.mrp),
+                retailPrice: values.retailPrice === "" ? undefined : Number(values.retailPrice),
+                wholesalePrice: values.wholesalePrice === "" ? undefined : Number(values.wholesalePrice),
                 stock: Number(values.stock),
+                lowStockThreshold: Number(values.lowStockThreshold || 5),
                 minWholesaleQuantity: Number(values.minWholesaleQuantity),
+                negotiationEnabled: values.negotiationEnabled,
                 isFeatured: values.isFeatured,
                 isHot: values.isHot,
                 company: values.company && values.company !== 'none' ? values.company : null,
@@ -717,6 +845,23 @@ export default function AddProductPage() {
 
                                     <FormField
                                         control={form.control}
+                                        name="nameHindi"
+                                        render={({ field }) => (
+                                            <FormItem className="mt-4">
+                                                <FormLabel className="text-white">Product Name (Hindi)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Optional Hindi display name" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                </FormControl>
+                                                <FormDescription className="text-gray-500">
+                                                    Used by the app when Hindi language is selected.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
                                         name="description"
                                         render={({ field }) => (
                                             <FormItem className="mt-4">
@@ -724,6 +869,23 @@ export default function AddProductPage() {
                                                 <FormControl>
                                                     <Textarea placeholder="Product description" {...field} className="bg-[#0D0D0D] border-[#333] text-white min-h-[100px]" />
                                                 </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="shortDescription"
+                                        render={({ field }) => (
+                                            <FormItem className="mt-4">
+                                                <FormLabel className="text-white">Short Description</FormLabel>
+                                                <FormControl>
+                                                    <Textarea placeholder="Optional short summary for cards and previews" {...field} className="bg-[#0D0D0D] border-[#333] text-white min-h-[90px]" />
+                                                </FormControl>
+                                                <FormDescription className="text-gray-500">
+                                                    If left empty, the backend will derive it from the full description.
+                                                </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -827,19 +989,38 @@ export default function AddProductPage() {
                                                     <FormDescription className="text-gray-500">
                                                         Search by category name and pick from all created categories.
                                                     </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    </div>
+
+                                    <div className="grid gap-4 mt-4 md:grid-cols-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="subCategory"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-white">Sub Category</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="Optional sub category" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
                                         <FormField
                                             control={form.control}
-                                            name="sku"
+                                            name="tags"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white">SKU</FormLabel>
+                                                    <FormLabel className="text-white">Tags</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="PROD-001" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                        <Input placeholder="cable, copper, 3-core" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
                                                     </FormControl>
+                                                    <FormDescription className="text-gray-500">
+                                                        Comma-separated tags used for search and filtering.
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -1163,7 +1344,29 @@ export default function AddProductPage() {
                         <div className="space-y-8">
                             <Card className="bg-[#161616] border-[#333]">
                                 <CardContent className="pt-6 space-y-4">
-                                    <h3 className="text-white font-medium mb-4">Pricing & Inventory</h3>
+                                    <div className="space-y-1">
+                                        <h3 className="text-white font-medium">Base Pricing & Inventory</h3>
+                                        <p className="text-xs text-gray-500">
+                                            These fields act as the fallback/default summary. If you add variants below, the backend will derive the visible summary from those variants.
+                                        </p>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="sku"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Base SKU</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="PROD-001" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                </FormControl>
+                                                <FormDescription className="text-gray-500">
+                                                    Keep this filled for single-variant products or as a fallback identifier.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
                                     <FormField
                                         control={form.control}
@@ -1233,6 +1436,22 @@ export default function AddProductPage() {
                                         />
                                         <FormField
                                             control={form.control}
+                                            name="lowStockThreshold"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-white">Low Stock Threshold</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" placeholder="5" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
                                             name="minWholesaleQuantity"
                                             render={({ field }) => (
                                                 <FormItem>
@@ -1241,6 +1460,26 @@ export default function AddProductPage() {
                                                         <Input type="number" placeholder="10" {...field} className="bg-[#0D0D0D] border-[#333] text-white" />
                                                     </FormControl>
                                                     <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="negotiationEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex items-center justify-between rounded-lg border border-[#333] p-3 bg-[#0D0D0D] self-end">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel className="text-white">Wholesaler Negotiation</FormLabel>
+                                                        <FormDescription className="text-xs text-gray-500">
+                                                            Allow negotiation requests for this product.
+                                                        </FormDescription>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                        />
+                                                    </FormControl>
                                                 </FormItem>
                                             )}
                                         />
@@ -1355,6 +1594,53 @@ export default function AddProductPage() {
                                                                 onChange={(e) => updateVariant(index, "packing", e.target.value)}
                                                                 className="bg-[#141414] border-[#333] text-white"
                                                             />
+                                                        </div>
+
+                                                        <div className="rounded-xl border border-[#272727] bg-[#111] p-3 space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-sm font-medium text-white">Variant Attributes</p>
+                                                                    <p className="text-xs text-gray-500">Optional key/value specs like core count, size, gauge, or length.</p>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => addVariantAttribute(index)}
+                                                                    className="border-[#333] text-white"
+                                                                >
+                                                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                                                    Add Attribute
+                                                                </Button>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                {variant.attributes.map((attribute, attributeIndex) => (
+                                                                    <div key={`${index}-${attributeIndex}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                                                                        <Input
+                                                                            placeholder="Key (e.g. Core)"
+                                                                            value={attribute.key}
+                                                                            onChange={(e) => updateVariantAttribute(index, attributeIndex, "key", e.target.value)}
+                                                                            className="bg-[#141414] border-[#333] text-white"
+                                                                        />
+                                                                        <Input
+                                                                            placeholder="Value (e.g. 3 Core)"
+                                                                            value={attribute.value}
+                                                                            onChange={(e) => updateVariantAttribute(index, attributeIndex, "value", e.target.value)}
+                                                                            className="bg-[#141414] border-[#333] text-white"
+                                                                        />
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            onClick={() => removeVariantAttribute(index, attributeIndex)}
+                                                                            className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
 
                                                         <label className="flex items-center gap-3 text-sm text-gray-300">

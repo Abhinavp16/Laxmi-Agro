@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { apiFetch, buildApiUrl } from "@/lib/api"
 import { toast } from "sonner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Loader2, Plus, Save, Trash2, Upload, Globe, ChevronDown, ChevronRight } from "lucide-react"
+import { Loader2, Plus, Save, Trash2, Upload, Globe, ChevronDown, ChevronRight, BadgeCheck, RefreshCcw, Package, Headphones, ShieldCheck, CircleDollarSign, Truck, Wrench, Pencil } from "lucide-react"
 
 type WebsiteCategoryProduct = {
     productId: string
@@ -32,6 +33,8 @@ type WebsiteCategoryProduct = {
 type WebsiteCategory = { name: string; description: string; image: string; products: string[]; productDetails: WebsiteCategoryProduct[]; isActive: boolean; order: number }
 type WebsiteFeaturedProduct = { name: string; price: string; image: string; badge: string; specs: string[]; shortDescription: string; isActive: boolean; order: number }
 type WebsiteHeroCard = { image: string; order: number }
+type LabelSourceType = "image" | "icon"
+type WebsiteLabel = { id: string; title: string; sourceType: LabelSourceType; image: string; icon: string; isActive: boolean; order: number }
 type SectionConfig = { eyebrow: string; title: string; description?: string; sideText?: string; buttonText: string }
 type AdminProductImage = { url: string; isPrimary?: boolean; order?: number }
 type AdminProductOption = {
@@ -172,14 +175,55 @@ const defaultFeaturedSection: SectionConfig = {
     sideText: "Reliable agricultural products engineered for durability, performance, and strong field results.",
     buttonText: "Get Quote",
 }
+const ICON_OPTIONS = [
+    { value: "refresh", label: "Return", Icon: RefreshCcw },
+    { value: "badge", label: "Quality", Icon: BadgeCheck },
+    { value: "package", label: "Delivery", Icon: Package },
+    { value: "support", label: "Support", Icon: Headphones },
+    { value: "shield", label: "Protection", Icon: ShieldCheck },
+    { value: "value", label: "Value", Icon: CircleDollarSign },
+    { value: "truck", label: "Shipping", Icon: Truck },
+    { value: "service", label: "Service", Icon: Wrench },
+] as const
+const iconMap = Object.fromEntries(ICON_OPTIONS.map((item) => [item.value, item.Icon])) as Record<string, (props: { className?: string }) => JSX.Element>
+const createEmptyLabel = (order = 0): WebsiteLabel => ({
+    id: "",
+    title: "",
+    sourceType: "icon",
+    image: "",
+    icon: ICON_OPTIONS[0].value,
+    isActive: true,
+    order,
+})
+const normalizeLabel = (value: any, order: number): WebsiteLabel => {
+    const icon = String(value?.icon || ICON_OPTIONS[0].value).trim()
+    const sourceType: LabelSourceType = value?.sourceType === "image" ? "image" : "icon"
+    return {
+        id: String(value?.id || "").trim(),
+        title: String(value?.title || "").trim(),
+        sourceType,
+        image: String(value?.image || "").trim(),
+        icon: iconMap[icon] ? icon : ICON_OPTIONS[0].value,
+        isActive: value?.isActive !== false,
+        order: Number.isFinite(value?.order) ? value.order : order,
+    }
+}
+const hasLabelVisual = (label: WebsiteLabel) => label.sourceType === "image" ? Boolean(label.image.trim()) : Boolean(label.icon.trim())
 
 export default function ManageWebsitePage() {
+    const searchParams = useSearchParams()
+    const requestedTab = searchParams.get("tab")
+    const initialTab = requestedTab === "labels" || requestedTab === "categories" || requestedTab === "featured" || requestedTab === "hero"
+        ? requestedTab
+        : "hero"
     const [isLoading, setIsLoading] = useState(true)
     const [isSavingHero, setIsSavingHero] = useState(false)
     const [isSavingCategories, setIsSavingCategories] = useState(false)
     const [isSavingProducts, setIsSavingProducts] = useState(false)
+    const [isSavingLabels, setIsSavingLabels] = useState(false)
     const [uploading, setUploading] = useState<string | null>(null)
     const [heroCards, setHeroCards] = useState<WebsiteHeroCard[]>(defaultHeroCards())
+    const [labels, setLabels] = useState<WebsiteLabel[]>([])
     const [categories, setCategories] = useState<WebsiteCategory[]>([])
     const [featuredProducts, setFeaturedProducts] = useState<WebsiteFeaturedProduct[]>([])
     const [categoriesSection, setCategoriesSection] = useState<SectionConfig>(defaultCategoriesSection)
@@ -190,6 +234,9 @@ export default function ManageWebsitePage() {
     const [categoryDraftProducts, setCategoryDraftProducts] = useState<Record<number, WebsiteCategoryProduct>>({})
     const [expandedCategoryIndex, setExpandedCategoryIndex] = useState<number | null>(null)
     const [expandedProductKey, setExpandedProductKey] = useState<string | null>(null)
+    const [draftLabel, setDraftLabel] = useState<WebsiteLabel>(createEmptyLabel())
+    const [editingLabelIndex, setEditingLabelIndex] = useState<number | null>(null)
+    const [activeTab, setActiveTab] = useState<"hero" | "labels" | "categories" | "featured">(initialTab)
 
     const uploadUrl = useMemo(() => buildApiUrl("/upload/image?folder=website"), [])
     const websiteBaseUrl = useMemo(() => {
@@ -240,6 +287,10 @@ export default function ManageWebsitePage() {
                 shortDescription: p.shortDescription || '',
                 specs: Array.isArray(p.specs) ? p.specs : [],
             }))
+            const loadedLabels = Array.isArray(data.data.labels)
+                ? data.data.labels.map((item: any, index: number) => normalizeLabel(item, index))
+                : []
+            setLabels(loadedLabels)
             setFeaturedProducts(loadedFeaturedProducts)
             setCategoriesSection({ ...defaultCategoriesSection, ...(data.data.categoriesSection || {}) })
             setFeaturedSection({ ...defaultFeaturedSection, ...(data.data.featuredSection || {}) })
@@ -526,6 +577,22 @@ export default function ManageWebsitePage() {
         return String(data.data.url)
     }
 
+    async function uploadLabelImage(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setUploading("label-draft")
+        try {
+            const imageUrl = await uploadSingleImage(file)
+            setDraftLabel((prev) => ({ ...prev, image: imageUrl, sourceType: "image" }))
+            toast.success("Label image uploaded")
+        } catch {
+            toast.error("Failed to upload label image")
+        } finally {
+            setUploading(null)
+            e.target.value = ""
+        }
+    }
+
     async function uploadImage(
         e: React.ChangeEvent<HTMLInputElement>,
         type: "hero" | "category" | "featured" | "category-product" | "draft-category-product",
@@ -587,6 +654,93 @@ export default function ManageWebsitePage() {
         } finally { setIsSavingProducts(false) }
     }
 
+    function resetDraftLabel() {
+        setEditingLabelIndex(null)
+        setDraftLabel(createEmptyLabel(labels.length))
+    }
+
+    function startEditLabel(index: number) {
+        setEditingLabelIndex(index)
+        setDraftLabel({ ...labels[index] })
+    }
+
+    async function persistLabels(nextLabels: WebsiteLabel[]) {
+        const payload = nextLabels
+            .map((item, index) => ({
+                id: item.id || undefined,
+                title: item.title.trim(),
+                sourceType: item.sourceType,
+                image: item.image.trim(),
+                icon: item.icon.trim(),
+                isActive: item.isActive !== false,
+                order: index,
+            }))
+            .filter((item) => item.title && (item.sourceType === "image" ? item.image : item.icon))
+
+        setIsSavingLabels(true)
+        try {
+            const res = await apiFetch("/admin/website-settings", {
+                method: "PUT",
+                body: JSON.stringify({ labels: payload }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.message || "Failed to save labels")
+
+            const nextSavedLabels = Array.isArray(data?.data?.labels)
+                ? data.data.labels.map((item: any, index: number) => normalizeLabel(item, index))
+                : payload.map((item, index) => normalizeLabel(item, index))
+            setLabels(nextSavedLabels)
+            toast.success("Website labels saved")
+            return true
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to save labels")
+            return false
+        } finally {
+            setIsSavingLabels(false)
+        }
+    }
+
+    async function saveDraftLabel() {
+        if (!draftLabel.title.trim()) {
+            toast.error("Label title is required")
+            return
+        }
+        if (!hasLabelVisual(draftLabel)) {
+            toast.error("Choose an icon or upload an image")
+            return
+        }
+
+        const targetIndex = editingLabelIndex === null ? labels.length : editingLabelIndex
+        const normalizedDraft = normalizeLabel(
+            {
+                ...draftLabel,
+                title: draftLabel.title.trim(),
+                image: draftLabel.image.trim(),
+                order: targetIndex,
+            },
+            targetIndex
+        )
+
+        const nextLabels = editingLabelIndex === null
+            ? [...labels, normalizedDraft]
+            : labels.map((item, index) => (index === editingLabelIndex ? normalizedDraft : item))
+
+        const saved = await persistLabels(nextLabels)
+        if (saved) {
+            resetDraftLabel()
+        }
+    }
+
+    async function removeLabel(index: number) {
+        const nextLabels = labels.filter((_, itemIndex) => itemIndex !== index)
+        const saved = await persistLabels(nextLabels)
+        if (saved && editingLabelIndex === index) {
+            resetDraftLabel()
+        } else if (saved && editingLabelIndex !== null && editingLabelIndex > index) {
+            setEditingLabelIndex(editingLabelIndex - 1)
+        }
+    }
+
     if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-[#86efac]" /></div>
 
     return (
@@ -596,9 +750,10 @@ export default function ManageWebsitePage() {
                 <p className="text-[#919191] mt-1">Hero has fixed 5 cards. Admin can only update image.</p>
             </div>
 
-            <Tabs defaultValue="hero" className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured")} className="w-full">
                 <TabsList className="bg-[#161616] border border-[#333]">
                     <TabsTrigger value="hero" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Hero Section</TabsTrigger>
+                    <TabsTrigger value="labels" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Labels</TabsTrigger>
                     <TabsTrigger value="categories" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Product Categories</TabsTrigger>
                     <TabsTrigger value="featured" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Popular Products</TabsTrigger>
                 </TabsList>
@@ -682,6 +837,193 @@ export default function ManageWebsitePage() {
                                         </div>
                                     ))}
                                 </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="labels" className="mt-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                        <Card className="bg-[#161616] border-[#333] xl:col-span-8">
+                            <CardHeader>
+                                <CardTitle className="text-white">Product Labels</CardTitle>
+                                <CardDescription className="text-[#919191]">
+                                    These labels come directly from the `WebsiteSettings.labels` schema and are used in product detail surfaces.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-5">
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-white">Label Text</label>
+                                    <Input
+                                        value={draftLabel.title}
+                                        onChange={(event) => setDraftLabel((prev) => ({ ...prev, title: event.target.value }))}
+                                        placeholder="e.g. Verified Seller"
+                                        className="border-[#333] bg-[#0D0D0D] text-white"
+                                    />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-medium text-white">Visual Type</label>
+                                    <div className="flex rounded-2xl border border-[#303030] bg-[#0D0D0D] p-1">
+                                        <button
+                                            type="button"
+                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "icon" ? "bg-[#86efac] text-black" : "text-[#9b9b9b] hover:text-white"}`}
+                                            onClick={() => setDraftLabel((prev) => ({ ...prev, sourceType: "icon" }))}
+                                        >
+                                            Icon
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "image" ? "bg-[#86efac] text-black" : "text-[#9b9b9b] hover:text-white"}`}
+                                            onClick={() => setDraftLabel((prev) => ({ ...prev, sourceType: "image" }))}
+                                        >
+                                            Image
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {draftLabel.sourceType === "image" ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="mb-2 block text-sm font-medium text-white">Image URL</label>
+                                            <Input
+                                                value={draftLabel.image}
+                                                onChange={(event) => setDraftLabel((prev) => ({ ...prev, image: event.target.value }))}
+                                                placeholder="https://example.com/label-logo.png"
+                                                className="border-[#333] bg-[#0D0D0D] text-white"
+                                            />
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <label className="inline-flex">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={uploadLabelImage}
+                                                    disabled={uploading === "label-draft"}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                                                    disabled={uploading === "label-draft"}
+                                                    asChild
+                                                >
+                                                    <span>
+                                                        {uploading === "label-draft" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                        Upload Logo
+                                                    </span>
+                                                </Button>
+                                            </label>
+                                            <span className="text-xs text-[#7d7d7d]">Square transparent logos work best here.</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-white">Choose Icon</label>
+                                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                                            {ICON_OPTIONS.map((option) => {
+                                                const SelectedIcon = option.Icon
+                                                const isSelected = draftLabel.icon === option.value
+
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => setDraftLabel((prev) => ({ ...prev, icon: option.value }))}
+                                                        className={`min-h-[132px] rounded-[24px] border px-4 py-5 text-center transition-colors ${isSelected ? "border-[#86efac] bg-[#86efac]/10 text-white" : "border-[#303030] bg-[#0D0D0D] text-[#a0a0a0] hover:border-[#4d4d4d] hover:text-white"}`}
+                                                    >
+                                                        <SelectedIcon className={`mx-auto mb-4 h-11 w-11 ${isSelected ? "text-[#86efac]" : "text-[#bdbdbd]"}`} />
+                                                        <div className="text-sm font-medium leading-snug">{option.label}</div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                    {editingLabelIndex !== null && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={resetDraftLabel}
+                                            className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                                        >
+                                            Cancel Edit
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        onClick={() => { void saveDraftLabel() }}
+                                        className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                                        disabled={isSavingLabels}
+                                    >
+                                        {isSavingLabels && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Save Label
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#161616] border-[#333] xl:col-span-4 xl:sticky xl:top-24">
+                            <CardHeader>
+                                <CardTitle className="text-white text-lg">Labels Preview</CardTitle>
+                                <CardDescription className="text-[#919191]">Saved website labels from the same schema document.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {labels.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-[#333] p-8 text-center text-sm text-[#919191]">
+                                        No labels saved yet.
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                        {labels
+                                            .filter((label) => label.title.trim() && hasLabelVisual(label))
+                                            .map((label, index) => {
+                                                const IconComponent = iconMap[label.icon] || BadgeCheck
+
+                                                return (
+                                                    <div key={`${label.title}-${index}`} className="rounded-2xl border border-[#333] bg-[#111] p-3">
+                                                        <div className="mb-2 rounded-[16px] bg-[#eef8fb] p-3">
+                                                            <div className="rounded-[12px] bg-[#dff1f4] p-3">
+                                                                <div className="flex aspect-square flex-col items-center justify-center text-center">
+                                                                    <div className="mb-2 flex items-center justify-center">
+                                                                        {label.sourceType === "image" && label.image ? (
+                                                                            <img src={label.image} alt={label.title} className="h-14 w-14 object-contain" />
+                                                                        ) : (
+                                                                            <IconComponent className="h-14 w-14 text-[#2d5f67]" />
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="line-clamp-2 text-xs font-medium leading-tight text-[#2d5f67]">{label.title}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                                                                onClick={() => startEditLabel(index)}
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                                                onClick={() => { void removeLabel(index) }}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

@@ -40,7 +40,7 @@ export function Sidebar() {
           <FolderTree className="h-6 w-6" />
           <span className="text-sm font-medium tracking-wide">CATEGORIES</span>
         </Link>
-        <Link href="/labels" className={`flex items-center gap-4 transition-colors ${isActive('/labels')}`}>
+        <Link href="/manage-website?tab=labels" className={`flex items-center gap-4 transition-colors ${pathname === '/manage-website' || pathname === '/labels' ? "text-[#E7E7E7]" : "text-[#919191] hover:text-[#E7E7E7]"}`}>
           <BadgeCheck className="h-6 w-6" />
           <span className="text-sm font-medium tracking-wide">LABELS</span>
         </Link>

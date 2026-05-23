@@ -217,6 +217,7 @@ const orderValidation = {
 const adminValidation = {
   createProduct: Joi.object({
     name: Joi.string().required().max(200),
+    nameHindi: Joi.string().allow('', null).max(200),
     description: Joi.string().required(),
     shortDescription: Joi.string().max(300),
     category: Joi.string().required(),
@@ -267,6 +268,7 @@ const adminValidation = {
 
   updateProduct: Joi.object({
     name: Joi.string().max(200),
+    nameHindi: Joi.string().allow('', null).max(200),
     description: Joi.string(),
     shortDescription: Joi.string().max(300),
     category: Joi.string(),
