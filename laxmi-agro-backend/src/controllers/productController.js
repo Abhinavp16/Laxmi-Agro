@@ -9,8 +9,9 @@ const {
   getProductStockTotal,
   getDefaultVariant,
 } = require('../utils/productVariants');
+const { normalizeMediaUrl, normalizeImageObject } = require('../utils/mediaUrls');
 
-const formatProductCard = (product, userRole) => {
+const formatProductCard = (product, userRole, req) => {
   const defaultVariant = getDefaultVariant(product);
   const pricing = getPriceForUser(product, userRole, defaultVariant);
   const stock = getProductStockTotal(product);
@@ -26,7 +27,10 @@ const formatProductCard = (product, userRole) => {
     ...pricing,
     stock,
     inStock: stock > 0,
-    primaryImage: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
+    primaryImage: normalizeMediaUrl(
+      product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
+      req
+    ),
     isFeatured: product.isFeatured,
     isHot: product.isHot,
     isNew: product.isNew,
@@ -102,7 +106,7 @@ exports.getProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole));
+    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
 
     res.json({
       success: true,
@@ -179,6 +183,10 @@ exports.getProductBySlug = async (req, res, next) => {
     const responseData = {
       ...product,
       id: product._id,
+      primaryImage: normalizeMediaUrl(product.primaryImage, req),
+      images: Array.isArray(product.images)
+        ? product.images.map((image) => normalizeImageObject(image, req))
+        : [],
       ...pricing,
       labels: resolvedLabels,
       stock: getProductStockTotal(product),
@@ -251,7 +259,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
       .limit(10)
       .lean();
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole));
+    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
 
     res.json({
       success: true,
@@ -333,7 +341,7 @@ exports.searchProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole));
+    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
 
     res.json({
       success: true,
@@ -468,7 +476,7 @@ exports.getRelatedProducts = async (req, res, next) => {
       .limit(limit)
       .lean();
 
-    const formattedProducts = relatedProducts.map(p => formatProductCard(p, userRole));
+    const formattedProducts = relatedProducts.map(p => formatProductCard(p, userRole, req));
 
     res.json({ success: true, data: formattedProducts });
   } catch (error) {

@@ -189,16 +189,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   String _resolveImageUrl(String imageUrl) {
-    final trimmed = imageUrl.trim();
-    if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) {
-      final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-      return '$serverBase$trimmed';
-    }
-    return '';
+    return ApiConfig.normalizeMediaUrl(imageUrl);
   }
 
   Future<void> _fetchProductsForCategory(Map<String, dynamic> category) async {
@@ -222,7 +213,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   'nameHindi': item['nameHindi']?.toString() ?? '',
                   'price': item['price'] ?? item['retailPrice'] ?? 0,
                   'mrp': item['mrp'] ?? 0,
-                  'image': item['primaryImage']?.toString() ?? '',
+                  'image': ApiConfig.normalizeMediaUrl(
+                    item['primaryImage']?.toString() ?? '',
+                  ),
                   'inStock': item['inStock'] != false,
                   'shortDescription':
                       item['shortDescription']?.toString() ?? '',

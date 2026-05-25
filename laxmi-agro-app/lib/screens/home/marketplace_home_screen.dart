@@ -388,11 +388,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         '')
                     .toString()
                     .trim();
-            // If the URL is relative (starts with /), prepend the server base
-            if (apiImage.isNotEmpty && apiImage.startsWith('/')) {
-              final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-              apiImage = '$serverBase$apiImage';
-            }
+            apiImage = ApiConfig.normalizeMediaUrl(apiImage);
             final isValidUrl =
                 apiImage.startsWith('http://') ||
                 apiImage.startsWith('https://');
@@ -528,29 +524,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   String _resolveCategoryImageUrl(String imageUrl) {
-    final trimmed = imageUrl.trim();
-    if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) {
-      final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-      return '$serverBase$trimmed';
-    }
-    return '';
+    return ApiConfig.normalizeMediaUrl(imageUrl);
   }
 
   String _resolveBannerImageUrl(String imageUrl) {
-    final trimmed = imageUrl.trim();
-    if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) {
-      final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-      return '$serverBase$trimmed';
-    }
-    return '';
+    return ApiConfig.normalizeMediaUrl(imageUrl);
   }
 
   Future<void> _fetchPromoBanners() async {
@@ -772,7 +750,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'brand': item['category']?.toString() ?? '',
                   'price': item['price'] ?? item['retailPrice'] ?? 0,
                    'originalPrice': item['mrp'] ?? 0,
-                  'image': item['primaryImage']?.toString() ?? '',
+                  'image': ApiConfig.normalizeMediaUrl(
+                    item['primaryImage']?.toString() ?? '',
+                  ),
                   'blurHash': item['primaryBlurHash']?.toString() ?? item['blurHash']?.toString() ?? '',
                   'inStock': item['inStock'] == true,
                   'shortDescription':

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
+import '../core/config/api_config.dart';
 import 'product_image_placeholder.dart';
 
 class AppImage extends StatelessWidget {
@@ -26,12 +27,14 @@ class AppImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl.isEmpty) {
+    final resolvedImageUrl = ApiConfig.normalizeMediaUrl(imageUrl);
+
+    if (resolvedImageUrl.isEmpty) {
       return ProductImagePlaceholder(category: category, name: name);
     }
 
     return CachedNetworkImage(
-      imageUrl: imageUrl,
+      imageUrl: resolvedImageUrl,
       width: width,
       height: height,
       fit: fit,

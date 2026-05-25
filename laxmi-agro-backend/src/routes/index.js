@@ -6,6 +6,7 @@ const { getStorageDriver } = require('../config/storage');
 const connectDB = require('../config/database');
 const { getDatabaseHealth } = require('../config/database');
 const { PRODUCT_STATUS } = require('../utils/constants');
+const { normalizeMediaUrl, normalizeProductMedia } = require('../utils/mediaUrls');
 
 const authRoutes = require('./authRoutes');
 const productRoutes = require('./productRoutes');
@@ -268,9 +269,17 @@ router.get('/settings/banners', async (req, res, next) => {
     const { Settings } = require('../models');
     const settings = await Settings.getSettings();
     const heroBanners = (settings.heroBanners || [])
+      .map((banner) => ({
+        ...(typeof banner?.toObject === 'function' ? banner.toObject() : banner),
+        imageUrl: normalizeMediaUrl(banner?.imageUrl, req),
+      }))
       .filter(b => b.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     const promoBanners = (settings.promoBanners || [])
+      .map((banner) => ({
+        ...(typeof banner?.toObject === 'function' ? banner.toObject() : banner),
+        imageUrl: normalizeMediaUrl(banner?.imageUrl, req),
+      }))
       .filter(b => b.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     const whatsapp = settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '';
@@ -339,11 +348,14 @@ router.get('/settings/website-content', async (req, res, next) => {
             if (!liveProduct) {
               return null;
             }
-            return mapLiveProductToWebsiteProduct(liveProduct, detail, detailIndex);
+            return normalizeProductMedia(
+              mapLiveProductToWebsiteProduct(liveProduct, detail, detailIndex),
+              req
+            );
           }
 
           const storedProduct = mapStoredWebsiteProduct(detail, detailIndex);
-          return storedProduct.name ? storedProduct : null;
+          return storedProduct.name ? normalizeProductMedia(storedProduct, req) : null;
         })
         .filter(Boolean);
 
@@ -358,13 +370,25 @@ router.get('/settings/website-content', async (req, res, next) => {
     });
 
     const featuredProducts = (settings.featuredProducts || [])
+      .map((item) => ({
+        ...(typeof item?.toObject === 'function' ? item.toObject() : item),
+        image: normalizeMediaUrl(item?.image, req),
+      }))
       .filter((item) => item.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const heroCards = (settings.heroCards || [])
+      .map((item) => ({
+        ...(typeof item?.toObject === 'function' ? item.toObject() : item),
+        image: normalizeMediaUrl(item?.image, req),
+      }))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const labels = (settings.labels || [])
+      .map((item) => ({
+        ...(typeof item?.toObject === 'function' ? item.toObject() : item),
+        image: normalizeMediaUrl(item?.image, req),
+      }))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const categoriesSection = settings.categoriesSection || {};

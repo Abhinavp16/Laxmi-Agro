@@ -1,7 +1,9 @@
 const { Order, Cart, Product, Negotiation, Settings, AffiliateCode, Offer } = require('../models');
-const { NotFoundError, BadRequestError } = require('../utils/errors');
+const { NotFoundError, BadRequestError, UnauthorizedError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { ORDER_STATUS, ORDER_TYPES, NEGOTIATION_STATUS, USER_ROLES } = require('../utils/constants');
+const { createOrderWorkbookBuffer, sanitizeFileNamePart } = require('../utils/orderWorkbook');
+const { createOrderReceiptPdfBuffer } = require('../utils/orderReceiptPdf');
 const {
   normalizeObjectIdLike,
   getVariantById,
@@ -220,7 +222,17 @@ const resolveCheckoutSettings = async () => {
   };
 };
 
-const sanitizePhoneForWhatsApp = (value = '') => String(value).replace(/[^\d]/g, '');
+const sanitizePhoneForWhatsApp = (value = '') => {
+  const digits = String(value).replace(/[^\d]/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) {
+    return `91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits;
+  }
+  return digits;
+};
 
 const buildOrderMessage = ({
   orderNumber,
@@ -306,6 +318,30 @@ const buildWhatsAppPayload = (phoneNumber, message) => {
       ? `https://wa.me/${sanitized}?text=${encodeURIComponent(message)}`
       : null,
   };
+};
+
+const buildCheckoutCaption = ({
+  user,
+  shippingAddress,
+}) => {
+  const customerName = user?.name || shippingAddress?.fullName || 'customer';
+  return `Hi, I am ${customerName}. Please find my order receipt attached.`;
+};
+
+const buildOrderExportPath = (orderId, format = 'pdf') =>
+  orderId ? `/orders/${orderId}/export?format=${format}` : null;
+
+const getOwnedOrderOrThrow = async (orderId, userId) => {
+  const order = await Order.findOne({
+    _id: orderId,
+    userId,
+  });
+
+  if (!order) {
+    throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
+  }
+
+  return order;
 };
 
 const getCurrentCartPricing = async (userId, userRole) => {
@@ -421,6 +457,7 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
 exports.previewCouponForCart = async (req, res, next) => {
   try {
     const { couponCode, subtotal: requestedSubtotal } = req.body;
+    const userRole = req.user?.role || USER_ROLES.BUYER;
 
     let subtotal = 0;
     let itemCount = 0;
@@ -429,6 +466,12 @@ exports.previewCouponForCart = async (req, res, next) => {
       subtotal = parseFloat(requestedSubtotal);
       itemCount = 1;
     } else {
+      if (!req.user?._id) {
+        throw new BadRequestError(
+          'Login required to apply coupon from cart',
+          'LOGIN_REQUIRED_FOR_CART_COUPON'
+        );
+      }
       const cartPricing = await getCurrentCartPricing(req.user._id, req.user.role);
       subtotal = cartPricing.subtotal;
       itemCount = cartPricing.itemCount;
@@ -443,7 +486,7 @@ exports.previewCouponForCart = async (req, res, next) => {
     } = await resolveCouponDiscount({
       couponCode,
       subtotal,
-      userRole: req.user.role,
+      userRole,
     });
 
     const deliveryFee = subtotal > 0 ? 50 : 0;
@@ -525,6 +568,13 @@ exports.createOrderFromCart = async (req, res, next) => {
     const inputCode = (couponCode || affiliateCode || '').trim().toUpperCase();
     const { checkout } = await resolveCheckoutSettings();
 
+    if (checkout.requireLoginForCheckout && !req.user?._id) {
+      throw new UnauthorizedError(
+        'Login required for ordering',
+        'LOGIN_REQUIRED_FOR_ORDERING'
+      );
+    }
+
     let productIds = [];
     let cart = null;
     let itemsToProcess = [];
@@ -534,6 +584,12 @@ exports.createOrderFromCart = async (req, res, next) => {
       itemsToProcess = items;
       productIds = items.map((item) => item.productId);
     } else {
+      if (!req.user?._id) {
+        throw new BadRequestError(
+          'Login required to checkout from cart',
+          'LOGIN_REQUIRED_FOR_CART_CHECKOUT'
+        );
+      }
       cart = await Cart.findOne({ userId: req.user._id });
       if (!cart || cart.items.length === 0) {
         throw new BadRequestError('Cart is empty', 'CART_EMPTY');
@@ -568,13 +624,14 @@ exports.createOrderFromCart = async (req, res, next) => {
     } = await resolveCouponDiscount({
       couponCode: inputCode,
       subtotal,
-      userRole: req.user.role,
+      userRole,
     });
     const deliveryFee = subtotal > 0 ? 50 : 0;
     const total = Math.max(subtotal + deliveryFee - discount, 0);
 
     let order = null;
-    if (checkout.createOrderBeforeRedirect) {
+    const shouldCreateOrderRecord = checkout.createOrderBeforeRedirect && Boolean(req.user?._id);
+    if (shouldCreateOrderRecord) {
       order = await Order.create({
         userId: req.user._id,
         customerSnapshot: {
@@ -617,17 +674,10 @@ exports.createOrderFromCart = async (req, res, next) => {
       }
     }
 
-    const orderMessage = buildOrderMessage({
+    const orderMessage = buildCheckoutCaption({
       orderNumber: order?.orderNumber || null,
-      orderType: ORDER_TYPES.RETAIL,
       user: req.user,
       shippingAddress,
-      items: orderItems,
-      subtotal,
-      deliveryFee,
-      discount,
-      total,
-      customerNote,
     });
 
     const whatsappPayload = buildWhatsAppPayload(checkout.orderWhatsappNumber, orderMessage);
@@ -648,6 +698,8 @@ exports.createOrderFromCart = async (req, res, next) => {
         discountSource: order?.discountSource || discountSource || null,
         checkoutMethod: 'whatsapp',
         orderRecorded: Boolean(order),
+        exportAvailable: Boolean(order),
+        exportPath: buildOrderExportPath(order?._id, 'pdf'),
         ...whatsappPayload,
       },
     });
@@ -759,17 +811,10 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
       await Product.findByIdAndUpdate(product._id, { $inc: { orderCount: 1 } });
     }
 
-    const orderMessage = buildOrderMessage({
+    const orderMessage = buildCheckoutCaption({
       orderNumber: order?.orderNumber || negotiation.negotiationNumber || null,
-      orderType: ORDER_TYPES.WHOLESALE,
       user: req.user,
       shippingAddress,
-      items: orderItems,
-      subtotal,
-      deliveryFee: 0,
-      discount,
-      total,
-      customerNote,
     });
 
     const whatsappPayload = buildWhatsAppPayload(checkout.orderWhatsappNumber, orderMessage);
@@ -788,6 +833,8 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
         discountSource: order?.discountSource || discountSource || null,
         checkoutMethod: 'whatsapp',
         orderRecorded: Boolean(order),
+        exportAvailable: Boolean(order),
+        exportPath: buildOrderExportPath(order?._id, 'pdf'),
         ...whatsappPayload,
       },
     });
@@ -798,14 +845,7 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
 
 exports.getOrderById = async (req, res, next) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      userId: req.user._id,
-    });
-
-    if (!order) {
-      throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
-    }
+    const order = await getOwnedOrderOrThrow(req.params.id, req.user._id);
 
     res.json({
       success: true,
@@ -815,6 +855,47 @@ exports.getOrderById = async (req, res, next) => {
         checkoutMethod: 'whatsapp',
       },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.exportOrderDocument = async (req, res, next) => {
+  try {
+    const format = String(req.query.format || 'pdf').toLowerCase();
+    if (!['pdf', 'xlsx'].includes(format)) {
+      throw new BadRequestError('Only pdf and xlsx export are supported', 'UNSUPPORTED_EXPORT_FORMAT');
+    }
+
+    const order = await getOwnedOrderOrThrow(req.params.id, req.user._id);
+    const { settings, checkout } = await resolveCheckoutSettings();
+    const safeOrderNumber = sanitizeFileNamePart(order.orderNumber || String(order._id));
+    let buffer;
+    let fileName;
+    let contentType;
+
+    if (format === 'pdf') {
+      buffer = await createOrderReceiptPdfBuffer({
+        order,
+        settings,
+        whatsappNumber: checkout.orderWhatsappNumber,
+      });
+      fileName = `order-${safeOrderNumber || 'receipt'}.pdf`;
+      contentType = 'application/pdf';
+    } else {
+      buffer = await createOrderWorkbookBuffer({
+        order,
+        settings,
+        whatsappNumber: checkout.orderWhatsappNumber,
+      });
+      fileName = `order-${safeOrderNumber || 'invoice'}.xlsx`;
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(Buffer.from(buffer));
   } catch (error) {
     next(error);
   }

@@ -9,7 +9,8 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/services/whatsapp_checkout_service.dart';
+import '../../core/services/order_export_service.dart';
+import '../../widgets/order_checkout_actions_sheet.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -115,6 +116,58 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
+  Future<void> _handleSuccessfulCheckout(dynamic api, dynamic responseData) async {
+    final exportResult = await OrderExportService.downloadOrderReceipt(
+      apiClient: api,
+      responseData: responseData,
+    );
+
+    if (!mounted) return;
+
+    final orderFile = exportResult.file;
+    final phoneNumber = OrderExportService.extractWhatsAppNumber(responseData);
+    final caption = OrderExportService.extractCaption(responseData);
+
+    if (orderFile != null && phoneNumber != null) {
+      final shareResult = await OrderExportService.shareOrderReceiptToWhatsApp(
+        orderFile,
+        phoneNumber: phoneNumber,
+        caption: caption,
+      );
+
+      if (!mounted) return;
+      if (shareResult.launched) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'WhatsApp opened with your receipt attached.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+        return;
+      }
+
+      await OrderCheckoutActionsSheet.showFailure(
+        context: context,
+        responseData: responseData,
+        failureMessage:
+            shareResult.errorMessage ??
+            'We saved your order, but could not open WhatsApp with the receipt attached.',
+      );
+      return;
+    }
+
+    await OrderCheckoutActionsSheet.showFailure(
+      context: context,
+      responseData: responseData,
+      failureMessage:
+          exportResult.errorMessage ??
+          'We saved your order, but could not prepare the PDF receipt.',
+    );
+  }
+
   Future<void> _proceedToCheckout() async {
     final cart = ref.read(cartProvider);
     if (cart.items.isEmpty) return;
@@ -156,27 +209,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       setState(() => _isCheckingOut = false);
 
       if (response.data['success'] == true) {
-        ref
+        await ref
             .read(cartProvider.notifier)
             .fetchCart(); // refresh (cart cleared server-side)
-        final opened = await WhatsAppCheckoutService.openFromResponse(
-          response.data,
-        );
-        if (!opened && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
-                    ? WhatsAppCheckoutService.extractMessage(response.data)
-                    : 'Unable to open WhatsApp',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+        await _handleSuccessfulCheckout(api, response.data);
       }
     } on DioException catch (e) {
       if (!mounted) return;

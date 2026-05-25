@@ -139,7 +139,7 @@ settingsSchema.statics.getSettings = async function () {
       upiDisplayName: process.env.DEFAULT_UPI_NAME || 'Laxmi Agro Payments',
       checkout: {
         mode: 'whatsapp',
-        orderWhatsappNumber: process.env.DEFAULT_ORDER_WHATSAPP || '9179110159',
+        orderWhatsappNumber: process.env.DEFAULT_ORDER_WHATSAPP || '6265328556',
         requireLoginForCheckout: true,
         createOrderBeforeRedirect: true,
         allowNegotiationCheckout: true,

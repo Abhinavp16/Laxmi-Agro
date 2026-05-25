@@ -7,8 +7,9 @@ import 'package:dio/dio.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/order_export_service.dart';
 import '../../core/services/shipping_address_service.dart';
-import '../../core/services/whatsapp_checkout_service.dart';
+import '../../widgets/order_checkout_actions_sheet.dart';
 
 class BuyNowScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -1097,8 +1098,93 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     }
   }
 
+  Future<void> _showLoginRequiredPopup() async {
+    final shouldOpenLogin = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text(
+            'Login is required before placing an order. Please log in to continue with WhatsApp checkout.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Login'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (shouldOpenLogin == true) {
+      context.push('/login');
+    }
+  }
+
+  Future<void> _handleSuccessfulCheckout(dynamic api, dynamic responseData) async {
+    final exportResult = await OrderExportService.downloadOrderReceipt(
+      apiClient: api,
+      responseData: responseData,
+    );
+
+    if (!mounted) return;
+
+    final orderFile = exportResult.file;
+    final phoneNumber = OrderExportService.extractWhatsAppNumber(responseData);
+    final caption = OrderExportService.extractCaption(responseData);
+
+    if (orderFile != null && phoneNumber != null) {
+      final shareResult = await OrderExportService.shareOrderReceiptToWhatsApp(
+        orderFile,
+        phoneNumber: phoneNumber,
+        caption: caption,
+      );
+
+      if (!mounted) return;
+      if (shareResult.launched) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'WhatsApp opened with your receipt attached.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+        return;
+      }
+
+      await OrderCheckoutActionsSheet.showFailure(
+        context: context,
+        responseData: responseData,
+        failureMessage:
+            shareResult.errorMessage ??
+            'We saved your order, but could not open WhatsApp with the receipt attached.',
+      );
+      return;
+    }
+
+    await OrderCheckoutActionsSheet.showFailure(
+      context: context,
+      responseData: responseData,
+      failureMessage:
+          exportResult.errorMessage ??
+          'We saved your order, but could not prepare the PDF receipt.',
+    );
+  }
+
   Future<void> _proceedToCheckout() async {
     if (!_canProceed()) return;
+    if (!ref.read(authProvider).isAuthenticated) {
+      await _showLoginRequiredPopup();
+      return;
+    }
 
     setState(() => _isCheckingOut = true);
 
@@ -1134,24 +1220,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       setState(() => _isCheckingOut = false);
 
       if (response.data['success'] == true) {
-        final opened = await WhatsAppCheckoutService.openFromResponse(
-          response.data,
-        );
-        if (!opened && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
-                    ? WhatsAppCheckoutService.extractMessage(response.data)
-                    : 'Unable to open WhatsApp',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+        await _handleSuccessfulCheckout(api, response.data);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

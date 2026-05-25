@@ -97,10 +97,7 @@ class _FeaturedProductsScreenState
                   .toString()
                   .trim();
 
-          if (apiImage.isNotEmpty && apiImage.startsWith('/')) {
-            final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-            apiImage = '$serverBase$apiImage';
-          }
+          apiImage = ApiConfig.normalizeMediaUrl(apiImage);
 
           return <String, dynamic>{
             'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',

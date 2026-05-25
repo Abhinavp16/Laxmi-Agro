@@ -1514,16 +1514,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   String _resolveLabelAssetUrl(String imageUrl) {
-    final trimmed = imageUrl.trim();
-    if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) {
-      final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
-      return '$serverBase$trimmed';
-    }
-    return '';
+    return ApiConfig.normalizeMediaUrl(imageUrl);
   }
 
   IconData _productLabelIcon(String rawIconName, String title) {
