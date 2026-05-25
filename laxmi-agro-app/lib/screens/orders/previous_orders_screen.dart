@@ -243,20 +243,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
 
     // Pending payment & no screenshot → "Complete Payment" (orange)
     if (status == 'pending_payment' && !screenshotUploaded) {
-      return ElevatedButton.icon(
-        onPressed: () async {
-          await context.push('/payment/$orderId');
-          _fetchOrders(); // refresh on return
-        },
-        icon: const Icon(Icons.payment_rounded, size: 16),
-        label: Text('Complete Payment', style: GoogleFonts.plusJakartaSans(
-          fontSize: 12, fontWeight: FontWeight.w700)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFf59e0b), foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-      );
+      return const SizedBox.shrink();
     }
 
     // Payment was rejected → "Re-upload" (red)

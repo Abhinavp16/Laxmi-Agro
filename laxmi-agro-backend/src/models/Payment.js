@@ -26,7 +26,7 @@ const paymentSchema = new mongoose.Schema({
 
   method: {
     type: String,
-    enum: ['bank_transfer', 'razorpay', 'upi_manual'],
+    enum: ['bank_transfer', 'razorpay', 'upi_manual', 'office_manual'],
     default: 'bank_transfer',
   },
 

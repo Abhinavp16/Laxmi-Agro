@@ -63,6 +63,7 @@ router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiat
 // Orders
 router.get('/orders', adminOrderController.getOrders);
 router.get('/orders/:id', adminOrderController.getOrderById);
+router.put('/orders/:id/mark-payment-complete', adminOrderController.markPaymentCompleted);
 router.put('/orders/:id/status', validate(adminValidation.updateOrderStatus), adminOrderController.updateOrderStatus);
 router.put('/orders/:id/ship', validate(adminValidation.shipOrder), adminOrderController.shipOrder);
 

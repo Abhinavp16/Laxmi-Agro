@@ -1,7 +1,7 @@
 const { Order, Payment, Product, StockLog } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
-const { ORDER_STATUS } = require('../../utils/constants');
+const { ORDER_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 
 exports.getOrders = async (req, res, next) => {
   try {
@@ -175,6 +175,70 @@ exports.updateOrderStatus = async (req, res, next) => {
       data: {
         orderNumber: order.orderNumber,
         status: order.status,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.markPaymentCompleted = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
+    }
+
+    if (order.status !== ORDER_STATUS.PENDING_PAYMENT) {
+      throw new BadRequestError(
+        'Only pending payment orders can be marked as completed',
+        'INVALID_ORDER_STATUS'
+      );
+    }
+
+    let payment = await Payment.findOne({ orderId: order._id });
+
+    if (!payment) {
+      payment = await Payment.create({
+        orderId: order._id,
+        userId: order.userId,
+        amount: order.total,
+        method: 'office_manual',
+        status: PAYMENT_STATUS.VERIFIED,
+        verifiedBy: req.user._id,
+        verifiedAt: new Date(),
+      });
+    } else {
+      if (payment.status !== PAYMENT_STATUS.PENDING) {
+        throw new BadRequestError(
+          'Payment has already been processed for this order',
+          'PAYMENT_ALREADY_PROCESSED'
+        );
+      }
+
+      payment.method = 'office_manual';
+      payment.amount = payment.amount || order.total;
+      payment.status = PAYMENT_STATUS.VERIFIED;
+      payment.verifiedBy = req.user._id;
+      payment.verifiedAt = new Date();
+      payment.rejectionReason = null;
+      await payment.save();
+    }
+
+    order.addStatusHistory(
+      ORDER_STATUS.PAYMENT_VERIFIED,
+      'Payment marked complete in office',
+      req.user._id
+    );
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Payment marked completed',
+      data: {
+        orderNumber: order.orderNumber,
+        status: order.status,
+        paymentId: payment._id,
       },
     });
   } catch (error) {

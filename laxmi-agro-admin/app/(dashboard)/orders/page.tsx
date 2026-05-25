@@ -9,7 +9,6 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search } from "lucide-react"
@@ -24,7 +23,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import Image from "next/image"
 import { apiFetch } from "@/lib/api"
 
 interface Order {
@@ -42,6 +40,7 @@ interface Order {
     payment?: {
         _id: string
         amount: number
+        method?: string
         upiId: string
         screenshotUrl: string
         status: string
@@ -205,6 +204,28 @@ export default function OrdersPage() {
             }
         } catch {
             toast.error('Error updating order status')
+        } finally {
+            setIsUpdatingStatus(false)
+        }
+    }
+
+    async function handleMarkPaymentCompleted(orderId: string) {
+        if (!confirm("Mark this order payment as completed in office?")) return
+        setIsUpdatingStatus(true)
+        try {
+            const res = await apiFetch(`/admin/orders/${orderId}/mark-payment-complete`, {
+                method: 'PUT',
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success('Payment marked completed')
+                await fetchOrders(1, true)
+                await fetchOrderDetails(orderId)
+            } else {
+                toast.error(data.message || 'Failed to mark payment completed')
+            }
+        } catch {
+            toast.error('Error marking payment completed')
         } finally {
             setIsUpdatingStatus(false)
         }
@@ -375,8 +396,8 @@ export default function OrdersPage() {
                                                 <span>₹{selectedOrder.payment.amount}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-400 block">UPI ID</span>
-                                                <span>{selectedOrder.payment.upiId}</span>
+                                                <span className="text-gray-400 block">Method</span>
+                                                <span>{selectedOrder.payment.method ? selectedOrder.payment.method.replace(/_/g, ' ') : (selectedOrder.payment.upiId || 'Manual')}</span>
                                             </div>
                                         </div>
 
@@ -415,9 +436,31 @@ export default function OrdersPage() {
                                                 </Button>
                                             </div>
                                         )}
+                                        {selectedOrder.status === 'pending_payment' && (
+                                            <Button
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
+                                                disabled={isUpdatingStatus}
+                                            >
+                                                {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Payment Completed
+                                            </Button>
+                                        )}
                                     </div>
                                 ) : (
-                                    <div className="text-yellow-500 text-sm">No payment information uploaded yet.</div>
+                                    <div className="space-y-3">
+                                        <div className="text-yellow-500 text-sm">No payment information uploaded yet.</div>
+                                        {selectedOrder.status === 'pending_payment' && (
+                                            <Button
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
+                                                disabled={isUpdatingStatus}
+                                            >
+                                                {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Payment Completed
+                                            </Button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
