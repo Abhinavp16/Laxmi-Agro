@@ -61,12 +61,14 @@ exports.getCategories = async (req, res, next) => {
       Category.countDocuments(query),
     ]);
 
-    const countsBySlug = await getProductCountMap(
-      categories.map((category) => category.slug).filter(Boolean)
-    );
+    const categoryKeys = categories.flatMap((category) => [
+      category.name,
+      category.slug,
+    ]).filter(Boolean);
+    const countsByKey = await getProductCountMap(categoryKeys);
     const categoriesWithCounts = categories.map((category) => ({
       ...category,
-      productCount: countsBySlug.get(category.slug) ?? 0,
+      productCount: countsByKey.get(category.name) ?? countsByKey.get(category.slug) ?? 0,
     }));
 
     res.json({
@@ -96,7 +98,7 @@ exports.getCategory = async (req, res, next) => {
 
     const categoryData = category.toObject();
     categoryData.productCount = await Product.countDocuments({
-      category: category.slug,
+      category: { $in: [category.name, category.slug].filter(Boolean) },
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
     });
 
@@ -253,7 +255,9 @@ exports.deleteCategory = async (req, res, next) => {
     }
 
     // Check if category has products
-    const products = await Product.countDocuments({ category: category.slug });
+    const products = await Product.countDocuments({
+      category: { $in: [category.name, category.slug].filter(Boolean) },
+    });
     if (products > 0) {
       return res.status(400).json({
         success: false,

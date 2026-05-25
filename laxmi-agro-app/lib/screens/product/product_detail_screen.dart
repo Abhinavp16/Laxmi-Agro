@@ -293,6 +293,31 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return _variants.first;
   }
 
+  String _variantLabel(Map<String, dynamic> variant) {
+    final productName = (_product?['name']?.toString() ?? '').trim();
+    final rawLabel =
+        (variant['displayName']?.toString() ??
+                variant['name']?.toString() ??
+                '')
+            .trim();
+    if (rawLabel.isEmpty) return 'Variant';
+    if (productName.isEmpty) return rawLabel;
+
+    final normalizedProduct = productName.toLowerCase();
+    final rawLower = rawLabel.toLowerCase();
+    var cleaned = rawLabel;
+
+    if (rawLower.startsWith('$normalizedProduct - ')) {
+      cleaned = rawLabel.substring(productName.length + 3).trim();
+    } else if (rawLower.startsWith('${normalizedProduct}: ')) {
+      cleaned = rawLabel.substring(productName.length + 3).trim();
+    } else if (rawLower.startsWith('$normalizedProduct ')) {
+      cleaned = rawLabel.substring(productName.length).trim();
+    }
+
+    return cleaned.isEmpty ? rawLabel : cleaned;
+  }
+
   Future<void> _trackView() async {
     try {
       final token = await StorageService.getAccessToken();
@@ -981,64 +1006,107 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
             ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _variants.map((variant) {
-                final variantId = variant['id']?.toString();
-                final isSelected = variantId == _selectedVariantId;
-                final label =
-                    variant['displayName']?.toString() ??
-                    variant['name']?.toString() ??
-                    'Variant';
-                return GestureDetector(
-                  onTap: () {
-                    if (variantId == null) return;
-                    setState(() {
-                      _selectedVariantId = variantId;
-                      _quantity = 1;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? _blue : _bg,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected ? _blue : _border,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: _variants.map((variant) {
+                  final variantId = variant['id']?.toString();
+                  final isSelected = variantId == _selectedVariantId;
+                  final label = _variantLabel(variant);
+                  return GestureDetector(
+                    onTap: () {
+                      if (variantId == null) return;
+                      setState(() {
+                        _selectedVariantId = variantId;
+                        _quantity = 1;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 158,
+                        minHeight: 64,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [_blue, Color(0xFF1D4ED8)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isSelected ? _blue : const Color(0xFFDCE5F1),
+                          width: isSelected ? 1.6 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isSelected
+                                ? _blue.withOpacity(0.20)
+                                : const Color(0xFF0F172A).withOpacity(0.06),
+                            blurRadius: isSelected ? 18 : 10,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withOpacity(0.18)
+                                  : _blue.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.white.withOpacity(0.65)
+                                    : _blue.withOpacity(0.18),
+                              ),
+                            ),
+                            child: Icon(
+                              isSelected
+                                  ? Icons.check_rounded
+                                  : Icons.circle_outlined,
+                              size: isSelected ? 16 : 14,
+                              color: isSelected ? Colors.white : _blue,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected ? Colors.white : _txt,
+                                height: 1.15,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : _txt,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '₹${_fmt((variant['price'] as num?)?.toDouble() ?? 0)}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white.withOpacity(0.92)
-                                : _txtSec,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
           ],
           const SizedBox(height: 8),

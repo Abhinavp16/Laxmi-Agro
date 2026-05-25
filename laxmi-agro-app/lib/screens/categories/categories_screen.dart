@@ -204,10 +204,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _fetchProductsForCategory(Map<String, dynamic> category) async {
     setState(() => _isLoadingProducts = true);
     try {
-      final categoryFilter =
-          (category['slug']?.toString().trim().isNotEmpty ?? false)
-          ? category['slug'].toString().trim()
-          : category['name']?.toString().trim() ?? '';
+      final categoryName = category['name']?.toString().trim() ?? '';
+      final categorySlug = category['slug']?.toString().trim() ?? '';
+      final categoryFilter = categoryName.isNotEmpty ? categoryName : categorySlug;
       final response = await _dio.get(
         '/products',
         queryParameters: {'category': categoryFilter},

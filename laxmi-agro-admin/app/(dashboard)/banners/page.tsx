@@ -236,6 +236,16 @@ export default function BannersPage() {
     const [isSavingPromo, setIsSavingPromo] = useState(false)
     const [uploadingIndex, setUploadingIndex] = useState<{ type: 'hero' | 'promo', index: number } | null>(null)
 
+    function resolveBannerPreviewUrl(url: string) {
+        const trimmed = url.trim()
+        if (!trimmed) return ""
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+        if (trimmed.startsWith("/")) {
+            return buildApiUrl(trimmed).replace("/api/v1", "")
+        }
+        return trimmed
+    }
+
     async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'hero' | 'promo', index: number) {
         const file = e.target.files?.[0]
         if (!file) return
@@ -439,7 +449,7 @@ export default function BannersPage() {
                     <div className="h-32 w-48 rounded-md border border-[#333] overflow-hidden bg-[#161616] flex-shrink-0 flex items-center justify-center relative">
                         {banner.imageUrl ? (
                             <img
-                                src={banner.imageUrl}
+                                src={resolveBannerPreviewUrl(banner.imageUrl)}
                                 alt="Preview"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {

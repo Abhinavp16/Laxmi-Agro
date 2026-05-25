@@ -9,6 +9,7 @@
     "seed": "node src/scripts/seed.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:local": "node src/scripts/seedLocalCatalog.js",
+    "catalog:pdf": "node src/scripts/importPdfCatalog.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [

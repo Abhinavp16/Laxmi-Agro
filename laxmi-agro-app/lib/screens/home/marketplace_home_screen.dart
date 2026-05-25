@@ -540,6 +540,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return '';
   }
 
+  String _resolveBannerImageUrl(String imageUrl) {
+    final trimmed = imageUrl.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('/')) {
+      final serverBase = ApiConfig.baseUrl.replaceFirst('/api/v1', '');
+      return '$serverBase$trimmed';
+    }
+    return '';
+  }
+
   Future<void> _fetchPromoBanners() async {
     try {
       final response = await _dio.get('/settings/banners');
@@ -556,7 +569,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     'title': item['title']?.toString() ?? '',
                     'subtitle': item['subtitle']?.toString() ?? '',
                     'tag': item['tag']?.toString() ?? '',
-                    'imageUrl': item['imageUrl']?.toString() ?? '',
+                    'imageUrl': _resolveBannerImageUrl(
+                      item['imageUrl']?.toString() ?? '',
+                    ),
                     'linkUrl': item['linkUrl']?.toString() ?? '',
                     'buttonText': item['buttonText']?.toString() ?? '',
                     'buttonIcon': item['buttonIcon']?.toString() ?? '',
@@ -571,7 +586,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     'title': item['title']?.toString() ?? '',
                     'subtitle': item['subtitle']?.toString() ?? '',
                     'tag': item['tag']?.toString() ?? '',
-                    'imageUrl': item['imageUrl']?.toString() ?? '',
+                    'imageUrl': _resolveBannerImageUrl(
+                      item['imageUrl']?.toString() ?? '',
+                    ),
                     'linkUrl': item['linkUrl']?.toString() ?? '',
                     'buttonText': item['buttonText']?.toString() ?? '',
                     'buttonIcon': item['buttonIcon']?.toString() ?? '',

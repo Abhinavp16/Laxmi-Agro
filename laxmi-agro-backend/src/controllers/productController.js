@@ -52,7 +52,15 @@ exports.getProducts = async (req, res, next) => {
     // Price filter based on user role
     const priceField = userRole === 'wholesaler' ? 'wholesalePrice' : 'retailPrice';
     
-    if (category) query.category = { $regex: new RegExp(category, 'i') };
+    if (category) {
+      const rawCategory = String(category).trim();
+      const normalizedCategory = rawCategory.replace(/[-_]+/g, ' ').trim();
+      query.category = {
+        $in: [...new Set([rawCategory, normalizedCategory])].map(
+          (value) => new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+        ),
+      };
+    }
     
     // Filter by brand (checks both product.brand and product.company)
     if (brand) {

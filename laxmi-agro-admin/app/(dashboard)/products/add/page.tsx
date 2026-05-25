@@ -1528,72 +1528,102 @@ export default function AddProductPage() {
                                                         </div>
 
                                                         <div className="grid grid-cols-2 gap-4">
-                                                            <Input
-                                                                placeholder="Variant name"
-                                                                value={variant.name}
-                                                                onChange={(e) => updateVariant(index, "name", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                placeholder="Variant SKU"
-                                                                value={variant.sku}
-                                                                onChange={(e) => updateVariant(index, "sku", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="MRP"
-                                                                value={variant.mrp}
-                                                                onChange={(e) => updateVariant(index, "mrp", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="Customer price"
-                                                                value={variant.retailPrice}
-                                                                onChange={(e) => updateVariant(index, "retailPrice", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="Wholesale price"
-                                                                value={variant.wholesalePrice}
-                                                                onChange={(e) => updateVariant(index, "wholesalePrice", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="Stock"
-                                                                value={variant.stock}
-                                                                onChange={(e) => updateVariant(index, "stock", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="Low stock threshold"
-                                                                value={variant.lowStockThreshold}
-                                                                onChange={(e) => updateVariant(index, "lowStockThreshold", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                type="number"
-                                                                placeholder="Min order quantity"
-                                                                value={variant.minOrderQuantity}
-                                                                onChange={(e) => updateVariant(index, "minOrderQuantity", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                placeholder="Price unit (e.g. meter)"
-                                                                value={variant.priceUnit}
-                                                                onChange={(e) => updateVariant(index, "priceUnit", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
-                                                            <Input
-                                                                placeholder="Packing (e.g. 90m coil)"
-                                                                value={variant.packing}
-                                                                onChange={(e) => updateVariant(index, "packing", e.target.value)}
-                                                                className="bg-[#141414] border-[#333] text-white"
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Variant name</label>
+                                                                <Input
+                                                                    placeholder="e.g. 3 Core 2.5 sq mm"
+                                                                    value={variant.name}
+                                                                    onChange={(e) => updateVariant(index, "name", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Variant SKU</label>
+                                                                <Input
+                                                                    placeholder="Unique stock code"
+                                                                    value={variant.sku}
+                                                                    onChange={(e) => updateVariant(index, "sku", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">MRP</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="0"
+                                                                    value={variant.mrp}
+                                                                    onChange={(e) => updateVariant(index, "mrp", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Customer price</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="0"
+                                                                    value={variant.retailPrice}
+                                                                    onChange={(e) => updateVariant(index, "retailPrice", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Wholesale price</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="0"
+                                                                    value={variant.wholesalePrice}
+                                                                    onChange={(e) => updateVariant(index, "wholesalePrice", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Stock</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="0"
+                                                                    value={variant.stock}
+                                                                    onChange={(e) => updateVariant(index, "stock", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Low stock threshold</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="5"
+                                                                    value={variant.lowStockThreshold}
+                                                                    onChange={(e) => updateVariant(index, "lowStockThreshold", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Min order quantity</label>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="1"
+                                                                    value={variant.minOrderQuantity}
+                                                                    onChange={(e) => updateVariant(index, "minOrderQuantity", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Price unit</label>
+                                                                <Input
+                                                                    placeholder="e.g. meter, piece, roll"
+                                                                    value={variant.priceUnit}
+                                                                    onChange={(e) => updateVariant(index, "priceUnit", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Packing</label>
+                                                                <Input
+                                                                    placeholder="e.g. 90m coil"
+                                                                    value={variant.packing}
+                                                                    onChange={(e) => updateVariant(index, "packing", e.target.value)}
+                                                                    className="bg-[#141414] border-[#333] text-white"
+                                                                />
+                                                            </div>
                                                         </div>
 
                                                         <div className="rounded-xl border border-[#272727] bg-[#111] p-3 space-y-3">

@@ -7,5 +7,7 @@
 **/playwright-report
 **/test-results
 .local
+.local-*.log
+.local-*.err.log
 veepee-app
 **/uploads
