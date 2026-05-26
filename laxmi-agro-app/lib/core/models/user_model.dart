@@ -69,22 +69,39 @@ class UserModel {
 class BusinessInfo {
   final String? businessName;
   final String? gstNumber;
+  final String? businessAddress;
+  final String? contactPerson;
   final bool verified;
   final String? status;
+  final ShopLocation? shopLocation;
 
   BusinessInfo({
     this.businessName,
     this.gstNumber,
+    this.businessAddress,
+    this.contactPerson,
     this.verified = false,
     this.status,
+    this.shopLocation,
   });
 
   factory BusinessInfo.fromJson(Map<String, dynamic> json) {
+    final rawShopLocation = json['shopLocation'];
+    final hasValidShopLocation =
+        rawShopLocation is Map &&
+        rawShopLocation['lat'] != null &&
+        rawShopLocation['lng'] != null;
+
     return BusinessInfo(
       businessName: json['businessName'],
       gstNumber: json['gstNumber'],
+      businessAddress: json['businessAddress'],
+      contactPerson: json['contactPerson'],
       verified: json['verified'] ?? false,
       status: json['status'] ?? 'none',
+      shopLocation: hasValidShopLocation
+          ? ShopLocation.fromJson(Map<String, dynamic>.from(rawShopLocation as Map))
+          : null,
     );
   }
 
@@ -92,8 +109,45 @@ class BusinessInfo {
     return {
       'businessName': businessName,
       'gstNumber': gstNumber,
+      'businessAddress': businessAddress,
+      'contactPerson': contactPerson,
       'verified': verified,
       'status': status,
+      'shopLocation': shopLocation?.toJson(),
+    };
+  }
+}
+
+class ShopLocation {
+  final double lat;
+  final double lng;
+  final String? placeLabel;
+  final DateTime? capturedAt;
+
+  ShopLocation({
+    required this.lat,
+    required this.lng,
+    this.placeLabel,
+    this.capturedAt,
+  });
+
+  factory ShopLocation.fromJson(Map<String, dynamic> json) {
+    return ShopLocation(
+      lat: (json['lat'] as num).toDouble(),
+      lng: (json['lng'] as num).toDouble(),
+      placeLabel: json['placeLabel']?.toString(),
+      capturedAt: json['capturedAt'] != null
+          ? DateTime.tryParse(json['capturedAt'].toString())
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lng': lng,
+      'placeLabel': placeLabel,
+      'capturedAt': capturedAt?.toIso8601String(),
     };
   }
 }

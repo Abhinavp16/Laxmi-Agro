@@ -505,7 +505,16 @@ exports.registerFcmToken = async (req, res, next) => {
 
 exports.convertToWholesaler = async (req, res, next) => {
   try {
-    const { businessName, gstNumber, businessAddress, contactPerson, phone } = req.body;
+    const {
+      businessName,
+      gstNumber,
+      businessAddress,
+      contactPerson,
+      phone,
+      shopLocationLat,
+      shopLocationLng,
+      shopLocationLabel,
+    } = req.body;
     const user = req.user;
 
     let proofImageUrls = [];
@@ -531,6 +540,12 @@ exports.convertToWholesaler = async (req, res, next) => {
       gstNumber,
       businessAddress, // We might need to add this to the model
       contactPerson,
+      shopLocation: {
+        lat: Number(shopLocationLat),
+        lng: Number(shopLocationLng),
+        placeLabel: shopLocationLabel || null,
+        capturedAt: new Date(),
+      },
       status: 'pending',
       verified: false,
       proofImages: proofImageUrls.length > 0 ? proofImageUrls : (user.businessInfo?.proofImages || []),

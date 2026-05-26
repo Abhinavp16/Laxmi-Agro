@@ -6,9 +6,12 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/models/user_model.dart';
+import 'shop_location_picker_screen.dart';
 
 class AccountConversionScreen extends ConsumerStatefulWidget {
   const AccountConversionScreen({super.key});
@@ -31,6 +34,7 @@ class _AccountConversionScreenState
   bool _isLoading = false;
   String? _errorMessage;
   final List<XFile> _proofImages = [];
+  ShopLocation? _shopLocation;
 
   @override
   void initState() {
@@ -39,9 +43,11 @@ class _AccountConversionScreenState
     if (user != null) {
       _businessNameController.text = user.businessInfo?.businessName ?? '';
       _gstNumberController.text = user.businessInfo?.gstNumber ?? '';
-      _businessAddressController.text = user.address ?? '';
+      _businessAddressController.text =
+          user.businessInfo?.businessAddress ?? user.address ?? '';
       _contactPersonController.text = user.name;
       _phoneController.text = user.phone ?? '';
+      _shopLocation = user.businessInfo?.shopLocation;
     }
   }
 
@@ -57,6 +63,12 @@ class _AccountConversionScreenState
 
   Future<void> _submitConversion() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_shopLocation == null) {
+      setState(() {
+        _errorMessage = 'Please pick your shop location on the map.';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -72,6 +84,9 @@ class _AccountConversionScreenState
         'businessAddress': _businessAddressController.text.trim(),
         'contactPerson': _contactPersonController.text.trim(),
         'phone': _phoneController.text.trim(),
+        'shopLocationLat': _shopLocation!.lat,
+        'shopLocationLng': _shopLocation!.lng,
+        'shopLocationLabel': _businessAddressController.text.trim(),
         if (_proofImages.isNotEmpty)
           'proofImages': await Future.wait(
             _proofImages.map(
@@ -118,6 +133,32 @@ class _AccountConversionScreenState
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _pickShopLocation() async {
+    final result = await Navigator.of(context).push<ShopLocationPickerResult>(
+      MaterialPageRoute(
+        builder: (_) => ShopLocationPickerScreen(
+          initialLat: _shopLocation?.lat,
+          initialLng: _shopLocation?.lng,
+          initialLabel: _businessAddressController.text.trim(),
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _shopLocation = ShopLocation(
+        lat: result.lat,
+        lng: result.lng,
+        placeLabel: _businessAddressController.text.trim().isEmpty
+            ? result.label
+            : _businessAddressController.text.trim(),
+        capturedAt: DateTime.now(),
+      );
+      _errorMessage = null;
+    });
   }
 
   Future<void> _pickProofImages() async {
@@ -394,6 +435,8 @@ class _AccountConversionScreenState
                             ? 'Address is required'
                             : null,
                       ),
+                      const SizedBox(height: 16),
+                      _buildShopLocationSection(),
                       const SizedBox(height: 16),
                       _buildProofUploadSection(),
                       const SizedBox(height: 24),
@@ -729,6 +772,151 @@ class _AccountConversionScreenState
                   ],
                 );
               },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildShopLocationSection() {
+    const textPrimary = Color(0xFF1E293B);
+    const textSecondary = Color(0xFF64748B);
+    const borderLight = Color(0xFFE2E8F0);
+    const primaryBlue = Color(0xFF2563EB);
+
+    final selected = _shopLocation;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Shop Location',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Mark your shop on the map. You can use current location and then adjust the pin before saving it.',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            color: textSecondary,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _pickShopLocation,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selected == null
+                    ? borderLight
+                    : primaryBlue.withOpacity(0.45),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: primaryBlue,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selected == null
+                            ? 'Pick shop location on map'
+                            : 'Shop location selected',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        selected == null
+                            ? 'Use current location or manually place a pin'
+                            : '${selected.lat.toStringAsFixed(6)}, ${selected.lng.toStringAsFixed(6)}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  selected == null ? 'Pick' : 'Change',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (selected != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            height: 180,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderLight),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: LatLng(selected.lat, selected.lng),
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.laxmiagro.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(selected.lat, selected.lng),
+                        width: 44,
+                        height: 44,
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 34,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],

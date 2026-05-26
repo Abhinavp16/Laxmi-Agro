@@ -154,6 +154,54 @@ exports.upgradeCustomer = async (req, res, next) => {
   }
 };
 
+exports.getWholesalerLocations = async (req, res, next) => {
+  try {
+    const { search } = req.query;
+
+    const query = {
+      role: 'wholesaler',
+      'businessInfo.status': 'accepted',
+      'businessInfo.shopLocation.lat': { $type: 'number' },
+      'businessInfo.shopLocation.lng': { $type: 'number' },
+    };
+
+    if (search) {
+      query.$or = [
+        { 'businessInfo.businessName': { $regex: search, $options: 'i' } },
+        { 'businessInfo.contactPerson': { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const customers = await User.find(query)
+      .select('name phone role businessInfo createdAt updatedAt')
+      .sort({ 'businessInfo.verifiedAt': -1, updatedAt: -1 })
+      .lean();
+
+    const locations = customers.map((customer) => ({
+      id: customer._id,
+      businessName: customer.businessInfo?.businessName || customer.name,
+      contactPerson: customer.businessInfo?.contactPerson || customer.name,
+      phone: customer.phone || '',
+      businessAddress: customer.businessInfo?.businessAddress || '',
+      approvedAt: customer.businessInfo?.verifiedAt || customer.updatedAt || customer.createdAt,
+      shopLocation: {
+        lat: customer.businessInfo?.shopLocation?.lat,
+        lng: customer.businessInfo?.shopLocation?.lng,
+        placeLabel: customer.businessInfo?.shopLocation?.placeLabel || null,
+        capturedAt: customer.businessInfo?.shopLocation?.capturedAt || null,
+      },
+    }));
+
+    res.json({
+      success: true,
+      data: locations,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.sendNotification = async (req, res, next) => {
   try {
     const { userIds, title, body } = req.body;

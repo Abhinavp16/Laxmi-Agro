@@ -34,12 +34,24 @@ interface Customer {
         gstNumber?: string
         businessAddress?: string
         contactPerson?: string
+        shopLocation?: {
+            lat: number
+            lng: number
+            placeLabel?: string
+            capturedAt?: string
+        }
         verified: boolean
         status?: 'pending' | 'accepted' | 'rejected' | 'none'
         proofImages?: string[]
     }
     createdAt: string
     updatedAt: string
+}
+
+function buildOsmEmbedUrl(lat: number, lng: number) {
+    const delta = 0.01
+    const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C')
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`
 }
 
 export default function AccountUpgradesPage() {
@@ -336,6 +348,25 @@ export default function AccountUpgradesPage() {
                                             <span className="text-gray-500 block text-xs mb-1">Business Address</span>
                                             <div className="text-gray-300 whitespace-pre-wrap">{selectedCustomer.businessInfo?.businessAddress || 'No address provided'}</div>
                                         </div>
+                                        {selectedCustomer.businessInfo?.shopLocation?.lat != null && selectedCustomer.businessInfo?.shopLocation?.lng != null && (
+                                            <div className="col-span-2">
+                                                <span className="text-gray-500 block text-xs mb-1">Shop Location</span>
+                                                <div className="text-gray-300 text-sm">
+                                                    {selectedCustomer.businessInfo.shopLocation.lat.toFixed(6)}, {selectedCustomer.businessInfo.shopLocation.lng.toFixed(6)}
+                                                </div>
+                                                <div className="mt-3 overflow-hidden rounded-lg border border-[#333]">
+                                                    <iframe
+                                                        src={buildOsmEmbedUrl(
+                                                            selectedCustomer.businessInfo.shopLocation.lat,
+                                                            selectedCustomer.businessInfo.shopLocation.lng
+                                                        )}
+                                                        title="Shop location preview"
+                                                        className="h-52 w-full"
+                                                        loading="lazy"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

@@ -107,6 +107,9 @@ const authValidation = {
     businessAddress: Joi.string().required().max(500),
     contactPerson: Joi.string().required().max(100),
     phone: Joi.string().required(),
+    shopLocationLat: Joi.number().required().min(-90).max(90),
+    shopLocationLng: Joi.number().required().min(-180).max(180),
+    shopLocationLabel: Joi.string().allow('', null).max(300),
   }),
 };
 

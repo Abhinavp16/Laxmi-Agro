@@ -57,6 +57,12 @@ const userSchema = new mongoose.Schema({
     gstNumber: { type: String, default: null },
     businessAddress: { type: String, default: null },
     contactPerson: { type: String, default: null },
+    shopLocation: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+      placeLabel: { type: String, default: null },
+      capturedAt: { type: Date, default: null },
+    },
     status: { 
       type: String, 
       enum: ['none', 'pending', 'accepted', 'rejected'], 
