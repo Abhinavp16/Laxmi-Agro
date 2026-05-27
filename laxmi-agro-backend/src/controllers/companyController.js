@@ -1,6 +1,7 @@
 const { Company, Product } = require('../models');
 const { NotFoundError, ConflictError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
+const { PRODUCT_STATUS } = require('../utils/constants');
 
 exports.getAllCompanies = async (req, res, next) => {
   try {
@@ -125,7 +126,10 @@ exports.deleteCompany = async (req, res, next) => {
     }
 
     // Check if any products are linked to this company
-    const productCount = await Product.countDocuments({ company: company._id });
+    const productCount = await Product.countDocuments({
+      company: company._id,
+      status: { $ne: PRODUCT_STATUS.ARCHIVED },
+    });
     if (productCount > 0) {
       throw new ConflictError(
         `Cannot delete company. ${productCount} product(s) are linked to it.`,

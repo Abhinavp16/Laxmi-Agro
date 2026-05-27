@@ -144,7 +144,11 @@ exports.getProducts = async (req, res, next) => {
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
 
     const query = {};
-    if (status) query.status = status;
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = { $ne: PRODUCT_STATUS.ARCHIVED };
+    }
     if (category) query.category = category;
     if (search) {
       query.$or = [

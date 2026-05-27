@@ -247,7 +247,9 @@ export default function ProductsPage() {
 
             if (res.ok) {
                 toast.success("Product archived successfully")
-                fetchProducts()
+                setProducts((prev) => prev.filter((product) => product._id !== productId))
+                setTotalProducts((prev) => Math.max(0, prev - 1))
+                fetchProducts(1, true)
             } else {
                 toast.error(data.message || "Failed to delete product")
             }

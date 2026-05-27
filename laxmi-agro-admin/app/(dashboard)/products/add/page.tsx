@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, buildApiUrl } from "@/lib/api"
 
 interface Category {
     _id: string
@@ -110,6 +110,21 @@ interface ProductVariantForm {
     packing: string
     isActive: boolean
     attributes: ProductVariantAttributeForm[]
+}
+
+function resolvePreviewImageUrl(url: string) {
+    const trimmed = String(url || "").trim()
+    if (!trimmed) return ""
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed.replace("http://127.0.0.1:5000", "http://localhost:5000")
+    }
+
+    if (trimmed.startsWith("/")) {
+        return buildApiUrl(trimmed).replace("/api/v1", "")
+    }
+
+    return buildApiUrl(`/${trimmed}`).replace("/api/v1", "")
 }
 
 const numericString = z.string().trim().refine((val) => val === "" || !isNaN(Number(val)), "Must be a number")
@@ -715,6 +730,13 @@ export default function AddProductPage() {
                     order: index,
                 }))
 
+            const normalizedImages = images.map((image, index) => ({
+                url: String(image.url || "").trim(),
+                publicId: String(image.publicId || "").trim(),
+                isPrimary: image.isPrimary === true,
+                order: Number.isFinite(Number(image.order)) ? Number(image.order) : index,
+            }))
+
             if (
                 normalizedVariants.length === 0 &&
                 (!values.sku.trim() || values.mrp === "" || values.retailPrice === "" || values.wholesalePrice === "")
@@ -746,7 +768,7 @@ export default function AddProductPage() {
                 isHot: values.isHot,
                 company: values.company && values.company !== 'none' ? values.company : null,
                 labelIds: normalizedLabelIds,
-                images: images,
+                images: normalizedImages,
                 specifications: validBulletPoints.map((point, index) => ({
                     key: `feature_${index + 1}`,
                     value: point
@@ -769,14 +791,24 @@ export default function AddProductPage() {
             })
 
             if (!response.ok) {
-                throw new Error(isEditMode ? "Failed to update product" : "Failed to create product")
+                let errorMessage = isEditMode ? "Failed to update product" : "Failed to create product"
+                try {
+                    const errorData = await response.json()
+                    errorMessage =
+                        errorData?.message ||
+                        errorData?.error?.message ||
+                        errorData?.errors?.[0]?.message ||
+                        errorMessage
+                } catch (_) {}
+
+                throw new Error(errorMessage)
             }
 
             toast.success(isEditMode ? "Product updated successfully" : "Product created successfully")
             router.push("/products")
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            toast.error("Something went wrong. Please try again.")
+            toast.error(error?.message || "Something went wrong. Please try again.")
         } finally {
             setIsLoading(false)
         }
@@ -1185,7 +1217,7 @@ export default function AddProductPage() {
                                                         }`}
                                                 >
                                                     <img
-                                                        src={img.url}
+                                                        src={resolvePreviewImageUrl(img.url)}
                                                         alt={`Product ${index + 1}`}
                                                         className="w-full aspect-square object-cover"
                                                         onError={(e) => {

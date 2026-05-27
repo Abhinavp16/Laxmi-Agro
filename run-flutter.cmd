@@ -1,3 +1,4 @@
 @echo off
 cd /d C:\Users\hp\Desktop\laxmi-agro\laxmi-agro-app
-flutter run -d RZ8N821LM7B --dart-define=API_LOCAL_IP=192.168.1.12
+adb reverse tcp:5000 tcp:5000
+flutter run -d RZ8N821LM7B --dart-define=API_BASE_URL=http://127.0.0.1:5000/api/v1

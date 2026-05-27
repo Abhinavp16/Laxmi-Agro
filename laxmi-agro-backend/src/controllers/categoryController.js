@@ -260,6 +260,7 @@ exports.deleteCategory = async (req, res, next) => {
     // Check if category has products
     const products = await Product.countDocuments({
       category: { $in: [category.name, category.slug].filter(Boolean) },
+      status: { $ne: PRODUCT_STATUS.ARCHIVED },
     });
     if (products > 0) {
       return res.status(400).json({
