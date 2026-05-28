@@ -19,7 +19,13 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api/v1
 Physical device on the same network:
 
 ```bash
-flutter run --dart-define=API_LOCAL_IP=192.168.1.12
+flutter run --dart-define=API_LOCAL_IP=192.168.1.8
 ```
 
 If no override is supplied, the app falls back to the defaults in `ApiConfig`.
+
+On this Mac mini setup, helper script:
+
+```bash
+./run-flutter.sh
+```

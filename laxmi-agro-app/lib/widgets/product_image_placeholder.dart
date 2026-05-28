@@ -113,7 +113,6 @@ class ProductImagePlaceholder extends StatelessWidget {
         label: 'Fertilizer',
       );
     } else if (key.contains('spray') ||
-        key.contains('pump') ||
         key.contains('brush') ||
         key.contains('cutter') ||
         key.contains('saw') ||
@@ -128,12 +127,61 @@ class ProductImagePlaceholder extends StatelessWidget {
         key.contains('drip') ||
         key.contains('sprinkler') ||
         key.contains('rain gun') ||
+        key.contains('raingun') ||
         key.contains('water')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF0C4A6E), const Color(0xFF0284C7)],
         accentColor: const Color(0xFF38BDF8),
         icon: Icons.water_drop_rounded,
         label: 'Irrigation',
+      );
+    } else if (key.contains('wire') || key.contains('cable')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF312E81), const Color(0xFF4338CA)],
+        accentColor: const Color(0xFF818CF8),
+        icon: Icons.cable_rounded,
+        label: 'Wire & Cable',
+      );
+    } else if (key.contains('pipe') || key.contains('column')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF374151), const Color(0xFF6B7280)],
+        accentColor: const Color(0xFFD1D5DB),
+        icon: Icons.linear_scale_rounded,
+        label: 'Pipe',
+      );
+    } else if (key.contains('jhatka') ||
+        key.contains('fencing') ||
+        key.contains('insulator') ||
+        key.contains('rassi') ||
+        key.contains('frp')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF78350F), const Color(0xFFB45309)],
+        accentColor: const Color(0xFFF59E0B),
+        icon: Icons.fence_rounded,
+        label: 'Fencing',
+      );
+    } else if (key.contains('panel') ||
+        key.contains('contactor') ||
+        key.contains('relay')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF111827), const Color(0xFF1F2937)],
+        accentColor: const Color(0xFF9CA3AF),
+        icon: Icons.electrical_services_rounded,
+        label: 'Control Panel',
+      );
+    } else if (key.contains('starter') || key.contains('oil')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF7C2D12), const Color(0xFFC2410C)],
+        accentColor: const Color(0xFFF97316),
+        icon: Icons.oil_barrel_rounded,
+        label: 'Starter & Oil',
+      );
+    } else if (key.contains('pump') || key.contains('submersible')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF14532D), const Color(0xFF15803D)],
+        accentColor: const Color(0xFF4ADE80),
+        icon: Icons.propane_tank_rounded,
+        label: 'Pump Set',
       );
     } else if (key.contains('harvest') ||
         key.contains('combine') ||

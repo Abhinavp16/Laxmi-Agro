@@ -333,7 +333,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 },
               )
               .toList();
-          
+
           // Sort brands to bring the house brand to the front
           fetched.sort((a, b) {
             final nameA = a['name']?.toString().toUpperCase() ?? '';
@@ -342,7 +342,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             if (nameB == 'Laxmi Agro') return 1;
             return 0;
           });
-          
+
           // Use empty list if API returns nothing (shimmer/empty state will show)
           _brands = fetched.isEmpty ? [] : fetched;
           _isLoadingBrands = false;
@@ -501,7 +501,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final payload = {
       'slug': slug,
       'image': _extractCategoryImageUrl(item),
-      'blurHash': item['image'] is Map ? item['image']['blurHash']?.toString() : null,
+      'blurHash': item['image'] is Map
+          ? item['image']['blurHash']?.toString()
+          : null,
     };
 
     final keys = <String>{
@@ -749,11 +751,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'nameHindi': item['nameHindi']?.toString() ?? '',
                   'brand': item['category']?.toString() ?? '',
                   'price': item['price'] ?? item['retailPrice'] ?? 0,
-                   'originalPrice': item['mrp'] ?? 0,
+                  'originalPrice': item['mrp'] ?? 0,
                   'image': ApiConfig.normalizeMediaUrl(
                     item['primaryImage']?.toString() ?? '',
                   ),
-                  'blurHash': item['primaryBlurHash']?.toString() ?? item['blurHash']?.toString() ?? '',
+                  'blurHash':
+                      item['primaryBlurHash']?.toString() ??
+                      item['blurHash']?.toString() ??
+                      '',
                   'inStock': item['inStock'] == true,
                   'shortDescription':
                       item['shortDescription']?.toString() ?? '',
@@ -1504,10 +1509,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
 
     if (nameEnglish.isNotEmpty) {
-      return nameEnglish.split(' ').map((word) {
-        if (word.isEmpty) return word;
-        return word[0].toUpperCase() + word.substring(1).toLowerCase();
-      }).join(' ');
+      return nameEnglish
+          .split(' ')
+          .map((word) {
+            if (word.isEmpty) return word;
+            return word[0].toUpperCase() + word.substring(1).toLowerCase();
+          })
+          .join(' ');
     }
     return nameEnglish;
   }
@@ -1598,7 +1606,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        
+
         // If not on Home tab, go back to Home tab
         if (_selectedNavIndex > 0) {
           setState(() {
@@ -1606,7 +1614,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           });
           return;
         }
-        
+
         // If already on Home tab, allow the app to exit
         SystemNavigator.pop();
       },
@@ -2176,10 +2184,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (name.isEmpty) return '';
     // Replace hyphens with spaces and capitalize words
     final parts = name.replaceAll('-', ' ').split(' ');
-    return parts.map((word) {
-      if (word.isEmpty) return '';
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
+    return parts
+        .map((word) {
+          if (word.isEmpty) return '';
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   // Skeleton loader for categories
@@ -2295,7 +2305,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 GestureDetector(
                   onTap: () => setState(() => _selectedNavIndex = 2),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -2331,7 +2344,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             _buildCategorySkeleton()
           else
             SizedBox(
-              height: 145,
+              height: 164,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
@@ -2347,7 +2360,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         });
                       },
                       child: Container(
-                        width: 100,
+                        width: 108,
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -2371,27 +2384,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ),
                                 child:
                                     (cat['image']?.toString() ?? '').isNotEmpty
-                                        ? Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: AppImage(
-                                            imageUrl: cat['image']!.toString(),
-                                            blurHash: cat['blurHash']?.toString(),
-                                            category: cat['name']?.toString() ?? '',
-                                            name: cat['name']?.toString() ?? '',
-                                            fit: BoxFit.contain,
-                                          ),
-                                        )
-                                        : Container(
-                                          color: const Color(0xFFF1F5F9),
-                                          child: const Icon(
-                                            Icons.category_outlined,
-                                            color: textMuted,
-                                          ),
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: AppImage(
+                                          imageUrl: cat['image']!.toString(),
+                                          blurHash: cat['blurHash']?.toString(),
+                                          category:
+                                              cat['name']?.toString() ?? '',
+                                          name: cat['name']?.toString() ?? '',
+                                          fit: BoxFit.contain,
                                         ),
+                                      )
+                                    : Container(
+                                        color: const Color(0xFFF1F5F9),
+                                        child: const Icon(
+                                          Icons.category_outlined,
+                                          color: textMuted,
+                                        ),
+                                      ),
                               ),
                             ),
                             Container(
-                              height: 40,
+                              constraints: const BoxConstraints(minHeight: 48),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: Colors.grey[700],
@@ -2400,7 +2414,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ),
                               ),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
+                                horizontal: 8,
+                                vertical: 8,
                               ),
                               child: Text(
                                 _fmtCatName(cat['name']?.toString() ?? ''),
@@ -2408,10 +2423,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  height: 1.1,
+                                  height: 1.2,
                                 ),
                               ),
                             ),
@@ -2954,8 +2969,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child:
-                      (product['image']?.toString() ?? '').isNotEmpty
+                  child: (product['image']?.toString() ?? '').isNotEmpty
                       ? AppImage(
                           imageUrl: product['image'].toString(),
                           blurHash: product['blurHash']?.toString(),
@@ -3350,11 +3364,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     return Dismissible(
                       key: Key(item.cartItemKey),
                       direction: DismissDirection.endToStart,
-                      onDismissed: (_) =>
-                          _removeCartItemAndRefreshCoupon(
-                            item.productId,
-                            variantId: item.variantId,
-                          ),
+                      onDismissed: (_) => _removeCartItemAndRefreshCoupon(
+                        item.productId,
+                        variantId: item.variantId,
+                      ),
                       background: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
@@ -5552,7 +5565,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 GestureDetector(
                   onTap: () => context.push('/brands'),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -5587,185 +5603,185 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             height: 100,
             child: _isLoadingBrands
                 ? ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: 5,
-                  itemBuilder:
-                      (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Container(
-                          width: 168,
-                          decoration: BoxDecoration(
-                            color: borderLight,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 5,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Container(
+                        width: 168,
+                        decoration: BoxDecoration(
+                          color: borderLight,
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                )
+                    ),
+                  )
                 : _brands.isEmpty
                 ? Center(
-                  child: Text(
-                    t('No brands available'),
-                    style: GoogleFonts.plusJakartaSans(color: textMuted),
-                  ),
-                )
+                    child: Text(
+                      t('No brands available'),
+                      style: GoogleFonts.plusJakartaSans(color: textMuted),
+                    ),
+                  )
                 : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _brands.length,
-                  itemBuilder: (context, index) {
-                    final brand = _brands[index];
-                    final accentColor = Color(
-                      (brand['accent'] as int?) ?? 0xFF2563EB,
-                    );
-                    final hasLogo =
-                        brand['logo'] != null &&
-                        brand['logo'].toString().isNotEmpty;
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _brands.length,
+                    itemBuilder: (context, index) {
+                      final brand = _brands[index];
+                      final accentColor = Color(
+                        (brand['accent'] as int?) ?? 0xFF2563EB,
+                      );
+                      final hasLogo =
+                          brand['logo'] != null &&
+                          brand['logo'].toString().isNotEmpty;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: GestureDetector(
-                        onTap: () {
-                          final name = brand['name']?.toString() ?? '';
-                          context.push('/brand/$name');
-                        },
-                        child: Container(
-                          width: 168,
-                          decoration: BoxDecoration(
-                            color: surfaceWhite,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: borderLight, width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              // Logo area
-                              Container(
-                                width: 68,
-                                height: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.07),
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(17),
-                                    bottomLeft: Radius.circular(17),
-                                  ),
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            final name = brand['name']?.toString() ?? '';
+                            context.push('/brand/$name');
+                          },
+                          child: Container(
+                            width: 168,
+                            decoration: BoxDecoration(
+                              color: surfaceWhite,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: borderLight, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
-                                child:
-                                    hasLogo
-                                        ? Padding(
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                // Logo area
+                                Container(
+                                  width: 68,
+                                  height: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: accentColor.withOpacity(0.07),
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(17),
+                                      bottomLeft: Radius.circular(17),
+                                    ),
+                                  ),
+                                  child: hasLogo
+                                      ? Padding(
                                           padding: const EdgeInsets.all(10),
                                           child: CachedNetworkImage(
                                             imageUrl: brand['logo'],
                                             fit: BoxFit.contain,
-                                            placeholder:
-                                                (_, __) => Center(
-                                                  child: SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: accentColor,
-                                                        ),
-                                                  ),
-                                                ),
-                                            errorWidget:
-                                                (_, __, ___) =>
-                                                    _buildBrandInitial(
-                                                      brand['name'] ?? '',
-                                                      accentColor,
+                                            placeholder: (_, __) => Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: accentColor,
                                                     ),
+                                              ),
+                                            ),
+                                            errorWidget: (_, __, ___) =>
+                                                _buildBrandInitial(
+                                                  brand['name'] ?? '',
+                                                  accentColor,
+                                                ),
                                           ),
                                         )
-                                        : _buildBrandInitial(
+                                      : _buildBrandInitial(
                                           brand['name'] ?? '',
                                           accentColor,
                                         ),
-                              ),
-                              // Info area
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 10,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        brand['name'] ?? '',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w800,
-                                          color: textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      if (brand['tag'] != null) ...[
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
+                                ),
+                                // Info area
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 10,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          brand['name'] ?? '',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: textPrimary,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: accentColor.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        if (brand['tag'] != null) ...[
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: accentColor.withOpacity(
+                                                0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              brand['tag'],
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: accentColor,
+                                                  ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          child: Text(
-                                            brand['tag'],
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
+                                          const SizedBox(height: 6),
+                                        ],
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.verified_rounded,
+                                              size: 10,
                                               color: accentColor,
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                      ],
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.verified_rounded,
-                                            size: 10,
-                                            color: accentColor,
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            t('Verified'),
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w600,
-                                              color: textMuted,
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              t('Verified'),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: textMuted,
+                                                  ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -5806,7 +5822,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final currentLang = ref.read(localeProvider);
 
     // Section colors based on requirement
-    final Color gradientBase = isFeatured 
+    final Color gradientBase = isFeatured
         ? const Color(0xFF1E3A8A) // Medium/Dark Blue
         : const Color(0xFFEF4444); // Reddish
 
@@ -5818,7 +5834,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            isFeatured 
+            isFeatured
                 ? const Color(0xFF1E3A8A).withOpacity(0.15) // Deep Blue
                 : const Color(0xFFFECACA).withOpacity(0.25), // Lighter Reddish
             isFeatured
@@ -5869,7 +5885,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -5913,12 +5932,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 ? GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.52,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.52,
+                        ),
                     itemCount: 4,
                     itemBuilder: (context, index) => Container(
                       decoration: BoxDecoration(
@@ -5933,11 +5953,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       padding: const EdgeInsets.all(40),
                       child: Column(
                         children: [
-                          Icon(Icons.inventory_2_outlined, color: textMuted.withOpacity(0.5), size: 48),
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            color: textMuted.withOpacity(0.5),
+                            size: 48,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             t('No products available'),
-                            style: GoogleFonts.plusJakartaSans(color: textMuted),
+                            style: GoogleFonts.plusJakartaSans(
+                              color: textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -5946,12 +5972,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.52,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.52,
+                        ),
                     itemCount: filteredProducts.length > 6
                         ? 6
                         : filteredProducts.length,
@@ -5993,7 +6020,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     // Pick badge: HOT (only when showHotBadge=true) > SALE (discount) > NEW
     String? badgeLabel;
     Color? badgeColor;
-    if (showHotBadge && (product['isHot'] == true || product['badge']?.toString().contains('HOT') == true)) {
+    if (showHotBadge &&
+        (product['isHot'] == true ||
+            product['badge']?.toString().contains('HOT') == true)) {
       badgeLabel = 'HOT'; // Force clean label without flames
       badgeColor = const Color(0xFFEF4444);
     } else if (discount > 0) {
@@ -6167,7 +6196,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         const SizedBox(width: 4),
                         Row(
                           children: List.generate(5, (index) {
-                            final rv = (rating is num) ? rating.toDouble() : double.tryParse(rating.toString()) ?? 0.0;
+                            final rv = (rating is num)
+                                ? rating.toDouble()
+                                : double.tryParse(rating.toString()) ?? 0.0;
                             final starIndex = index + 1;
                             if (rv >= starIndex) {
                               return const Icon(
@@ -6241,9 +6272,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 variantId: product['defaultVariant']?['id']
                                     ?.toString(),
                                 name: product['name'] ?? '',
-                                variantName: product['defaultVariant']
-                                    ?['displayName']
-                                    ?.toString(),
+                                variantName:
+                                    product['defaultVariant']?['displayName']
+                                        ?.toString(),
                                 nameHindi: product['nameHindi']?.toString(),
                                 price: (product['price'] as num).toDouble(),
                                 mrp: hasOriginalPrice
@@ -6852,9 +6883,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
                     ? WhatsAppCheckoutService.extractMessage(response.data)
                     : 'Unable to open WhatsApp',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
               ),
               backgroundColor: const Color(0xFFDC2626),
               behavior: SnackBarBehavior.floating,
@@ -7089,9 +7118,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
                     ? WhatsAppCheckoutService.extractMessage(response.data)
                     : t('Unable to open WhatsApp'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
               ),
               backgroundColor: const Color(0xFFDC2626),
               behavior: SnackBarBehavior.floating,
@@ -7196,6 +7223,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             onPageChanged: (i) => setState(() => _currentPromoBannerIndex = i),
             itemBuilder: (context, index) {
               final banner = _promoBanners[index];
+              final hasImage = (banner['imageUrl'] ?? '').toString().isNotEmpty;
               final linkUrl = banner['linkUrl'] ?? '';
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -7217,34 +7245,40 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          CachedNetworkImage(
-                            imageUrl: banner['imageUrl'] ?? '',
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                              color: primaryBlue.withOpacity(0.05),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                          if (hasImage)
+                            CachedNetworkImage(
+                              imageUrl: banner['imageUrl'] ?? '',
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: primaryBlue.withOpacity(0.05),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
-                            ),
-                            errorWidget: (_, __, ___) => Container(
+                              errorWidget: (_, __, ___) => Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      primaryBlue.withOpacity(0.1),
+                                      primaryBlue.withOpacity(0.2),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    primaryBlue.withOpacity(0.1),
-                                    primaryBlue.withOpacity(0.2),
+                                    primaryBlue.withOpacity(0.12),
+                                    primaryBlueDark.withOpacity(0.22),
                                   ],
                                 ),
                               ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: textMuted,
-                                ),
-                              ),
                             ),
-                          ),
                           // Text Content Overlay
                           Container(
                             decoration: BoxDecoration(
@@ -7252,8 +7286,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                                 colors: [
-                                  Colors.black.withOpacity(0.7),
-                                  Colors.transparent,
+                                  hasImage
+                                      ? Colors.black.withOpacity(0.7)
+                                      : primaryBlueDark.withOpacity(0.92),
+                                  hasImage
+                                      ? Colors.transparent
+                                      : primaryBlue.withOpacity(0.8),
                                 ],
                               ),
                             ),
