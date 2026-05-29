@@ -2,7 +2,7 @@ const Category = require('../models/Category');
 const Product = require('../models/Product');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
-const { normalizeMediaUrl } = require('../utils/mediaUrls');
+const { normalizeImageObject } = require('../utils/mediaUrls');
 
 async function getProductCountMap(categorySlugs = []) {
   if (categorySlugs.length === 0) return new Map();
@@ -69,7 +69,7 @@ exports.getCategories = async (req, res, next) => {
     const countsByKey = await getProductCountMap(categoryKeys);
     const categoriesWithCounts = categories.map((category) => ({
       ...category,
-      image: normalizeMediaUrl(category.image, req),
+      image: normalizeImageObject(category.image, req),
       productCount: countsByKey.get(category.name) ?? countsByKey.get(category.slug) ?? 0,
     }));
 
@@ -99,7 +99,7 @@ exports.getCategory = async (req, res, next) => {
     }
 
     const categoryData = category.toObject();
-    categoryData.image = normalizeMediaUrl(categoryData.image, req);
+    categoryData.image = normalizeImageObject(categoryData.image, req);
     categoryData.productCount = await Product.countDocuments({
       category: { $in: [category.name, category.slug].filter(Boolean) },
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
