@@ -1,32 +1,13 @@
 {
   "project_info": {
-    "project_number": "639746337160",
-    "project_id": "agrimart-1ae15",
-    "storage_bucket": "agrimart-1ae15.firebasestorage.app"
+    "project_number": "949643204647",
+    "project_id": "laxmi-agro-1df4b",
+    "storage_bucket": "laxmi-agro-1df4b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:639746337160:android:3f9aa0182ecdc09fe4323d",
-        "android_client_info": {
-          "package_name": "com.laxmiagro.app.debug"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDx9NdFF5PlRQlwnf-EMzq5BD0LqJu1wE0"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:639746337160:android:8861e66edc40ce82e4323d",
+        "mobilesdk_app_id": "1:949643204647:android:f8d4a476aa1583cd191602",
         "android_client_info": {
           "package_name": "com.laxmiagro.app"
         }
@@ -34,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDx9NdFF5PlRQlwnf-EMzq5BD0LqJu1wE0"
+          "current_key": "AIzaSyARm4TSxU5AAf_b9birLD77pI9ICKFfAKc"
         }
       ],
       "services": {
