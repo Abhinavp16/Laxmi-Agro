@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../providers/auth_provider.dart';
 import '../../main.dart';
@@ -13,15 +14,21 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final Ref _ref;
   String? _currentToken;
 
   NotificationService(this._ref);
 
   Future<void> initialize() async {
+    if (Firebase.apps.isEmpty) {
+      debugPrint('[FCM] Firebase not configured, skipping notifications');
+      return;
+    }
+
+    final messaging = FirebaseMessaging.instance;
+
     // Request permission (Android 13+ requires explicit permission)
-    final settings = await _messaging.requestPermission(
+    final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -32,15 +39,15 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
-      await _getAndRegisterToken();
-      _setupTokenRefreshListener();
+      await _getAndRegisterToken(messaging);
+      _setupTokenRefreshListener(messaging);
       _setupForegroundMessageHandler();
     }
   }
 
-  Future<void> _getAndRegisterToken() async {
+  Future<void> _getAndRegisterToken(FirebaseMessaging messaging) async {
     try {
-      final token = await _messaging.getToken();
+      final token = await messaging.getToken();
       if (token != null) {
         _currentToken = token;
         debugPrint('[FCM] Token: ${token.substring(0, 20)}...');
@@ -51,8 +58,8 @@ class NotificationService {
     }
   }
 
-  void _setupTokenRefreshListener() {
-    _messaging.onTokenRefresh.listen((newToken) async {
+  void _setupTokenRefreshListener(FirebaseMessaging messaging) {
+    messaging.onTokenRefresh.listen((newToken) async {
       debugPrint('[FCM] Token refreshed');
       _currentToken = newToken;
       await _registerTokenWithBackend(newToken);
