@@ -20,7 +20,7 @@ export default function AboutSection({ productImages = fallbackProductImages }) 
                     </p>
 
                     <div className="mt-10 space-y-4">
-                        <div className="flex gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
+                        <div className="flex items-center gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b3b1f] text-sm font-bold text-white shadow-sm">
                                 D2B
                             </div>
@@ -29,7 +29,7 @@ export default function AboutSection({ productImages = fallbackProductImages }) 
                                 <p className="mt-1 text-sm leading-6 text-text-secondary">Competitive supply for retailers, dealers, and resellers across agriculture hardware categories.</p>
                             </div>
                         </div>
-                        <div className="flex gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
+                        <div className="flex items-center gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b3b1f] text-sm font-bold text-white shadow-sm">
                                 D2C
                             </div>
