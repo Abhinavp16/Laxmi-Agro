@@ -1,10 +1,13 @@
 import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
+import { getWebsiteContent } from '@/lib/website-content';
 
 export const metadata = {
     title: 'About Us - Laxmi Agro',
     description: 'Learn about Laxmi Agro and Ashirvad Marketing, serving Raipur with agriculture, irrigation, cable, and pump supply products.',
 };
+
+export const dynamic = 'force-dynamic';
 
 const values = [
     {
@@ -21,7 +24,10 @@ const values = [
     },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+    const { productCategories, featuredProducts } = await getWebsiteContent();
+    const productImages = [productCategories?.[0]?.image, featuredProducts?.[0]?.image].filter(Boolean);
+
     return (
         <div className="page-transition">
             <PageHero
@@ -56,14 +62,14 @@ export default function AboutPage() {
                     <ScrollReveal className="relative">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <img
-                                src="/images/about/front.jpeg"
-                                className="rounded-2xl shadow-lg w-full h-auto object-contain object-center"
-                                alt="Equipment storefront"
+                                src={productImages[0] || '/images/products/brush cutter.webp'}
+                                className="h-72 w-full rounded-2xl object-cover object-center shadow-lg"
+                                alt="Laxmi Agro product"
                             />
                             <img
-                                src="/images/about/godown.png"
-                                className="rounded-2xl shadow-lg w-full h-auto object-contain object-center"
-                                alt="Warehouse"
+                                src={productImages[1] || productImages[0] || '/images/Banner/3.jpg'}
+                                className="h-72 w-full rounded-2xl object-cover object-center shadow-lg"
+                                alt="Laxmi Agro equipment"
                             />
                             <div className="bg-brand-primary p-6 rounded-2xl text-white sm:col-span-2">
                                 <p className="text-3xl font-bold italic mb-1">W.E.F. 20/04/2026</p>

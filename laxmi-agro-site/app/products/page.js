@@ -6,6 +6,8 @@ import {
     defaultFeaturedProducts as sharedDefaultFeaturedProducts,
     normalizeFeaturedProduct,
 } from '@/lib/featured-products';
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
 
 export const metadata = {
     title: 'Products - Laxmi Agro',
@@ -47,12 +49,7 @@ function slugifyCategoryName(name = '') {
 }
 
 async function getWebsiteContent() {
-    const rawBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL ||
-        process.env.API_BASE_URL ||
-        process.env.NEXT_PUBLIC_WEBSITE_API_BASE_URL ||
-        'http://localhost:5000/api/v1';
-    const apiBase = rawBase.replace(/\/+$/, '');
+    const apiBase = getApiBaseUrl();
 
     try {
         const response = await fetch(`${apiBase}/settings/website-content`, { cache: 'no-store' });
@@ -67,8 +64,14 @@ async function getWebsiteContent() {
 
         const json = await response.json();
         return {
-            productCategories: Array.isArray(json?.data?.productCategories) && json.data.productCategories.length > 0 ? json.data.productCategories : defaultProductCategories,
-            featuredProducts: (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0 ? json.data.featuredProducts : sharedDefaultFeaturedProducts).map((product, index) => normalizeFeaturedProduct(product, index)),
+            productCategories: (Array.isArray(json?.data?.productCategories) && json.data.productCategories.length > 0 ? json.data.productCategories : defaultProductCategories).map((category) => ({
+                ...category,
+                image: normalizeWebsiteImageUrl(category?.image),
+            })),
+            featuredProducts: (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0 ? json.data.featuredProducts : sharedDefaultFeaturedProducts).map((product, index) => normalizeFeaturedProduct({
+                ...product,
+                image: normalizeWebsiteImageUrl(product?.image),
+            }, index)),
             categoriesSection: json?.data?.categoriesSection ? { ...defaultCategoriesSection, ...json.data.categoriesSection } : defaultCategoriesSection,
             featuredSection: json?.data?.featuredSection ? { ...defaultFeaturedSection, ...json.data.featuredSection } : defaultFeaturedSection,
         };

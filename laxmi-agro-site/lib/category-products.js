@@ -1,3 +1,6 @@
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
+
 const productCardFallbackImage = 'https://placehold.co/800x520/f3f4f6/94a3b8?text=Product';
 
 const defaultProductCategories = [
@@ -173,12 +176,7 @@ export function getProductHighlights(product) {
 }
 
 export async function getCategories() {
-    const rawBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL ||
-        process.env.API_BASE_URL ||
-        process.env.NEXT_PUBLIC_WEBSITE_API_BASE_URL ||
-        'http://localhost:5000/api/v1';
-    const apiBase = rawBase.replace(/\/+$/, '');
+    const apiBase = getApiBaseUrl();
 
     try {
         const response = await fetch(`${apiBase}/settings/website-content`, {
@@ -194,7 +192,17 @@ export async function getCategories() {
             ? json.data.productCategories
             : defaultProductCategories;
 
-        return productCategories;
+        return productCategories.map((category) => ({
+            ...category,
+            image: normalizeWebsiteImageUrl(category?.image),
+            productDetails: Array.isArray(category?.productDetails)
+                ? category.productDetails.map((product) => ({
+                    ...product,
+                    image: normalizeWebsiteImageUrl(product?.image),
+                    images: Array.isArray(product?.images) ? product.images.map(normalizeWebsiteImageUrl) : product?.images,
+                }))
+                : category?.productDetails,
+        }));
     } catch {
         return defaultProductCategories;
     }

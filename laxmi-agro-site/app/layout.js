@@ -9,9 +9,9 @@ export const metadata = {
     "Agriculture and industrial equipment platform for machinery, irrigation, power tools, and farm supply operations.",
   keywords: "laxmi agro, agriculture machinery, power tools, irrigation, wholesale, farming equipment, agri marketplace",
   icons: {
-    icon: "/favicon-rounded.svg",
-    shortcut: "/favicon-rounded.svg",
-    apple: "/favicon-rounded.svg",
+    icon: "/favicon-rounded.png",
+    shortcut: "/favicon-rounded.png",
+    apple: "/favicon-rounded.png",
   },
 };
 

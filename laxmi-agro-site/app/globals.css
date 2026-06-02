@@ -327,36 +327,31 @@ h6 {
   animation-delay: 0.04s;
 }
 
-.premium-orb {
-  animation: premiumOrbFloat 8s ease-in-out infinite;
-  transform-origin: center;
+.footer-gold-orb {
+  animation: footerGoldDrift 12s ease-in-out infinite;
   will-change: transform, opacity;
 }
 
-.premium-orb-delay {
-  animation-delay: -2.2s;
+.footer-gold-orb-slow {
+  animation-duration: 15s;
+  animation-delay: -5s;
 }
 
-.premium-orb-slow {
-  animation-duration: 10s;
-  animation-delay: -4s;
-}
-
-@keyframes premiumOrbFloat {
+@keyframes footerGoldDrift {
   0%,
   100% {
-    opacity: 0.86;
+    opacity: 0.62;
     transform: translate3d(0, 0, 0) scale(1);
   }
 
-  34% {
-    opacity: 1;
-    transform: translate3d(-8px, 10px, 0) scale(1.06);
+  35% {
+    opacity: 0.9;
+    transform: translate3d(28px, -16px, 0) scale(1.08);
   }
 
-  68% {
-    opacity: 0.78;
-    transform: translate3d(10px, -6px, 0) scale(0.96);
+  70% {
+    opacity: 0.5;
+    transform: translate3d(-18px, 20px, 0) scale(0.94);
   }
 }
 
@@ -401,7 +396,7 @@ h6 {
   .page-transition,
   .contact-morph-panel,
   .contact-morph-item,
-  .premium-orb,
+  .footer-gold-orb,
   .animate-fade-in-up,
   .animate-slide-in-left,
   .animate-slide-in-right,

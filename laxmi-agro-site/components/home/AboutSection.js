@@ -1,6 +1,12 @@
 import ScrollReveal from '@/components/ScrollReveal';
 
-export default function AboutSection() {
+const fallbackProductImages = ['/images/products/brush cutter.webp', '/images/Banner/3.jpg'];
+
+export default function AboutSection({ productImages = fallbackProductImages }) {
+    const images = productImages.filter(Boolean).length > 0 ? productImages.filter(Boolean) : fallbackProductImages;
+    const firstImage = images[0] || fallbackProductImages[0];
+    const secondImage = images[1] || images[0] || fallbackProductImages[1];
+
     return (
         <section id="about" className="overflow-hidden bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-20">
@@ -43,9 +49,9 @@ export default function AboutSection() {
                                 <p className="text-sm font-semibold leading-6 text-text-primary">Trusted supply support for Raipur and surrounding regional demand.</p>
                             </div>
                             <img
-                                src="/images/about/front.jpeg"
-                                className="h-auto w-full rounded-[2rem] object-contain object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)]"
-                                alt="Laxmi Agro storefront"
+                                src={firstImage}
+                                className="h-auto w-full rounded-[2rem] object-cover object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)] sm:h-[300px]"
+                                alt="Laxmi Agro product"
                             />
                             <div className="rounded-[1.6rem] bg-brand-primary p-6 text-white">
                                 <p className="mb-1 text-3xl font-semibold tracking-[-0.018em]">20 Apr 2026</p>
@@ -62,9 +68,9 @@ export default function AboutSection() {
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Industry Rating</p>
                             </div>
                             <img
-                                src="/images/about/godown.png"
+                                src={secondImage}
                                 className="h-auto w-full rounded-[2rem] object-contain object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)] sm:h-[300px] sm:object-cover"
-                                alt="Warehouse"
+                                alt="Laxmi Agro equipment"
                             />
                             <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">
                                 <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary">Core Team</p>

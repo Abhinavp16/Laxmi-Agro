@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import ContactMorphButton from '@/components/ContactMorphButton';
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
 
 const navLinks = [
     { href: '/', label: 'Home' },
@@ -12,25 +15,69 @@ const navLinks = [
     { href: '/contact', label: 'Contact Us' },
 ];
 
-const pageHeroImage = '/images/hero-rice-terraces.jpg';
+const defaultPageHeroImages = [];
 
-export default function PageHero({ title, subtitle, showBackButton = true, backHref = '/' }) {
+function getPageHeroIndex(pathname = '') {
+    if (pathname === '/about') return 1;
+    if (pathname === '/products' || pathname.startsWith('/products/') || pathname.startsWith('/category/')) return 2;
+    if (pathname === '/dealership' || pathname === '/dealer-agreement' || pathname === '/dealer-pricing') return 3;
+    if (pathname === '/contact') return 4;
+    return 4;
+}
+
+export default function PageHero({ title, subtitle, showBackButton = true, backHref = '/', heroImages: initialHeroImages = defaultPageHeroImages }) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const pathname = usePathname();
+    const [heroImages, setHeroImages] = useState(initialHeroImages.filter(Boolean).length > 0 ? initialHeroImages.filter(Boolean) : defaultPageHeroImages);
+    const heroIndex = heroImages.length > 0 ? Math.min(getPageHeroIndex(pathname), heroImages.length - 1) : 0;
+    const heroImage = heroImages[heroIndex] || '';
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadHeroImages() {
+            try {
+                const response = await fetch(`${getApiBaseUrl()}/settings/website-content`, { cache: 'no-store' });
+                if (!response.ok) return;
+
+                const json = await response.json();
+                const uploadedImages = Array.isArray(json?.data?.heroCards)
+                    ? json.data.heroCards
+                        .map((card) => normalizeWebsiteImageUrl(card?.image))
+                        .filter(Boolean)
+                    : [];
+
+                if (!cancelled && uploadedImages.length > 0) {
+                    setHeroImages(uploadedImages);
+                }
+            } catch {
+                // Keep the local fallback when hosted content is unavailable.
+            }
+        }
+
+        loadHeroImages();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     return (
         <section className="relative w-full bg-[#dfe8d3] px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-7">
             <div className="relative min-h-[430px] w-full overflow-visible rounded-[2rem] bg-[#102313] sm:min-h-[500px] sm:rounded-[2.4rem] lg:min-h-[560px] lg:rounded-[2.65rem]">
-                <div
-                    className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
-                    style={{ backgroundImage: `url('${pageHeroImage}')` }}
-                />
+                {heroImage && (
+                    <div
+                        className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
+                        style={{ backgroundImage: `url('${heroImage}')` }}
+                    />
+                )}
                 <div className="absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,rgba(2,18,7,0.70)_0%,rgba(4,28,12,0.46)_36%,rgba(2,15,7,0.82)_100%)]" />
                 <div className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_38%,rgba(210,152,72,0.24),transparent_30%),radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.13),transparent_28%)]" />
 
                 <nav className="relative z-20 flex items-center justify-between px-5 py-6 text-white sm:px-8 lg:px-10 lg:py-8">
                     <Link href="/" className="group flex items-center gap-3">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-[#123b1f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:h-14 sm:w-14">
-                            <img src="/favicon-rounded.svg" alt="Laxmi Agro" className="h-9 w-9 object-contain sm:h-10 sm:w-10" />
+                        <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f8f5e9] text-[#123b1f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:h-14 sm:w-14">
+                            <img src="/favicon-rounded.png" alt="Laxmi Agro" className="h-10 w-10 rounded-full object-cover sm:h-11 sm:w-11" />
                         </span>
                         <span className="text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">Laxmi Agro</span>
                     </Link>

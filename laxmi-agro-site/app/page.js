@@ -23,7 +23,7 @@ export default async function Home() {
     <>
       <HeroSection heroImages={heroImages} />
       <BannersSection />
-      <AboutSection />
+      <AboutSection productImages={[productCategories?.[0]?.image, featuredProducts?.[0]?.image]} />
       <ProductsSection products={featuredProducts} section={featuredSection} />
       <CategoriesSection categories={productCategories} section={categoriesSection} />
       <StatsSection />

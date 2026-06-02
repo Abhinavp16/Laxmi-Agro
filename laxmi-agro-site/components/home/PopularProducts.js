@@ -8,6 +8,8 @@ import {
     defaultFeaturedProducts,
     normalizeFeaturedProduct,
 } from '@/lib/featured-products';
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
 
 export default function PopularProducts() {
     const [products, setProducts] = useState(defaultFeaturedProducts.map((product, index) => normalizeFeaturedProduct(product, index)));
@@ -15,12 +17,14 @@ export default function PopularProducts() {
     useEffect(() => {
         async function loadPopular() {
             try {
-                const rawBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_WEBSITE_API_BASE_URL || 'http://localhost:5000/api/v1';
-                const apiBase = rawBase.replace(/\/+$/, '');
+                const apiBase = getApiBaseUrl();
                 const res = await fetch(`${apiBase}/settings/website-content`, { cache: 'no-store' });
                 const json = await res.json();
                 if (json?.data?.featuredProducts?.length > 0) {
-                    setProducts(json.data.featuredProducts.map((product, index) => normalizeFeaturedProduct(product, index)));
+                    setProducts(json.data.featuredProducts.map((product, index) => normalizeFeaturedProduct({
+                        ...product,
+                        image: normalizeWebsiteImageUrl(product?.image),
+                    }, index)));
                 }
             } catch (error) {
                 console.error('Error fetching popular products:', error);

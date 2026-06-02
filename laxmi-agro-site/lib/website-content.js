@@ -2,6 +2,8 @@ import {
     defaultFeaturedProducts,
     normalizeFeaturedProduct,
 } from '@/lib/featured-products';
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
 
 const defaultHeroImages = [
     '/images/Banner/1.jpg',
@@ -65,12 +67,7 @@ const defaultFeaturedSection = {
 };
 
 export async function getWebsiteContent() {
-    const rawBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL ||
-        process.env.API_BASE_URL ||
-        process.env.NEXT_PUBLIC_WEBSITE_API_BASE_URL ||
-        'http://localhost:5000/api/v1';
-    const apiBase = rawBase.replace(/\/+$/, '');
+    const apiBase = getApiBaseUrl();
 
     try {
         const response = await fetch(`${apiBase}/settings/website-content`, { cache: 'no-store' });
@@ -80,17 +77,20 @@ export async function getWebsiteContent() {
 
         const json = await response.json();
         const heroImages = Array.isArray(json?.data?.heroCards) && json.data.heroCards.length > 0
-            ? json.data.heroCards.map((card, index) => card?.image || defaultHeroImages[index]).filter(Boolean)
+            ? json.data.heroCards.map((card, index) => normalizeWebsiteImageUrl(card?.image || defaultHeroImages[index])).filter(Boolean)
             : defaultHeroImages;
         const featuredProducts = (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0
-            ? json.data.featuredProducts
+            ? json.data.featuredProducts.map((product) => ({
+                ...product,
+                image: normalizeWebsiteImageUrl(product?.image),
+            }))
             : defaultFeaturedProducts).map((product, index) => normalizeFeaturedProduct(product, index));
         const productCategories = Array.isArray(json?.data?.productCategories) && json.data.productCategories.length > 0
             ? json.data.productCategories.map((category, index) => ({
                 name: category?.name || defaultProductCategories[index]?.name || '',
                 description: category?.description || '',
-                image: category?.image || defaultProductCategories[index]?.image || defaultHeroImages[0],
-                fallback: category?.image || defaultProductCategories[index]?.fallback || defaultHeroImages[0],
+                image: normalizeWebsiteImageUrl(category?.image || defaultProductCategories[index]?.image || defaultHeroImages[0]),
+                fallback: normalizeWebsiteImageUrl(category?.image || defaultProductCategories[index]?.fallback || defaultHeroImages[0]),
             }))
             : defaultProductCategories;
         const featuredSection = json?.data?.featuredSection

@@ -2,7 +2,7 @@ const brandItems = [
     {
         id: 'laxmi-agro',
         type: 'image',
-        src: '/favicon-rounded.svg',
+        src: '/favicon-rounded.png',
         alt: 'Laxmi Agro',
     },
     {

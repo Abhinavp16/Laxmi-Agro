@@ -54,6 +54,7 @@ type AdminProductOption = {
 }
 
 const DEFAULT_HERO_CARD_IMAGES = ["/images/Banner/1.jpg", "/images/Banner/2.jpg", "/images/Banner/3.jpg", "/images/Banner/4.jpg", "/images/Banner/5.jpg"]
+const HERO_CARD_PAGE_LABELS = ["Home", "About Us", "Products", "Dealership", "Contact / Other Pages"]
 const defaultHeroCards = (): WebsiteHeroCard[] => DEFAULT_HERO_CARD_IMAGES.map((image, order) => ({ image, order }))
 const normalizeList = (values: string[]) => values.map((v) => v.trim()).filter(Boolean)
 const createEmptyCategoryProduct = (categoryName = ""): WebsiteCategoryProduct => ({
@@ -747,7 +748,7 @@ export default function ManageWebsitePage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-white flex items-center gap-3"><Globe className="h-7 w-7 text-[#86efac]" />Manage Website</h1>
-                <p className="text-[#919191] mt-1">Hero has fixed 5 cards. Admin can only update image.</p>
+                <p className="text-[#919191] mt-1">Each hero card controls one page banner. Admin can only update image.</p>
             </div>
 
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured")} className="w-full">
@@ -764,16 +765,16 @@ export default function ManageWebsitePage() {
                             <CardHeader>
                                 <CardTitle className="text-white flex items-center gap-2">
                                     <span className="inline-block w-2 h-2 rounded-full bg-[#86efac]" />
-                                    Hero Cards
+                                    Page Hero Banners
                                 </CardTitle>
-                                <CardDescription className="text-[#A5A9B5]">Exactly 5 cards. Only image is editable.</CardDescription>
+                                <CardDescription className="text-[#A5A9B5]">Card 1 Home, Card 2 About Us, Card 3 Products, Card 4 Dealership, Card 5 Contact and other pages.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {heroCards.map((item, index) => (
                                     <div key={index} className="border border-[#303543] rounded-2xl p-4 bg-[#121417] space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-sm text-white font-semibold">Card {index + 1}</p>
-                                            <span className="text-[11px] px-2 py-1 rounded-full bg-[#202633] text-[#8FB2FF] border border-[#2E3A50]">Card {index + 1}</span>
+                                            <p className="text-sm text-white font-semibold">Card {index + 1} - {HERO_CARD_PAGE_LABELS[index]}</p>
+                                            <span className="text-[11px] px-2 py-1 rounded-full bg-[#202633] text-[#8FB2FF] border border-[#2E3A50]">{HERO_CARD_PAGE_LABELS[index]}</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-[1fr_170px] gap-3 items-start">
                                             <Input value={item.image} onChange={(e) => setHeroCards((prev) => prev.map((h, i) => i === index ? { ...h, image: e.target.value } : h))} className="bg-[#0D0D0D] border-[#2F3542] text-white" />
@@ -800,13 +801,13 @@ export default function ManageWebsitePage() {
                                         </div>
                                     </div>
                                 ))}
-                                <Button onClick={saveHeroCards} disabled={isSavingHero} className="w-full bg-gradient-to-r from-[#86efac] to-[#57d08f] text-black hover:opacity-95">{isSavingHero ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Hero Images</Button>
+                                <Button onClick={saveHeroCards} disabled={isSavingHero} className="w-full bg-gradient-to-r from-[#86efac] to-[#57d08f] text-black hover:opacity-95">{isSavingHero ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Page Hero Images</Button>
                             </CardContent>
                         </Card>
                         <Card className="bg-gradient-to-b from-[#171a22] to-[#141414] border-[#2E3340] xl:col-span-4 xl:sticky xl:top-24 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
                             <CardHeader>
-                                <CardTitle className="text-white text-lg">Live Preview</CardTitle>
-                                <CardDescription className="text-[#A5A9B5]">Final look of all 5 hero cards.</CardDescription>
+                                <CardTitle className="text-white text-lg">Page Banner Preview</CardTitle>
+                                <CardDescription className="text-[#A5A9B5]">Preview of each page-specific hero banner.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
@@ -826,13 +827,11 @@ export default function ManageWebsitePage() {
                                                     <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Image</div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                                                <div className="absolute top-2 left-2 text-[11px] px-2 py-1 rounded-full bg-black/60 text-white border border-white/20">Card {i + 1}</div>
+                                                <div className="absolute top-2 left-2 text-[11px] px-2 py-1 rounded-full bg-black/60 text-white border border-white/20">{HERO_CARD_PAGE_LABELS[i]}</div>
                                             </div>
                                             <div className="p-2 flex items-center justify-between">
-                                                <p className="text-xs text-[#A5A9B5] truncate">Card {i + 1}</p>
-                                                <div className="w-14 h-1.5 rounded-full bg-[#202633] overflow-hidden">
-                                                    <div className="h-full bg-[#86efac]" style={{ width: `${((i + 1) / 5) * 100}%` }} />
-                                                </div>
+                                                <p className="text-xs text-[#A5A9B5] truncate">Card {i + 1} - {HERO_CARD_PAGE_LABELS[i]}</p>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#86efac]">Fixed</span>
                                             </div>
                                         </div>
                                     ))}

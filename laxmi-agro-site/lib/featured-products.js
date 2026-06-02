@@ -1,3 +1,6 @@
+import { getApiBaseUrl } from '@/lib/api-base';
+import { normalizeWebsiteImageUrl } from '@/lib/media-url';
+
 const featuredProductFallbackImage = 'https://placehold.co/800x800/f8fafc/94a3b8?text=Product';
 
 const defaultFeaturedProducts = [
@@ -103,12 +106,7 @@ export function buildFeaturedProductInquiryProps(product) {
 }
 
 export async function getFeaturedProducts() {
-    const rawBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL ||
-        process.env.API_BASE_URL ||
-        process.env.NEXT_PUBLIC_WEBSITE_API_BASE_URL ||
-        'http://localhost:5000/api/v1';
-    const apiBase = rawBase.replace(/\/+$/, '');
+    const apiBase = getApiBaseUrl();
 
     try {
         const response = await fetch(`${apiBase}/settings/website-content`, {
@@ -124,7 +122,10 @@ export async function getFeaturedProducts() {
             ? json.data.featuredProducts
             : defaultFeaturedProducts;
 
-        return source.map((product, index) => normalizeFeaturedProduct(product, index));
+        return source.map((product, index) => normalizeFeaturedProduct({
+            ...product,
+            image: normalizeWebsiteImageUrl(product?.image),
+        }, index));
     } catch {
         return defaultFeaturedProducts.map((product, index) => normalizeFeaturedProduct(product, index));
     }

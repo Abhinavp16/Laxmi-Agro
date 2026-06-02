@@ -89,9 +89,9 @@ export default function Header() {
                 <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3 group">
                     <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white rounded-xl flex items-center justify-center shadow-cta transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                         <img
-                            src="/favicon-rounded.svg"
+                            src="/favicon-rounded.png"
                             alt="Laxmi Agro Logo"
-                            className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-contain"
                         />
                     </div>
                     <div className="flex min-w-0 flex-col">
