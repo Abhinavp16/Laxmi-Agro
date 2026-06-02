@@ -16,8 +16,13 @@ export default function Header() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileHidden, setMobileHidden] = useState(false);
     const pathname = usePathname();
+    const isHomePage = pathname === '/';
 
     useEffect(() => {
+        if (isHomePage) {
+            return undefined;
+        }
+
         let lastScrollY = window.scrollY;
 
         const handleScroll = () => {
@@ -47,11 +52,15 @@ export default function Header() {
         handleScroll();
 
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [mobileOpen]);
+    }, [isHomePage, mobileOpen]);
 
     useEffect(() => {
         setMobileOpen(false);
     }, [pathname]);
+
+    if (isHomePage) {
+        return null;
+    }
 
     return (
         <header
