@@ -1,6 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk/CabinetGrotesk-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk/CabinetGrotesk-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk/CabinetGrotesk-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk/CabinetGrotesk-Extrabold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   --color-brand-primary: #0b3b1f;
@@ -11,8 +43,8 @@
   --color-text-secondary: #5d6a5f;
   --color-neutral-background: #dfe8d3;
   --color-neutral-surface: #edf3e6;
-  --font-family-primary: 'Inter Tight', sans-serif;
-  --font-family-secondary: 'Inter', sans-serif;
+  --font-family-primary: 'Cabinet Grotesk', sans-serif;
+  --font-family-secondary: 'Outfit', sans-serif;
 }
 
 html {
@@ -24,6 +56,16 @@ body {
   background-color: var(--color-neutral-background);
   color: var(--color-text-secondary);
   overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-primary);
+  letter-spacing: -0.018em;
 }
 
 .home-kicker {
@@ -204,6 +246,25 @@ body {
   animation: fadeInUp 0.5s ease-out;
 }
 
+@keyframes routeEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+    filter: blur(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.route-transition {
+  animation: routeEnter 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform, filter;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -229,6 +290,17 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .route-transition,
+  .page-transition,
+  .animate-fade-in-up,
+  .animate-slide-in-left,
+  .animate-slide-in-right,
+  .animate-scale-in,
+  .animate-count-up,
+  .animate-spin-slow {
+    animation: none;
+  }
+
   .brand-marquee-track {
     animation: none;
   }

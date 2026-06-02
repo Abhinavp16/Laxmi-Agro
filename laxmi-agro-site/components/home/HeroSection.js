@@ -87,7 +87,7 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                     )}
 
                     <div className="relative z-10 mx-auto flex min-h-[345px] max-w-6xl flex-col items-center justify-center px-5 pb-28 pt-10 text-center sm:min-h-[470px] sm:px-8 sm:pb-32 lg:min-h-[485px] lg:pb-28 lg:pt-12">
-                        <h1 className="max-w-[12.5ch] text-[clamp(3rem,8vw,6.2rem)] font-medium leading-[0.96] tracking-[-0.075em] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.32)] sm:max-w-[15ch]">
+                        <h1 className="max-w-[12.5ch] text-[clamp(3rem,8vw,6.2rem)] font-medium leading-[0.96] tracking-[-0.028em] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.32)] sm:max-w-[15ch]">
                             The Next Generation of Farming is Here
                         </h1>
                     </div>
@@ -121,7 +121,7 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                                 ) : (
                                     <span className="h-7 w-7 rounded-full border-2 border-current opacity-70" />
                                 )}
-                                <span className="whitespace-nowrap text-xl font-black tracking-[-0.06em] sm:text-2xl">{partner.label}</span>
+                                <span className="whitespace-nowrap text-xl font-black tracking-[-0.018em] sm:text-2xl">{partner.label}</span>
                             </div>
                         ))}
                     </div>

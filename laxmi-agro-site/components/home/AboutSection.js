@@ -6,7 +6,7 @@ export default function AboutSection() {
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-20">
                 <ScrollReveal>
                     <div className="home-kicker">Who We Are</div>
-                    <h2 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary sm:text-5xl lg:text-6xl">
+                    <h2 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.024em] text-text-primary sm:text-5xl lg:text-6xl">
                         Comprehensive <br /> Distribution Solutions
                     </h2>
                     <p className="mt-7 max-w-xl text-base leading-8 text-text-secondary sm:text-lg">
@@ -48,7 +48,7 @@ export default function AboutSection() {
                                 alt="Laxmi Agro storefront"
                             />
                             <div className="rounded-[1.6rem] bg-brand-primary p-6 text-white">
-                                <p className="mb-1 text-3xl font-semibold tracking-[-0.05em]">20 Apr 2026</p>
+                                <p className="mb-1 text-3xl font-semibold tracking-[-0.018em]">20 Apr 2026</p>
                                 <p className="text-xs uppercase tracking-[0.14em] text-white/70">Current Rate List Effective Date</p>
                             </div>
                             <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">
@@ -58,7 +58,7 @@ export default function AboutSection() {
                         </div>
                         <div className="space-y-4">
                             <div className="rounded-[2rem] bg-[#062712] p-8 text-center text-white">
-                                <p className="mb-2 text-5xl font-semibold tracking-[-0.06em]">4.9+</p>
+                                <p className="mb-2 text-5xl font-semibold tracking-[-0.018em]">4.9+</p>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Industry Rating</p>
                             </div>
                             <img

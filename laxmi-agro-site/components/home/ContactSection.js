@@ -27,7 +27,7 @@ export default function ContactSection() {
                         <div className="mb-5 inline-flex rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 sm:mb-6">
                             Connect with Experts
                         </div>
-                        <h2 className="mb-7 max-w-[12ch] break-words text-4xl font-semibold leading-[1.04] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl">
+                        <h2 className="mb-7 max-w-[12ch] break-words text-4xl font-semibold leading-[1.04] tracking-[-0.024em] text-white sm:text-5xl lg:text-6xl">
                             Ready to source your next agriculture order?
                         </h2>
 

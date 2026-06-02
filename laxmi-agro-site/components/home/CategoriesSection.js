@@ -67,7 +67,7 @@ export default function CategoriesSection({
             <ScrollReveal className="mb-12 grid grid-cols-1 gap-5 lg:mb-16 lg:grid-cols-[0.8fr_1fr] lg:items-end">
                 <div>
                     <div className="home-kicker">{section.eyebrow}</div>
-                    <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary md:text-6xl">{section.title}</h3>
+                    <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.024em] text-text-primary md:text-6xl">{section.title}</h3>
                 </div>
                 <p className="max-w-xl text-base leading-7 text-text-secondary lg:justify-self-end">{section.description}</p>
             </ScrollReveal>
@@ -88,7 +88,7 @@ export default function CategoriesSection({
                                     />
                                 </div>
                                 <div className="flex min-h-[124px] flex-1 flex-col justify-between px-2 py-5">
-                                    <h3 className="text-[1.45rem] font-semibold leading-tight tracking-[-0.05em] text-text-primary">
+                                    <h3 className="text-[1.45rem] font-semibold leading-tight tracking-[-0.018em] text-text-primary">
                                         {cat.name}
                                     </h3>
                                     <div className="mt-5 flex items-center justify-between border-t border-[#0b3b1f]/10 pt-4 text-sm font-semibold text-brand-primary">

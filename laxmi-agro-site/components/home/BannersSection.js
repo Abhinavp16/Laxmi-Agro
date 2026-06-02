@@ -7,7 +7,7 @@ export default function BannersSection() {
                 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <div className="home-kicker">Field Programs</div>
-                        <h2 className="mt-4 max-w-xl text-3xl font-semibold leading-tight tracking-[-0.055em] text-text-primary sm:text-4xl lg:text-5xl">
+                        <h2 className="mt-4 max-w-xl text-3xl font-semibold leading-tight tracking-[-0.022em] text-text-primary sm:text-4xl lg:text-5xl">
                             Dealer support and app-first ordering for modern agriculture supply.
                         </h2>
                     </div>

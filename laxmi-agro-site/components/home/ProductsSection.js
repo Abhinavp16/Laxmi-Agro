@@ -55,7 +55,7 @@ export default function ProductsSection({
                 <div className="mb-10 grid grid-cols-1 gap-6 lg:mb-12 lg:grid-cols-[0.72fr_1fr] lg:items-end">
                     <ScrollReveal>
                         <div className="home-kicker">{section.eyebrow}</div>
-                        <h3 className="mt-5 max-w-[12ch] text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary sm:text-5xl lg:text-6xl">
+                        <h3 className="mt-5 max-w-[12ch] text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.024em] text-text-primary sm:text-5xl lg:text-6xl">
                             {section.title}
                         </h3>
                     </ScrollReveal>

@@ -56,7 +56,7 @@ export default function StatsSection() {
                 <ScrollReveal className="mb-12 grid grid-cols-1 gap-6 lg:grid-cols-[0.8fr_1fr] lg:items-end">
                     <div>
                         <div className="inline-flex rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80">Covering India</div>
-                        <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-white md:text-6xl">
+                        <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.024em] text-white md:text-6xl">
                             Our Impact in Numbers
                         </h3>
                     </div>
@@ -70,7 +70,7 @@ export default function StatsSection() {
                         <ScrollReveal key={i} delay={i * 150}>
                             <div className="rounded-[1.8rem] border border-white/10 bg-white/[0.04] p-7 transition-all hover:bg-white/[0.08]">
                                 <div className="mb-5 text-3xl">{stat.icon}</div>
-                                <div className="mb-2 text-4xl font-semibold tracking-[-0.06em] text-white md:text-5xl">
+                                <div className="mb-2 text-4xl font-semibold tracking-[-0.018em] text-white md:text-5xl">
                                     <Counter end={stat.value} suffix={stat.suffix} />
                                 </div>
                                 <p className="text-xs font-bold uppercase tracking-widest text-white/45">

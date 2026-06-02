@@ -32,7 +32,7 @@ export default function BlogSection() {
                 <ScrollReveal className="mb-12 grid grid-cols-1 gap-6 lg:mb-16 lg:grid-cols-[0.8fr_1fr] lg:items-end">
                     <div>
                         <div className="home-kicker">Knowledge Hub</div>
-                        <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary md:text-6xl">
+                        <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.024em] text-text-primary md:text-6xl">
                             Latest Insights
                         </h3>
                     </div>

@@ -17,9 +17,22 @@ export default function Header() {
     const [mobileHidden, setMobileHidden] = useState(false);
     const pathname = usePathname();
     const isHomePage = pathname === '/';
+    const usesPageHero = [
+        '/about',
+        '/products',
+        '/dealership',
+        '/contact',
+        '/terms',
+        '/privacy',
+        '/shipping',
+        '/refund',
+        '/warranty',
+        '/dealer-agreement',
+        '/dealer-pricing',
+    ].includes(pathname) || pathname.startsWith('/products/') || pathname.startsWith('/category/');
 
     useEffect(() => {
-        if (isHomePage) {
+        if (isHomePage || usesPageHero) {
             return undefined;
         }
 
@@ -52,13 +65,13 @@ export default function Header() {
         handleScroll();
 
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isHomePage, mobileOpen]);
+    }, [isHomePage, usesPageHero, mobileOpen]);
 
     useEffect(() => {
         setMobileOpen(false);
     }, [pathname]);
 
-    if (isHomePage) {
+    if (isHomePage || usesPageHero) {
         return null;
     }
 
