@@ -44,7 +44,7 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                         </Link>
 
                         <div className="hidden items-center gap-8 text-[15px] font-medium text-white/95 lg:flex">
-                            {navLinks.map((link) => (
+                            {[...navLinks, { href: '/contact', label: 'Contact Us' }].map((link) => (
                                 <Link key={`${link.href}-${link.label}`} href={link.href} className="transition-colors hover:text-[#dfe8d3]">
                                     {link.label}
                                 </Link>
@@ -69,7 +69,7 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
 
                     {mobileOpen && (
                         <div className="absolute left-6 right-6 top-24 z-30 rounded-[1.6rem] border border-white/20 bg-[#f7faf2]/95 p-3 shadow-2xl backdrop-blur-xl lg:hidden">
-                            {[...navLinks, { href: '/contact', label: 'Contact Us' }].map((link) => (
+                            {navLinks.map((link) => (
                                 <Link key={`${link.href}-${link.label}-mobile`} href={link.href} className="block rounded-2xl px-4 py-3 text-sm font-semibold text-[#17351d] hover:bg-[#dfe8d3]">
                                     {link.label}
                                 </Link>
@@ -92,9 +92,6 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                                 <textPath href="#hero-scroll-text">Smart Farming Explore More About</textPath>
                             </text>
                         </svg>
-                        <div className="flex h-9 w-6 items-start justify-center rounded-full border border-white/60 pt-2 sm:h-11 sm:w-7">
-                            <span className="h-2 w-px rounded-full bg-white/80" />
-                        </div>
                     </div>
                 </div>
 
