@@ -3,14 +3,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #f97316;
-  --color-brand-secondary: #ea580c;
-  --color-brand-light: #ffedd5;
-  --color-brand-dark: #7c2d12;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-neutral-background: #F0F8FF;
-  --color-neutral-surface: #f7fbff;
+  --color-brand-primary: #0b3b1f;
+  --color-brand-secondary: #174f2c;
+  --color-brand-light: #dfe8d3;
+  --color-brand-dark: #062712;
+  --color-text-primary: #142018;
+  --color-text-secondary: #5d6a5f;
+  --color-neutral-background: #dfe8d3;
+  --color-neutral-surface: #edf3e6;
   --font-family-primary: 'Inter Tight', sans-serif;
   --font-family-secondary: 'Inter', sans-serif;
 }
@@ -24,6 +24,30 @@ body {
   background-color: var(--color-neutral-background);
   color: var(--color-text-secondary);
   overflow-x: hidden;
+}
+
+.home-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(11, 59, 31, 0.12);
+  border-radius: 999px;
+  background: rgba(237, 243, 230, 0.72);
+  padding: 0.55rem 0.85rem;
+  color: #0b3b1f;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.home-kicker::before {
+  content: "";
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 65% 65%, #0b3b1f 0 24%, transparent 25%),
+    conic-gradient(from 220deg at 45% 60%, transparent 0 28%, #0b3b1f 29% 64%, transparent 65% 100%);
 }
 
 /* Scroll animations */

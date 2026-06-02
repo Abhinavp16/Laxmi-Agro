@@ -50,23 +50,23 @@ export default function ProductsSection({
     section = defaultFeaturedSection,
 }) {
     return (
-        <section id="products" className="py-16 sm:py-24 bg-neutral-surface">
-            <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
-                <div className="mb-10 sm:mb-12 flex flex-col items-center gap-4 sm:gap-6 md:flex-row md:items-end md:justify-between">
+        <section id="products" className="bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+            <div className="mx-auto max-w-[1480px]">
+                <div className="mb-10 grid grid-cols-1 gap-6 lg:mb-12 lg:grid-cols-[0.72fr_1fr] lg:items-end">
                     <ScrollReveal>
-                        <h2 className="mb-3 text-center text-xs sm:text-sm font-bold text-brand-primary uppercase tracking-[0.24em] sm:tracking-[0.3em] md:text-left">{section.eyebrow}</h2>
-                        <h3 className="max-w-[12ch] text-center text-[2rem] sm:text-3xl md:text-4xl font-primary font-bold text-text-primary leading-[1.08] md:text-left">
+                        <div className="home-kicker">{section.eyebrow}</div>
+                        <h3 className="mt-5 max-w-[12ch] text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary sm:text-5xl lg:text-6xl">
                             {section.title}
                         </h3>
                     </ScrollReveal>
-                    <ScrollReveal>
-                        <p className="max-w-sm text-center text-[15px] sm:text-sm leading-7 sm:leading-6 text-text-secondary md:text-left">
+                    <ScrollReveal className="lg:justify-self-end">
+                        <p className="max-w-lg text-base leading-7 text-text-secondary">
                             {section.sideText}
                         </p>
                     </ScrollReveal>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     {products.map((product, i) => (
                         <ScrollReveal key={i} delay={i * 50}>
                             <FeaturedProductCard product={normalizeFeaturedProduct(product, i)} />

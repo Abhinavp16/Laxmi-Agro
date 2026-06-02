@@ -20,56 +20,56 @@ export default function ContactSection() {
     };
 
     return (
-        <section id="contact" className="py-16 sm:py-24 bg-gray-900 overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-20 items-center">
+        <section id="contact" className="overflow-hidden bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+            <div className="relative mx-auto max-w-7xl rounded-[2.4rem] bg-[#062712] p-5 shadow-[0_28px_80px_rgba(8,36,18,0.18)] sm:p-8 lg:p-12">
+                <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
                     <ScrollReveal>
-                        <div className="inline-block px-4 py-2 border border-brand-primary/30 rounded-lg text-brand-primary font-bold text-xs sm:text-sm mb-5 sm:mb-6 uppercase tracking-[0.24em] sm:tracking-widest">
+                        <div className="mb-5 inline-flex rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 sm:mb-6">
                             Connect with Experts
                         </div>
-                        <h2 className="max-w-[11ch] text-4xl sm:text-5xl font-primary font-bold text-white mb-6 sm:mb-8 leading-[1.05] sm:leading-tight break-words">
+                        <h2 className="mb-7 max-w-[12ch] break-words text-4xl font-semibold leading-[1.04] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl">
                             Ready to source your next agriculture order?
                         </h2>
 
-                        <div className="space-y-7 sm:space-y-10">
+                        <div className="space-y-6 sm:space-y-8">
                             <div className="flex items-start gap-4 sm:gap-6">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary shrink-0">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/8 text-white sm:h-14 sm:w-14">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm font-bold uppercase mb-1">Direct Sales Helpline</p>
+                                    <p className="mb-1 text-sm font-bold uppercase text-white/45">Direct Sales Helpline</p>
                                     <div className="space-y-1">
-                                        <p className="text-xl sm:text-2xl font-bold text-white leading-tight break-words">+91 91791 10159</p>
-                                        <p className="text-sm text-gray-400 font-semibold">Alt: +91 87709 74845</p>
+                                        <p className="break-words text-xl font-bold leading-tight text-white sm:text-2xl">+91 91791 10159</p>
+                                        <p className="text-sm font-semibold text-white/50">Alt: +91 87709 74845</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4 sm:gap-6">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary shrink-0">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/8 text-white sm:h-14 sm:w-14">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <rect width="20" height="16" x="2" y="4" rx="2" />
                                         <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm font-bold uppercase mb-1">Official Correspondance</p>
-                                    <p className="text-lg sm:text-2xl font-bold text-white italic underline decoration-brand-primary underline-offset-8 decoration-2 break-all">
+                                    <p className="mb-1 text-sm font-bold uppercase text-white/45">Official Correspondance</p>
+                                    <p className="break-all text-lg font-bold text-white underline decoration-white/25 decoration-2 underline-offset-8 sm:text-2xl">
                                         ashirvadmarketing62@gmail.com
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4 sm:gap-6">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary shrink-0">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/8 text-white sm:h-14 sm:w-14">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                                         <circle cx="12" cy="10" r="3" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm font-bold uppercase mb-1">Registered Address</p>
-                                    <p className="text-base sm:text-lg text-white font-medium opacity-80">
+                                    <p className="mb-1 text-sm font-bold uppercase text-white/45">Registered Address</p>
+                                    <p className="text-base font-medium text-white/75 sm:text-lg">
                                         Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.)
                                     </p>
                                 </div>
@@ -78,49 +78,49 @@ export default function ContactSection() {
                     </ScrollReveal>
 
                     <ScrollReveal>
-                        <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-2xl relative">
+                        <div className="relative rounded-[2rem] bg-[#edf3e6] p-5 shadow-2xl sm:rounded-[2.4rem] sm:p-8">
                             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Your Name</label>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-[#5d6a5f]">Your Name</label>
                                         <input
                                             type="text"
                                             name="name"
                                             suppressHydrationWarning
-                                            className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none text-gray-900"
+                                            className="w-full rounded-2xl border border-[#0b3b1f]/10 bg-white/60 px-5 py-4 text-gray-900 outline-none transition-all focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10"
                                             placeholder="Priya Sharma"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Phone Number</label>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-[#5d6a5f]">Phone Number</label>
                                         <input
                                             type="tel"
                                             name="phone"
                                             suppressHydrationWarning
-                                            className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none text-gray-900"
+                                            className="w-full rounded-2xl border border-[#0b3b1f]/10 bg-white/60 px-5 py-4 text-gray-900 outline-none transition-all focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10"
                                             placeholder="+91 98765 12345"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Category of Interest</label>
-                                    <select name="category" suppressHydrationWarning className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none text-gray-900 appearance-none">
+                                    <label className="mb-2 block text-xs font-bold uppercase text-[#5d6a5f]">Category of Interest</label>
+                                    <select name="category" suppressHydrationWarning className="w-full appearance-none rounded-2xl border border-[#0b3b1f]/10 bg-white/60 px-5 py-4 text-gray-900 outline-none transition-all focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10">
                                         <option>Personal Use</option>
                                         <option>Bulk Inquiry</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Your Message</label>
+                                    <label className="mb-2 block text-xs font-bold uppercase text-[#5d6a5f]">Your Message</label>
                                     <textarea
                                         name="message"
                                         suppressHydrationWarning
-                                        className="w-full px-5 py-4 bg-gray-50 border border-transparent rounded-2xl focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none text-gray-900 min-h-[120px]"
+                                        className="min-h-[120px] w-full rounded-2xl border border-[#0b3b1f]/10 bg-white/60 px-5 py-4 text-gray-900 outline-none transition-all focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/10"
                                         placeholder="I want details for a water pump suitable for irrigation use near Durg."
                                     />
                                 </div>
                                 <button
                                     type="submit"
-                                    className="relative w-full py-5 bg-gradient-to-r from-gray-900 to-black text-white rounded-2xl font-bold hover:from-brand-primary hover:to-brand-secondary transition-all duration-300 shadow-xl active:scale-[0.98] overflow-hidden group/submit"
+                                    className="group/submit relative w-full overflow-hidden rounded-2xl bg-brand-primary py-5 font-bold text-white shadow-xl transition-all duration-300 hover:bg-brand-secondary active:scale-[0.98]"
                                 >
                                     <span className="relative z-10 flex items-center justify-center gap-2">
                                         Send Inquiry

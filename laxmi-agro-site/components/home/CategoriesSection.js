@@ -62,34 +62,39 @@ export default function CategoriesSection({
     const remainingCount = Math.max(categories.length - INITIAL_VISIBLE_COUNT, 0);
 
     return (
-        <section id="categories" className="py-24 px-6 max-w-7xl mx-auto">
-            <ScrollReveal className="text-center mb-16">
-                <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">{section.eyebrow}</h2>
-                <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">{section.title}</h3>
-                <p className="text-text-secondary mt-6 max-w-2xl mx-auto">{section.description}</p>
-                <div className="w-24 h-1.5 bg-brand-primary mx-auto mt-6 rounded-full" />
+        <section id="categories" className="bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+            <div className="mx-auto max-w-7xl">
+            <ScrollReveal className="mb-12 grid grid-cols-1 gap-5 lg:mb-16 lg:grid-cols-[0.8fr_1fr] lg:items-end">
+                <div>
+                    <div className="home-kicker">{section.eyebrow}</div>
+                    <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary md:text-6xl">{section.title}</h3>
+                </div>
+                <p className="max-w-xl text-base leading-7 text-text-secondary lg:justify-self-end">{section.description}</p>
             </ScrollReveal>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5 xl:grid-cols-4">
                 {visibleCategories.map((cat, i) => {
                     return (
                         <ScrollReveal key={i} delay={i * 80}>
                             <Link
                                 href={`/category/${encodeURIComponent(cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '')}`}
-                                className="group flex h-full w-full max-w-[390px] mx-auto flex-col bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
+                                className="group mx-auto flex h-full w-full max-w-[420px] cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]"
                             >
-                                <div className="aspect-square overflow-hidden rounded-3xl bg-neutral-surface p-4 flex items-center justify-center">
+                                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.55rem] bg-[#d6e0c9] p-4">
                                     <img
                                         src={cat.image}
                                         className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
                                         alt={cat.name}
                                     />
                                 </div>
-                                <div className="flex min-h-[120px] flex-1 flex-col items-center justify-center px-4 py-5 lg:min-h-[120px] lg:px-4 lg:py-5">
-                                    <div className="mb-3 h-1 w-10 rounded-full bg-brand-primary/80" />
-                                    <h3 className="min-h-[2.8rem] text-center text-[1.55rem] font-bold text-text-primary leading-tight lg:min-h-[3.2rem] lg:text-[1.45rem]">
+                                <div className="flex min-h-[124px] flex-1 flex-col justify-between px-2 py-5">
+                                    <h3 className="text-[1.45rem] font-semibold leading-tight tracking-[-0.05em] text-text-primary">
                                         {cat.name}
                                     </h3>
+                                    <div className="mt-5 flex items-center justify-between border-t border-[#0b3b1f]/10 pt-4 text-sm font-semibold text-brand-primary">
+                                        <span>{section.buttonText || 'View Products'}</span>
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/60">→</span>
+                                    </div>
                                 </div>
                             </Link>
                         </ScrollReveal>
@@ -101,7 +106,7 @@ export default function CategoriesSection({
                         <button
                             type="button"
                             onClick={() => setExpanded(true)}
-                            className="group flex h-full min-h-[26rem] w-full max-w-[390px] mx-auto flex-col items-center justify-center rounded-3xl border border-brand-primary/15 bg-gradient-to-br from-brand-primary/75 via-brand-primary/65 to-brand-secondary/75 px-8 text-center text-white shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg"
+                            className="group mx-auto flex h-full min-h-[26rem] w-full max-w-[420px] flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-[#062712] px-8 text-center text-white shadow-[0_20px_55px_rgba(8,36,18,0.16)] transition-all duration-300 hover:-translate-y-1"
                         >
                             <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/8">
                                 <svg
@@ -127,6 +132,7 @@ export default function CategoriesSection({
                         </button>
                     </ScrollReveal>
                 )}
+            </div>
             </div>
         </section>
     );

@@ -2,77 +2,77 @@ import ScrollReveal from '@/components/ScrollReveal';
 
 export default function AboutSection() {
     return (
-        <section id="about" className="py-24 px-6 max-w-7xl mx-auto overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <section id="about" className="overflow-hidden bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-20">
                 <ScrollReveal>
-                    <div className="w-12 h-1 bg-brand-primary mb-6" />
-                    <h2 className="text-4xl md:text-5xl font-primary font-bold text-text-primary mb-8 leading-tight">
+                    <div className="home-kicker">Who We Are</div>
+                    <h2 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary sm:text-5xl lg:text-6xl">
                         Comprehensive <br /> Distribution Solutions
                     </h2>
-                    <p className="text-text-secondary text-lg mb-10 leading-relaxed">
+                    <p className="mt-7 max-w-xl text-base leading-8 text-text-secondary sm:text-lg">
                         Laxmi Agro, operated through Ashirvad Marketing, serves retailers, dealers, and bulk buyers with pumps, cables, column pipes, GI pipes, sprinkler systems, and workshop essentials from Raipur.
                     </p>
 
-                    <div className="space-y-6">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-neutral-surface border border-gray-100 hover:border-brand-primary transition-colors">
-                            <div className="w-12 h-12 shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center text-brand-primary font-bold">
+                    <div className="mt-10 space-y-4">
+                        <div className="flex gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b3b1f] text-sm font-bold text-white shadow-sm">
                                 D2B
                             </div>
                             <div>
-                                <h4 className="font-bold text-text-primary">Bulk Wholesaling</h4>
-                                <p className="text-sm text-text-secondary">Competitive supply for retailers, dealers, and resellers across agriculture hardware categories.</p>
+                                <h4 className="font-bold tracking-[-0.02em] text-text-primary">Bulk Wholesaling</h4>
+                                <p className="mt-1 text-sm leading-6 text-text-secondary">Competitive supply for retailers, dealers, and resellers across agriculture hardware categories.</p>
                             </div>
                         </div>
-                        <div className="flex gap-4 p-4 rounded-2xl bg-neutral-surface border border-gray-100 hover:border-brand-primary transition-colors">
-                            <div className="w-12 h-12 shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center text-brand-primary font-bold">
+                        <div className="flex gap-4 rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/70 p-5 shadow-[0_18px_50px_rgba(8,36,18,0.06)] transition-colors hover:border-[#0b3b1f]/25">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b3b1f] text-sm font-bold text-white shadow-sm">
                                 D2C
                             </div>
                             <div>
-                                <h4 className="font-bold text-text-primary">Direct Retail</h4>
-                                <p className="text-sm text-text-secondary">Reliable access to irrigation, cable, piping, and motor-related products for direct buyers.</p>
+                                <h4 className="font-bold tracking-[-0.02em] text-text-primary">Direct Retail</h4>
+                                <p className="mt-1 text-sm leading-6 text-text-secondary">Reliable access to irrigation, cable, piping, and motor-related products for direct buyers.</p>
                             </div>
                         </div>
                     </div>
                 </ScrollReveal>
 
                 <ScrollReveal className="relative">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 sm:min-h-[620px]">
-                        <div className="space-y-4">
-                            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-brand-primary mb-1">Pan India Reach</p>
-                                <p className="text-sm font-semibold text-text-primary">Trusted supply support for Raipur and surrounding regional demand.</p>
+                    <div className="grid min-h-0 grid-cols-1 gap-4 sm:min-h-[620px] sm:grid-cols-2 sm:gap-5">
+                        <div className="space-y-4 sm:pt-12">
+                            <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary">Regional Reach</p>
+                                <p className="text-sm font-semibold leading-6 text-text-primary">Trusted supply support for Raipur and surrounding regional demand.</p>
                             </div>
                             <img
                                 src="/images/about/front.jpeg"
-                                className="rounded-2xl shadow-lg w-full h-auto object-contain object-center"
+                                className="h-auto w-full rounded-[2rem] object-contain object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)]"
                                 alt="Laxmi Agro storefront"
                             />
-                            <div className="bg-brand-primary p-6 rounded-2xl text-white">
-                                <p className="text-3xl font-bold italic mb-1">20 Apr 2026</p>
-                                <p className="text-xs uppercase tracking-tighter opacity-80">Current Rate List Effective Date</p>
+                            <div className="rounded-[1.6rem] bg-brand-primary p-6 text-white">
+                                <p className="mb-1 text-3xl font-semibold tracking-[-0.05em]">20 Apr 2026</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-white/70">Current Rate List Effective Date</p>
                             </div>
-                            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-brand-primary mb-1">Fast Dispatch</p>
-                                <p className="text-sm font-semibold text-text-primary">Advance-payment dispatch support for dealers, retailers, and bulk buyers.</p>
+                            <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary">Fast Dispatch</p>
+                                <p className="text-sm font-semibold leading-6 text-text-primary">Advance-payment dispatch support for dealers, retailers, and bulk buyers.</p>
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <div className="bg-gray-900 p-8 rounded-2xl text-white text-center">
-                                <p className="text-4xl font-bold mb-2">4.9+</p>
-                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Industry Rating</p>
+                            <div className="rounded-[2rem] bg-[#062712] p-8 text-center text-white">
+                                <p className="mb-2 text-5xl font-semibold tracking-[-0.06em]">4.9+</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Industry Rating</p>
                             </div>
                             <img
                                 src="/images/about/godown.png"
-                                className="rounded-2xl shadow-lg w-full h-auto sm:h-[300px] object-contain object-center sm:object-cover"
+                                className="h-auto w-full rounded-[2rem] object-contain object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)] sm:h-[300px] sm:object-cover"
                                 alt="Warehouse"
                             />
-                            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-brand-primary mb-1">Core Team</p>
-                                <p className="text-sm font-semibold text-text-primary">Focused on practical field supply, service coordination, and dependable order handling.</p>
+                            <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-brand-primary">Core Team</p>
+                                <p className="text-sm font-semibold leading-6 text-text-primary">Focused on practical field supply, service coordination, and dependable order handling.</p>
                             </div>
                         </div>
                     </div>
-                    <div className="absolute -z-10 -bottom-10 -right-10 w-48 h-48 bg-brand-light rounded-full blur-3xl" />
+                    <div className="absolute -bottom-10 -right-10 -z-10 h-48 w-48 rounded-full bg-white/30 blur-3xl" />
                 </ScrollReveal>
             </div>
         </section>

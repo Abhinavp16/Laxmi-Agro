@@ -27,42 +27,44 @@ const blogPosts = [
 
 export default function BlogSection() {
     return (
-        <section className="py-24 bg-neutral-surface">
-            <div className="max-w-7xl mx-auto px-6">
-                <ScrollReveal className="text-center mb-16">
-                    <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">
-                        Knowledge Hub
-                    </h2>
-                    <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">
-                        Latest Insights
-                    </h3>
-                    <div className="w-24 h-1.5 bg-brand-primary mx-auto mt-6 rounded-full" />
+        <section className="bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+            <div className="mx-auto max-w-7xl">
+                <ScrollReveal className="mb-12 grid grid-cols-1 gap-6 lg:mb-16 lg:grid-cols-[0.8fr_1fr] lg:items-end">
+                    <div>
+                        <div className="home-kicker">Knowledge Hub</div>
+                        <h3 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.065em] text-text-primary md:text-6xl">
+                            Latest Insights
+                        </h3>
+                    </div>
+                    <p className="max-w-xl text-base leading-7 text-text-secondary lg:justify-self-end">
+                        Explore practical stories, buying guides, and field insights for modern agriculture supply decisions.
+                    </p>
                 </ScrollReveal>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                     {blogPosts.map((post, i) => (
                         <ScrollReveal key={i} delay={i * 120}>
                             <Link href={post.link}>
-                                <article className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 h-full flex flex-col cursor-pointer">
-                                    <div className="h-48 overflow-hidden relative">
-                                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors z-10" />
+                                <article className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]">
+                                    <div className="relative h-56 overflow-hidden rounded-[1.55rem]">
+                                        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#062712]/60 to-transparent transition-colors" />
                                         <img
                                             src={post.image}
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             alt={post.title}
                                         />
                                     </div>
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <span className="px-3 py-1 bg-brand-light text-brand-primary text-[10px] font-bold uppercase rounded-full">
+                                    <div className="flex flex-1 flex-col px-3 py-5">
+                                        <div className="mb-3 flex items-center gap-3">
+                                            <span className="rounded-full border border-[#0b3b1f]/10 bg-white/55 px-3 py-1 text-[10px] font-bold uppercase text-brand-primary">
                                                 {post.category}
                                             </span>
                                             <span className="text-xs text-gray-400">{post.date}</span>
                                         </div>
-                                        <h4 className="text-lg font-bold text-text-primary leading-snug group-hover:text-brand-primary transition-colors mb-auto">
+                                        <h4 className="mb-auto text-xl font-semibold leading-snug tracking-[-0.04em] text-text-primary transition-colors group-hover:text-brand-primary">
                                             {post.title}
                                         </h4>
-                                        <div className="mt-4 flex items-center gap-2 text-sm font-bold text-brand-primary">
+                                        <div className="mt-5 flex items-center gap-2 border-t border-[#0b3b1f]/10 pt-4 text-sm font-bold text-brand-primary">
                                             Read More
                                             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M5 12h14" />
