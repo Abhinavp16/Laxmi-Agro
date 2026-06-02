@@ -265,6 +265,113 @@ h6 {
   will-change: opacity, transform, filter;
 }
 
+.contact-morph {
+  perspective: 900px;
+}
+
+.contact-morph-panel {
+  transform-origin: top right;
+  animation: contactPanelEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, clip-path, transform;
+}
+
+.contact-morph-panel.is-closing {
+  animation: contactPanelExit 0.44s cubic-bezier(0.64, 0, 0.78, 0) both;
+}
+
+@keyframes contactPanelEnter {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 0 276px 206px round 28px);
+    transform: translate3d(0, 0, 0) scale(0.998);
+  }
+
+  52% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 32px);
+    transform: translate3d(0, 0, 0) scale(1.018);
+  }
+
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 32px);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes contactPanelExit {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 32px);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  42% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 32px);
+    transform: translate3d(0, 0, 0) scale(1.012);
+  }
+
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 276px 206px round 28px);
+    transform: translate3d(0, 0, 0) scale(0.998);
+  }
+}
+
+.contact-morph-item {
+  animation: contactItemEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.contact-morph-item:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.premium-orb {
+  animation: premiumOrbFloat 8s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.premium-orb-delay {
+  animation-delay: -2.2s;
+}
+
+.premium-orb-slow {
+  animation-duration: 10s;
+  animation-delay: -4s;
+}
+
+@keyframes premiumOrbFloat {
+  0%,
+  100% {
+    opacity: 0.86;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  34% {
+    opacity: 1;
+    transform: translate3d(-8px, 10px, 0) scale(1.06);
+  }
+
+  68% {
+    opacity: 0.78;
+    transform: translate3d(10px, -6px, 0) scale(0.96);
+  }
+}
+
+@keyframes contactItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -292,6 +399,9 @@ h6 {
 @media (prefers-reduced-motion: reduce) {
   .route-transition,
   .page-transition,
+  .contact-morph-panel,
+  .contact-morph-item,
+  .premium-orb,
   .animate-fade-in-up,
   .animate-slide-in-left,
   .animate-slide-in-right,
@@ -303,5 +413,9 @@ h6 {
 
   .brand-marquee-track {
     animation: none;
+  }
+
+  .contact-morph-panel {
+    transition: none;
   }
 }

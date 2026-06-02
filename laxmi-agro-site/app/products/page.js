@@ -35,6 +35,13 @@ const defaultFeaturedSection = {
 
 const categoryCardFallbackImage = 'https://placehold.co/800x500/e5e7eb/94a3b8?text=Category';
 
+const partnerLogos = [
+    { label: 'Laxmi Agro' },
+    { label: 'Green Valley' },
+    { label: 'Harit' },
+    { label: 'Shivnath' },
+];
+
 function slugifyCategoryName(name = '') {
     return encodeURIComponent(String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '');
 }
@@ -87,18 +94,24 @@ export default async function ProductsPage() {
             />
 
             <section className="px-6 pt-10">
-                <ScrollReveal className="max-w-7xl mx-auto">
-                    <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-6 shadow-sm">
-                        <div className="flex items-center justify-center gap-10 lg:gap-16 flex-wrap">
-                            <img src="/favicon-rounded.svg" alt="Laxmi Agro" className="h-10 md:h-12 object-contain" />
-                            <img src="/images/ecotech.jpeg" alt="Ecotech" className="h-10 md:h-12 object-contain" />
-                            <img src="/images/kargill.jpeg" alt="Kargill" className="h-10 md:h-12 object-contain" />
+                <ScrollReveal className="mx-auto max-w-7xl">
+                    <div className="relative overflow-hidden text-[#122516] [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+                        <div className="brand-marquee-track flex w-max items-center gap-10 sm:gap-14 lg:gap-18">
+                            {[...partnerLogos, ...partnerLogos].map((partner, index) => (
+                                <div key={`${partner.label}-${index}`} className="shrink-0 rounded-full border border-[#17351d]/18 bg-[#edf3e6]/60 px-6 py-3 text-[#17351d]/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+                                    <span className="whitespace-nowrap text-xl font-black tracking-[-0.018em] sm:text-2xl">{partner.label}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
+                    <p className="mt-7 text-center text-xl font-medium tracking-[-0.018em] text-[#17351d] sm:text-2xl">
+                        Our Trusted Brands
+                    </p>
                 </ScrollReveal>
             </section>
 
-            <section className="py-24 px-6 max-w-7xl mx-auto">
+            <section className="px-6 py-24">
+                <div className="mx-auto max-w-7xl">
                 <ScrollReveal className="text-center mb-16">
                     <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">{categoriesSection.eyebrow}</h2>
                     <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">{categoriesSection.title}</h3>
@@ -108,19 +121,27 @@ export default async function ProductsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {productCategories.map((cat, i) => (
                         <ScrollReveal key={i} delay={i * 80}>
-                            <div className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 h-full flex flex-col">
-                                <div className="h-56 overflow-hidden bg-white p-4 flex items-center justify-center">
-                                    <img src={cat.image || categoryCardFallbackImage} className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500" alt={cat.name} />
+                            <div className="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/85 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]">
+                                <div className="relative h-56 overflow-hidden rounded-[1.55rem] bg-[#d6e0c9]">
+                                    <img src={cat.image || categoryCardFallbackImage} className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105" alt={cat.name} />
+                                    <div className="absolute inset-x-3 top-3 flex justify-end">
+                                        <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#17351d] shadow-sm backdrop-blur-sm">
+                                            {Array.isArray(cat.products) ? `${cat.products.length} Items` : 'Category'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="p-6 flex-grow flex flex-col items-center justify-between">
-                                    <h4 className="text-center text-text-primary font-bold text-[1.75rem] leading-tight">{cat.name}</h4>
-                                    <Link href={`/category/${slugifyCategoryName(cat.name)}`} className="mt-8 w-full py-3 bg-brand-primary text-white rounded-2xl text-center text-sm font-bold transition-all duration-300 inline-block cursor-pointer">
-                                        {categoriesSection.buttonText || 'View Products'}
+                                <div className="flex flex-grow flex-col px-3 py-5">
+                                    <h4 className="text-text-primary font-semibold text-[1.55rem] leading-tight tracking-[-0.018em]">{cat.name}</h4>
+                                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-text-secondary">{cat.description}</p>
+                                    <Link href={`/category/${slugifyCategoryName(cat.name)}`} className="mt-auto flex items-center justify-between border-t border-[#0b3b1f]/10 pt-5 text-sm font-semibold text-brand-primary">
+                                        <span>{categoriesSection.buttonText || 'View Products'}</span>
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[#17351d] transition-colors group-hover:bg-[#17351d] group-hover:text-white">→</span>
                                     </Link>
                                 </div>
                             </div>
                         </ScrollReveal>
                     ))}
+                </div>
                 </div>
             </section>
 

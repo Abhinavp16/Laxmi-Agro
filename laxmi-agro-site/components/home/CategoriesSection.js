@@ -80,10 +80,10 @@ export default function CategoriesSection({
                                 href={`/category/${encodeURIComponent(cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '')}`}
                                 className="group mx-auto flex h-full w-full max-w-[420px] cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]"
                             >
-                                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.55rem] bg-[#d6e0c9] p-4">
+                                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.55rem] bg-[#d6e0c9]">
                                     <img
                                         src={cat.image}
-                                        className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
+                                        className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                                         alt={cat.name}
                                     />
                                 </div>

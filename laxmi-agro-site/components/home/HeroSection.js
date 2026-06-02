@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import ContactMorphButton from '@/components/ContactMorphButton';
 
 const referenceHeroImage = '/images/hero-rice-terraces.jpg';
 const defaultHeroImages = [referenceHeroImage, '/images/Banner/1.jpg', '/images/Banner/2.jpg', '/images/Banner/3.jpg', '/images/Banner/4.jpg', '/images/Banner/5.jpg'];
@@ -13,9 +14,7 @@ const navLinks = [
 ];
 
 const partnerLogos = [
-    { label: 'Laxmi Agro', image: '/favicon-rounded.svg' },
-    { label: 'Ecotech', image: '/images/ecotech.jpeg' },
-    { label: 'Kargill', image: '/images/kargill.jpeg' },
+    { label: 'Laxmi Agro' },
     { label: 'Green Valley' },
     { label: 'Harit' },
     { label: 'Shivnath' },
@@ -53,15 +52,7 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                         </div>
 
                         <div className="hidden items-center lg:flex">
-                            <Link href="/contact" className="group flex items-center rounded-full bg-white p-1 pl-6 text-[15px] font-medium text-[#172315] shadow-[0_16px_36px_rgba(0,0,0,0.18)] transition-transform hover:-translate-y-0.5">
-                                Contact Us
-                                <span className="ml-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#17351d]/20 bg-[#f7faf2] text-[#17351d] transition-colors group-hover:bg-[#17351d] group-hover:text-white">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M5 12h14" />
-                                        <path d="M13 6l6 6-6 6" />
-                                    </svg>
-                                </span>
-                            </Link>
+                            <ContactMorphButton />
                         </div>
 
                         <button
@@ -107,24 +98,19 @@ export default function HeroSection({ heroImages: initialHeroImages = defaultHer
                     </div>
                 </div>
 
-                <div className="pt-24 sm:pt-28 lg:pt-32">
-                    <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-[#0f341d]/10 bg-[#ecf2e5]/70 px-5 py-3 text-sm font-medium text-[#18351d] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-                        <img src="/favicon-rounded.svg" alt="" className="h-6 w-6 object-contain" />
-                        Trusted by Agriculture Dealers
+                <div className="pt-20 sm:pt-24 lg:pt-28">
+                    <div className="relative mx-auto max-w-6xl overflow-hidden text-[#122516] [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+                        <div className="brand-marquee-track flex w-max items-center gap-10 sm:gap-14 lg:gap-18">
+                            {[...partnerLogos, ...partnerLogos].map((partner, index) => (
+                                <div key={`${partner.label}-${index}`} className="shrink-0 rounded-full border border-[#17351d]/18 bg-[#edf3e6]/60 px-6 py-3 text-[#17351d]/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+                                    <span className="whitespace-nowrap text-xl font-black tracking-[-0.018em] sm:text-2xl">{partner.label}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-
-                    <div className="mx-auto mt-16 flex max-w-6xl items-center justify-center gap-9 overflow-hidden text-[#122516] sm:gap-12 lg:gap-16">
-                        {partnerLogos.map((partner, index) => (
-                            <div key={`${partner.label}-${index}`} className={`flex shrink-0 items-center gap-2 ${index === 0 || index === partnerLogos.length - 1 ? 'opacity-20' : 'opacity-80'}`}>
-                                {partner.image ? (
-                                    <img src={partner.image} alt={partner.label} className="h-8 w-8 rounded-full object-contain grayscale" />
-                                ) : (
-                                    <span className="h-7 w-7 rounded-full border-2 border-current opacity-70" />
-                                )}
-                                <span className="whitespace-nowrap text-xl font-black tracking-[-0.018em] sm:text-2xl">{partner.label}</span>
-                            </div>
-                        ))}
-                    </div>
+                    <p className="mt-7 text-center text-xl font-medium tracking-[-0.018em] text-[#17351d] sm:text-2xl">
+                        Our Trusted Brands
+                    </p>
                 </div>
             </div>
         </section>

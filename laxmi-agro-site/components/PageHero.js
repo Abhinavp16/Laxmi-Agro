@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import ContactMorphButton from '@/components/ContactMorphButton';
 
 const navLinks = [
     { href: '/', label: 'Home' },
@@ -43,15 +44,7 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
                     </div>
 
                     <div className="hidden items-center lg:flex">
-                        <Link href="/contact" className="group flex items-center rounded-full bg-white p-1 pl-6 text-[15px] font-medium text-[#172315] shadow-[0_16px_36px_rgba(0,0,0,0.18)] transition-transform hover:-translate-y-0.5">
-                            Contact Us
-                            <span className="ml-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#17351d]/20 bg-[#f7faf2] text-[#17351d] transition-colors group-hover:bg-[#17351d] group-hover:text-white">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M5 12h14" />
-                                    <path d="M13 6l6 6-6 6" />
-                                </svg>
-                            </span>
-                        </Link>
+                        <ContactMorphButton />
                     </div>
 
                     <button
