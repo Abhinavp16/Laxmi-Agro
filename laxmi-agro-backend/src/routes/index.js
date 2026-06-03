@@ -26,6 +26,46 @@ const normalizeNumber = (value) => {
   return Number.isFinite(num) ? num : 0;
 };
 
+const normalizeVariantAttributes = (attributes = []) => (
+  Array.isArray(attributes)
+    ? attributes
+        .map((attribute) => ({
+          key: String(attribute?.key || '').trim(),
+          value: String(attribute?.value || '').trim(),
+        }))
+        .filter((attribute) => attribute.key && attribute.value)
+    : []
+);
+
+const normalizeWebsiteVariants = (variants = []) => (
+  Array.isArray(variants)
+    ? variants
+        .map((variant, index) => ({
+          id: String(variant?._id || variant?.id || '').trim(),
+          name: String(variant?.name || '').trim(),
+          displayName: String(variant?.displayName || variant?.name || '').trim(),
+          sku: String(variant?.sku || '').trim(),
+          attributes: normalizeVariantAttributes(variant?.attributes),
+          mrp: normalizeNumber(variant?.mrp),
+          retailPrice: normalizeNumber(variant?.retailPrice),
+          wholesalePrice: normalizeNumber(variant?.wholesalePrice),
+          stock: normalizeNumber(variant?.stock),
+          minOrderQuantity: normalizeNumber(variant?.minOrderQuantity) || 1,
+          priceUnit: String(variant?.priceUnit || '').trim(),
+          packing: String(variant?.packing || '').trim(),
+          isActive: variant?.isActive !== false,
+          order: Number.isFinite(variant?.order) ? variant.order : index,
+        }))
+        .filter((variant) => variant.name || variant.sku)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+    : []
+);
+
+const normalizeHeroImage = (image = '') => {
+  const value = String(image || '').trim();
+  return /\/images\/Banner\/[1-5]\.jpg$/i.test(value) ? '' : value;
+};
+
 const getPrimaryWebsiteProductImage = (product = {}) => {
   const images = Array.isArray(product.images) ? [...product.images] : [];
   images.sort((a, b) => (a?.order || 0) - (b?.order || 0));
@@ -56,6 +96,7 @@ const mapLiveProductToWebsiteProduct = (product, fallback = {}, order = 0) => {
     status: String(product?.status || fallback?.status || '').trim(),
     image,
     images: images.length > 0 ? images : (image ? [image] : []),
+    variants: normalizeWebsiteVariants(product?.variants?.length > 0 ? product.variants : fallback?.variants),
     order,
   };
 };
@@ -81,6 +122,7 @@ const mapStoredWebsiteProduct = (product = {}, order = 0) => {
     status: String(product?.status || '').trim(),
     image,
     images: images.length > 0 ? images : (image ? [image] : []),
+    variants: normalizeWebsiteVariants(product?.variants),
     order,
   };
 };
@@ -327,7 +369,7 @@ router.get('/settings/website-content', async (req, res, next) => {
           _id: { $in: linkedProductIds },
           status: PRODUCT_STATUS.ACTIVE,
         })
-          .select('name slug category shortDescription description sku mrp retailPrice wholesalePrice stock status images')
+          .select('name slug category shortDescription description sku mrp retailPrice wholesalePrice stock status images variants')
           .lean()
       : [];
     const linkedProductsById = new Map(linkedProducts.map((product) => [String(product._id), product]));
@@ -373,6 +415,7 @@ router.get('/settings/website-content', async (req, res, next) => {
       .map((item) => ({
         ...(typeof item?.toObject === 'function' ? item.toObject() : item),
         image: normalizeMediaUrl(item?.image, req),
+        variants: normalizeWebsiteVariants(item?.variants),
       }))
       .filter((item) => item.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -380,7 +423,7 @@ router.get('/settings/website-content', async (req, res, next) => {
     const heroCards = (settings.heroCards || [])
       .map((item) => ({
         ...(typeof item?.toObject === 'function' ? item.toObject() : item),
-        image: normalizeMediaUrl(item?.image, req),
+        image: normalizeMediaUrl(normalizeHeroImage(item?.image), req),
       }))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 

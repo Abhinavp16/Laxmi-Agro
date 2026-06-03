@@ -55,6 +55,37 @@ function extractSpecs(product) {
         .filter(Boolean);
 }
 
+export function normalizeFeaturedVariants(variants = []) {
+    if (!Array.isArray(variants)) return [];
+
+    return variants
+        .map((variant, index) => ({
+            id: String(variant?.id || variant?._id || '').trim(),
+            name: String(variant?.name || '').trim(),
+            displayName: String(variant?.displayName || variant?.name || '').trim(),
+            sku: String(variant?.sku || '').trim(),
+            attributes: Array.isArray(variant?.attributes)
+                ? variant.attributes
+                    .map((attribute) => ({
+                        key: String(attribute?.key || '').trim(),
+                        value: String(attribute?.value || '').trim(),
+                    }))
+                    .filter((attribute) => attribute.key && attribute.value)
+                : [],
+            mrp: Number(variant?.mrp) || 0,
+            retailPrice: Number(variant?.retailPrice) || 0,
+            wholesalePrice: Number(variant?.wholesalePrice) || 0,
+            stock: Number(variant?.stock) || 0,
+            minOrderQuantity: Number(variant?.minOrderQuantity) || 1,
+            priceUnit: String(variant?.priceUnit || '').trim(),
+            packing: String(variant?.packing || '').trim(),
+            isActive: variant?.isActive !== false,
+            order: Number.isFinite(variant?.order) ? variant.order : index,
+        }))
+        .filter((variant) => (variant.name || variant.sku) && variant.isActive)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
 export function slugifyFeaturedProduct(product = {}) {
     const base = typeof product === 'string' ? product : product?.slug || product?.name || '';
     return encodeURIComponent(String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '');
@@ -78,6 +109,7 @@ export function normalizeFeaturedProduct(product, index = 0) {
         shortDescription: String(product?.shortDescription || '').trim(),
         specs,
         slug: String(product?.slug || '').trim(),
+        variants: normalizeFeaturedVariants(product?.variants || []),
     };
 }
 
@@ -101,7 +133,10 @@ export function buildFeaturedProductInquiryProps(product) {
     return {
         productName: product.name,
         price: product.price,
-        details: product.specs.slice(0, 4),
+        details: [
+            ...product.specs.slice(0, 4),
+            ...(product.variants?.length > 0 ? [`${product.variants.length} variants available`] : []),
+        ],
     };
 }
 

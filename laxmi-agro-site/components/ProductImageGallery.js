@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
-export default function ProductImageGallery({ images, name, displayPrice }) {
+export default function ProductImageGallery({ images, name, displayPrice, productKey = name }) {
     const galleryImages = images?.length > 0 ? images.slice(0, 4) : [];
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentDisplayPrice, setCurrentDisplayPrice] = useState(displayPrice);
 
     // Lock scroll when lightbox is open
     useEffect(() => {
@@ -15,6 +16,20 @@ export default function ProductImageGallery({ images, name, displayPrice }) {
             document.body.style.overflow = 'unset';
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        setCurrentDisplayPrice(displayPrice);
+    }, [displayPrice]);
+
+    useEffect(() => {
+        const handleVariantChange = (event) => {
+            if (event.detail?.productKey !== productKey) return;
+            setCurrentDisplayPrice(event.detail?.price || displayPrice);
+        };
+
+        window.addEventListener('product-variant-change', handleVariantChange);
+        return () => window.removeEventListener('product-variant-change', handleVariantChange);
+    }, [displayPrice, productKey]);
 
     const openLightbox = (index) => {
         setCurrentIndex(index);
@@ -48,10 +63,10 @@ export default function ProductImageGallery({ images, name, displayPrice }) {
                             alt={name}
                             className="h-full w-full object-contain"
                         />
-                        {displayPrice && (
+                        {currentDisplayPrice && (
                             <div className="absolute left-5 bottom-5 rounded-2xl bg-white/92 px-4 py-3 shadow-lg backdrop-blur">
                                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-400">Price</p>
-                                <p className="text-xl font-black text-brand-primary">{displayPrice}</p>
+                                <p className="text-xl font-black text-brand-primary">{currentDisplayPrice}</p>
                             </div>
                         )}
                     </div>
@@ -83,10 +98,10 @@ export default function ProductImageGallery({ images, name, displayPrice }) {
                             alt={`${name} - 1`}
                             className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                         />
-                        {displayPrice && galleryImages.length > 0 && (
+                        {currentDisplayPrice && galleryImages.length > 0 && (
                             <div className="absolute left-4 bottom-4 rounded-xl bg-white/92 px-3 py-2 shadow-lg backdrop-blur-sm z-10">
                                 <p className="text-[8px] font-bold uppercase tracking-[0.24em] text-gray-400">Price</p>
-                                <p className="text-base font-black text-brand-primary">{displayPrice}</p>
+                                <p className="text-base font-black text-brand-primary">{currentDisplayPrice}</p>
                             </div>
                         )}
                     </div>

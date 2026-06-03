@@ -77,7 +77,7 @@ export async function getWebsiteContent() {
 
         const json = await response.json();
         const heroImages = Array.isArray(json?.data?.heroCards) && json.data.heroCards.length > 0
-            ? json.data.heroCards.map((card, index) => normalizeWebsiteImageUrl(card?.image || defaultHeroImages[index])).filter(Boolean)
+            ? json.data.heroCards.map((card) => normalizeWebsiteImageUrl(card?.image || ''))
             : defaultHeroImages;
         const featuredProducts = (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0
             ? json.data.featuredProducts.map((product) => ({

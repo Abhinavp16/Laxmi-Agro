@@ -5,9 +5,11 @@ import {
     findCategoryBySlug,
     getCategories,
     getCategoryProducts,
+    getVariantSummary,
     productCardFallbackImage,
     slugifyCategoryName,
     slugifyProductName,
+    formatPrice,
 } from '@/lib/category-products';
 
 export async function generateMetadata({ params }) {
@@ -67,6 +69,7 @@ export default async function CategoryPage({ params }) {
                             product.shortDescription ||
                             product.description ||
                             `Explore ${product.name} with reliable performance for professional agricultural and industrial use.`;
+                        const variantSummary = getVariantSummary(product);
 
                         return (
                             <ScrollReveal key={index} delay={index * 80}>
@@ -86,6 +89,22 @@ export default async function CategoryPage({ params }) {
                                         <p className="mt-2 min-h-[4.5rem] text-sm leading-6 text-gray-500 line-clamp-3">
                                             {cardDescription}
                                         </p>
+
+                                        {variantSummary && (
+                                            <div className="mt-4 rounded-2xl border border-[#17351d]/10 bg-[#f5f8ef] p-3">
+                                                <div className="flex items-center justify-between gap-2 text-xs font-black text-[#17351d]">
+                                                    <span>{variantSummary.count} variants</span>
+                                                    {variantSummary.fromPrice > 0 && <span>From {formatPrice(variantSummary.fromPrice)}</span>}
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {variantSummary.labels.map((label) => (
+                                                        <span key={label} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-[#5d6a5f]">
+                                                            {label}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="mt-auto pt-4">
                                             <Link

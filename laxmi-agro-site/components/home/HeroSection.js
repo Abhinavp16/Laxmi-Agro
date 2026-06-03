@@ -21,17 +21,19 @@ const partnerLogos = [
 
 export default function HeroSection({ heroImages: initialHeroImages = defaultHeroImages }) {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const heroImages = initialHeroImages.filter(Boolean).length > 0 ? initialHeroImages.filter(Boolean) : defaultHeroImages;
-    const heroImage = heroImages[0] || referenceHeroImage;
+    const heroImages = Array.isArray(initialHeroImages) ? initialHeroImages : defaultHeroImages;
+    const heroImage = heroImages[0] || '';
 
     return (
         <section className="relative w-full bg-[#dfe8d3] px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-7 lg:pb-20 lg:pt-7">
             <div className="relative w-full">
-                <div className="relative min-h-[520px] w-full overflow-visible rounded-[2rem] bg-[#102313] sm:min-h-[660px] sm:rounded-[2.4rem] lg:min-h-[690px] lg:rounded-[2.65rem]">
-                    <div
-                        className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
-                        style={{ backgroundImage: `url('${heroImage}')` }}
-                    />
+                <div className="relative min-h-[520px] w-full overflow-visible rounded-[2rem] bg-[linear-gradient(135deg,#17351d_0%,#0f2a16_48%,#dfe8d3_160%)] sm:min-h-[660px] sm:rounded-[2.4rem] lg:min-h-[690px] lg:rounded-[2.65rem]">
+                    {heroImage && (
+                        <div
+                            className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
+                            style={{ backgroundImage: `url('${heroImage}')` }}
+                        />
+                    )}
                     <div className="absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,rgba(2,18,7,0.62)_0%,rgba(4,28,12,0.38)_30%,rgba(3,22,9,0.30)_54%,rgba(2,15,7,0.72)_100%)]" />
                     <div className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_58%,rgba(210,152,72,0.34),transparent_26%),radial-gradient(circle_at_50%_6%,rgba(255,255,255,0.14),transparent_26%)]" />
 

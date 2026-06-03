@@ -12,6 +12,11 @@ const normalizeLabel = (label = {}, order = 0) => ({
   order: Number.isFinite(label?.order) ? label.order : order,
 });
 
+const normalizeHeroImage = (image = '') => {
+  const value = String(image || '').trim();
+  return /\/images\/Banner\/[1-5]\.jpg$/i.test(value) ? '' : value;
+};
+
 exports.getWebsiteSettings = async (req, res, next) => {
   try {
     const settings = await WebsiteSettings.getSettings();
@@ -40,6 +45,14 @@ exports.updateWebsiteSettings = async (req, res, next) => {
 
     if (Array.isArray(settings.labels)) {
       settings.labels = settings.labels.map((label, index) => normalizeLabel(label, index));
+    }
+
+    if (Array.isArray(settings.heroCards)) {
+      settings.heroCards = settings.heroCards.map((card, index) => ({
+        ...(typeof card?.toObject === 'function' ? card.toObject() : card),
+        image: normalizeHeroImage(card?.image),
+        order: Number.isFinite(card?.order) ? card.order : index,
+      }));
     }
 
     if (!Array.isArray(settings.heroCards) || settings.heroCards.length !== 5) {

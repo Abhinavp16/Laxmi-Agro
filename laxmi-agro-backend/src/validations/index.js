@@ -13,7 +13,10 @@ const variantAttributeValidationSchema = Joi.object({
 });
 
 const variantValidationSchema = Joi.object({
+  id: Joi.string().allow('', null),
+  _id: Joi.any(),
   name: Joi.string().required().max(120),
+  displayName: Joi.string().allow('', null),
   sku: Joi.string().required(),
   attributes: Joi.array().items(variantAttributeValidationSchema).default([]),
   mrp: Joi.number().min(0).required(),
@@ -428,6 +431,7 @@ const adminValidation = {
         status: Joi.string().allow('', null),
         image: Joi.string().allow('', null),
         images: Joi.array().items(Joi.string().allow('', null)),
+        variants: Joi.array().items(variantValidationSchema),
         order: Joi.number().integer(),
       })),
       isActive: Joi.boolean(),
@@ -440,6 +444,7 @@ const adminValidation = {
       badge: Joi.string().allow('', null),
       specs: Joi.array().items(Joi.string().allow('', null)),
       shortDescription: Joi.string().allow('', null),
+      variants: Joi.array().items(variantValidationSchema),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
     })),

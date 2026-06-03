@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
-import InquiryPopupButton from '@/components/InquiryPopupButton';
 import ProductImageGallery from '@/components/ProductImageGallery';
+import ProductVariantShowcase from '@/components/products/ProductVariantShowcase';
+import VariantAwareInquiryButton from '@/components/products/VariantAwareInquiryButton';
 import {
     buildFeaturedProductInquiryProps,
     featuredProductFallbackImage,
@@ -43,6 +44,7 @@ export default async function FeaturedProductDetailPage({ params }) {
     }
 
     const inquiryProps = buildFeaturedProductInquiryProps(product);
+    const productKey = product.slug || product.name;
 
     return (
         <div className="page-transition">
@@ -58,6 +60,7 @@ export default async function FeaturedProductDetailPage({ params }) {
                             <ProductImageGallery
                                 images={product.images?.length > 0 ? product.images : [product.image || featuredProductFallbackImage]}
                                 name={product.name}
+                                productKey={productKey}
                             />
                             {product.badge && (
                                 <div className={`absolute left-10 top-10 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm z-20 ${product.badgeStyle || 'border border-orange-100 bg-white text-brand-primary'}`}>
@@ -95,6 +98,11 @@ export default async function FeaturedProductDetailPage({ params }) {
                                 </p>
                             )}
 
+                            <ProductVariantShowcase
+                                product={product}
+                                productKey={productKey}
+                            />
+
                             {/* Always show Key Features if available */}
                             {product.specs.length > 0 && (
                                 <div className="mt-8 rounded-[1.9rem] bg-neutral-surface p-6">
@@ -113,13 +121,15 @@ export default async function FeaturedProductDetailPage({ params }) {
                             )}
 
                             <div className="mt-10">
-                                <InquiryPopupButton
+                                <VariantAwareInquiryButton
+                                    productKey={productKey}
                                     {...inquiryProps}
                                     className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-6 py-4 text-center text-sm font-bold text-white shadow-[0_14px_30px_rgba(249,115,22,0.26)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.34)]"
                                 >
                                     Get Latest Price
-                                </InquiryPopupButton>
+                                </VariantAwareInquiryButton>
                             </div>
+
                         </div>
                     </ScrollReveal>
                 </div>

@@ -17,6 +17,7 @@ const websiteFeaturedProductSchema = new mongoose.Schema({
   badge: String,
   specs: [{ type: String }],
   shortDescription: String,
+  variants: { type: [mongoose.Schema.Types.Mixed], default: [] },
   isActive: { type: Boolean, default: true },
   order: { type: Number, default: 0 },
 }, { _id: false });
@@ -47,13 +48,7 @@ const websiteSectionConfigSchema = new mongoose.Schema({
   buttonText: String,
 }, { _id: false });
 
-const defaultHeroCards = [
-  '/images/Banner/1.jpg',
-  '/images/Banner/2.jpg',
-  '/images/Banner/3.jpg',
-  '/images/Banner/4.jpg',
-  '/images/Banner/5.jpg',
-].map((image, order) => ({ image, order }));
+const defaultHeroCards = Array.from({ length: 5 }, (_, order) => ({ image: '', order }));
 
 const websiteSettingsSchema = new mongoose.Schema({
   _id: {

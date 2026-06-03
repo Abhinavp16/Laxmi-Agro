@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
-import InquiryPopupButton from '@/components/InquiryPopupButton';
 import ProductImageGallery from '@/components/ProductImageGallery';
+import ProductVariantShowcase from '@/components/products/ProductVariantShowcase';
+import VariantAwareInquiryButton from '@/components/products/VariantAwareInquiryButton';
+import VariantAwareSkuChip from '@/components/products/VariantAwareSkuChip';
 import {
     buildProductInquiryDetails,
     findCategoryBySlug,
@@ -49,6 +51,7 @@ export default async function ProductDetailPage({ params }) {
     const displayPrice = formatPrice(product.retailPrice || product.wholesalePrice || product.mrp);
     const highlights = getProductHighlights(product);
     const inquiryDetails = buildProductInquiryDetails(product);
+    const productKey = product.productId || product.slug || product.name;
 
     return (
         <div className="page-transition">
@@ -65,6 +68,7 @@ export default async function ProductDetailPage({ params }) {
                                 images={product.images?.length > 0 ? product.images : [product.image || productCardFallbackImage]}
                                 name={product.name}
                                 displayPrice={displayPrice}
+                                productKey={productKey}
                             />
                             {product.badge && (
                                 <div className={`absolute left-10 top-10 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm z-20 bg-white text-brand-primary border border-orange-100`}>
@@ -93,6 +97,11 @@ export default async function ProductDetailPage({ params }) {
                                 {product.description || product.shortDescription || `Get full details and support for ${product.name}.`}
                             </p>
 
+                            <ProductVariantShowcase
+                                product={product}
+                                productKey={productKey}
+                            />
+
                             {highlights.length > 0 && (
                                 <div className="mt-8 rounded-[2rem] bg-neutral-surface p-6">
                                     <h3 className="text-[11px] font-bold uppercase tracking-[0.24em] text-brand-primary mb-4">
@@ -110,23 +119,19 @@ export default async function ProductDetailPage({ params }) {
                             )}
 
                             <div className="mt-8 flex flex-wrap gap-3 text-sm">
-                                {product.sku && (
-                                    <span className="rounded-full border border-gray-200 bg-white px-4 py-2 font-semibold text-gray-600">
-                                        SKU: {product.sku}
-                                    </span>
-                                )}
+                                <VariantAwareSkuChip productKey={productKey} sku={product.sku} />
                             </div>
 
-
                             <div className="mt-10">
-                                <InquiryPopupButton
+                                <VariantAwareInquiryButton
+                                    productKey={productKey}
                                     productName={product.name}
                                     price={displayPrice}
                                     details={inquiryDetails}
                                     className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-6 py-4 text-center text-sm font-bold text-white shadow-[0_14px_30px_rgba(249,115,22,0.26)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.34)]"
                                 >
                                     Inquire About the Product
-                                </InquiryPopupButton>
+                                </VariantAwareInquiryButton>
                             </div>
                         </div>
                     </ScrollReveal>

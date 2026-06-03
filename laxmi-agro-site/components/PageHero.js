@@ -28,7 +28,7 @@ function getPageHeroIndex(pathname = '') {
 export default function PageHero({ title, subtitle, showBackButton = true, backHref = '/', heroImages: initialHeroImages = defaultPageHeroImages }) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const pathname = usePathname();
-    const [heroImages, setHeroImages] = useState(initialHeroImages.filter(Boolean).length > 0 ? initialHeroImages.filter(Boolean) : defaultPageHeroImages);
+    const [heroImages, setHeroImages] = useState(Array.isArray(initialHeroImages) ? initialHeroImages : defaultPageHeroImages);
     const heroIndex = heroImages.length > 0 ? Math.min(getPageHeroIndex(pathname), heroImages.length - 1) : 0;
     const heroImage = heroImages[heroIndex] || '';
 
@@ -44,7 +44,6 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
                 const uploadedImages = Array.isArray(json?.data?.heroCards)
                     ? json.data.heroCards
                         .map((card) => normalizeWebsiteImageUrl(card?.image))
-                        .filter(Boolean)
                     : [];
 
                 if (!cancelled && uploadedImages.length > 0) {
@@ -64,7 +63,7 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
 
     return (
         <section className="relative w-full bg-[#dfe8d3] px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-7">
-            <div className="relative min-h-[430px] w-full overflow-visible rounded-[2rem] bg-[#102313] sm:min-h-[500px] sm:rounded-[2.4rem] lg:min-h-[560px] lg:rounded-[2.65rem]">
+            <div className="relative min-h-[430px] w-full overflow-visible rounded-[2rem] bg-[linear-gradient(135deg,#17351d_0%,#0f2a16_48%,#dfe8d3_160%)] sm:min-h-[500px] sm:rounded-[2.4rem] lg:min-h-[560px] lg:rounded-[2.65rem]">
                 {heroImage && (
                     <div
                         className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
