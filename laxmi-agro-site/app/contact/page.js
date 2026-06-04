@@ -26,16 +26,16 @@ export default function ContactPage() {
                 breadcrumbItems={['Contact Us']}
             />
 
-            <section className="px-6 py-20 max-w-7xl mx-auto sm:py-24">
-                <ScrollReveal className="text-center mb-12">
-                    <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">Get in Touch</h2>
-                    <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">Contact Details</h3>
+            <section className="px-6 py-10 max-w-7xl mx-auto sm:py-24">
+                <ScrollReveal className="mb-8 text-center sm:mb-12">
+                    <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-brand-primary sm:mb-4 sm:text-sm sm:tracking-[0.3em]">Get in Touch</h2>
+                    <h3 className="text-3xl font-primary font-bold text-text-primary md:text-5xl">Contact Details</h3>
                 </ScrollReveal>
 
-                <div className="mb-16 grid grid-cols-1 gap-5 md:grid-cols-3">
-                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-6 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
+                <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3 sm:mb-16 sm:gap-5">
+                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-5 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
                         <div className="absolute inset-x-0 top-0 h-1 bg-[#d9842f]" />
-                        <div className="mb-7 flex items-start justify-between gap-5">
+                        <div className="mb-5 flex items-start justify-between gap-5 sm:mb-7">
                             <div>
                                 <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-[#6e7f62]">Direct Connect</p>
                                 <h4 className="text-[2rem] font-semibold tracking-[-0.02em] text-[#122316]">Call Us</h4>
@@ -52,9 +52,9 @@ export default function ContactPage() {
                         </div>
                     </div>
 
-                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-6 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
+                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-5 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
                         <div className="absolute inset-x-0 top-0 h-1 bg-[#2f765d]" />
-                        <div className="mb-7 flex items-start justify-between gap-5">
+                        <div className="mb-5 flex items-start justify-between gap-5 sm:mb-7">
                             <div>
                                 <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-[#6e7f62]">Official Desk</p>
                                 <h4 className="text-[2rem] font-semibold tracking-[-0.02em] text-[#122316]">Email Us</h4>
@@ -71,9 +71,9 @@ export default function ContactPage() {
                         </a>
                     </div>
 
-                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-6 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
+                    <div className="group relative overflow-hidden rounded-[2rem] border border-[#17351d]/10 bg-[#f5f8ef] p-5 text-[#17351d] shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)] sm:p-7">
                         <div className="absolute inset-x-0 top-0 h-1 bg-[#4b5f9c]" />
-                        <div className="mb-7 flex items-start justify-between gap-5">
+                        <div className="mb-5 flex items-start justify-between gap-5 sm:mb-7">
                             <div>
                                 <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-[#6e7f62]">Visit Point</p>
                                 <h4 className="text-[2rem] font-semibold tracking-[-0.02em] text-[#122316]">Registered Address</h4>
@@ -91,9 +91,9 @@ export default function ContactPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+                <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-16">
                     <ScrollReveal>
-                        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100">
+                        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-2xl sm:rounded-[3rem] sm:p-10">
                             <h3 className="text-2xl font-bold text-text-primary mb-2">Send us a Message</h3>
                             <p className="text-text-secondary mb-8">Fill out the form and we will continue the conversation on WhatsApp.</p>
                             <form onSubmit={handleSubmit} className="space-y-6">

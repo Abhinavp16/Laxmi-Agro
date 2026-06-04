@@ -96,7 +96,7 @@ export default async function ProductsPage() {
                 breadcrumbItems={['Products']}
             />
 
-            <section className="px-6 pt-10">
+            <section className="px-6 pt-4 sm:pt-10">
                 <ScrollReveal className="mx-auto max-w-7xl">
                     <div className="relative overflow-hidden text-[#122516] [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
                         <div className="brand-marquee-track flex w-max items-center gap-10 sm:gap-14 lg:gap-18">
@@ -107,18 +107,18 @@ export default async function ProductsPage() {
                             ))}
                         </div>
                     </div>
-                    <p className="mt-7 text-center text-xl font-medium tracking-[-0.018em] text-[#17351d] sm:text-2xl">
+                    <p className="mt-4 text-center text-lg font-medium tracking-[-0.018em] text-[#17351d] sm:mt-7 sm:text-2xl">
                         Our Trusted Brands
                     </p>
                 </ScrollReveal>
             </section>
 
-            <section className="px-6 py-24">
+            <section className="px-6 pb-14 pt-6 sm:py-24">
                 <div className="mx-auto max-w-7xl">
-                <ScrollReveal className="text-center mb-16">
-                    <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">{categoriesSection.eyebrow}</h2>
-                    <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">{categoriesSection.title}</h3>
-                    <p className="text-text-secondary mt-6 max-w-2xl mx-auto">{categoriesSection.description}</p>
+                <ScrollReveal className="mb-10 hidden text-center sm:mb-16 sm:block">
+                    <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-brand-primary sm:mb-4 sm:text-sm sm:tracking-[0.3em]">{categoriesSection.eyebrow}</h2>
+                    <h3 className="text-3xl font-primary font-bold leading-tight text-text-primary md:text-5xl">{categoriesSection.title}</h3>
+                    <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-text-secondary sm:mt-6 sm:text-base">{categoriesSection.description}</p>
                 </ScrollReveal>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

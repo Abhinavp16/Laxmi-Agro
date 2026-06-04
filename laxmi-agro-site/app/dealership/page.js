@@ -33,16 +33,16 @@ export default function DealershipPage() {
                 breadcrumbItems={['Dealership']}
             />
 
-            <section className="py-24 px-6 max-w-7xl mx-auto">
-                <ScrollReveal className="text-center mb-16">
-                    <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">Dealer Benefits</h2>
-                    <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">Why Partner With Us?</h3>
+            <section className="px-6 py-10 sm:py-24 max-w-7xl mx-auto">
+                <ScrollReveal className="mb-10 text-center sm:mb-16">
+                    <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-brand-primary sm:mb-4 sm:text-sm sm:tracking-[0.3em]">Dealer Benefits</h2>
+                    <h3 className="text-3xl font-primary font-bold text-text-primary md:text-5xl">Why Partner With Us?</h3>
                 </ScrollReveal>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+                <div className="mb-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-8 sm:mb-20">
                     {dealerBenefits.map((benefit, i) => (
                         <ScrollReveal key={i} delay={i * 100}>
-                            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm h-full">
+                            <div className="h-full rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
                                 <h4 className="text-xl font-bold text-text-primary mb-4">{benefit.title}</h4>
                                 <p className="text-text-secondary leading-relaxed">{benefit.description}</p>
                             </div>
@@ -50,23 +50,23 @@ export default function DealershipPage() {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+                <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-16">
                     <ScrollReveal>
-                        <h2 className="text-4xl md:text-5xl font-primary font-bold text-text-primary mb-8 leading-tight">Apply for Dealership</h2>
-                        <p className="text-text-secondary text-lg leading-relaxed">
+                        <h2 className="mb-5 text-3xl font-primary font-bold leading-tight text-text-primary sm:mb-8 md:text-5xl">Apply for Dealership</h2>
+                        <p className="text-base leading-relaxed text-text-secondary sm:text-lg">
                             Use this form to connect with the Laxmi Agro team for dealership, reseller, and territory discussions. Our team will continue the conversation on WhatsApp from Raipur.
                         </p>
                     </ScrollReveal>
 
                     <ScrollReveal>
-                        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100">
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-2xl sm:rounded-[3rem] sm:p-10">
+                            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                                     <input name="name" type="text" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none text-gray-900" placeholder="Rakesh Gupta" required />
                                     <input name="phone" type="tel" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none text-gray-900" placeholder="+91 98261 45870" required />
                                 </div>
                                 <input name="shopName" type="text" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none text-gray-900" placeholder="Gupta Agro Tools" />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                                     <input name="state" type="text" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none text-gray-900" placeholder="Madhya Pradesh" required />
                                     <input name="city" type="text" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none text-gray-900" placeholder="Indore" required />
                                 </div>

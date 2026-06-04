@@ -62,23 +62,23 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
     }, []);
 
     return (
-        <section className="relative w-full bg-[#dfe8d3] px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-7">
-            <div className="relative min-h-[430px] w-full overflow-visible rounded-[2rem] bg-[linear-gradient(135deg,#17351d_0%,#0f2a16_48%,#dfe8d3_160%)] sm:min-h-[500px] sm:rounded-[2.4rem] lg:min-h-[560px] lg:rounded-[2.65rem]">
+        <section className="relative w-full bg-[#dfe8d3] px-4 pb-4 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-7">
+            <div className="relative min-h-[205px] w-full overflow-visible rounded-[1.55rem] bg-[linear-gradient(135deg,#17351d_0%,#0f2a16_48%,#dfe8d3_160%)] sm:min-h-[500px] sm:rounded-[2.4rem] lg:min-h-[560px] lg:rounded-[2.65rem]">
                 {heroImage && (
                     <div
-                        className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
+                        className="absolute inset-0 hidden rounded-[inherit] bg-cover bg-center md:block"
                         style={{ backgroundImage: `url('${heroImage}')` }}
                     />
                 )}
                 <div className="absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,rgba(2,18,7,0.70)_0%,rgba(4,28,12,0.46)_36%,rgba(2,15,7,0.82)_100%)]" />
                 <div className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_50%_38%,rgba(210,152,72,0.24),transparent_30%),radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.13),transparent_28%)]" />
 
-                <nav className="relative z-20 flex items-center justify-between px-5 py-6 text-white sm:px-8 lg:px-10 lg:py-8">
-                    <Link href="/" className="group flex items-center gap-3">
-                        <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f8f5e9] text-[#123b1f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:h-14 sm:w-14">
-                            <img src="/favicon-rounded.png" alt="Laxmi Agro" className="h-10 w-10 rounded-full object-cover sm:h-11 sm:w-11" />
+                <nav className="relative z-20 flex items-center justify-between px-4 py-4 text-white sm:px-8 sm:py-6 lg:px-10 lg:py-8">
+                    <Link href="/" className="group flex items-center gap-2.5 sm:gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#f8f5e9] text-[#123b1f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:h-14 sm:w-14">
+                            <img src="/favicon-rounded.png" alt="Laxmi Agro" className="h-8 w-8 rounded-full object-cover sm:h-11 sm:w-11" />
                         </span>
-                        <span className="text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">Laxmi Agro</span>
+                        <span className="text-lg font-semibold tracking-[-0.02em] text-white sm:text-2xl">Laxmi Agro</span>
                     </Link>
 
                     <div className="hidden items-center gap-8 text-[15px] font-medium text-white/95 lg:flex">
@@ -96,7 +96,7 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-[#17351d] shadow-[0_16px_36px_rgba(0,0,0,0.18)] lg:hidden"
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-[#17351d] shadow-[0_16px_36px_rgba(0,0,0,0.18)] sm:h-12 sm:w-12 lg:hidden"
                         aria-label="Toggle menu"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -115,12 +115,12 @@ export default function PageHero({ title, subtitle, showBackButton = true, backH
                     </div>
                 )}
 
-                <div className="relative z-10 mx-auto flex min-h-[265px] max-w-5xl flex-col items-center justify-center px-5 pb-16 pt-6 text-center sm:min-h-[330px] sm:px-8 sm:pb-20 lg:min-h-[365px] lg:pb-24">
-                    <h1 className="max-w-[12ch] break-words text-[clamp(3rem,8vw,6rem)] font-medium leading-[0.98] tracking-[-0.028em] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.32)]">
+                <div className="relative z-10 mx-auto flex min-h-[105px] max-w-5xl flex-col items-center justify-center px-5 pb-6 pt-0 text-center sm:min-h-[330px] sm:px-8 sm:pb-20 sm:pt-6 lg:min-h-[365px] lg:pb-24">
+                    <h1 className="max-w-[12ch] break-words text-[clamp(1.9rem,9vw,2.45rem)] font-medium leading-[0.98] tracking-[-0.028em] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.32)] sm:text-[clamp(3rem,8vw,6rem)]">
                         {title}
                     </h1>
                     {subtitle && (
-                        <p className="mt-6 max-w-2xl text-base leading-7 text-white/76 sm:text-lg sm:leading-relaxed md:text-xl">
+                        <p className="mt-3 max-w-[19rem] text-xs leading-5 text-white/76 sm:mt-6 sm:max-w-2xl sm:text-lg sm:leading-relaxed md:text-xl">
                             {subtitle}
                         </p>
                     )}

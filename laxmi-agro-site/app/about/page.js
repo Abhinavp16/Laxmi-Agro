@@ -36,20 +36,20 @@ export default async function AboutPage() {
                 breadcrumbItems={['About Us']}
             />
 
-            <section className="py-24 px-6 max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <section className="px-6 py-10 sm:py-24 max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 items-center">
                     <ScrollReveal>
-                        <div className="w-12 h-1 bg-brand-primary mb-6" />
-                        <h2 className="text-4xl md:text-5xl font-primary font-bold text-text-primary mb-8 leading-tight">
+                        <div className="mb-4 h-1 w-12 bg-brand-primary sm:mb-6" />
+                        <h2 className="mb-5 text-3xl font-primary font-bold leading-tight text-text-primary sm:mb-8 md:text-5xl">
                             Built Around Practical Field Supply
                         </h2>
-                        <p className="text-text-secondary text-lg mb-6 leading-relaxed">
+                        <p className="mb-4 text-base leading-relaxed text-text-secondary sm:mb-6 sm:text-lg">
                             Laxmi Agro operates through Ashirvad Marketing to serve retailers, dealers, and end buyers with a practical catalogue of agriculture and equipment products.
                         </p>
-                        <p className="text-text-secondary text-lg mb-6 leading-relaxed">
+                        <p className="mb-4 text-base leading-relaxed text-text-secondary sm:mb-6 sm:text-lg">
                             The current catalogue includes service wire, submersible cable, PVC column pipes, GI pipes, sprinkler sets, jhatka machines, control panels, pump sets, and related supply items.
                         </p>
-                        <div className="mt-10 p-6 bg-neutral-surface rounded-2xl border border-gray-100">
+                        <div className="mt-6 rounded-2xl border border-gray-100 bg-neutral-surface p-5 sm:mt-10 sm:p-6">
                             <h3 className="text-xl font-bold text-text-primary mb-4">Business Snapshot</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                 <p className="text-text-secondary"><span className="font-semibold text-text-primary">Brand:</span> Laxmi Agro</p>
@@ -80,17 +80,17 @@ export default async function AboutPage() {
                 </div>
             </section>
 
-            <section className="py-24 bg-neutral-surface">
+            <section className="bg-neutral-surface py-12 sm:py-24">
                 <div className="max-w-7xl mx-auto px-6">
-                    <ScrollReveal className="text-center mb-16">
-                        <h2 className="text-sm font-bold text-brand-primary uppercase tracking-[0.3em] mb-4">What Drives Us</h2>
-                        <h3 className="text-4xl md:text-5xl font-primary font-bold text-text-primary">Platform Principles</h3>
+                    <ScrollReveal className="mb-10 text-center sm:mb-16">
+                        <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-brand-primary sm:mb-4 sm:text-sm sm:tracking-[0.3em]">What Drives Us</h2>
+                        <h3 className="text-3xl font-primary font-bold text-text-primary md:text-5xl">Platform Principles</h3>
                     </ScrollReveal>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
                         {values.map((value, i) => (
                             <ScrollReveal key={i} delay={i * 100}>
-                                <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all h-full">
+                                <div className="h-full rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl sm:p-8">
                                     <h4 className="text-xl font-bold text-text-primary mb-4">{value.title}</h4>
                                     <p className="text-text-secondary leading-relaxed">{value.description}</p>
                                 </div>
