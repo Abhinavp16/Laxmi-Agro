@@ -1816,8 +1816,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 final colors = [
                   const Color(0xFF3B82F6),
                   const Color(0xFF10B981),
-                  const Color(0xFF8B5CF6),
                   const Color(0xFFF59E0B),
+                  const Color(0xFF8B5CF6),
                 ];
                 final icons = [
                   Icons.water_drop_rounded,
@@ -1852,232 +1852,269 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     String? rule,
   }) {
     final t = ref.read(localeProvider.notifier).translate;
-    const double cardW = 145;
-    const double cardH = 205;
-    const double dashedH = 10;
-    const double topH = cardH * 0.65 - dashedH / 2;
-    const double botH = cardH * 0.35 - dashedH / 2;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 700;
+    final double cardW = isTablet ? 250 : 218;
+    final double cardH = isTablet ? 132 : 122;
+    final double barcodeW = isTablet ? 44 : 38;
+    const double seamW = 7;
+    final code = (couponCode?.trim().isNotEmpty ?? false)
+        ? couponCode!.trim()
+        : title.replaceAll(' ', '').toUpperCase();
+    final discountText = discount.trim().isNotEmpty ? discount.trim() : title;
+    final showOff = !discountText.toLowerCase().contains('free');
 
     // Derive a slightly lighter shade for gradient
-    final Color colorLight = Color.lerp(Colors.white, color, 0.6) ?? color;
+    final Color colorLight = Color.lerp(Colors.white, color, 0.18) ?? color;
+    final Color colorDark = Color.lerp(Colors.black, color, 0.78) ?? color;
 
     return Container(
       width: cardW,
       height: cardH,
-      margin: const EdgeInsets.only(right: 16),
+      margin: const EdgeInsets.only(right: 22),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           // Drop shadow
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.45),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withOpacity(0.16),
+                    blurRadius: 16,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
             ),
           ),
-          // Clipped ticket shape
-          ClipPath(
-            clipper: const _TicketClipper(),
-            child: SizedBox(
-              width: cardW,
-              height: cardH,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: barcodeW + seamW,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
+              ),
+              child: Stack(
                 children: [
-                  // TOP: gradient + starburst
-                  SizedBox(
-                    width: cardW,
-                    height: topH,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [colorLight, color],
-                        ),
-                      ),
-                      child: Stack(
-                        children: [
-                          // Starburst rays
-                          Positioned.fill(
-                            child: CustomPaint(painter: _StarburstPainter()),
-                          ),
-                          // Faint background icon
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Opacity(
-                              opacity: 0.18,
-                              child: Icon(icon, size: 60, color: Colors.white),
-                            ),
-                          ),
-                          // Title + big discount
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  title.toUpperCase(),
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white.withOpacity(0.92),
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.8,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (discount.contains('₹'))
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 5,
-                                              right: 2,
-                                            ),
-                                            child: Text(
-                                              '₹',
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    color: Colors.white,
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w900,
-                                                    height: 1.0,
-                                                  ),
-                                            ),
-                                          ),
-                                        Text(
-                                          discount
-                                              .replaceAll('%', '')
-                                              .replaceAll('₹', ''),
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                            fontSize: 54,
-                                            fontWeight: FontWeight.w900,
-                                            height: 0.88,
-                                            letterSpacing: -2,
-                                          ),
-                                        ),
-                                        if (discount.contains('%'))
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 5,
-                                            ),
-                                            child: Text(
-                                              '%',
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    color: Colors.white,
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w900,
-                                                    height: 1.0,
-                                                  ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  t('OFF'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  Center(
+                    child: SizedBox(
+                      width: isTablet ? 22 : 19,
+                      height: isTablet ? 96 : 86,
+                      child: const CustomPaint(painter: _BarcodePainter()),
                     ),
                   ),
-                  // DASHED SEPARATOR
-                  SizedBox(
-                    width: cardW,
-                    height: dashedH,
-                    child: const ColoredBox(
-                      color: Colors.white,
-                      child: CustomPaint(painter: _DashedLinePainter()),
-                    ),
-                  ),
-                  // BOTTOM: white + redeem button
-                  SizedBox(
-                    width: cardW,
-                    height: botH,
-                    child: ColoredBox(
-                      color: Colors.white,
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 36,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.06),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: GestureDetector(
-                                onTap: () => _redeemOffer(
-                                  code: (couponCode?.trim().isNotEmpty ?? false)
-                                      ? couponCode!.trim()
-                                      : title.replaceAll(' ', '').toUpperCase(),
-                                  title: title,
-                                  rule:
-                                      rule ??
-                                      'Apply during checkout to unlock this offer',
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    t('REDEEM'),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: color,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 2.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                  const Positioned(
+                    right: 1,
+                    top: 12,
+                    bottom: 12,
+                    child: SizedBox(
+                      width: 5,
+                      child: CustomPaint(painter: _VerticalDashedLinePainter()),
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: barcodeW + seamW,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(8),
+              ),
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  isTablet ? 18 : 15,
+                  isTablet ? 13 : 11,
+                  isTablet ? 18 : 14,
+                  isTablet ? 12 : 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colorLight, color, colorDark],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: -28,
+                      right: -30,
+                      child: Container(
+                        width: isTablet ? 78 : 68,
+                        height: isTablet ? 78 : 68,
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.32),
+                              Colors.white.withOpacity(0.0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: isTablet ? 21 : 18,
+                      right: isTablet ? 10 : 7,
+                      child: Opacity(
+                        opacity: 0.09,
+                        child: Icon(
+                          icon,
+                          size: isTablet ? 52 : 44,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          title.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: isTablet ? 9.2 : 8.4,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  discountText.toUpperCase(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: showOff
+                                        ? (isTablet ? 37 : 32)
+                                        : (isTablet ? 32 : 28),
+                                    fontWeight: FontWeight.w900,
+                                    height: 0.9,
+                                    letterSpacing: -1.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (showOff) ...[
+                              const SizedBox(width: 4),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: Text(
+                                  t('OFF'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: isTablet ? 15 : 13,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          rule ?? t('Apply during checkout'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white.withOpacity(0.92),
+                            fontSize: isTablet ? 9 : 8,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${t('Code')}: $code',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 9.8 : 8.7,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.copy_rounded,
+                              color: Colors.white.withOpacity(0.92),
+                              size: isTablet ? 12 : 10,
+                            ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () => _redeemOffer(
+                            code: code,
+                            title: title,
+                            rule:
+                                rule ??
+                                'Apply during checkout to unlock this offer',
+                          ),
+                          child: Container(
+                            height: isTablet ? 30 : 27,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              t('APPLY COUPON'),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: colorDark,
+                                fontSize: isTablet ? 9.5 : 8.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: barcodeW + seamW - 10,
+            top: cardH / 2 - 10,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                color: backgroundWhite,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            right: -10,
+            top: cardH / 2 - 10,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                color: backgroundWhite,
+                shape: BoxShape.circle,
               ),
             ),
           ),
@@ -2247,6 +2284,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildCategorySection() {
     final t = ref.read(localeProvider.notifier).translate;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 700;
+    final categoryCardWidth = isTablet ? 132.0 : 108.0;
+    final categoryListHeight = isTablet ? 188.0 : 164.0;
+    final categoryCardGap = isTablet ? 14.0 : 12.0;
 
     // Use dynamic data if available, otherwise show empty state
     final categories = _categoryData.isNotEmpty ? _categoryData : [];
@@ -2344,7 +2386,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             _buildCategorySkeleton()
           else
             SizedBox(
-              height: 164,
+              height: categoryListHeight,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
@@ -2360,8 +2402,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         });
                       },
                       child: Container(
-                        width: 108,
-                        margin: const EdgeInsets.only(right: 12),
+                        width: categoryCardWidth,
+                        margin: EdgeInsets.only(right: categoryCardGap),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -4400,6 +4442,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final t = ref.read(localeProvider.notifier).translate;
     final user = ref.watch(authProvider).user;
     final isGuest = user == null;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 700;
+    final profileMaxWidth = isTablet ? 760.0 : double.infinity;
+    final profileHeaderHeight = isTablet ? 340.0 : 370.0;
+    final profileAvatarSize = isTablet ? 108.0 : 100.0;
+    final quickStatSize = isTablet ? 128.0 : 100.0;
 
     final profileItems = [
       {
@@ -4475,7 +4523,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             children: [
               // Gradient Background with decorative shapes
               Container(
-                height: 370,
+                height: profileHeaderHeight,
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -4524,212 +4572,223 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.only(top: 40, bottom: 40),
-                child: Column(
-                  children: [
-                    // Back Button & Settings Icon Row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              if (_selectedNavIndex != 0) {
-                                setState(() => _selectedNavIndex = 0);
-                              }
-                            },
-                            icon: const Icon(
-                              HugeIcons.strokeRoundedArrowLeft01,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          Text(
-                            t('Profile'),
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => context.push(
-                              isGuest ? '/login' : '/edit-profile',
-                            ),
-                            icon: const Icon(
-                              HugeIcons.strokeRoundedSettings01,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Animated Avatar
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white24,
-                            ),
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child:
-                                  user?.avatar != null &&
-                                      user!.avatar!.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: user.avatar!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) =>
-                                          const Center(
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          ),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(
-                                            HugeIcons.strokeRoundedUser,
-                                            size: 40,
-                                            color: Color(0xFF6366F1),
-                                          ),
-                                    )
-                                  : const Icon(
-                                      HugeIcons.strokeRoundedUser,
-                                      size: 40,
-                                      color: Color(0xFF6366F1),
-                                    ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // User Name
-                    Text(
-                      user?.name ?? 'Guest User',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // User Email/Phone/Address
-                    Column(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: profileMaxWidth),
+                    child: Column(
                       children: [
-                        if (user != null && user.phone != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  HugeIcons.strokeRoundedCall02,
-                                  size: 14,
-                                  color: Colors.white.withOpacity(0.8),
+                        // Back Button & Settings Icon Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                onPressed: () {
+                                  if (_selectedNavIndex != 0) {
+                                    setState(() => _selectedNavIndex = 0);
+                                  }
+                                },
+                                icon: const Icon(
+                                  HugeIcons.strokeRoundedArrowLeft01,
+                                  color: Colors.white,
+                                  size: 24,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  user.phone!,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
-                                    color: Colors.white.withOpacity(0.95),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                              Text(
+                                t('Profile'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                              ],
-                            ),
+                              ),
+                              IconButton(
+                                onPressed: () => context.push(
+                                  isGuest ? '/login' : '/edit-profile',
+                                ),
+                                icon: const Icon(
+                                  HugeIcons.strokeRoundedSettings01,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ],
                           ),
-                        if (user != null &&
-                            user.address != null &&
-                            user.address!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  HugeIcons.strokeRoundedLocation01,
-                                  size: 14,
-                                  color: Colors.white.withOpacity(0.8),
+                        ),
+                        const SizedBox(height: 15),
+
+                        // Animated Avatar
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Transform.scale(
+                              scale: value,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white24,
                                 ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    user.address!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontWeight: FontWeight.w500,
+                                child: Container(
+                                  width: profileAvatarSize,
+                                  height: profileAvatarSize,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child:
+                                      user?.avatar != null &&
+                                          user!.avatar!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: user.avatar!,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(
+                                                HugeIcons.strokeRoundedUser,
+                                                size: 40,
+                                                color: Color(0xFF6366F1),
+                                              ),
+                                        )
+                                      : const Icon(
+                                          HugeIcons.strokeRoundedUser,
+                                          size: 40,
+                                          color: Color(0xFF6366F1),
+                                        ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // User Name
+                        Text(
+                          user?.name ?? 'Guest User',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // User Email/Phone/Address
+                        Column(
+                          children: [
+                            if (user != null && user.phone != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedCall02,
+                                      size: 14,
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      user.phone!,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        color: Colors.white.withOpacity(0.95),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (user != null &&
+                                user.address != null &&
+                                user.address!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedLocation01,
+                                      size: 14,
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        user.address!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (isGuest ||
+                                (user.phone == null && user.address == null))
+                              Text(
+                                user?.email ?? 'Sign in to sync data',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            if (isGuest) ...[
+                              const SizedBox(height: 14),
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  isTablet ? 0 : 24,
+                                  0,
+                                  isTablet ? 0 : 24,
+                                  24,
+                                ),
+                                child: SizedBox(
+                                  width: isTablet ? 420 : double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: () => context.push('/login'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: BorderSide(
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Login',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        if (isGuest ||
-                            (user.phone == null && user.address == null))
-                          Text(
-                            user?.email ?? 'Sign in to sync data',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        if (isGuest) ...[
-                          const SizedBox(height: 14),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: () => context.push('/login'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: BorderSide(
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                child: Text(
-                                  'Login',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                            ],
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -4750,136 +4809,154 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ),
                 );
               },
-              child: Column(
-                children: [
-                  // Fast Actions / Stats row
-                  // Fast Actions / Stats row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildQuickStat(
-                          HugeIcons.strokeRoundedPackage,
-                          t('My Orders'),
-                          orderCount.toString(),
-                          color: const Color(0xFF6366F1), // Premium Indigo
-                          onTap: () => context.push('/previous-orders'),
-                        ),
-                        _buildQuickStat(
-                          HugeIcons.strokeRoundedFavourite,
-                          t('Wishlist'),
-                          wishlistCount.toString(),
-                          color: const Color(0xFFF43F5E), // Vibrant Rose
-                          onTap: () => context.push('/wishlist'),
-                        ),
-                        _buildQuickStat(
-                          HugeIcons.strokeRoundedUserEdit01,
-                          t('Edit Profile'),
-                          '0',
-                          color: const Color(0xFFF59E0B), // Amber
-                          onTap: () => context.push(
-                            isGuest ? '/login' : '/edit-profile',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Settings List Card
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: surfaceWhite,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: borderLight.withOpacity(0.7)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: List.generate(profileItems.length, (index) {
-                          final item = profileItems[index];
-                          final isHeader = item['type'] == 'header';
-                          if (isHeader) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  item['title'] as String,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: textMuted,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: profileMaxWidth),
+                  child: Column(
+                    children: [
+                      // Fast Actions / Stats row
+                      // Fast Actions / Stats row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildQuickStat(
+                              HugeIcons.strokeRoundedPackage,
+                              t('My Orders'),
+                              orderCount.toString(),
+                              size: quickStatSize,
+                              color: const Color(0xFF6366F1), // Premium Indigo
+                              onTap: () => context.push('/previous-orders'),
+                            ),
+                            _buildQuickStat(
+                              HugeIcons.strokeRoundedFavourite,
+                              t('Wishlist'),
+                              wishlistCount.toString(),
+                              size: quickStatSize,
+                              color: const Color(0xFFF43F5E), // Vibrant Rose
+                              onTap: () => context.push('/wishlist'),
+                            ),
+                            _buildQuickStat(
+                              HugeIcons.strokeRoundedUserEdit01,
+                              t('Edit Profile'),
+                              '0',
+                              size: quickStatSize,
+                              color: const Color(0xFFF59E0B), // Amber
+                              onTap: () => context.push(
+                                isGuest ? '/login' : '/edit-profile',
                               ),
-                            );
-                          }
-
-                          final nextIsHeader =
-                              index < profileItems.length - 1 &&
-                              profileItems[index + 1]['type'] == 'header';
-                          final showDivider =
-                              index < profileItems.length - 1 && !nextIsHeader;
-
-                          return _buildSettingItem(
-                            icon: item['icon'] as IconData,
-                            iconColor: item['color'] as Color,
-                            title: item['title'] as String,
-                            subtitle: item['subtitle'] as String?,
-                            showDivider: showDivider,
-                            onTap: item['onTap'] as VoidCallback,
-                          );
-                        }),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+
+                      // Settings List Card
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: surfaceWhite,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: borderLight.withOpacity(0.7),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: List.generate(profileItems.length, (
+                              index,
+                            ) {
+                              final item = profileItems[index];
+                              final isHeader = item['type'] == 'header';
+                              if (isHeader) {
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    16,
+                                    16,
+                                    8,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      item['title'] as String,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: textMuted,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final nextIsHeader =
+                                  index < profileItems.length - 1 &&
+                                  profileItems[index + 1]['type'] == 'header';
+                              final showDivider =
+                                  index < profileItems.length - 1 &&
+                                  !nextIsHeader;
+
+                              return _buildSettingItem(
+                                icon: item['icon'] as IconData,
+                                iconColor: item['color'] as Color,
+                                title: item['title'] as String,
+                                subtitle: item['subtitle'] as String?,
+                                showDivider: showDivider,
+                                onTap: item['onTap'] as VoidCallback,
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+
+                      // Danger Zone / Logout
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 120),
+                        child: TextButton.icon(
+                          onPressed: () async {
+                            await ref.read(authProvider.notifier).logout();
+                            if (mounted) {
+                              context.go('/login');
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            foregroundColor: Colors.red.shade600,
+                            backgroundColor: Colors.red.shade50,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          icon: HugeIcon(
+                            icon: HugeIcons.strokeRoundedLogout02,
+                            color: Colors.red.shade600,
+                            size: 20,
+                          ),
+                          label: Text(
+                            t('Log Out'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // Danger Zone / Logout
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 32, 16, 120),
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        await ref.read(authProvider.notifier).logout();
-                        if (mounted) {
-                          context.go('/login');
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        foregroundColor: Colors.red.shade600,
-                        backgroundColor: Colors.red.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      icon: HugeIcon(
-                        icon: HugeIcons.strokeRoundedLogout02,
-                        color: Colors.red.shade600,
-                        size: 20,
-                      ),
-                      label: Text(
-                        t('Log Out'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -4892,14 +4969,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     IconData icon,
     String label,
     String value, {
+    double size = 100,
     required Color color,
     VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 100,
-        height: 100,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -5314,6 +5392,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildCarousel() {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 700;
+    final bannerHeight = isTablet ? 280.0 : 220.0;
+
     if (_isLoadingHeroBanners) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -5321,7 +5403,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Container(
-            height: 220,
+            height: bannerHeight,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(30),
@@ -5337,7 +5419,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return Column(
       children: [
         SizedBox(
-          height: 220,
+          height: bannerHeight,
           child: PageView.builder(
             controller: _carouselController,
             itemCount: _heroBanners.length,
@@ -5820,6 +5902,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         : _products.where((p) => p['isHot'] == true).toList();
     final t = ref.read(localeProvider.notifier).translate;
     final currentLang = ref.read(localeProvider);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 700;
+    final productGridColumns = isTablet ? (screenWidth >= 1000 ? 4 : 3) : 2;
+    final productGridSpacing = isTablet ? 16.0 : 12.0;
+    final productGridHorizontalPadding = isTablet ? 20.0 : 16.0;
+    final productGridAspectRatio = isTablet ? 0.72 : 0.52;
 
     // Section colors based on requirement
     final Color gradientBase = isFeatured
@@ -5927,18 +6015,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           const SizedBox(height: 20),
           // Products Grid - 2 columns
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: productGridHorizontalPadding,
+            ),
             child: _isLoadingProducts
                 ? GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.52,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: productGridColumns,
+                      crossAxisSpacing: productGridSpacing,
+                      mainAxisSpacing: productGridSpacing,
+                      childAspectRatio: productGridAspectRatio,
+                    ),
                     itemCount: 4,
                     itemBuilder: (context, index) => Container(
                       decoration: BoxDecoration(
@@ -5972,13 +6061,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.52,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: productGridColumns,
+                      crossAxisSpacing: productGridSpacing,
+                      mainAxisSpacing: productGridSpacing,
+                      childAspectRatio: productGridAspectRatio,
+                    ),
                     itemCount: filteredProducts.length > 6
                         ? 6
                         : filteredProducts.length,
@@ -8420,57 +8508,75 @@ class _PartnershipMarqueeState extends State<_PartnershipMarquee> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      controller: _scrollController,
-      scrollDirection: Axis.horizontal,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: widget.items.length,
-      itemBuilder: (_, i) {
-        final item = widget.items[i];
-        final imagePath = item['image'] as String?;
-        final icon = item['icon'] as IconData?;
-        final label = (item['label'] ?? '') as String;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 700;
+        final pills = widget.items.map(_buildPill).toList();
 
-        return Container(
-          margin: const EdgeInsets.only(right: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (imagePath != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: Image.asset(
-                    imagePath,
-                    width: 20,
-                    height: 20,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Icon(Icons.handshake_outlined, size: 16, color: _blue),
-                  ),
-                )
-              else if (icon != null)
-                Icon(icon, size: 16, color: _blue)
-              else
-                Icon(Icons.handshake_outlined, size: 16, color: _blue),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: _txtSec,
-                ),
-              ),
-            ],
-          ),
+        if (isTablet) {
+          _isAutoScrolling = false;
+          return Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(mainAxisSize: MainAxisSize.min, children: pills),
+            ),
+          );
+        }
+
+        return ListView(
+          controller: _scrollController,
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          children: pills,
         );
       },
+    );
+  }
+
+  Widget _buildPill(Map<String, dynamic> item) {
+    final imagePath = item['image'] as String?;
+    final icon = item['icon'] as IconData?;
+    final label = (item['label'] ?? '') as String;
+
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (imagePath != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Image.asset(
+                imagePath,
+                width: 20,
+                height: 20,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Icon(Icons.handshake_outlined, size: 16, color: _blue),
+              ),
+            )
+          else if (icon != null)
+            Icon(icon, size: 16, color: _blue)
+          else
+            Icon(Icons.handshake_outlined, size: 16, color: _blue),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _txtSec,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -8480,9 +8586,9 @@ class _TicketClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    const double r = 20.0; // corner radius
-    const double cr = 13.0; // cutout radius
-    final double cy = size.height * 0.65; // cutout Y position
+    const double r = 10.0; // corner radius
+    const double cr = 11.0; // cutout radius
+    final double cy = size.height / 2; // cutout Y position
 
     final path = Path()
       ..moveTo(r, 0)
@@ -8546,6 +8652,91 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
+}
+
+class _VerticalDashedLinePainter extends CustomPainter {
+  const _VerticalDashedLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..style = PaintingStyle.fill;
+
+    const double dashH = 5.0;
+    const double gap = 4.0;
+    const double dashW = 1.4;
+    double y = 8.0;
+    final double cx = size.width / 2;
+
+    while (y < size.height - 8) {
+      canvas.drawRRect(
+        RRect.fromLTRBR(
+          cx - dashW / 2,
+          y,
+          cx + dashW / 2,
+          y + dashH,
+          const Radius.circular(2),
+        ),
+        paint,
+      );
+      y += dashH + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VerticalDashedLinePainter oldDelegate) => false;
+}
+
+class _BarcodePainter extends CustomPainter {
+  const _BarcodePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    const bars = [
+      1.0,
+      1.8,
+      0.9,
+      2.3,
+      1.2,
+      2.0,
+      1.0,
+      1.6,
+      2.4,
+      0.9,
+      1.7,
+      1.1,
+      2.1,
+      1.0,
+      1.5,
+      2.2,
+      0.9,
+      1.8,
+      1.0,
+      1.4,
+      2.3,
+      1.1,
+      1.7,
+      0.9,
+    ];
+    double y = 0;
+    final left = size.width * 0.06;
+    final right = size.width * 0.94;
+
+    for (var i = 0; i < bars.length; i += 1) {
+      final height = bars[i];
+      paint.color = i.isEven
+          ? const Color(0xFF334155)
+          : const Color(0xFF94A3B8);
+      canvas.drawRect(Rect.fromLTRB(left, y, right, y + height), paint);
+      y += height + 1.35;
+      if (y > size.height) break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BarcodePainter oldDelegate) => false;
 }
 
 class _StarburstPainter extends CustomPainter {

@@ -2,9 +2,9 @@
 /// Change these values based on your environment
 library;
 
-import 'package:flutter/foundation.dart';
-
 class ApiConfig {
+  static const String hostedUrl = 'https://laxmi-agro.vercel.app/api/v1';
+
   // Override at build/run time:
   // flutter run --dart-define=API_BASE_URL=http://192.168.1.8:5000/api/v1
   // or
@@ -27,15 +27,7 @@ class ApiConfig {
       return 'http://$_localIp:5000/api/v1';
     }
 
-    if (kIsWeb) {
-      return localhostUrl;
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return androidUsbDebugUrl;
-    }
-
-    return localhostUrl;
+    return hostedUrl;
   }
 
   static String get publicBaseUrl => baseUrl.replaceFirst('/api/v1', '');
@@ -54,8 +46,7 @@ class ApiConfig {
       return trimmed;
     }
 
-    final isLoopbackHost =
-        uri.host == 'localhost' || uri.host == '127.0.0.1';
+    final isLoopbackHost = uri.host == 'localhost' || uri.host == '127.0.0.1';
     final apiUsesLoopback =
         apiUri.host == 'localhost' || apiUri.host == '127.0.0.1';
 

@@ -70,7 +70,9 @@ class _FeaturedProductsScreenState
           if (widget.brandName != null) {
             final brand = (item['brand'] ?? item['brandName'] ?? '').toString();
             final name = (item['name'] ?? '').toString();
-            debugPrint('Filtering by brand: ${widget.brandName} | Item brand: $brand | Item name: $name');
+            debugPrint(
+              'Filtering by brand: ${widget.brandName} | Item brand: $brand | Item name: $name',
+            );
             return brand.toLowerCase() == widget.brandName!.toLowerCase();
           }
           if (widget.isHotDeals) {
@@ -194,26 +196,32 @@ class _FeaturedProductsScreenState
                   const SizedBox(height: 16),
                   Text(
                     t('No products available'),
-                    style: GoogleFonts.outfit(
-                      color: textMuted,
-                      fontSize: 16,
-                    ),
+                    style: GoogleFonts.outfit(color: textMuted, fontSize: 16),
                   ),
                 ],
               ),
             )
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.52,
-              ),
-              itemCount: _products.length,
-              itemBuilder: (context, index) {
-                final product = _products[index];
-                return _buildProductCard(product, t);
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth >= 700;
+                final gridColumns = isTablet
+                    ? (constraints.maxWidth >= 1000 ? 4 : 3)
+                    : 2;
+
+                return GridView.builder(
+                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: gridColumns,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: isTablet ? 0.72 : 0.52,
+                  ),
+                  itemCount: _products.length,
+                  itemBuilder: (context, index) {
+                    final product = _products[index];
+                    return _buildProductCard(product, t);
+                  },
+                );
               },
             ),
     );
@@ -358,10 +366,15 @@ class _FeaturedProductsScreenState
                     SizedBox(
                       height: 52,
                       child: Text(
-                        (product['name'] ?? '').toString().split(' ').map((word) {
-                          if (word.isEmpty) return word;
-                          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-                        }).join(' '),
+                        (product['name'] ?? '')
+                            .toString()
+                            .split(' ')
+                            .map((word) {
+                              if (word.isEmpty) return word;
+                              return word[0].toUpperCase() +
+                                  word.substring(1).toLowerCase();
+                            })
+                            .join(' '),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(

@@ -973,19 +973,28 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
   ];
 
   Widget _buildProductGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.55,
-      ),
-      itemCount: _landingProducts.length,
-      itemBuilder: (context, index) {
-        return _buildProductCard(index);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 700;
+        final gridColumns = isTablet
+            ? (constraints.maxWidth >= 1000 ? 4 : 3)
+            : 2;
+
+        return GridView.builder(
+          padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 20),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: gridColumns,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: isTablet ? 0.72 : 0.55,
+          ),
+          itemCount: _landingProducts.length,
+          itemBuilder: (context, index) {
+            return _buildProductCard(index);
+          },
+        );
       },
     );
   }
@@ -1064,10 +1073,14 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
           SizedBox(
             height: 52,
             child: Text(
-              (product['name'] ?? '').split(' ').map((word) {
-                if (word.isEmpty) return word;
-                return word[0].toUpperCase() + word.substring(1).toLowerCase();
-              }).join(' '),
+              (product['name'] ?? '')
+                  .split(' ')
+                  .map((word) {
+                    if (word.isEmpty) return word;
+                    return word[0].toUpperCase() +
+                        word.substring(1).toLowerCase();
+                  })
+                  .join(' '),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(

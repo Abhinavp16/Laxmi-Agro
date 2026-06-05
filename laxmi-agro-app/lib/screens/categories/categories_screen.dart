@@ -68,10 +68,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   void didUpdateWidget(covariant CategoriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialCategoryName != null && 
+    if (widget.initialCategoryName != null &&
         widget.initialCategoryName != oldWidget.initialCategoryName) {
-      final idx = _categories.indexWhere((c) => 
-        c['name']?.toString().toLowerCase() == widget.initialCategoryName!.toLowerCase());
+      final idx = _categories.indexWhere(
+        (c) =>
+            c['name']?.toString().toLowerCase() ==
+            widget.initialCategoryName!.toLowerCase(),
+      );
       if (idx != -1 && idx != _selectedCategoryIndex) {
         setState(() {
           _selectedCategoryIndex = idx;
@@ -123,10 +126,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
         setState(() {
           _categories = cats;
-          
+
           if (widget.initialCategoryName != null) {
-            final idx = cats.indexWhere((c) => 
-              c['name']?.toString().toLowerCase() == widget.initialCategoryName!.toLowerCase());
+            final idx = cats.indexWhere(
+              (c) =>
+                  c['name']?.toString().toLowerCase() ==
+                  widget.initialCategoryName!.toLowerCase(),
+            );
             if (idx != -1) {
               _selectedCategoryIndex = idx;
             }
@@ -197,7 +203,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
       final categorySlug = category['slug']?.toString().trim() ?? '';
-      final categoryFilter = categoryName.isNotEmpty ? categoryName : categorySlug;
+      final categoryFilter = categoryName.isNotEmpty
+          ? categoryName
+          : categorySlug;
       final response = await _dio.get(
         '/products',
         queryParameters: {'category': categoryFilter},
@@ -220,7 +228,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   'shortDescription':
                       item['shortDescription']?.toString() ?? '',
                   'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
-                  'reviewCount': item['ratingCount'] ?? item['reviewCount'] ?? item['reviews'] ?? '',
+                  'reviewCount':
+                      item['ratingCount'] ??
+                      item['reviewCount'] ??
+                      item['reviews'] ??
+                      '',
                 },
               )
               .toList();
@@ -305,10 +317,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     }
 
     if (currentLang != 'Hindi' && name.isNotEmpty) {
-      return name.split(' ').map((word) {
-        if (word.isEmpty) return word;
-        return word[0].toUpperCase() + word.substring(1).toLowerCase();
-      }).join(' ');
+      return name
+          .split(' ')
+          .map((word) {
+            if (word.isEmpty) return word;
+            return word[0].toUpperCase() + word.substring(1).toLowerCase();
+          })
+          .join(' ');
     }
     return name;
   }
@@ -589,20 +604,35 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ),
         // Products
         Expanded(
-          child: GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.48,
-            ),
-            itemCount: _products.length,
-            itemBuilder: (context, index) =>
-                _buildProductCard(_products[index]),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 700;
+              final gridColumns = isTablet
+                  ? (constraints.maxWidth >= 1000 ? 4 : 3)
+                  : 2;
+              final gridSpacing = isTablet ? 14.0 : 10.0;
+
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  isTablet ? 18 : 12,
+                  4,
+                  isTablet ? 18 : 12,
+                  100,
+                ),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: gridColumns,
+                  crossAxisSpacing: gridSpacing,
+                  mainAxisSpacing: gridSpacing,
+                  childAspectRatio: isTablet ? 0.72 : 0.48,
+                ),
+                itemCount: _products.length,
+                itemBuilder: (context, index) =>
+                    _buildProductCard(_products[index]),
+              );
+            },
           ),
         ),
       ],
@@ -642,7 +672,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           children: [
             // Image
             Expanded(
-              flex: 22, // Reduced from 3 to 2.2 (Integer multiplied by 10 for safety)
+              flex:
+                  22, // Reduced from 3 to 2.2 (Integer multiplied by 10 for safety)
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(4),
@@ -727,10 +758,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               flex: 20, // Re-scaled to match 2.2:2.0 as 22:20
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(4),
                   ),
@@ -741,12 +769,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        height: 44, // More compact but still fits 3 lines tightly
+                        height:
+                            44, // More compact but still fits 3 lines tightly
                         child: Text(
                           _getDisplayName(product),
                           style: GoogleFonts.outfit(
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w600, // Make it a bit more readable
+                            fontWeight:
+                                FontWeight.w600, // Make it a bit more readable
                             color: textPrimary,
                             height: 1.2,
                           ),
@@ -759,7 +789,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       Row(
                         children: [
                           Text(
-                            rating is num ? rating.toDouble().toStringAsFixed(1) : (double.tryParse(rating?.toString() ?? '')?.toStringAsFixed(1) ?? '4.5'),
+                            rating is num
+                                ? rating.toDouble().toStringAsFixed(1)
+                                : (double.tryParse(
+                                        rating?.toString() ?? '',
+                                      )?.toStringAsFixed(1) ??
+                                      '4.5'),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
@@ -769,8 +804,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           const SizedBox(width: 4),
                           Row(
                             children: List.generate(5, (index) {
-                              final rv = (rating != null) 
-                                  ? ((rating is num) ? rating.toDouble() : double.tryParse(rating.toString()) ?? 0.0)
+                              final rv = (rating != null)
+                                  ? ((rating is num)
+                                        ? rating.toDouble()
+                                        : double.tryParse(rating.toString()) ??
+                                              0.0)
                                   : 0.0;
                               final starIndex = index + 1;
                               if (rv >= starIndex) {
@@ -794,10 +832,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               }
                             }),
                           ),
-
                         ],
                       ),
-                      const SizedBox(height: 2), // Significantly reduced gap to move price up
+                      const SizedBox(
+                        height: 2,
+                      ), // Significantly reduced gap to move price up
                       Row(
                         children: [
                           Text(
@@ -821,12 +860,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 6), // Replaces Spacer for predictable height
+                      const SizedBox(
+                        height: 6,
+                      ), // Replaces Spacer for predictable height
                       SizedBox(
                         width: double.infinity,
                         height: 26, // Reduced button height
                         child: ElevatedButton(
-                          onPressed: () => context.push('/product/${product['id']}'),
+                          onPressed: () =>
+                              context.push('/product/${product['id']}'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryBlue,
                             foregroundColor: Colors.white,
