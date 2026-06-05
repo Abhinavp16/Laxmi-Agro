@@ -1,13 +1,13 @@
 "use client"
 
-import { Settings2, LogOut, User } from 'lucide-react'
+import { LogOut, Settings2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect, useState } from "react"
@@ -21,56 +21,47 @@ export function Header() {
   useEffect(() => {
     setUser(getUser())
     const handleStorage = () => setUser(getUser())
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
   }, [])
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 bg-black/10 backdrop-blur-[120px]">
-      <div className="text-white text-xl font-bold tracking-tight pl-4 flex items-center gap-2">
-        <Image
-          src="/icon.svg"
-          alt="Laxmi Agro logo"
-          width={32}
-          height={32}
-          className="h-8 w-8 rounded-lg object-cover"
-        />
-        Laxmi Agro <span className="text-[#86efac]">Admin</span>
+    <header className="absolute left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[#dde3d0]/80 bg-[#fcfdf8]/78 p-6 backdrop-blur-[28px]">
+      <div className="flex items-center gap-2 pl-4 text-xl font-bold tracking-tight text-slate-900">
+        <Image src="/icon.svg" alt="Laxmi Agro logo" width={32} height={32} className="h-8 w-8 rounded-lg object-cover" />
+        Laxmi Agro <span className="text-emerald-600">Admin</span>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-3 bg-[#0D0D0D] border border-[#333] pl-2 pr-4 py-1.5 rounded-full hover:bg-[#1A1A1A] transition-colors focus:outline-none ring-offset-black focus:ring-2 focus:ring-[#86efac]/50 group">
-            <Avatar className="h-8 w-8 border border-[#333] group-hover:border-[#86efac]/30 transition-colors">
+          <button className="group flex items-center gap-3 rounded-full border border-[#dde3d0] bg-white/90 py-1.5 pl-2 pr-4 shadow-sm transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#86efac]/50 ring-offset-white">
+            <Avatar className="h-8 w-8 border border-[#d7dfc6] transition-colors group-hover:border-[#86efac]/50">
               <AvatarImage src={user?.avatar} />
-              <AvatarFallback className="bg-gradient-to-br from-[#86efac] to-[#4ade80] text-black text-xs font-bold">
-                {user?.name?.charAt(0).toUpperCase() || 'A'}
+              <AvatarFallback className="bg-gradient-to-br from-[#bbf7d0] to-[#4ade80] text-xs font-bold text-slate-900">
+                {user?.name?.charAt(0).toUpperCase() || "A"}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col items-start translate-y-[1px]">
-              <span className="text-xs font-bold text-white line-clamp-1">{user?.name || 'Admin'}</span>
-              <span className="text-[10px] text-[#919191] font-medium uppercase tracking-wider">Super Admin</span>
+            <div className="flex translate-y-[1px] flex-col items-start">
+              <span className="line-clamp-1 text-xs font-bold text-slate-900">{user?.name || "Admin"}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Super Admin</span>
             </div>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-[#0D0D0D] border-[#1F1F1F] text-white p-2">
-          <DropdownMenuLabel className="font-normal border-b border-[#1F1F1F] pb-3 mb-2 px-3">
+        <DropdownMenuContent align="end" className="w-56 border-[#dde3d0] bg-white p-2 text-slate-900 shadow-xl">
+          <DropdownMenuLabel className="mb-2 border-b border-[#edf0e2] px-3 pb-3 font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-bold leading-none text-white">{user?.name || 'Administrator'}</p>
-              <p className="text-xs leading-none text-[#919191] truncate">{user?.email || 'admin@laxmiagro.local'}</p>
+              <p className="text-sm font-bold leading-none text-slate-900">{user?.name || "Administrator"}</p>
+              <p className="truncate text-xs leading-none text-slate-500">{user?.email || "admin@laxmiagro.local"}</p>
             </div>
           </DropdownMenuLabel>
           <Link href="/settings">
-            <DropdownMenuItem className="focus:bg-[#1A1A1A] focus:text-[#86efac] rounded-lg cursor-pointer py-2 px-3 group">
-              <Settings2 className="mr-3 h-4 w-4 text-[#919191] group-focus:text-[#86efac]" />
+            <DropdownMenuItem className="group cursor-pointer rounded-lg px-3 py-2 focus:bg-[#f3f8ef] focus:text-emerald-700">
+              <Settings2 className="mr-3 h-4 w-4 text-slate-500 group-focus:text-emerald-700" />
               <span className="text-sm font-medium">Account Settings</span>
             </DropdownMenuItem>
           </Link>
-          <DropdownMenuSeparator className="bg-[#1F1F1F] my-2" />
-          <DropdownMenuItem
-            onClick={() => logout()}
-            className="focus:bg-red-500/10 focus:text-red-400 rounded-lg cursor-pointer py-2 px-3 group"
-          >
-            <LogOut className="mr-3 h-4 w-4 text-[#919191] group-focus:text-red-400" />
+          <DropdownMenuSeparator className="my-2 bg-[#edf0e2]" />
+          <DropdownMenuItem onClick={() => logout()} className="group cursor-pointer rounded-lg px-3 py-2 focus:bg-red-500/10 focus:text-red-400">
+            <LogOut className="mr-3 h-4 w-4 text-slate-500 group-focus:text-red-400" />
             <span className="text-sm font-medium">Logout Session</span>
           </DropdownMenuItem>
         </DropdownMenuContent>

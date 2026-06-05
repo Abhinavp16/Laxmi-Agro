@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
-import { Wallet, ShoppingCart, Users, Handshake, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { apiFetch } from '@/lib/api'
+import { useEffect, useRef, useState } from "react"
+import { Handshake, Loader2, ShoppingCart, Users, Wallet } from "lucide-react"
+import { toast } from "sonner"
+import { apiFetch } from "@/lib/api"
 
 interface DashboardData {
   overview: {
@@ -29,10 +29,10 @@ export function DashboardMetrics() {
 
     async function fetchStats() {
       try {
-        const res = await apiFetch('/admin/analytics/dashboard')
-        const contentType = res.headers.get('content-type') || ''
+        const res = await apiFetch("/admin/analytics/dashboard")
+        const contentType = res.headers.get("content-type") || ""
 
-        if (!contentType.includes('application/json')) {
+        if (!contentType.includes("application/json")) {
           throw new Error(`Unexpected API response (${res.status})`)
         }
 
@@ -43,21 +43,22 @@ export function DashboardMetrics() {
 
         setData(json.data)
       } catch (error: any) {
-        toast.error(error?.message || 'Failed to load dashboard stats')
+        toast.error(error?.message || "Failed to load dashboard stats")
       } finally {
         setIsLoading(false)
       }
     }
+
     fetchStats()
   }, [])
 
   function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount)
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount)
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-6 bg-[#0D0D0D] rounded-2xl h-28">
+      <div className="flex h-28 items-center justify-center rounded-[28px] border border-[#dde3d0] bg-white/90 p-6 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
         <Loader2 className="h-6 w-6 animate-spin text-[#86efac]" />
       </div>
     )
@@ -67,37 +68,49 @@ export function DashboardMetrics() {
   const today = data?.today
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 xl:items-center justify-between p-6 bg-[#0D0D0D] rounded-2xl">
+    <div className="flex flex-col justify-between gap-8 rounded-[28px] border border-[#dde3d0] bg-white/92 p-6 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:flex-row xl:items-center">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-slate-500">
           <Wallet className="h-5 w-5" />
           <span className="text-lg">Total Revenue</span>
         </div>
-        <div className="text-5xl md:text-4xl lg:text-5xl font-bold text-white">{formatCurrency(overview?.totalRevenue ?? 0)}</div>
-        {today && today.revenue > 0 && (
-          <span className="text-xs text-[#86efac]">+{formatCurrency(today.revenue)} today</span>
-        )}
+        <div className="text-5xl font-bold text-slate-900 md:text-4xl lg:text-5xl">
+          {formatCurrency(overview?.totalRevenue ?? 0)}
+        </div>
+        {today && today.revenue > 0 && <span className="text-xs text-emerald-600">+{formatCurrency(today.revenue)} today</span>}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 xl:gap-16">
+      <div className="grid grid-cols-2 gap-8 md:grid-cols-4 xl:gap-16">
         <div className="flex flex-col gap-1">
-          <span className="text-gray-400 text-sm flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Total Orders</span>
-          <span className="text-2xl md:text-xl lg:text-2xl font-semibold text-white">{(overview?.totalOrders ?? 0).toLocaleString()}</span>
-          {today && today.orders > 0 && (
-            <span className="text-xs text-[#86efac]">+{today.orders} today</span>
-          )}
+          <span className="flex items-center gap-2 text-sm text-slate-500">
+            <ShoppingCart className="h-4 w-4" /> Total Orders
+          </span>
+          <span className="text-2xl font-semibold text-slate-900 md:text-xl lg:text-2xl">
+            {(overview?.totalOrders ?? 0).toLocaleString()}
+          </span>
+          {today && today.orders > 0 && <span className="text-xs text-emerald-600">+{today.orders} today</span>}
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-gray-400 text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Customers</span>
-          <span className="text-2xl md:text-xl lg:text-2xl font-semibold text-[#86efac]">{(overview?.totalCustomers ?? 0).toLocaleString()}</span>
+          <span className="flex items-center gap-2 text-sm text-slate-500">
+            <Users className="h-4 w-4" /> Customers
+          </span>
+          <span className="text-2xl font-semibold text-emerald-600 md:text-xl lg:text-2xl">
+            {(overview?.totalCustomers ?? 0).toLocaleString()}
+          </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-gray-400 text-sm flex items-center gap-2"><Handshake className="w-4 h-4" /> Negotiations</span>
-          <span className="text-2xl md:text-xl lg:text-2xl font-semibold text-[#fbbf24]">{overview?.activeNegotiations ?? 0}</span>
+          <span className="flex items-center gap-2 text-sm text-slate-500">
+            <Handshake className="h-4 w-4" /> Negotiations
+          </span>
+          <span className="text-2xl font-semibold text-amber-500 md:text-xl lg:text-2xl">
+            {overview?.activeNegotiations ?? 0}
+          </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-gray-400 text-sm">Pending Payments</span>
-          <span className="text-2xl md:text-xl lg:text-2xl font-semibold text-orange-400">{overview?.pendingPayments ?? 0}</span>
+          <span className="text-sm text-slate-500">Pending Payments</span>
+          <span className="text-2xl font-semibold text-orange-400 md:text-xl lg:text-2xl">
+            {overview?.pendingPayments ?? 0}
+          </span>
         </div>
       </div>
     </div>

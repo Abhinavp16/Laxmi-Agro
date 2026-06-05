@@ -295,8 +295,8 @@ export default function ProductsPage() {
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Products</h1>
-                    <p className="text-gray-400">Manage your product catalog. {totalProducts > 0 && `(${totalProducts} products)`}</p>
+                    <h1 className="text-3xl font-bold text-slate-900">Products</h1>
+                    <p className="text-slate-500">Manage your product catalog. {totalProducts > 0 && `(${totalProducts} products)`}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
@@ -304,7 +304,7 @@ export default function ProductsPage() {
                         onClick={convertMissingHindiNames}
                         disabled={isConvertingHindi}
                         variant="outline"
-                        className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                        className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                     >
                         {isConvertingHindi ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -313,16 +313,16 @@ export default function ProductsPage() {
                         )}
                         Convert Missing Hindi Names
                     </Button>
-                    <div className="flex items-center rounded-lg border border-[#333] bg-[#161616] p-1">
+                    <div className="flex items-center rounded-xl border border-[#d8dfca] bg-[#f3f6ea] p-1">
                         <button
                             onClick={() => setViewMode("list")}
-                            className={`rounded-md p-2 transition-colors ${viewMode === "list" ? "bg-[#86efac] text-black" : "text-gray-400 hover:text-white"}`}
+                            className={`rounded-lg p-2 transition-colors ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
                         >
                             <List className="h-4 w-4" />
                         </button>
                         <button
                             onClick={() => setViewMode("card")}
-                            className={`rounded-md p-2 transition-colors ${viewMode === "card" ? "bg-[#86efac] text-black" : "text-gray-400 hover:text-white"}`}
+                            className={`rounded-lg p-2 transition-colors ${viewMode === "card" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </button>
@@ -335,19 +335,19 @@ export default function ProductsPage() {
 
             <form onSubmit={handleSearch} className="flex items-center gap-3">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                         type="text"
                         placeholder="Search products by name or SKU..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-[#161616] pl-10 text-white placeholder:text-gray-500 focus-visible:ring-[#86efac]"
+                        className="border-[#d8dfca] bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#86efac]"
                     />
                 </div>
                 <Button
                     type="submit"
                     variant="outline"
-                    className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                    className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                 >
                     Search
                 </Button>
@@ -359,7 +359,7 @@ export default function ProductsPage() {
                             setSearchQuery("")
                             fetchProducts(1, true)
                         }}
-                        className="text-gray-400 hover:text-white"
+                        className="text-slate-500 hover:bg-[#f6f8ef] hover:text-slate-900"
                     >
                         Clear
                     </Button>
@@ -367,29 +367,29 @@ export default function ProductsPage() {
             </form>
 
             {isLoading ? (
-                <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-[#333] bg-[#161616]">
+                <div className="flex min-h-[400px] items-center justify-center rounded-[28px] border border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
                     <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                 </div>
             ) : products.length === 0 ? (
-                <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-[#333] bg-[#161616] text-gray-400">
+                <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[28px] border border-[#dde3d0] bg-white/92 text-slate-500 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
                     <Package className="mb-4 h-12 w-12 opacity-50" />
                     <p>No products found</p>
                     <p className="text-sm">Add your first product to get started</p>
                 </div>
             ) : viewMode === "list" ? (
-                <div className="overflow-hidden rounded-2xl border border-[#333] bg-[#161616]">
+                <div className="overflow-hidden rounded-[28px] border border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-[#333] hover:bg-[#1A1A1A]">
-                                <TableHead className="text-gray-400">Name</TableHead>
-                                <TableHead className="text-gray-400">SKU</TableHead>
-                                <TableHead className="text-gray-400">Category</TableHead>
-                                <TableHead className="text-right text-gray-400">Price</TableHead>
-                                <TableHead className="text-right text-gray-400">Stock</TableHead>
-                                <TableHead className="text-center text-gray-400">Variants</TableHead>
-                                <TableHead className="text-center text-gray-400">Rating</TableHead>
-                                <TableHead className="text-center text-gray-400">Status</TableHead>
-                                <TableHead className="text-right text-gray-400">Actions</TableHead>
+                            <TableRow className="border-[#edf0e2] hover:bg-[#f8faf3]">
+                                <TableHead className="text-slate-500">Name</TableHead>
+                                <TableHead className="text-slate-500">SKU</TableHead>
+                                <TableHead className="text-slate-500">Category</TableHead>
+                                <TableHead className="text-right text-slate-500">Price</TableHead>
+                                <TableHead className="text-right text-slate-500">Stock</TableHead>
+                                <TableHead className="text-center text-slate-500">Variants</TableHead>
+                                <TableHead className="text-center text-slate-500">Rating</TableHead>
+                                <TableHead className="text-center text-slate-500">Status</TableHead>
+                                <TableHead className="text-right text-slate-500">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -399,25 +399,25 @@ export default function ProductsPage() {
                                 const variantCount = getVariantCount(product)
 
                                 return (
-                                    <TableRow key={product._id} className="border-[#333] hover:bg-[#1A1A1A]">
+                                    <TableRow key={product._id} className="border-[#edf0e2] hover:bg-[#f8faf3]">
                                         <TableCell>
                                             <div>
-                                                <p className="font-medium text-white">{product.name}</p>
+                                                <p className="font-medium text-slate-900">{product.name}</p>
                                                 {product.nameHindi ? (
-                                                    <p className="text-xs text-gray-500">{product.nameHindi}</p>
+                                                    <p className="text-xs text-slate-500">{product.nameHindi}</p>
                                                 ) : null}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-gray-400">{getDisplaySku(product)}</TableCell>
-                                        <TableCell className="text-white">
-                                            <Badge variant="outline" className="border-[#333] text-gray-300">
+                                        <TableCell className="text-slate-500">{getDisplaySku(product)}</TableCell>
+                                        <TableCell className="text-slate-900">
+                                            <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-slate-700">
                                                 {getCategoryLabel(product.category)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right text-white">{displayPrice !== null ? `Rs ${displayPrice.toLocaleString()}` : "-"}</TableCell>
-                                        <TableCell className="text-right text-white">{totalStock}</TableCell>
+                                        <TableCell className="text-right text-slate-900">{displayPrice !== null ? `Rs ${displayPrice.toLocaleString()}` : "-"}</TableCell>
+                                        <TableCell className="text-right text-slate-900">{totalStock}</TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="border-[#333] text-gray-300">
+                                            <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-slate-700">
                                                 {variantCount}
                                             </Badge>
                                         </TableCell>
@@ -428,13 +428,13 @@ export default function ProductsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge className={product.status === "active" ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20"}>
+                                            <Badge className={product.status === "active" ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" : "bg-slate-500/10 text-slate-500 hover:bg-slate-500/20"}>
                                                 {product.status}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:bg-[#333] hover:text-white">
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:bg-[#f1f5e8] hover:text-slate-900">
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                                 <Link href={`/products/edit/${product._id}`}>
@@ -463,14 +463,14 @@ export default function ProductsPage() {
                         return (
                             <div
                                 key={product._id}
-                                className="rounded-xl border border-[#333] bg-[#161616] p-4 transition-colors hover:border-[#444]"
+                                className="rounded-[28px] border border-[#dde3d0] bg-white/92 p-4 shadow-[0_24px_60px_rgba(60,80,40,0.08)] transition-colors hover:border-[#cfd8be]"
                             >
                                 <div className="mb-3 flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0D0D0D]">
-                                        <Package className="h-6 w-6 text-gray-500" />
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3f6ea]">
+                                        <Package className="h-6 w-6 text-slate-500" />
                                     </div>
                                     <div className="flex gap-1">
-                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:bg-[#333] hover:text-white">
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:bg-[#f1f5e8] hover:text-slate-900">
                                             <Eye className="h-3.5 w-3.5" />
                                         </Button>
                                         <Link href={`/products/edit/${product._id}`}>
@@ -483,16 +483,16 @@ export default function ProductsPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                <h3 className="mb-1 line-clamp-1 text-base font-semibold text-white">{product.name}</h3>
+                                <h3 className="mb-1 line-clamp-1 text-base font-semibold text-slate-900">{product.name}</h3>
                                 {product.nameHindi ? (
-                                    <p className="mb-1 line-clamp-1 text-xs text-gray-500">{product.nameHindi}</p>
+                                    <p className="mb-1 line-clamp-1 text-xs text-slate-500">{product.nameHindi}</p>
                                 ) : null}
-                                <p className="mb-3 text-xs text-gray-500">SKU: {getDisplaySku(product)}</p>
+                                <p className="mb-3 text-xs text-slate-500">SKU: {getDisplaySku(product)}</p>
                                 <div className="mb-3 flex items-center justify-between gap-2">
-                                    <Badge variant="outline" className="border-[#333] text-xs text-gray-300">
+                                    <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-xs text-slate-700">
                                         {getCategoryLabel(product.category)}
                                     </Badge>
-                                    <Badge className={product.status === "active" ? "text-xs bg-green-500/10 text-green-500" : "text-xs bg-gray-500/10 text-gray-500"}>
+                                    <Badge className={product.status === "active" ? "text-xs bg-green-500/10 text-green-600" : "text-xs bg-slate-500/10 text-slate-500"}>
                                         {product.status}
                                     </Badge>
                                     <div className="flex items-center gap-1 text-yellow-500">
@@ -501,27 +501,27 @@ export default function ProductsPage() {
                                     </div>
                                 </div>
                                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                                    <Badge variant="outline" className="border-[#333] text-gray-300">
+                                    <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-slate-700">
                                         {variantCount} variant{variantCount === 1 ? "" : "s"}
                                     </Badge>
                                     {product.isFeatured ? (
-                                        <Badge className="bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20">
+                                        <Badge className="bg-yellow-500/12 text-yellow-700 hover:bg-yellow-500/20">
                                             Featured
                                         </Badge>
                                     ) : null}
                                     {product.isHot ? (
-                                        <Badge className="bg-orange-500/10 text-orange-400 hover:bg-orange-500/20">
+                                        <Badge className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20">
                                             Hot
                                         </Badge>
                                     ) : null}
                                 </div>
-                                <div className="flex items-center justify-between border-t border-[#333] pt-3">
+                                <div className="flex items-center justify-between border-t border-[#edf0e2] pt-3">
                                     <div>
                                         <p className="text-lg font-bold text-[#86efac]">{displayPrice !== null ? `Rs ${displayPrice.toLocaleString()}` : "-"}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs text-gray-500">Stock</p>
-                                        <p className="font-medium text-white">{totalStock}</p>
+                                        <p className="text-xs text-slate-500">Stock</p>
+                                        <p className="font-medium text-slate-900">{totalStock}</p>
                                     </div>
                                 </div>
                             </div>
@@ -536,7 +536,7 @@ export default function ProductsPage() {
                         onClick={loadMore}
                         disabled={isLoadingMore}
                         variant="outline"
-                        className="min-w-[200px] border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                        className="min-w-[200px] border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                     >
                         {isLoadingMore ? (
                             <>

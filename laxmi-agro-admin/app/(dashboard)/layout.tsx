@@ -1,71 +1,62 @@
 "use client"
 
 import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { apiFetch, logout } from "@/lib/api"
 
 export default function DashboardLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode
+  children: React.ReactNode
 }) {
-    const router = useRouter()
-    const [isAuthorized, setIsAuthorized] = useState(false)
+  const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
 
-    useEffect(() => {
-        const verifyAuth = async () => {
-            const token = localStorage.getItem('accessToken')
-            if (!token) {
-                router.push('/login')
-                return
-            }
+  useEffect(() => {
+    const verifyAuth = async () => {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        router.push("/login")
+        return
+      }
 
-            try {
-                // Verify token is still valid by calling /auth/me
-                const res = await apiFetch('/auth/me')
-                if (!res.ok) {
-                    // Token invalid/expired and refresh failed
-                    logout()
-                    return
-                }
-                
-                const data = await res.json()
-                // /auth/me returns data directly, not data.user
-                if (data.data.role !== 'admin') {
-                    logout()
-                    return
-                }
-                
-                setIsAuthorized(true)
-            } catch {
-                logout()
-            }
+      try {
+        const res = await apiFetch("/auth/me")
+        if (!res.ok) {
+          logout()
+          return
         }
 
-        verifyAuth()
-    }, [router])
+        const data = await res.json()
+        if (data.data.role !== "admin") {
+          logout()
+          return
+        }
 
-    if (!isAuthorized) {
-        return null
+        setIsAuthorized(true)
+      } catch {
+        logout()
+      }
     }
 
-    return (
-        <div className="relative h-screen w-full bg-black text-white overflow-hidden">
-            <Header />
+    verifyAuth()
+  }, [router])
 
-            {/* Main Scrollable Area */}
-            <div className="h-full overflow-y-auto no-scrollbar">
-                <main className="flex gap-6 p-6 pt-24 min-h-full">
-                    <Sidebar />
+  if (!isAuthorized) {
+    return null
+  }
 
-                    {/* Main Content Container */}
-                    <div className="flex-1 flex flex-col gap-6 min-w-0">
-                        {children}
-                    </div>
-                </main>
-            </div>
+  return (
+    <div className="relative h-screen w-full overflow-hidden text-slate-900">
+      <main className="flex h-full">
+        <Sidebar />
+        <div className="min-w-0 flex-1 overflow-y-auto no-scrollbar">
+          <div className="flex min-h-full flex-col gap-6 p-6">
+            {children}
+          </div>
         </div>
-    )
+      </main>
+    </div>
+  )
 }

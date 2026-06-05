@@ -1,17 +1,17 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts"
-import { apiFetch } from '@/lib/api'
+import { useEffect, useRef, useState } from "react"
+import { Loader2 } from "lucide-react"
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { apiFetch } from "@/lib/api"
 
-type PeriodKey = '7d' | '30d' | '90d' | '1y'
+type PeriodKey = "7d" | "30d" | "90d" | "1y"
 
 const periodMap: { label: string; value: PeriodKey; groupBy: string }[] = [
-  { label: '7D', value: '7d', groupBy: 'day' },
-  { label: '1M', value: '30d', groupBy: 'day' },
-  { label: '3M', value: '90d', groupBy: 'week' },
-  { label: '1Y', value: '1y', groupBy: 'month' },
+  { label: "7D", value: "7d", groupBy: "day" },
+  { label: "1M", value: "30d", groupBy: "day" },
+  { label: "3M", value: "90d", groupBy: "week" },
+  { label: "1Y", value: "1y", groupBy: "month" },
 ]
 
 interface ChartPoint {
@@ -23,7 +23,7 @@ interface ChartPoint {
 export function PerformanceChart() {
   const [data, setData] = useState<ChartPoint[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activePeriod, setActivePeriod] = useState<PeriodKey>('30d')
+  const [activePeriod, setActivePeriod] = useState<PeriodKey>("30d")
   const lastFetchedPeriodRef = useRef<PeriodKey | null>(null)
 
   useEffect(() => {
@@ -34,22 +34,26 @@ export function PerformanceChart() {
 
   async function fetchSales() {
     setIsLoading(true)
-    const p = periodMap.find(p => p.value === activePeriod)!
+    const period = periodMap.find((entry) => entry.value === activePeriod)
+    if (!period) return
+
     try {
-      const res = await apiFetch(`/admin/analytics/sales?period=${p.value}&groupBy=${p.groupBy}`)
-      const contentType = res.headers.get('content-type') || ''
-      if (!contentType.includes('application/json')) {
+      const res = await apiFetch(`/admin/analytics/sales?period=${period.value}&groupBy=${period.groupBy}`)
+      const contentType = res.headers.get("content-type") || ""
+      if (!contentType.includes("application/json")) {
         return
       }
 
       const json = await res.json()
       if (res.ok && json.success) {
-        const timeline: { date: string; revenue: number; orders: number }[] = json.data.timeline || []
-        setData(timeline.map(t => ({
-          date: t.date,
-          revenue: t.revenue,
-          orders: t.orders,
-        })))
+        const timeline: ChartPoint[] = json.data.timeline || []
+        setData(
+          timeline.map((point) => ({
+            date: point.date,
+            revenue: point.revenue,
+            orders: point.orders,
+          })),
+        )
       }
     } catch {
       // keep empty
@@ -58,34 +62,32 @@ export function PerformanceChart() {
     }
   }
 
-  function formatCurrency(val: number) {
-    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`
-    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`
-    return `₹${val}`
+  function formatCurrency(value: number) {
+    if (value >= 100000) return `Rs. ${(value / 100000).toFixed(1)}L`
+    if (value >= 1000) return `Rs. ${(value / 1000).toFixed(1)}K`
+    return `Rs. ${value}`
   }
 
-  const maxRevenue = data.length > 0 ? Math.max(...data.map(d => d.revenue)) : 0
-  const yMax = Math.ceil(maxRevenue * 1.2 / 100) * 100 || 1000
+  const maxRevenue = data.length > 0 ? Math.max(...data.map((point) => point.revenue)) : 0
+  const yMax = Math.ceil((maxRevenue * 1.2) / 100) * 100 || 1000
 
   return (
-    <div className="flex flex-col gap-6 p-6 bg-[#0D0D0D] rounded-2xl">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:gap-2 lg:gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-medium text-white">Sales Overview</h2>
-        </div>
+    <div className="flex flex-col gap-6 rounded-[28px] border border-[#dde3d0] bg-white/92 p-6 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
+      <div className="flex flex-col flex-wrap items-start justify-between gap-4 sm:flex-row sm:items-center md:gap-2 lg:gap-4">
+        <h2 className="text-xl font-medium text-slate-900">Sales Overview</h2>
 
-        <div className="flex items-center bg-[#1A1A1A] rounded-lg p-1">
-          {periodMap.map((p) => (
+        <div className="flex items-center rounded-xl border border-[#e2e7d8] bg-[#f3f6ea] p-1">
+          {periodMap.map((period) => (
             <button
-              key={p.value}
-              onClick={() => setActivePeriod(p.value)}
-              className={`px-3 md:px-2 lg:px-3 py-1 text-sm md:text-xs lg:text-sm rounded-md transition-colors ${
-                activePeriod === p.value
-                  ? 'bg-[#2A2A2A] text-white shadow-sm'
-                  : 'text-gray-400 hover:text-white'
+              key={period.value}
+              onClick={() => setActivePeriod(period.value)}
+              className={`rounded-md px-3 py-1 text-sm transition-colors md:px-2 md:text-xs lg:px-3 lg:text-sm ${
+                activePeriod === period.value
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              {p.label}
+              {period.label}
             </button>
           ))}
         </div>
@@ -93,11 +95,11 @@ export function PerformanceChart() {
 
       <div className="h-[400px] w-full">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-[#86efac]" />
           </div>
         ) : data.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No sales data for this period
           </div>
         ) : (
@@ -105,14 +107,14 @@ export function PerformanceChart() {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#86efac" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor="#86efac" stopOpacity={0.32} />
                   <stop offset="95%" stopColor="#86efac" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e9db" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: '#666', fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
@@ -120,7 +122,7 @@ export function PerformanceChart() {
               <YAxis
                 domain={[0, yMax]}
                 orientation="left"
-                tick={{ fill: '#666', fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={formatCurrency}
@@ -128,11 +130,13 @@ export function PerformanceChart() {
               <Tooltip
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
-                    const d = payload[0].payload as ChartPoint
+                    const point = payload[0].payload as ChartPoint
                     return (
-                      <div className="bg-[#1A1A1A] border border-[#333] p-3 rounded-lg shadow-xl">
-                        <p className="text-white font-medium">₹{d.revenue.toLocaleString('en-IN')}</p>
-                        <p className="text-gray-400 text-xs mt-1">{d.orders} orders &middot; {d.date}</p>
+                      <div className="rounded-xl border border-[#dde3d0] bg-white p-3 shadow-xl">
+                        <p className="font-medium text-slate-900">Rs. {point.revenue.toLocaleString("en-IN")}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {point.orders} orders · {point.date}
+                        </p>
                       </div>
                     )
                   }
@@ -142,7 +146,7 @@ export function PerformanceChart() {
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#86efac"
+                stroke="#22c55e"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorRevenue)"

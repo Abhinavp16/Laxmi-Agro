@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
@@ -39,11 +40,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${spaceGrotesk.className} antialiased`}>
-        {children}
-        <Toaster richColors position="top-right" />
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          {children}
+          <Toaster richColors position="top-right" />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )
