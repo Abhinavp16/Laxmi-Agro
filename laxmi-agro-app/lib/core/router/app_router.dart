@@ -46,9 +46,9 @@ import '../../screens/profile/edit_profile_screen.dart';
 import '../../screens/profile/addresses_screen.dart';
 import '../../screens/profile/payment_methods_screen.dart';
 import '../../screens/profile/about_laxmi_agro_screen.dart';
-import '../../screens/profile/coupon_offer_screen.dart';
 import '../../screens/profile/legal_policy_screen.dart';
 import '../../screens/referral/referral_screen.dart';
+import '../config/feature_flags.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -313,7 +313,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/my-coupons',
-      builder: (context, state) => const CouponOfferScreen(),
+      redirect: (context, state) => kHideOfferCouponUi ? '/home' : null,
     ),
     GoRoute(
       path: '/legal/:policyId',

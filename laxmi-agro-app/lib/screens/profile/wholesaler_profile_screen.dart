@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/config/feature_flags.dart';
 
 class WholesalerProfileScreen extends StatefulWidget {
   const WholesalerProfileScreen({super.key});
@@ -296,13 +297,14 @@ class _WholesalerProfileScreenState extends State<WholesalerProfileScreen> {
                             title: 'Help & Support',
                             showBorder: true,
                           ),
-                          _buildMenuItem(
-                            icon: Icons.local_offer_outlined,
-                            iconBgColor: slate100,
-                            iconColor: slate900,
-                            title: 'My Coupon & Offer Code',
-                            showBorder: true,
-                          ),
+                          if (!kHideOfferCouponUi)
+                            _buildMenuItem(
+                              icon: Icons.local_offer_outlined,
+                              iconBgColor: slate100,
+                              iconColor: slate900,
+                              title: 'My Coupon & Offer Code',
+                              showBorder: true,
+                            ),
                           _buildMenuItem(
                             icon: Icons.logout,
                             iconBgColor: red100,

@@ -5,6 +5,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/config/feature_flags.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -228,12 +229,13 @@ class ProfileScreen extends ConsumerWidget {
                     subtitle: t('Invite friends & earn rewards'),
                     onTap: () => context.push('/referral'),
                   ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedTicket01,
-                    title: t('My Coupon & Offer Code'),
-                    subtitle: t('View and redeem your offers'),
-                    onTap: () {},
-                  ),
+                  if (!kHideOfferCouponUi)
+                    _buildMenuItem(
+                      icon: HugeIcons.strokeRoundedTicket01,
+                      title: t('My Coupon & Offer Code'),
+                      subtitle: t('View and redeem your offers'),
+                      onTap: () {},
+                    ),
                   _buildMenuItem(
                     icon: HugeIcons.strokeRoundedFile01,
                     title: t('Terms & Policies'),

@@ -4,8 +4,6 @@ import {
   BadgeCheck,
   BarChart3,
   Building2,
-  ChevronDown,
-  ChevronRight,
   FolderTree,
   Globe,
   Image,
@@ -19,9 +17,6 @@ import {
   ShoppingCart,
   Star,
   Sun,
-  Store,
-  TicketPercent,
-  User,
   UserPlus,
   UserSearch,
   Users,
@@ -35,7 +30,6 @@ import { useEffect, useState } from "react"
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [offersOpen, setOffersOpen] = useState(pathname.startsWith("/offers"))
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -103,37 +97,6 @@ export function Sidebar() {
           <MapPinned className="h-6 w-6" />
           <span className="text-sm font-semibold tracking-[0.18em]">WHOLESALER MAP</span>
         </Link>
-
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setOffersOpen(!offersOpen)}
-            className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 transition-all ${getItemClasses(pathname.startsWith("/offers"))}`}
-          >
-            <div className="flex items-center gap-4">
-              <TicketPercent className="h-6 w-6" />
-              <span className="text-sm font-semibold tracking-[0.18em]">OFFERS</span>
-            </div>
-            {offersOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-
-          {offersOpen && (
-            <div className="ml-4 flex flex-col gap-3 rounded-2xl bg-white/70 p-3">
-              <Link href="/offers/customers" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold tracking-[0.18em] transition-all ${getItemClasses(pathname === "/offers/customers")}`}>
-                <User className="h-4 w-4" />
-                CUSTOMERS
-              </Link>
-              <Link href="/offers/wholesalers" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold tracking-[0.18em] transition-all ${getItemClasses(pathname === "/offers/wholesalers")}`}>
-                <Store className="h-4 w-4" />
-                WHOLESALERS
-              </Link>
-              <Link href="/offers/affiliates" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold tracking-[0.18em] transition-all ${getItemClasses(pathname === "/offers/affiliates")}`}>
-                <BadgeCheck className="h-4 w-4" />
-                AFFILIATE CODES
-              </Link>
-            </div>
-          )}
-        </div>
-
         <Link href="/analytics" className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition-all ${getItemClasses(pathname === "/analytics")}`}>
           <BarChart3 className="h-6 w-6" />
           <span className="text-sm font-semibold tracking-[0.18em]">ANALYTICS</span>

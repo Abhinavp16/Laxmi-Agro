@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 
+import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/whatsapp_checkout_service.dart';
 
@@ -343,12 +344,14 @@ class _NegotiationDetailScreenState
                     pinCtrl,
                     keyboard: TextInputType.number,
                   ),
-                  const SizedBox(height: 12),
-                  _addrField(
-                    'Coupon / Affiliate Code (Optional)',
-                    couponCtrl,
-                    required: false,
-                  ),
+                  if (!kHideOfferCouponUi) ...[
+                    const SizedBox(height: 12),
+                    _addrField(
+                      'Coupon / Affiliate Code (Optional)',
+                      couponCtrl,
+                      required: false,
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,

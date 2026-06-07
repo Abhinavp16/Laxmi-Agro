@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/locale_provider.dart';
 import '../../core/config/api_config.dart';
+import '../../core/config/feature_flags.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/notification_service.dart';
@@ -1656,7 +1657,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   const SizedBox(height: 24),
                   _buildPartnershipStrip(),
                   const SizedBox(height: 16),
-                  _buildOfferSection(),
+                  if (!kHideOfferCouponUi) _buildOfferSection(),
                   const SizedBox(height: 8),
                   _buildCategorySection(),
                   const SizedBox(height: 8),
@@ -3731,117 +3732,122 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _couponCtrl,
-                          enabled: !isCouponLocked && !_isApplyingCoupon,
-                          textCapitalization: TextCapitalization.characters,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-Z0-9_-]'),
+                  if (!kHideOfferCouponUi) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _couponCtrl,
+                            enabled: !isCouponLocked && !_isApplyingCoupon,
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[a-zA-Z0-9_-]'),
+                              ),
+                            ],
+                            onChanged: (_) {
+                              if (_appliedCouponCode != null &&
+                                  _normalizedCouponInput !=
+                                      _appliedCouponCode) {
+                                setState(() => _clearAppliedCouponPreview());
+                              }
+                            },
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                          onChanged: (_) {
-                            if (_appliedCouponCode != null &&
-                                _normalizedCouponInput != _appliedCouponCode) {
-                              setState(() => _clearAppliedCouponPreview());
-                            }
-                          },
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: t('Coupon / Affiliate Code'),
-                            hintText: t('Enter coupon or affiliate code'),
-                            labelStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              color: textSecondary,
-                            ),
-                            hintStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              color: textMuted,
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: borderLight),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: borderLight),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: primaryBlue,
-                                width: 1.5,
+                            decoration: InputDecoration(
+                              labelText: t('Coupon / Affiliate Code'),
+                              hintText: t('Enter coupon or affiliate code'),
+                              labelStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: textSecondary,
+                              ),
+                              hintStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: textMuted,
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: borderLight),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: borderLight),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: primaryBlue,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: _isApplyingCoupon || isCouponLocked
-                              ? null
-                              : _applyCouponPreview,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 44,
+                          child: ElevatedButton(
+                            onPressed: _isApplyingCoupon || isCouponLocked
+                                ? null
+                                : _applyCouponPreview,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: _isApplyingCoupon
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    t(isCouponLocked ? 'Applied' : 'Apply'),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                           ),
-                          child: _isApplyingCoupon
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  t(isCouponLocked ? 'Applied' : 'Apply'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                        ),
+                      ],
+                    ),
+                    if (isCouponLocked) ...[
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () => setState(
+                            () => _clearAppliedCouponPreview(clearInput: true),
+                          ),
+                          child: Text(
+                            t('Change code'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: primaryBlue,
+                            ),
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                  if (isCouponLocked) ...[
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => setState(
-                          () => _clearAppliedCouponPreview(clearInput: true),
-                        ),
-                        child: Text(
-                          t('Change code'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: primaryBlue,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                   const SizedBox(height: 12),
                   // Checkout Button
@@ -4492,14 +4498,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'subtitle': null,
         'onTap': () => context.push('/about'),
       },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedTicket01,
-        'color': const Color(0xFFDC2626),
-        'title': t('My Coupon & Offer Code'),
-        'subtitle': null,
-        'onTap': () => context.push('/my-coupons'),
-      },
+      if (!kHideOfferCouponUi)
+        {
+          'type': 'setting',
+          'icon': HugeIcons.strokeRoundedTicket01,
+          'color': const Color(0xFFDC2626),
+          'title': t('My Coupon & Offer Code'),
+          'subtitle': null,
+          'onTap': () => context.push('/my-coupons'),
+        },
       if (user?.role != 'wholesaler')
         {
           'type': 'setting',

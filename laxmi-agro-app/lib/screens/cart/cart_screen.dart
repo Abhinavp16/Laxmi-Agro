@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
+import '../../core/config/feature_flags.dart';
 import '../../core/providers/locale_provider.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -751,7 +752,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        if (!kHideOfferCouponUi) ...[
+                          const SizedBox(height: 16),
 
                         // Coupon Input Row
                         Container(
@@ -855,6 +857,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ],
                           ),
+                        ],
                         ],
 
                         const SizedBox(height: 20),
