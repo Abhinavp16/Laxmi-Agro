@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
     Table,
     TableBody,
@@ -48,6 +49,9 @@ interface Order {
 }
 
 export default function OrdersPage() {
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
     const [orders, setOrders] = useState<Order[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -67,12 +71,20 @@ export default function OrdersPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalOrders, setTotalOrders] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+    const filteredUserId = searchParams.get("userId")?.trim() || ""
+    const filteredCustomerName = searchParams.get("customerName")?.trim() || ""
+    const searchFromUrl = searchParams.get("search")?.trim() || ""
 
     useEffect(() => {
-        fetchOrders(1, true)
-    }, [])
+        setSearchQuery(searchFromUrl)
+        fetchOrders(1, true, searchFromUrl)
+    }, [filteredUserId, searchFromUrl])
 
-    async function fetchOrders(pageNum: number = 1, reset: boolean = false) {
+    async function fetchOrders(
+        pageNum: number = 1,
+        reset: boolean = false,
+        searchOverride?: string
+    ) {
         if (reset) {
             setIsLoading(true)
             setPage(1)
@@ -84,8 +96,14 @@ export default function OrdersPage() {
             const params = new URLSearchParams()
             params.append('page', pageNum.toString())
             params.append('limit', '20')
-            if (searchQuery.trim()) {
-                params.append('search', searchQuery.trim())
+            if (filteredUserId) {
+                params.append('userId', filteredUserId)
+            }
+            const effectiveSearch = typeof searchOverride === "string"
+                ? searchOverride
+                : searchQuery
+            if (effectiveSearch.trim()) {
+                params.append('search', effectiveSearch.trim())
             }
 
             const res = await apiFetch(`/admin/orders?${params.toString()}`)
@@ -117,16 +135,23 @@ export default function OrdersPage() {
 
     const handleSearch = useCallback((e: React.FormEvent) => {
         e.preventDefault()
-        fetchOrders(1, true)
-    }, [searchQuery])
+        const params = new URLSearchParams(searchParams.toString())
+        if (searchQuery.trim()) {
+            params.set("search", searchQuery.trim())
+        } else {
+            params.delete("search")
+        }
+        const query = params.toString()
+        router.replace(query ? `${pathname}?${query}` : pathname)
+    }, [pathname, router, searchParams, searchQuery])
 
     const loadMore = useCallback(() => {
         if (hasMore && !isLoadingMore) {
             const nextPage = page + 1
             setPage(nextPage)
-            fetchOrders(nextPage, false)
+            fetchOrders(nextPage, false, searchFromUrl)
         }
-    }, [hasMore, isLoadingMore, page])
+    }, [hasMore, isLoadingMore, page, searchFromUrl])
 
     async function fetchOrderDetails(id: string) {
         try {
@@ -151,7 +176,7 @@ export default function OrdersPage() {
             if (res.ok) {
                 toast.success("Payment verified successfully")
                 setIsDetailsOpen(false)
-                fetchOrders()
+                fetchOrders(1, true, searchFromUrl)
             } else {
                 const data = await res.json()
                 toast.error(data.message || "Verification failed")
@@ -175,7 +200,7 @@ export default function OrdersPage() {
             if (res.ok) {
                 toast.success("Payment rejected")
                 setIsDetailsOpen(false)
-                fetchOrders()
+                fetchOrders(1, true, searchFromUrl)
             } else {
                 const data = await res.json()
                 toast.error(data.message || "Rejection failed")
@@ -198,7 +223,7 @@ export default function OrdersPage() {
             if (res.ok) {
                 toast.success(`Order ${status.replace(/_/g, ' ')}`)
                 setIsDetailsOpen(false)
-                fetchOrders()
+                fetchOrders(1, true, searchFromUrl)
             } else {
                 toast.error(data.message || 'Failed to update status')
             }
@@ -249,7 +274,7 @@ export default function OrdersPage() {
                 setIsDetailsOpen(false)
                 setTrackingNumber('')
                 setCourierName('')
-                fetchOrders()
+                fetchOrders(1, true, searchFromUrl)
             } else {
                 toast.error(data.message || 'Failed to ship order')
             }
@@ -306,7 +331,10 @@ export default function OrdersPage() {
                         variant="ghost"
                         onClick={() => {
                             setSearchQuery("")
-                            fetchOrders(1, true)
+                            const params = new URLSearchParams(searchParams.toString())
+                            params.delete("search")
+                            const query = params.toString()
+                            router.replace(query ? `${pathname}?${query}` : pathname)
                         }}
                         className="text-gray-400 hover:text-white"
                     >
@@ -314,6 +342,33 @@ export default function OrdersPage() {
                     </Button>
                 )}
             </form>
+
+            {filteredUserId && (
+                <div className="flex items-center justify-between rounded-xl border border-[#2f4f3a] bg-[#0D0D0D] px-4 py-3">
+                    <div>
+                        <div className="text-sm font-semibold text-white">
+                            Viewing order history for {filteredCustomerName || "selected shop"}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                            Only orders for this wholesaler are shown.
+                        </div>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                        onClick={() => {
+                            const params = new URLSearchParams(searchParams.toString())
+                            params.delete("userId")
+                            params.delete("customerName")
+                            const query = params.toString()
+                            router.replace(query ? `${pathname}?${query}` : pathname)
+                        }}
+                    >
+                        Clear Shop Filter
+                    </Button>
+                </div>
+            )}
 
             <Card className="bg-[#161616] border-[#333]">
                 <CardHeader>

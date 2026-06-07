@@ -5,12 +5,13 @@ const { ORDER_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 
 exports.getOrders = async (req, res, next) => {
   try {
-    const { status, orderType, dateFrom, dateTo, search } = req.query;
+    const { status, orderType, dateFrom, dateTo, search, userId } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
 
     const query = {};
     if (status) query.status = status;
     if (orderType) query.orderType = orderType;
+    if (userId) query.userId = userId;
     if (dateFrom || dateTo) {
       query.createdAt = {};
       if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
