@@ -12,9 +12,9 @@ const PRICE_CHANGE_POLL_INTERVAL_MS = 60 * 1000;
 const CAMPAIGN_STAGES = [
   {
     key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED,
-    thresholdMs: 24 * 60 * 60 * 1000,
+    thresholdMs: 20 * 60 * 60 * 1000,
     title: 'Price update scheduled',
-    body: 'New prices will apply after 24 hours.',
+    body: 'New prices will apply after 20 hours.',
   },
   {
     key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_12H,
@@ -24,21 +24,9 @@ const CAMPAIGN_STAGES = [
   },
   {
     key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_3H,
-    thresholdMs: 3 * 60 * 60 * 1000,
+    thresholdMs: 10 * 60 * 1000,
     title: 'Price update reminder',
-    body: 'Prices on many products will update in 3 hours.',
-  },
-  {
-    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_1H,
-    thresholdMs: 60 * 60 * 1000,
-    title: 'Price update reminder',
-    body: 'Prices on many products will update in 1 hour.',
-  },
-  {
-    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_5M,
-    thresholdMs: 5 * 60 * 1000,
-    title: 'Final price reminder',
-    body: 'Final reminder: new prices will apply in 5 minutes.',
+    body: 'Prices on many products will update in 10 minutes.',
   },
 ];
 
