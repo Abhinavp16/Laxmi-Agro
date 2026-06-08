@@ -17,7 +17,7 @@ const {
   getVariantDisplayName,
 } = require('../../utils/productVariants');
 const {
-  notifyScheduledPriceChange,
+  registerPriceChangeCampaign,
   clearPendingFields,
 } = require('../../services/productPriceSchedulerService');
 
@@ -568,10 +568,8 @@ exports.updateProduct = async (req, res, next) => {
     Object.assign(product, updateData);
     await product.save();
 
-    if (priceChangeMode === PRICE_CHANGE_MODE_SCHEDULED) {
-      for (const payload of scheduledNotifications) {
-        await notifyScheduledPriceChange(payload);
-      }
+    if (priceChangeMode === PRICE_CHANGE_MODE_SCHEDULED && scheduledNotifications.length > 0) {
+      await registerPriceChangeCampaign();
     }
 
     await Promise.all(

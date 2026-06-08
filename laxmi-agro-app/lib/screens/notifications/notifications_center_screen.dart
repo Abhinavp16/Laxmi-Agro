@@ -84,6 +84,13 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         return Icons.handshake;
       case 'promotion':
         return Icons.campaign;
+      case 'price_change_campaign_started':
+      case 'price_change_campaign_12h':
+      case 'price_change_campaign_3h':
+      case 'price_change_campaign_1h':
+      case 'price_change_campaign_5m':
+      case 'price_change_campaign_applied':
+        return Icons.schedule_rounded;
       case 'system':
         return Icons.info;
       default:
@@ -103,6 +110,13 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         return const Color(0xFF7C3AED);
       case 'promotion':
         return statusOrange;
+      case 'price_change_campaign_started':
+      case 'price_change_campaign_12h':
+      case 'price_change_campaign_3h':
+      case 'price_change_campaign_1h':
+      case 'price_change_campaign_5m':
+      case 'price_change_campaign_applied':
+        return const Color(0xFFEA580C);
       case 'system':
         return gray500;
       default:

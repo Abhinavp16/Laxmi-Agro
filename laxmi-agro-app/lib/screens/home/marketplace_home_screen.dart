@@ -1361,6 +1361,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         iconColor = const Color(0xFFF59E0B);
         iconBg = const Color(0xFFFFFBEB);
         break;
+      case 'price_change_campaign_started':
+      case 'price_change_campaign_12h':
+      case 'price_change_campaign_3h':
+      case 'price_change_campaign_1h':
+      case 'price_change_campaign_5m':
+      case 'price_change_campaign_applied':
+        icon = Icons.schedule_rounded;
+        iconColor = const Color(0xFFEA580C);
+        iconBg = const Color(0xFFFFF7ED);
+        break;
       default:
         icon = Icons.notifications_rounded;
         iconColor = const Color(0xFF8B5CF6);

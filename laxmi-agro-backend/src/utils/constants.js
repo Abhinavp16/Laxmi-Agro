@@ -82,6 +82,12 @@ module.exports = {
     HIGH_DEMAND_ALERT: 'high_demand_alert',
     PRICE_CHANGE_SCHEDULED: 'price_change_scheduled',
     PRICE_CHANGE_ACTIVATED: 'price_change_activated',
+    PRICE_CHANGE_CAMPAIGN_STARTED: 'price_change_campaign_started',
+    PRICE_CHANGE_CAMPAIGN_12H: 'price_change_campaign_12h',
+    PRICE_CHANGE_CAMPAIGN_3H: 'price_change_campaign_3h',
+    PRICE_CHANGE_CAMPAIGN_1H: 'price_change_campaign_1h',
+    PRICE_CHANGE_CAMPAIGN_5M: 'price_change_campaign_5m',
+    PRICE_CHANGE_CAMPAIGN_APPLIED: 'price_change_campaign_applied',
   },
 
   DEFAULT_SETTINGS: {

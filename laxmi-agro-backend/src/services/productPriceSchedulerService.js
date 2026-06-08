@@ -1,18 +1,52 @@
-const { Product, User, DeviceToken, Notification } = require('../models');
+const { Product, User, DeviceToken, Notification, PriceChangeCampaign } = require('../models');
 const logger = require('../utils/logger');
-const { USER_ROLES, NOTIFICATION_TYPES } = require('../utils/constants');
+const { USER_ROLES, NOTIFICATION_TYPES, PRODUCT_STATUS } = require('../utils/constants');
 const {
   applyVariantSummaryToProduct,
-  getVariantDisplayName,
   hasRealVariants,
 } = require('../utils/productVariants');
 const notificationService = require('./notificationService');
 
 const PRICE_CHANGE_POLL_INTERVAL_MS = 60 * 1000;
 
-function formatMoney(value) {
-  return `₹${Number(value || 0).toFixed(0)}`;
-}
+const CAMPAIGN_STAGES = [
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED,
+    thresholdMs: 24 * 60 * 60 * 1000,
+    title: 'Price update scheduled',
+    body: 'New prices will apply after 24 hours.',
+  },
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_12H,
+    thresholdMs: 12 * 60 * 60 * 1000,
+    title: 'Price update reminder',
+    body: 'Most product prices will update in 12 hours.',
+  },
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_3H,
+    thresholdMs: 3 * 60 * 60 * 1000,
+    title: 'Price update reminder',
+    body: 'Prices on many products will update in 3 hours.',
+  },
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_1H,
+    thresholdMs: 60 * 60 * 1000,
+    title: 'Price update reminder',
+    body: 'Prices on many products will update in 1 hour.',
+  },
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_5M,
+    thresholdMs: 5 * 60 * 1000,
+    title: 'Final price reminder',
+    body: 'Final reminder: new prices will apply in 5 minutes.',
+  },
+];
+
+const FINAL_STAGE = {
+  key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_APPLIED,
+  title: 'Prices updated',
+  body: 'New prices are now applied.',
+};
 
 function clearPendingFields(target) {
   target.pendingRetailPrice = null;
@@ -21,21 +55,65 @@ function clearPendingFields(target) {
   target.priceChangeEffectiveAt = null;
 }
 
-function buildPriceChangeLines(currentRetail, newRetail, currentWholesale, newWholesale) {
-  const lines = [];
-
-  if (newRetail !== null && newRetail !== undefined && Number(newRetail) !== Number(currentRetail)) {
-    lines.push(`Customer ${formatMoney(currentRetail)} -> ${formatMoney(newRetail)}`);
-  }
-
-  if (newWholesale !== null && newWholesale !== undefined && Number(newWholesale) !== Number(currentWholesale)) {
-    lines.push(`Wholesale ${formatMoney(currentWholesale)} -> ${formatMoney(newWholesale)}`);
-  }
-
-  return lines;
+async function fetchScheduledProducts() {
+  return Product.find({
+    status: { $ne: PRODUCT_STATUS.ARCHIVED },
+    $or: [
+      { priceChangeEffectiveAt: { $ne: null } },
+      { 'variants.priceChangeEffectiveAt': { $ne: null } },
+    ],
+  })
+    .select('_id orderCount purchaseCountMax priceChangeEffectiveAt variants')
+    .lean();
 }
 
-async function broadcastPriceChange(notification, data) {
+function computeCampaignEffectiveAt(products = []) {
+  let maxTimestamp = null;
+
+  for (const product of products) {
+    const timestamps = [];
+    if (product?.priceChangeEffectiveAt) {
+      timestamps.push(new Date(product.priceChangeEffectiveAt).getTime());
+    }
+
+    for (const variant of product?.variants || []) {
+      if (variant?.priceChangeEffectiveAt) {
+        timestamps.push(new Date(variant.priceChangeEffectiveAt).getTime());
+      }
+    }
+
+    for (const timestamp of timestamps) {
+      if (!Number.isFinite(timestamp)) continue;
+      if (maxTimestamp === null || timestamp > maxTimestamp) {
+        maxTimestamp = timestamp;
+      }
+    }
+  }
+
+  return maxTimestamp === null ? null : new Date(maxTimestamp);
+}
+
+function pickRepresentativeProductIds(products = []) {
+  const normalized = products.map((product) => ({
+    id: String(product._id),
+    score: Number(product.orderCount || product.purchaseCountMax || 0),
+  }));
+
+  const topSelling = [...normalized]
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 5)
+    .map((item) => item.id);
+
+  const remaining = normalized
+    .filter((item) => !topSelling.includes(item.id))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .map((item) => item.id);
+
+  return [...new Set([...topSelling, ...remaining])];
+}
+
+async function broadcastCampaignNotification(stage, campaign) {
   const appUsers = await User.find({
     role: { $in: [USER_ROLES.BUYER, USER_ROLES.WHOLESALER] },
   }).select('_id');
@@ -51,11 +129,21 @@ async function broadcastPriceChange(notification, data) {
   }).select('fcmToken');
 
   const fcmTokens = [...new Set(tokens.map((token) => token.fcmToken).filter(Boolean))];
+  const notification = {
+    title: stage.title,
+    body: stage.body,
+  };
+  const data = {
+    type: stage.key,
+    campaignId: String(campaign._id),
+    effectiveAt: campaign.effectiveAt ? new Date(campaign.effectiveAt).toISOString() : '',
+  };
+
   if (fcmTokens.length > 0) {
     try {
       await notificationService.sendToMultipleDevices(fcmTokens, notification, data);
     } catch (error) {
-      logger.error('Failed to send price change push notification:', error);
+      logger.error('Failed to send price campaign notification:', error);
     }
   }
 
@@ -65,93 +153,115 @@ async function broadcastPriceChange(notification, data) {
         userId,
         title: notification.title,
         body: notification.body,
-        type: data.type,
+        type: stage.key,
         data,
       }))
     );
   } catch (error) {
-    logger.error('Failed to persist price change notifications:', error);
+    logger.error('Failed to persist price campaign notifications:', error);
   }
 }
 
-async function notifyScheduledPriceChange({
-  productId,
-  productName,
-  variantId = null,
-  variantName = '',
-  currentRetailPrice,
-  newRetailPrice,
-  currentWholesalePrice,
-  newWholesalePrice,
-  effectiveAt,
-}) {
-  const priceLines = buildPriceChangeLines(
-    currentRetailPrice,
-    newRetailPrice,
-    currentWholesalePrice,
-    newWholesalePrice
-  );
-
-  if (!priceLines.length) {
-    return;
-  }
-
-  const targetName = variantName ? `${productName} (${variantName})` : productName;
-  await broadcastPriceChange(
-    {
-      title: 'Price update scheduled',
-      body: `${targetName} price will change in 24 hours. ${priceLines.join(' | ')}`,
-    },
-    {
-      type: NOTIFICATION_TYPES.PRICE_CHANGE_SCHEDULED,
-      productId: String(productId),
-      variantId: variantId ? String(variantId) : '',
-      currentRetailPrice: String(currentRetailPrice ?? ''),
-      newRetailPrice: String(newRetailPrice ?? ''),
-      currentWholesalePrice: String(currentWholesalePrice ?? ''),
-      newWholesalePrice: String(newWholesalePrice ?? ''),
-      effectiveAt: new Date(effectiveAt).toISOString(),
-    }
-  );
+async function getActiveCampaign() {
+  return PriceChangeCampaign.findOne({ status: 'active' }).sort({ createdAt: -1 });
 }
 
-async function notifyActivatedPriceChange({
-  productId,
-  productName,
-  variantId = null,
-  variantName = '',
-  currentRetailPrice,
-  newRetailPrice,
-  currentWholesalePrice,
-  newWholesalePrice,
-}) {
-  const priceLines = buildPriceChangeLines(
-    currentRetailPrice,
-    newRetailPrice,
-    currentWholesalePrice,
-    newWholesalePrice
-  );
+async function registerPriceChangeCampaign() {
+  const scheduledProducts = await fetchScheduledProducts();
+  if (!scheduledProducts.length) {
+    return null;
+  }
 
-  if (!priceLines.length) {
+  const effectiveAt = computeCampaignEffectiveAt(scheduledProducts);
+  if (!effectiveAt) {
+    return null;
+  }
+
+  const includedProductIds = [...new Set(scheduledProducts.map((product) => String(product._id)))];
+  const representativeProductIds = pickRepresentativeProductIds(scheduledProducts);
+  let campaign = await getActiveCampaign();
+
+  if (!campaign) {
+    campaign = await PriceChangeCampaign.create({
+      status: 'active',
+      startAt: new Date(),
+      effectiveAt,
+      includedProductIds,
+      representativeProductIds,
+      sentStages: [],
+      lastMergedAt: new Date(),
+    });
+  } else {
+    campaign.effectiveAt = effectiveAt;
+    campaign.includedProductIds = includedProductIds;
+    campaign.representativeProductIds = representativeProductIds;
+    campaign.lastMergedAt = new Date();
+    await campaign.save();
+  }
+
+  await sendDueCampaignStages();
+  return campaign;
+}
+
+async function sendDueCampaignStages() {
+  const campaign = await getActiveCampaign();
+  if (!campaign) {
     return;
   }
 
-  const targetName = variantName ? `${productName} (${variantName})` : productName;
-  await broadcastPriceChange(
-    {
-      title: 'Price update is live',
-      body: `${targetName} price is now updated. ${priceLines.join(' | ')}`,
-    },
-    {
-      type: NOTIFICATION_TYPES.PRICE_CHANGE_ACTIVATED,
-      productId: String(productId),
-      variantId: variantId ? String(variantId) : '',
-      currentRetailPrice: String(currentRetailPrice ?? ''),
-      newRetailPrice: String(newRetailPrice ?? ''),
-      currentWholesalePrice: String(currentWholesalePrice ?? ''),
-      newWholesalePrice: String(newWholesalePrice ?? ''),
+  const now = Date.now();
+  const effectiveAt = new Date(campaign.effectiveAt).getTime();
+  const remainingMs = effectiveAt - now;
+  const sentStages = new Set(campaign.sentStages || []);
+
+  for (const stage of CAMPAIGN_STAGES) {
+    if (sentStages.has(stage.key)) {
+      continue;
     }
-  );
+
+    const shouldSend =
+      stage.key === NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED
+        ? true
+        : remainingMs <= stage.thresholdMs;
+
+    if (!shouldSend) {
+      continue;
+    }
+
+    await broadcastCampaignNotification(stage, campaign);
+    campaign.sentStages = [...new Set([...(campaign.sentStages || []), stage.key])];
+    await campaign.save();
+  }
+}
+
+async function finalizeCompletedCampaignIfNeeded() {
+  const campaign = await getActiveCampaign();
+  if (!campaign) {
+    return;
+  }
+
+  const scheduledProducts = await fetchScheduledProducts();
+  if (scheduledProducts.length > 0) {
+    campaign.includedProductIds = [...new Set(scheduledProducts.map((product) => String(product._id)))];
+    campaign.representativeProductIds = pickRepresentativeProductIds(scheduledProducts);
+    const effectiveAt = computeCampaignEffectiveAt(scheduledProducts);
+    if (effectiveAt) {
+      campaign.effectiveAt = effectiveAt;
+    }
+    campaign.lastMergedAt = new Date();
+    await campaign.save();
+    return;
+  }
+
+  const sentStages = new Set(campaign.sentStages || []);
+  if (!sentStages.has(FINAL_STAGE.key)) {
+    await broadcastCampaignNotification(FINAL_STAGE, campaign);
+    campaign.sentStages = [...new Set([...(campaign.sentStages || []), FINAL_STAGE.key])];
+  }
+
+  campaign.status = 'completed';
+  campaign.completedAt = new Date();
+  await campaign.save();
 }
 
 async function processDuePriceChanges() {
@@ -164,21 +274,11 @@ async function processDuePriceChanges() {
   });
 
   for (const product of dueProducts) {
-    const activationNotifications = [];
     let didChange = false;
 
     if (product.priceChangeEffectiveAt && product.priceChangeEffectiveAt <= now) {
       const nextRetail = product.pendingRetailPrice;
       const nextWholesale = product.pendingWholesalePrice;
-
-      activationNotifications.push({
-        productId: product._id,
-        productName: product.name,
-        currentRetailPrice: product.retailPrice,
-        newRetailPrice: nextRetail,
-        currentWholesalePrice: product.wholesalePrice,
-        newWholesalePrice: nextWholesale,
-      });
 
       if (nextRetail !== null && nextRetail !== undefined) {
         product.retailPrice = nextRetail;
@@ -198,17 +298,6 @@ async function processDuePriceChanges() {
 
       const nextRetail = variant.pendingRetailPrice;
       const nextWholesale = variant.pendingWholesalePrice;
-
-      activationNotifications.push({
-        productId: product._id,
-        productName: product.name,
-        variantId: variant._id,
-        variantName: getVariantDisplayName(product, variant),
-        currentRetailPrice: variant.retailPrice,
-        newRetailPrice: nextRetail,
-        currentWholesalePrice: variant.wholesalePrice,
-        newWholesalePrice: nextWholesale,
-      });
 
       if (nextRetail !== null && nextRetail !== undefined) {
         variant.retailPrice = nextRetail;
@@ -230,11 +319,13 @@ async function processDuePriceChanges() {
     }
 
     await product.save();
-
-    for (const payload of activationNotifications) {
-      await notifyActivatedPriceChange(payload);
-    }
   }
+}
+
+async function runPriceSchedulerTick() {
+  await processDuePriceChanges();
+  await sendDueCampaignStages();
+  await finalizeCompletedCampaignIfNeeded();
 }
 
 let schedulerHandle = null;
@@ -245,12 +336,12 @@ function startPriceChangeScheduler() {
   }
 
   schedulerHandle = setInterval(() => {
-    processDuePriceChanges().catch((error) => {
+    runPriceSchedulerTick().catch((error) => {
       logger.error('Product price scheduler failed:', error);
     });
   }, PRICE_CHANGE_POLL_INTERVAL_MS);
 
-  processDuePriceChanges().catch((error) => {
+  runPriceSchedulerTick().catch((error) => {
     logger.error('Initial product price scheduler run failed:', error);
   });
 
@@ -260,6 +351,6 @@ function startPriceChangeScheduler() {
 module.exports = {
   startPriceChangeScheduler,
   processDuePriceChanges,
-  notifyScheduledPriceChange,
+  registerPriceChangeCampaign,
   clearPendingFields,
 };
