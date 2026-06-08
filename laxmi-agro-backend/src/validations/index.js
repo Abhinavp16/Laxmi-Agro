@@ -259,6 +259,7 @@ const adminValidation = {
     company: Joi.string().allow('', null),
     videoUrl: Joi.string().allow('', null),
     shippingTerms: Joi.string().allow('', null),
+    priceChangeMode: Joi.string().valid('schedule_24h', 'immediate').optional(),
   }).custom((value, helpers) => {
     const hasVariants = Array.isArray(value.variants) && value.variants.length > 0;
     if (hasVariants) return value;
@@ -309,6 +310,7 @@ const adminValidation = {
     company: Joi.string().allow('', null),
     videoUrl: Joi.string().allow('', null),
     shippingTerms: Joi.string().allow('', null),
+    priceChangeMode: Joi.string().valid('schedule_24h', 'immediate').optional(),
   }),
 
   updateStock: Joi.object({

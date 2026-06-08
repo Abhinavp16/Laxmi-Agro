@@ -27,6 +27,7 @@ import '../categories/categories_screen.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
 
@@ -414,6 +415,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
               'purchaseCountMin': item['purchaseCountMin'] ?? 0,
               'purchaseCountMax': item['purchaseCountMax'] ?? 0,
+              'defaultVariant': item['defaultVariant'],
+              'pendingPriceChange': item['pendingPriceChange'],
             };
           }).toList();
           // Use empty list if API returns nothing (shimmer/empty state will show)
@@ -6356,6 +6359,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 decoration: TextDecoration.lineThrough,
                               ),
                             ),
+                          PendingPriceChangeNotice(
+                            pendingPriceChange:
+                                product['pendingPriceChange']
+                                    as Map<String, dynamic>?,
+                            compact: true,
+                            primaryColor: textPrimary,
+                            accentColor: const Color(0xFFB45309),
+                            backgroundColor: const Color(0xFFFFF7ED),
+                          ),
                         ],
                       ),
                       GestureDetector(

@@ -20,6 +20,7 @@ import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/verified_seller_badge.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -522,6 +523,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final mrp = selectedVariant?['mrp'] ?? _product!['mrp'];
     final wsPrice =
         selectedVariant?['wholesalePrice'] ?? _product!['wholesalePrice'];
+    final pendingPriceChange =
+        selectedVariant?['pendingPriceChange'] ?? _product!['pendingPriceChange'];
     final minWsQty = _product!['minWholesaleQuantity'] ?? 5;
     final stock = selectedVariant?['stock'] ?? _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
@@ -549,13 +552,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   SliverToBoxAdapter(child: SizedBox(height: tp + 64)),
                   SliverToBoxAdapter(child: _imageCarousel(name)),
                   SliverToBoxAdapter(
-                    child: _infoSection(
+                  child: _infoSection(
                       name,
                       sku,
                       price,
                       mrp,
                       customerPrice,
                       wsPrice,
+                      pendingPriceChange,
                       stock,
                       inStock,
                       !isWholesaler,
@@ -860,6 +864,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     dynamic mrp,
     dynamic customerPrice,
     dynamic wsPrice,
+    dynamic pendingPriceChange,
     dynamic stock,
     bool inStock,
     bool showNegotiate,
@@ -1212,6 +1217,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     ),
                   ),
               ],
+            ),
+            PendingPriceChangeNotice(
+              pendingPriceChange:
+                  pendingPriceChange is Map<String, dynamic>
+                      ? pendingPriceChange
+                      : null,
+              primaryColor: _txtSec,
+              accentColor: const Color(0xFFC2410C),
+              backgroundColor: const Color(0xFFFFF7ED),
             ),
           ],
           const SizedBox(height: 12),

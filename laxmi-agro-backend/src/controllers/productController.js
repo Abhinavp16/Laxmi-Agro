@@ -5,6 +5,7 @@ const { PRODUCT_STATUS, ANALYTICS_EVENTS } = require('../utils/constants');
 const mongoose = require('mongoose');
 const {
   getPriceForUser,
+  getPendingPriceChangeForUser,
   serializeVariantForUser,
   getProductStockTotal,
   getDefaultVariant,
@@ -40,6 +41,7 @@ const formatProductCard = (product, userRole, req) => {
     hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
     variantCount: Array.isArray(product.variants) ? product.variants.length : 0,
     defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
+    pendingPriceChange: getPendingPriceChangeForUser(product, userRole, defaultVariant),
   };
 };
 
@@ -97,7 +99,7 @@ exports.getProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company variants')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company variants')
         .populate('company', 'name')
         .sort(sortOption)
         .skip(skip)
@@ -192,6 +194,7 @@ exports.getProductBySlug = async (req, res, next) => {
       stock: getProductStockTotal(product),
       hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
       defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
+      pendingPriceChange: getPendingPriceChangeForUser(product, userRole, defaultVariant),
       variants: Array.isArray(product.variants)
         ? product.variants.map((variant) => serializeVariantForUser(product, variant, userRole))
         : [],
@@ -255,7 +258,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
       status: PRODUCT_STATUS.ACTIVE,
       isFeatured: true,
     })
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax variants')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax variants')
       .limit(10)
       .lean();
 
@@ -332,7 +335,7 @@ exports.searchProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company variants')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company variants')
         .populate('company', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -471,7 +474,7 @@ exports.getRelatedProducts = async (req, res, next) => {
       category: currentProduct.category,
       _id: { $ne: currentProduct._id }
     })
-      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company variants')
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company variants')
       .populate('company', 'name')
       .limit(limit)
       .lean();

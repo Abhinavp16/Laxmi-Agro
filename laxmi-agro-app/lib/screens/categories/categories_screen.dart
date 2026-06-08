@@ -9,6 +9,7 @@ import '../../core/providers/locale_provider.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../widgets/pending_price_change_notice.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSearchTap;
@@ -233,6 +234,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       item['reviewCount'] ??
                       item['reviews'] ??
                       '',
+                  'pendingPriceChange': item['pendingPriceChange'],
                 },
               )
               .toList();
@@ -859,6 +861,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             ),
                           ],
                         ],
+                      ),
+                      PendingPriceChangeNotice(
+                        pendingPriceChange:
+                            product['pendingPriceChange']
+                                as Map<String, dynamic>?,
+                        compact: true,
+                        primaryColor: textPrimary,
+                        accentColor: const Color(0xFFB45309),
+                        backgroundColor: const Color(0xFFFFF7ED),
                       ),
                       const SizedBox(
                         height: 6,

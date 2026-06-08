@@ -50,6 +50,24 @@ const variantSchema = new mongoose.Schema({
     required: [true, 'Variant wholesale price is required'],
     min: [0, 'Variant wholesale price cannot be negative'],
   },
+  pendingRetailPrice: {
+    type: Number,
+    default: null,
+    min: [0, 'Pending variant retail price cannot be negative'],
+  },
+  pendingWholesalePrice: {
+    type: Number,
+    default: null,
+    min: [0, 'Pending variant wholesale price cannot be negative'],
+  },
+  priceChangeScheduledAt: {
+    type: Date,
+    default: null,
+  },
+  priceChangeEffectiveAt: {
+    type: Date,
+    default: null,
+  },
   stock: {
     type: Number,
     default: 0,
@@ -144,6 +162,24 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Wholesale price is required'],
     min: [0, 'Wholesale price cannot be negative'],
+  },
+  pendingRetailPrice: {
+    type: Number,
+    default: null,
+    min: [0, 'Pending retail price cannot be negative'],
+  },
+  pendingWholesalePrice: {
+    type: Number,
+    default: null,
+    min: [0, 'Pending wholesale price cannot be negative'],
+  },
+  priceChangeScheduledAt: {
+    type: Date,
+    default: null,
+  },
+  priceChangeEffectiveAt: {
+    type: Date,
+    default: null,
   },
 
   // Bulk/Wholesale settings

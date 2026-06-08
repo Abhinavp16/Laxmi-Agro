@@ -80,6 +80,8 @@ module.exports = {
     ORDER_DELIVERED: 'order_delivered',
     LOW_STOCK_ALERT: 'low_stock_alert',
     HIGH_DEMAND_ALERT: 'high_demand_alert',
+    PRICE_CHANGE_SCHEDULED: 'price_change_scheduled',
+    PRICE_CHANGE_ACTIVATED: 'price_change_activated',
   },
 
   DEFAULT_SETTINGS: {

@@ -108,6 +108,37 @@ const getPriceForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput
   };
 };
 
+const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput = null) => {
+  const variant = variantInput || getDefaultVariant(product) || getLegacyVariant(product);
+  const isWholesaler = userRole === USER_ROLES.WHOLESALER;
+  const currentPrice = isWholesaler
+    ? toPositiveNumber(variant?.wholesalePrice)
+    : toPositiveNumber(variant?.retailPrice);
+  const pendingPrice = isWholesaler
+    ? variant?.pendingWholesalePrice
+    : variant?.pendingRetailPrice;
+  const effectiveAt = variant?.priceChangeEffectiveAt || product?.priceChangeEffectiveAt || null;
+  const scheduledAt = variant?.priceChangeScheduledAt || product?.priceChangeScheduledAt || null;
+
+  if (pendingPrice === null || pendingPrice === undefined || !effectiveAt) {
+    return null;
+  }
+
+  const nextPrice = toPositiveNumber(pendingPrice);
+  if (nextPrice === currentPrice) {
+    return null;
+  }
+
+  return {
+    currentPrice,
+    newPrice: nextPrice,
+    scheduledAt,
+    effectiveAt,
+    scope: variantInput ? 'variant' : 'product',
+    targetRole: isWholesaler ? USER_ROLES.WHOLESALER : USER_ROLES.BUYER,
+  };
+};
+
 const getVariantStock = (variant = {}) => toPositiveNumber(variant?.stock);
 
 const getProductStockTotal = (product = {}) => {
@@ -163,6 +194,7 @@ const serializeVariantForUser = (product = {}, variant = {}, userRole = USER_ROL
     packing: String(variant?.packing || '').trim(),
     isActive: variant?.isActive !== false,
     order: Number(variant?.order || 0),
+    pendingPriceChange: getPendingPriceChangeForUser(product, userRole, variant),
   };
 };
 
@@ -226,6 +258,7 @@ module.exports = {
   getLegacyVariant,
   getVariantById,
   getPriceForUser,
+  getPendingPriceChangeForUser,
   getVariantStock,
   getProductStockTotal,
   serializeVariantForUser,

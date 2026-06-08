@@ -8,6 +8,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../widgets/pending_price_change_notice.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
   final bool isHotDeals;
@@ -108,6 +109,7 @@ class _FeaturedProductsScreenState
             'price': item['price'] ?? item['retailPrice'] ?? 0,
             'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
             'image': apiImage,
+            'pendingPriceChange': item['pendingPriceChange'],
           };
         }).toList();
 
@@ -404,6 +406,15 @@ class _FeaturedProductsScreenState
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
                           ),
+                        ),
+                        PendingPriceChangeNotice(
+                          pendingPriceChange:
+                              product['pendingPriceChange']
+                                  as Map<String, dynamic>?,
+                          compact: true,
+                          primaryColor: textPrimary,
+                          accentColor: const Color(0xFFB45309),
+                          backgroundColor: const Color(0xFFFFF7ED),
                         ),
                       ],
                     ),

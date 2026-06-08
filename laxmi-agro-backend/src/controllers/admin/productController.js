@@ -11,9 +11,190 @@ const sharp = require('sharp');
 const slugify = require('slugify');
 const { encode } = require('blurhash');
 const {
+  normalizeObjectIdLike,
   normalizeVariantsForPersistence,
   applyVariantSummaryToProduct,
+  getVariantDisplayName,
 } = require('../../utils/productVariants');
+const {
+  notifyScheduledPriceChange,
+  clearPendingFields,
+} = require('../../services/productPriceSchedulerService');
+
+const PRICE_CHANGE_MODE_SCHEDULED = 'schedule_24h';
+const PRICE_CHANGE_MODE_IMMEDIATE = 'immediate';
+const PRICE_CHANGE_DELAY_MS = 24 * 60 * 60 * 1000;
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildVariantLookup(existingVariants = []) {
+  const lookup = new Map();
+
+  for (const variant of existingVariants) {
+    const byId = normalizeObjectIdLike(variant?._id || variant?.id);
+    const bySku = String(variant?.sku || '').trim().toUpperCase();
+
+    if (byId) {
+      lookup.set(`id:${byId}`, variant);
+    }
+    if (bySku) {
+      lookup.set(`sku:${bySku}`, variant);
+    }
+  }
+
+  return lookup;
+}
+
+function syncScheduledBasePrices(product, updateData, mode, scheduledAt, effectiveAt) {
+  const hasRetailChange =
+    updateData.retailPrice !== undefined &&
+    Number(updateData.retailPrice) !== Number(product.retailPrice);
+  const hasWholesaleChange =
+    updateData.wholesalePrice !== undefined &&
+    Number(updateData.wholesalePrice) !== Number(product.wholesalePrice);
+
+  if (mode === PRICE_CHANGE_MODE_IMMEDIATE) {
+    if (hasRetailChange || hasWholesaleChange) {
+      clearPendingFields(updateData);
+    } else {
+      updateData.pendingRetailPrice = product.pendingRetailPrice ?? null;
+      updateData.pendingWholesalePrice = product.pendingWholesalePrice ?? null;
+      updateData.priceChangeScheduledAt = product.priceChangeScheduledAt ?? null;
+      updateData.priceChangeEffectiveAt = product.priceChangeEffectiveAt ?? null;
+    }
+    return [];
+  }
+
+  if (!hasRetailChange && !hasWholesaleChange) {
+    updateData.pendingRetailPrice = product.pendingRetailPrice ?? null;
+    updateData.pendingWholesalePrice = product.pendingWholesalePrice ?? null;
+    updateData.priceChangeScheduledAt = product.priceChangeScheduledAt ?? null;
+    updateData.priceChangeEffectiveAt = product.priceChangeEffectiveAt ?? null;
+    return [];
+  }
+
+  const nextPendingRetail = hasRetailChange
+    ? Number(updateData.retailPrice)
+    : numberOrNull(product.pendingRetailPrice);
+  const nextPendingWholesale = hasWholesaleChange
+    ? Number(updateData.wholesalePrice)
+    : numberOrNull(product.pendingWholesalePrice);
+
+  updateData.pendingRetailPrice = nextPendingRetail;
+  updateData.pendingWholesalePrice = nextPendingWholesale;
+  updateData.priceChangeScheduledAt = scheduledAt;
+  updateData.priceChangeEffectiveAt = effectiveAt;
+
+  if (hasRetailChange) {
+    updateData.retailPrice = product.retailPrice;
+  }
+  if (hasWholesaleChange) {
+    updateData.wholesalePrice = product.wholesalePrice;
+  }
+
+  return [{
+    productId: product._id,
+    productName: product.name,
+    currentRetailPrice: product.retailPrice,
+    newRetailPrice: nextPendingRetail,
+    currentWholesalePrice: product.wholesalePrice,
+    newWholesalePrice: nextPendingWholesale,
+    effectiveAt,
+  }];
+}
+
+function syncScheduledVariantPrices(product, incomingVariants, mode, scheduledAt, effectiveAt) {
+  if (!Array.isArray(incomingVariants) || incomingVariants.length === 0) {
+    return { variants: incomingVariants, notifications: [] };
+  }
+
+  const existingVariantLookup = buildVariantLookup(product.variants || []);
+  const notifications = [];
+
+  const variants = incomingVariants.map((variant) => {
+    const variantId = normalizeObjectIdLike(variant?._id || variant?.id);
+    const skuKey = String(variant?.sku || '').trim().toUpperCase();
+    const existingVariant =
+      (variantId && existingVariantLookup.get(`id:${variantId}`)) ||
+      (skuKey && existingVariantLookup.get(`sku:${skuKey}`)) ||
+      null;
+
+    const nextVariant = {
+      ...variant,
+      _id: variantId || variant?._id,
+    };
+
+    if (!existingVariant) {
+      clearPendingFields(nextVariant);
+      return nextVariant;
+    }
+
+    const retailChanged = Number(variant.retailPrice) !== Number(existingVariant.retailPrice);
+    const wholesaleChanged = Number(variant.wholesalePrice) !== Number(existingVariant.wholesalePrice);
+
+    if (mode === PRICE_CHANGE_MODE_IMMEDIATE) {
+      if (retailChanged || wholesaleChanged) {
+        clearPendingFields(nextVariant);
+      } else {
+        nextVariant.pendingRetailPrice = existingVariant.pendingRetailPrice ?? null;
+        nextVariant.pendingWholesalePrice = existingVariant.pendingWholesalePrice ?? null;
+        nextVariant.priceChangeScheduledAt = existingVariant.priceChangeScheduledAt ?? null;
+        nextVariant.priceChangeEffectiveAt = existingVariant.priceChangeEffectiveAt ?? null;
+      }
+      return nextVariant;
+    }
+
+    if (!retailChanged && !wholesaleChanged) {
+      nextVariant.pendingRetailPrice = existingVariant.pendingRetailPrice ?? null;
+      nextVariant.pendingWholesalePrice = existingVariant.pendingWholesalePrice ?? null;
+      nextVariant.priceChangeScheduledAt = existingVariant.priceChangeScheduledAt ?? null;
+      nextVariant.priceChangeEffectiveAt = existingVariant.priceChangeEffectiveAt ?? null;
+      return nextVariant;
+    }
+
+    const nextPendingRetail = retailChanged
+      ? Number(variant.retailPrice)
+      : numberOrNull(existingVariant.pendingRetailPrice);
+    const nextPendingWholesale = wholesaleChanged
+      ? Number(variant.wholesalePrice)
+      : numberOrNull(existingVariant.pendingWholesalePrice);
+
+    nextVariant.pendingRetailPrice = nextPendingRetail;
+    nextVariant.pendingWholesalePrice = nextPendingWholesale;
+    nextVariant.priceChangeScheduledAt = scheduledAt;
+    nextVariant.priceChangeEffectiveAt = effectiveAt;
+
+    if (retailChanged) {
+      nextVariant.retailPrice = existingVariant.retailPrice;
+    }
+    if (wholesaleChanged) {
+      nextVariant.wholesalePrice = existingVariant.wholesalePrice;
+    }
+
+    notifications.push({
+      productId: product._id,
+      productName: product.name,
+      variantId: existingVariant._id,
+      variantName: getVariantDisplayName(product, existingVariant),
+      currentRetailPrice: existingVariant.retailPrice,
+      newRetailPrice: nextPendingRetail,
+      currentWholesalePrice: existingVariant.wholesalePrice,
+      newWholesalePrice: nextPendingWholesale,
+      effectiveAt,
+    });
+
+    return nextVariant;
+  });
+
+  return { variants, notifications };
+}
 
 async function uploadFilesToStorage(files, folder = 'products') {
   const results = [];
@@ -242,6 +423,11 @@ exports.updateProduct = async (req, res, next) => {
 
     const previousCategory = product.category;
     const updateData = prepareProductData(req.body);
+    const priceChangeMode = req.body.priceChangeMode || PRICE_CHANGE_MODE_SCHEDULED;
+    const scheduledAt = new Date();
+    const effectiveAt = new Date(scheduledAt.getTime() + PRICE_CHANGE_DELAY_MS);
+    delete updateData.priceChangeMode;
+    const scheduledNotifications = [];
 
     if (updateData.name && updateData.name !== product.name) {
       updateData.slug = slugify(updateData.name, { lower: true, strict: true });
@@ -262,8 +448,43 @@ exports.updateProduct = async (req, res, next) => {
       updateData.labelIds = await normalizeProductLabelIds(updateData.labelIds);
     }
 
+    const hasIncomingVariants = Array.isArray(updateData.variants) && updateData.variants.length > 0;
+
+    if (hasIncomingVariants) {
+      updateData.pendingRetailPrice = product.pendingRetailPrice ?? null;
+      updateData.pendingWholesalePrice = product.pendingWholesalePrice ?? null;
+      updateData.priceChangeScheduledAt = product.priceChangeScheduledAt ?? null;
+      updateData.priceChangeEffectiveAt = product.priceChangeEffectiveAt ?? null;
+    } else {
+      scheduledNotifications.push(
+        ...syncScheduledBasePrices(product, updateData, priceChangeMode, scheduledAt, effectiveAt)
+      );
+    }
+
+    if (Array.isArray(updateData.variants)) {
+      const scheduledVariantState = syncScheduledVariantPrices(
+        product,
+        updateData.variants,
+        priceChangeMode,
+        scheduledAt,
+        effectiveAt
+      );
+      updateData.variants = scheduledVariantState.variants;
+      scheduledNotifications.push(...scheduledVariantState.notifications);
+      if (updateData.variants.length > 0) {
+        applyVariantSummaryToProduct(updateData);
+      }
+    }
+
     Object.assign(product, updateData);
     await product.save();
+
+    if (priceChangeMode === PRICE_CHANGE_MODE_SCHEDULED) {
+      for (const payload of scheduledNotifications) {
+        await notifyScheduledPriceChange(payload);
+      }
+    }
+
     await Promise.all(
       [...new Set([previousCategory, product.category].filter(Boolean))].map((categorySlug) =>
         updateProductCount(categorySlug)

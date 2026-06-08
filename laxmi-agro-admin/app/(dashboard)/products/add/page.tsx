@@ -98,6 +98,7 @@ interface ProductVariantAttributeForm {
 }
 
 interface ProductVariantForm {
+    id?: string
     name: string
     sku: string
     mrp: string
@@ -142,6 +143,7 @@ const productSchema = z.object({
     mrp: numericString.default(""),
     retailPrice: numericString.default(""),
     wholesalePrice: numericString.default(""),
+    priceChangeMode: z.enum(["schedule_24h", "immediate"]).default("schedule_24h"),
     stock: numericString.default("0"),
     lowStockThreshold: numericString.default("5"),
     minWholesaleQuantity: z.string().refine((val) => !isNaN(Number(val)), "Must be a number"),
@@ -203,6 +205,7 @@ export default function AddProductPage() {
             mrp: "",
             retailPrice: "",
             wholesalePrice: "",
+            priceChangeMode: "schedule_24h",
             stock: "0",
             lowStockThreshold: "5",
             minWholesaleQuantity: "10",
@@ -221,6 +224,7 @@ export default function AddProductPage() {
     })
 
     const createEmptyVariant = (): ProductVariantForm => ({
+        id: undefined,
         name: "",
         sku: "",
         mrp: "",
@@ -281,8 +285,13 @@ export default function AddProductPage() {
                 tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
                 sku: product.sku || "",
                 mrp: product.mrp !== undefined && product.mrp !== null ? String(product.mrp) : "",
-                retailPrice: product.retailPrice !== undefined && product.retailPrice !== null ? String(product.retailPrice) : "",
-                wholesalePrice: product.wholesalePrice !== undefined && product.wholesalePrice !== null ? String(product.wholesalePrice) : "",
+                retailPrice: product.pendingRetailPrice !== undefined && product.pendingRetailPrice !== null
+                    ? String(product.pendingRetailPrice)
+                    : product.retailPrice !== undefined && product.retailPrice !== null ? String(product.retailPrice) : "",
+                wholesalePrice: product.pendingWholesalePrice !== undefined && product.pendingWholesalePrice !== null
+                    ? String(product.pendingWholesalePrice)
+                    : product.wholesalePrice !== undefined && product.wholesalePrice !== null ? String(product.wholesalePrice) : "",
+                priceChangeMode: "schedule_24h",
                 stock: String(product.stock || "0"),
                 lowStockThreshold: String(product.lowStockThreshold ?? "5"),
                 minWholesaleQuantity: String(product.minWholesaleQuantity || "10"),
@@ -306,11 +315,12 @@ export default function AddProductPage() {
 
             if (Array.isArray(product.variants) && product.variants.length > 0) {
                 setVariants(product.variants.map((variant: any) => ({
+                    id: String(variant.id || variant._id || ""),
                     name: String(variant.name || ""),
                     sku: String(variant.sku || ""),
                     mrp: String(variant.mrp ?? ""),
-                    retailPrice: String(variant.retailPrice ?? ""),
-                    wholesalePrice: String(variant.wholesalePrice ?? ""),
+                    retailPrice: String(variant.pendingRetailPrice ?? variant.retailPrice ?? ""),
+                    wholesalePrice: String(variant.pendingWholesalePrice ?? variant.wholesalePrice ?? ""),
                     stock: String(variant.stock ?? "0"),
                     lowStockThreshold: String(variant.lowStockThreshold ?? "5"),
                     minOrderQuantity: String(variant.minOrderQuantity ?? "1"),
@@ -715,6 +725,7 @@ export default function AddProductPage() {
             const normalizedVariants = variantDrafts
                 .filter((variant) => variant.name && variant.sku && variant.mrp !== "" && variant.retailPrice !== "" && variant.wholesalePrice !== "")
                 .map((variant, index) => ({
+                    _id: variant.id || undefined,
                     name: variant.name,
                     sku: variant.sku,
                     attributes: variant.normalizedAttributes,
@@ -760,6 +771,7 @@ export default function AddProductPage() {
                 mrp: values.mrp === "" ? undefined : Number(values.mrp),
                 retailPrice: values.retailPrice === "" ? undefined : Number(values.retailPrice),
                 wholesalePrice: values.wholesalePrice === "" ? undefined : Number(values.wholesalePrice),
+                priceChangeMode: isEditMode ? values.priceChangeMode : undefined,
                 stock: Number(values.stock),
                 lowStockThreshold: Number(values.lowStockThreshold || 5),
                 minWholesaleQuantity: Number(values.minWholesaleQuantity),
@@ -1382,6 +1394,33 @@ export default function AddProductPage() {
                                             These fields act as the fallback/default summary. If you add variants below, the backend will derive the visible summary from those variants.
                                         </p>
                                     </div>
+
+                                    {isEditMode ? (
+                                        <FormField
+                                            control={form.control}
+                                            name="priceChangeMode"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-white">Price Change Mode</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="bg-[#0D0D0D] border-[#333] text-white">
+                                                                <SelectValue placeholder="Select price change mode" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent className="bg-[#111111] border-[#333] text-white">
+                                                            <SelectItem value="schedule_24h">Schedule after 24 hours</SelectItem>
+                                                            <SelectItem value="immediate">Immediate change</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormDescription className="text-gray-500">
+                                                        Scheduled changes notify users and show a countdown in the app. Immediate changes go live now and clear any pending schedule for this save.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ) : null}
 
                                     <FormField
                                         control={form.control}
