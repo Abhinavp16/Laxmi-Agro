@@ -917,38 +917,37 @@ export default function ManageWebsitePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-3"><Globe className="h-7 w-7 text-[#86efac]" />Manage Website</h1>
-                <p className="text-[#919191] mt-1">Each hero card controls one page banner. Admin can only update image.</p>
+                <h1 className="flex items-center gap-3 text-3xl font-bold text-slate-900"><Globe className="h-7 w-7 text-[#86efac]" />Manage Website</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Each hero card controls one page banner. Admin can only update image.</p>
             </div>
 
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured")} className="w-full">
-                <TabsList className="bg-[#161616] border border-[#333]">
-                    <TabsTrigger value="hero" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Hero Section</TabsTrigger>
-                    <TabsTrigger value="labels" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Labels</TabsTrigger>
-                    <TabsTrigger value="categories" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Product Categories</TabsTrigger>
-                    <TabsTrigger value="featured" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">Popular Products</TabsTrigger>
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 border border-[#dde3d0] bg-white/90 p-1 sm:grid-cols-4">
+                    <TabsTrigger value="hero" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Hero Section</TabsTrigger>
+                    <TabsTrigger value="labels" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Labels</TabsTrigger>
+                    <TabsTrigger value="categories" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Product Categories</TabsTrigger>
+                    <TabsTrigger value="featured" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Popular Products</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="hero" className="mt-4">
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                        <Card className="bg-gradient-to-b from-[#181b20] to-[#151515] border-[#2E3340] xl:col-span-8 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
                             <CardHeader>
-                                <CardTitle className="text-white flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2 text-slate-900">
                                     <span className="inline-block w-2 h-2 rounded-full bg-[#86efac]" />
                                     Page Hero Banners
                                 </CardTitle>
-                                <CardDescription className="text-[#A5A9B5]">Card 1 Home, Card 2 About Us, Card 3 Products, Card 4 Dealership, Card 5 Contact and other pages.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {heroCards.map((item, index) => (
-                                    <div key={index} className="border border-[#303543] rounded-2xl p-4 bg-[#121417] space-y-3">
+                                    <div key={index} className="space-y-3 rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-sm text-white font-semibold">Card {index + 1} - {HERO_CARD_PAGE_LABELS[index]}</p>
-                                            <span className="text-[11px] px-2 py-1 rounded-full bg-[#202633] text-[#8FB2FF] border border-[#2E3A50]">{HERO_CARD_PAGE_LABELS[index]}</span>
+                                            <p className="text-sm font-semibold text-slate-900">Card {index + 1} - {HERO_CARD_PAGE_LABELS[index]}</p>
+                                            <span className="rounded-full border border-[#d8dfca] bg-white px-2 py-1 text-[11px] text-slate-600">{HERO_CARD_PAGE_LABELS[index]}</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-[1fr_170px] gap-3 items-start">
-                                            <Input value={item.image} onChange={(e) => setHeroCards((prev) => prev.map((h, i) => i === index ? { ...h, image: e.target.value } : h))} className="bg-[#0D0D0D] border-[#2F3542] text-white" />
-                                            <div className="h-24 rounded-xl overflow-hidden border border-[#2F3542] bg-[#0D0D0D]">
+                                            <Input value={item.image} onChange={(e) => setHeroCards((prev) => prev.map((h, i) => i === index ? { ...h, image: e.target.value } : h))} className="border-[#d8dfca] bg-white text-slate-900" />
+                                            <div className="h-24 overflow-hidden rounded-xl border border-[#d8dfca] bg-white">
                                                 {item.image ? (
                                                     <img
                                                         src={previewSrc(item.image)}
@@ -959,13 +958,13 @@ export default function ManageWebsitePage() {
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No image</div>
+                                                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">No image</div>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex justify-end">
                                             <input id={`hero-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "hero", index)} />
-                                            <Button type="button" variant="outline" className="border-[#2F3542] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`hero-upload-${index}`)?.click()} disabled={uploading === `hero-${index}`}>
+                                            <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`hero-upload-${index}`)?.click()} disabled={uploading === `hero-${index}`}>
                                                 {uploading === `hero-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}Upload Image
                                             </Button>
                                         </div>
@@ -974,15 +973,15 @@ export default function ManageWebsitePage() {
                                 <Button onClick={saveHeroCards} disabled={isSavingHero} className="w-full bg-gradient-to-r from-[#86efac] to-[#57d08f] text-black hover:opacity-95">{isSavingHero ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Page Hero Images</Button>
                             </CardContent>
                         </Card>
-                        <Card className="bg-gradient-to-b from-[#171a22] to-[#141414] border-[#2E3340] xl:col-span-4 xl:sticky xl:top-24 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
-                                <CardTitle className="text-white text-lg">Page Banner Preview</CardTitle>
-                                <CardDescription className="text-[#A5A9B5]">Preview of each page-specific hero banner.</CardDescription>
+                                <CardTitle className="text-lg text-slate-900">Page Banner Preview</CardTitle>
+                                <CardDescription className="text-slate-500">Preview of each page-specific hero banner.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
                                     {heroCards.map((item, i) => (
-                                        <div key={i} className="rounded-2xl overflow-hidden border border-[#2F3542] bg-[#0C0E13]">
+                                        <div key={i} className="overflow-hidden rounded-2xl border border-[#dde3d0] bg-[#f8faf3]">
                                             <div className="relative h-28">
                                                 {item.image ? (
                                                     <img
@@ -994,13 +993,13 @@ export default function ManageWebsitePage() {
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Image</div>
+                                                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">No Image</div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                                                 <div className="absolute top-2 left-2 text-[11px] px-2 py-1 rounded-full bg-black/60 text-white border border-white/20">{HERO_CARD_PAGE_LABELS[i]}</div>
                                             </div>
                                             <div className="p-2 flex items-center justify-between">
-                                                <p className="text-xs text-[#A5A9B5] truncate">Card {i + 1} - {HERO_CARD_PAGE_LABELS[i]}</p>
+                                                <p className="truncate text-xs text-slate-500">Card {i + 1} - {HERO_CARD_PAGE_LABELS[i]}</p>
                                                 <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#86efac]">Fixed</span>
                                             </div>
                                         </div>
@@ -1013,37 +1012,37 @@ export default function ManageWebsitePage() {
 
                 <TabsContent value="labels" className="mt-4">
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-8">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
                             <CardHeader>
-                                <CardTitle className="text-white">Product Labels</CardTitle>
-                                <CardDescription className="text-[#919191]">
+                                <CardTitle className="text-slate-900">Product Labels</CardTitle>
+                                <CardDescription className="text-slate-500">
                                     These labels come directly from the `WebsiteSettings.labels` schema and are used in product detail surfaces.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-5">
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-white">Label Text</label>
+                                    <label className="mb-2 block text-sm font-medium text-slate-900">Label Text</label>
                                     <Input
                                         value={draftLabel.title}
                                         onChange={(event) => setDraftLabel((prev) => ({ ...prev, title: event.target.value }))}
                                         placeholder="e.g. Verified Seller"
-                                        className="border-[#333] bg-[#0D0D0D] text-white"
+                                        className="border-[#d8dfca] bg-white text-slate-900"
                                     />
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="block text-sm font-medium text-white">Visual Type</label>
-                                    <div className="flex rounded-2xl border border-[#303030] bg-[#0D0D0D] p-1">
+                                    <label className="block text-sm font-medium text-slate-900">Visual Type</label>
+                                    <div className="flex rounded-2xl border border-[#dde3d0] bg-[#f3f6ea] p-1">
                                         <button
                                             type="button"
-                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "icon" ? "bg-[#86efac] text-black" : "text-[#9b9b9b] hover:text-white"}`}
+                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "icon" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
                                             onClick={() => setDraftLabel((prev) => ({ ...prev, sourceType: "icon" }))}
                                         >
                                             Icon
                                         </button>
                                         <button
                                             type="button"
-                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "image" ? "bg-[#86efac] text-black" : "text-[#9b9b9b] hover:text-white"}`}
+                                            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${draftLabel.sourceType === "image" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
                                             onClick={() => setDraftLabel((prev) => ({ ...prev, sourceType: "image" }))}
                                         >
                                             Image
@@ -1054,12 +1053,12 @@ export default function ManageWebsitePage() {
                                 {draftLabel.sourceType === "image" ? (
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-white">Image URL</label>
+                                            <label className="mb-2 block text-sm font-medium text-slate-900">Image URL</label>
                                             <Input
                                                 value={draftLabel.image}
                                                 onChange={(event) => setDraftLabel((prev) => ({ ...prev, image: event.target.value }))}
                                                 placeholder="https://example.com/label-logo.png"
-                                                className="border-[#333] bg-[#0D0D0D] text-white"
+                                                className="border-[#d8dfca] bg-white text-slate-900"
                                             />
                                         </div>
                                         <div className="flex flex-wrap items-center gap-3">
@@ -1074,7 +1073,7 @@ export default function ManageWebsitePage() {
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                                                    className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                                                     disabled={uploading === "label-draft"}
                                                     asChild
                                                 >
@@ -1084,12 +1083,12 @@ export default function ManageWebsitePage() {
                                                     </span>
                                                 </Button>
                                             </label>
-                                            <span className="text-xs text-[#7d7d7d]">Square transparent logos work best here.</span>
+                                            <span className="text-xs text-slate-500">Square transparent logos work best here.</span>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        <label className="block text-sm font-medium text-white">Choose Icon</label>
+                                        <label className="block text-sm font-medium text-slate-900">Choose Icon</label>
                                         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                                             {ICON_OPTIONS.map((option) => {
                                                 const SelectedIcon = option.Icon
@@ -1100,9 +1099,9 @@ export default function ManageWebsitePage() {
                                                         key={option.value}
                                                         type="button"
                                                         onClick={() => setDraftLabel((prev) => ({ ...prev, icon: option.value }))}
-                                                        className={`min-h-[132px] rounded-[24px] border px-4 py-5 text-center transition-colors ${isSelected ? "border-[#86efac] bg-[#86efac]/10 text-white" : "border-[#303030] bg-[#0D0D0D] text-[#a0a0a0] hover:border-[#4d4d4d] hover:text-white"}`}
+                                                        className={`min-h-[132px] rounded-[24px] border px-4 py-5 text-center transition-colors ${isSelected ? "border-[#86efac] bg-[#eef8f0] text-slate-900" : "border-[#dde3d0] bg-white text-slate-500 hover:border-[#bfd1ad] hover:text-slate-900"}`}
                                                     >
-                                                        <SelectedIcon className={`mx-auto mb-4 h-11 w-11 ${isSelected ? "text-[#86efac]" : "text-[#bdbdbd]"}`} />
+                                                        <SelectedIcon className={`mx-auto mb-4 h-11 w-11 ${isSelected ? "text-[#5aaa73]" : "text-slate-400"}`} />
                                                         <div className="text-sm font-medium leading-snug">{option.label}</div>
                                                     </button>
                                                 )
@@ -1117,7 +1116,7 @@ export default function ManageWebsitePage() {
                                             type="button"
                                             variant="outline"
                                             onClick={resetDraftLabel}
-                                            className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                                            className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                                         >
                                             Cancel Edit
                                         </Button>
@@ -1135,14 +1134,14 @@ export default function ManageWebsitePage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-4 xl:sticky xl:top-24">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
-                                <CardTitle className="text-white text-lg">Labels Preview</CardTitle>
-                                <CardDescription className="text-[#919191]">Saved website labels from the same schema document.</CardDescription>
+                                <CardTitle className="text-lg text-slate-900">Labels Preview</CardTitle>
+                                <CardDescription className="text-slate-500">Saved website labels from the same schema document.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {labels.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-[#333] p-8 text-center text-sm text-[#919191]">
+                                    <div className="rounded-2xl border border-dashed border-[#dde3d0] p-8 text-center text-sm text-slate-500">
                                         No labels saved yet.
                                     </div>
                                 ) : (
@@ -1153,7 +1152,7 @@ export default function ManageWebsitePage() {
                                                 const IconComponent = iconMap[label.icon] || BadgeCheck
 
                                                 return (
-                                                    <div key={`${label.title}-${index}`} className="rounded-2xl border border-[#333] bg-[#111] p-3">
+                                                    <div key={`${label.title}-${index}`} className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-3">
                                                         <div className="mb-2 rounded-[16px] bg-[#eef8fb] p-3">
                                                             <div className="rounded-[12px] bg-[#dff1f4] p-3">
                                                                 <div className="flex aspect-square flex-col items-center justify-center text-center">
@@ -1200,18 +1199,18 @@ export default function ManageWebsitePage() {
 
                 <TabsContent value="categories" className="mt-4">
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-8">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
                             <CardHeader>
-                                <CardTitle className="text-white">The Heart of Modern Farming</CardTitle>
+                                <CardTitle className="text-slate-900">The Heart of Modern Farming</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="border border-[#333] rounded-lg p-4 space-y-3 bg-[#121212]">
-                                    <p className="text-sm font-semibold text-white">Section Content</p>
+                                <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
+                                    <p className="text-sm font-semibold text-slate-900">Section Content</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <Input value={categoriesSection.eyebrow || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                        <Input value={categoriesSection.title || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                        <Input value={categoriesSection.eyebrow || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="border-[#d8dfca] bg-white text-slate-900" />
+                                        <Input value={categoriesSection.title || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="border-[#d8dfca] bg-white text-slate-900" />
                                     </div>
-                                    <Textarea value={categoriesSection.description || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, description: e.target.value }))} placeholder="Section description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[70px]" />
+                                    <Textarea value={categoriesSection.description || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, description: e.target.value }))} placeholder="Section description" className="min-h-[70px] border-[#d8dfca] bg-white text-slate-900" />
                                 </div>
                                 <div className="flex justify-start">
                                     <Button
@@ -1223,13 +1222,13 @@ export default function ManageWebsitePage() {
                                             setExpandedCategoryIndex(categories.length)
                                         }}
                                         variant="outline"
-                                        className="border-[#333] text-white hover:bg-[#222]"
+                                        className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
                                     >
                                         <Plus className="h-4 w-4 mr-2" /> Add Category Card
                                     </Button>
                                 </div>
                                 {categories.length === 0 && (
-                                    <div className="border border-dashed border-[#333] rounded-lg p-6 text-center text-sm text-[#919191]">
+                                    <div className="rounded-lg border border-dashed border-[#dde3d0] p-6 text-center text-sm text-slate-500">
                                         No category cards yet. Click `Add Category Card` to create one.
                                     </div>
                                 )}
@@ -1239,14 +1238,14 @@ export default function ManageWebsitePage() {
                                     const selectedProduct = availableProducts.find((product) => product._id === (categorySelectedProductIds[index] || ""))
                                     const draftProduct = categoryDraftProducts[index] || createEmptyCategoryProduct(item.name)
                                     return (
-                                        <div key={index} className="border border-[#333] rounded-lg bg-[#111] overflow-hidden">
+                                        <div key={index} className="overflow-hidden rounded-lg border border-[#dde3d0] bg-white">
                                             <button
                                                 type="button"
-                                                className="w-full p-4 flex items-center justify-between text-left hover:bg-[#151515] transition-colors"
+                                                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[#f8faf3]"
                                                 onClick={() => setExpandedCategoryIndex((prev) => prev === index ? null : index)}
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-14 h-10 rounded-md border border-[#303030] overflow-hidden shrink-0 bg-[#0D0D0D]">
+                                                    <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
                                                         <img
                                                             src={previewSrc(item.image || categoryPreviewFallback)}
                                                             alt={item.name || `Category ${index + 1}`}
@@ -1257,34 +1256,34 @@ export default function ManageWebsitePage() {
                                                         />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm text-white font-semibold line-clamp-1">{item.name || `Card ${index + 1}`}</p>
-                                                        <p className="text-xs text-[#919191] mt-1 line-clamp-1">{categoryProducts.length} products - Order {item.order ?? index}</p>
+                                                        <p className="line-clamp-1 text-sm font-semibold text-slate-900">{item.name || `Card ${index + 1}`}</p>
+                                                        <p className="mt-1 line-clamp-1 text-xs text-slate-500">{categoryProducts.length} products - Order {item.order ?? index}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <span className={`text-[11px] px-2 py-1 rounded-full border ${item.isActive !== false ? "border-[#2e4d35] text-[#86efac] bg-[#1d2a1f]" : "border-[#444] text-[#aaa] bg-[#1b1b1b]"}`}>
                                                         {item.isActive !== false ? "Active" : "Inactive"}
                                                     </span>
-                                                    {isExpanded ? <ChevronDown className="h-4 w-4 text-[#aaa]" /> : <ChevronRight className="h-4 w-4 text-[#aaa]" />}
+                                                    {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                                                 </div>
                                             </button>
                                             {isExpanded && (
-                                                <div className="p-4 border-t border-[#333] space-y-3 bg-[#121212]">
+                                                <div className="space-y-3 border-t border-[#dde3d0] bg-[#f8faf3] p-4">
                                                     <div className="flex justify-between items-center">
                                                         <div>
-                                                            <p className="text-sm text-white font-medium">Category Setup</p>
-                                                            <p className="text-[11px] text-[#8c8c8c] mt-1">Set the category, then add products.</p>
+                                                            <p className="text-sm font-medium text-slate-900">Category Setup</p>
+                                                            <p className="mt-1 text-[11px] text-slate-500">Set the category, then add products.</p>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-xs text-[#919191]">Active</span>
+                                                            <span className="text-xs text-slate-500">Active</span>
                                                             <Switch checked={item.isActive !== false} onCheckedChange={(v) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, isActive: v } : c))} />
                                                             <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 w-8" onClick={() => removeCategoryCard(index)}><Trash2 className="h-4 w-4" /></Button>
                                                         </div>
                                                     </div>
-                                                    <div className="rounded-xl border border-[#2c2c2c] bg-[#101010] p-4 space-y-4">
+                                                    <div className="space-y-4 rounded-xl border border-[#dde3d0] bg-white p-4">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <p className="text-[11px] uppercase tracking-wide text-[#9ca3af]">Category name</p>
+                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category name</p>
                                                                 <Input
                                                                     value={item.name}
                                                                     onChange={(e) => {
@@ -1295,26 +1294,26 @@ export default function ManageWebsitePage() {
                                                                         }
                                                                     }}
                                                                     placeholder="Rice Mills & Mini Rice Mills"
-                                                                    className="bg-[#0D0D0D] border-[#333] text-white"
+                                                                    className="border-[#d8dfca] bg-white text-slate-900"
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <p className="text-[11px] uppercase tracking-wide text-[#9ca3af]">Category image URL</p>
-                                                                <Input value={item.image} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, image: e.target.value } : c))} placeholder="Paste category image URL" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category image URL</p>
+                                                                <Input value={item.image} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, image: e.target.value } : c))} placeholder="Paste category image URL" className="border-[#d8dfca] bg-white text-slate-900" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <p className="text-[11px] uppercase tracking-wide text-[#9ca3af]">Category description</p>
-                                                            <Textarea value={item.description} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, description: e.target.value } : c))} placeholder="Write a short category summary for the website card and category page." className="bg-[#0D0D0D] border-[#333] text-white min-h-[90px]" />
+                                                            <p className="text-[11px] uppercase tracking-wide text-slate-500">Category description</p>
+                                                            <Textarea value={item.description} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, description: e.target.value } : c))} placeholder="Write a short category summary for the website card and category page." className="min-h-[90px] border-[#d8dfca] bg-white text-slate-900" />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <p className="text-[11px] uppercase tracking-wide text-[#9ca3af]">Category button text</p>
-                                                            <Input value={categoriesSection.buttonText || "View All products"} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, buttonText: e.target.value || "View All products" }))} placeholder="View All products" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                            <p className="text-[11px] uppercase tracking-wide text-slate-500">Category button text</p>
+                                                            <Input value={categoriesSection.buttonText || "View All products"} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, buttonText: e.target.value || "View All products" }))} placeholder="View All products" className="border-[#d8dfca] bg-white text-slate-900" />
                                                         </div>
                                                         <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4 items-stretch">
-                                                            <div className="rounded-lg border border-[#232323] bg-[#0d0d0d] p-3 space-y-2 h-full">
-                                                                <p className="text-[11px] uppercase tracking-wide text-[#9ca3af]">Category image preview</p>
-                                                                <div className="h-[148px] w-full rounded-md overflow-hidden border border-[#303030] bg-[#0D0D0D]">
+                                                            <div className="h-full space-y-2 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
+                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category image preview</p>
+                                                                <div className="h-[148px] w-full overflow-hidden rounded-md border border-[#d8dfca] bg-white">
                                                                     <img
                                                                         src={previewSrc(item.image || categoryPreviewFallback)}
                                                                         alt={item.name || `Category ${index + 1}`}
@@ -1325,35 +1324,35 @@ export default function ManageWebsitePage() {
                                                                     />
                                                                 </div>
                                                             </div>
-                                                            <div className="rounded-lg border border-[#232323] bg-[#0d0d0d] p-3 flex flex-col justify-between min-h-[188px]">
+                                                            <div className="flex min-h-[188px] flex-col justify-between rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
                                                                 <div className="space-y-2">
-                                                                <p className="text-sm text-white font-medium">Upload category image</p>
-                                                                <p className="text-[11px] text-[#8c8c8c]">This upload is only for the category card image.</p>
+                                                                <p className="text-sm font-medium text-slate-900">Upload category image</p>
+                                                                <p className="text-[11px] text-slate-500">This upload is only for the category card image.</p>
                                                                 </div>
                                                                 <input id={`category-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "category", index)} />
-                                                                <Button type="button" variant="outline" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`category-upload-${index}`)?.click()} disabled={uploading === `category-${index}`}>
+                                                                <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`category-upload-${index}`)?.click()} disabled={uploading === `category-${index}`}>
                                                                     {uploading === `category-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                                                     Upload Category Image
                                                                 </Button>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-3 rounded-lg border border-[#2c2c2c] bg-[#101010] p-3">
+                                                    <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-white p-3">
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-xs font-medium tracking-wide text-[#d7d7d7] uppercase">Products In This Category</p>
-                                                            <span className="text-[11px] text-[#919191]">{categoryProducts.length} added</span>
+                                                            <p className="text-xs font-medium uppercase tracking-wide text-slate-700">Products In This Category</p>
+                                                            <span className="text-[11px] text-slate-500">{categoryProducts.length} added</span>
                                                         </div>
                                                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                            <div className="rounded-lg border border-[#242424] bg-[#0d0d0d] p-3 space-y-3">
+                                                            <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
                                                                 <div>
-                                                                    <p className="text-sm text-white font-medium">Add existing product</p>
-                                                                    <p className="text-[11px] text-[#8c8c8c] mt-1">Attach a product from your catalog.</p>
+                                                                    <p className="text-sm font-medium text-slate-900">Add existing product</p>
+                                                                    <p className="mt-1 text-[11px] text-slate-500">Attach a product from your catalog.</p>
                                                                 </div>
                                                                 <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_auto] gap-2">
                                                                     <select
                                                                         value={categorySelectedProductIds[index] || ""}
                                                                         onChange={(e) => setCategorySelectedProductIds((prev) => ({ ...prev, [index]: e.target.value }))}
-                                                                        className="h-10 w-full min-w-0 rounded-md bg-[#0D0D0D] border border-[#333] px-3 text-sm text-white"
+                                                                        className="h-10 w-full min-w-0 rounded-md border border-[#d8dfca] bg-white px-3 text-sm text-slate-900"
                                                                         disabled={isLoadingProductOptions}
                                                                     >
                                                                         <option value="">{isLoadingProductOptions ? "Loading products..." : "Select product to add"}</option>
@@ -1363,14 +1362,14 @@ export default function ManageWebsitePage() {
                                                                             </option>
                                                                         ))}
                                                                     </select>
-                                                                    <Button type="button" variant="outline" className="w-full 2xl:w-auto border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] whitespace-normal" onClick={() => addProductToCategory(index)} disabled={isLoadingProductOptions || !categorySelectedProductIds[index]}>
+                                                                    <Button type="button" variant="outline" className="w-full 2xl:w-auto whitespace-normal border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => addProductToCategory(index)} disabled={isLoadingProductOptions || !categorySelectedProductIds[index]}>
                                                                         <Plus className="h-4 w-4 mr-2" />
                                                                         Add Existing
                                                                     </Button>
                                                                 </div>
                                                                 {selectedProduct && (
-                                                                    <div className="rounded-md border border-[#2d2d2d] bg-[#0f0f0f] p-2 flex items-center gap-2">
-                                                                        <div className="w-12 h-12 rounded-md overflow-hidden border border-[#333] bg-[#0D0D0D] shrink-0">
+                                                                    <div className="flex items-center gap-2 rounded-md border border-[#dde3d0] bg-white p-2">
+                                                                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
                                                                             <img
                                                                                 src={previewSrc(getPrimaryProductImage(selectedProduct) || productPreviewFallback)}
                                                                                 alt={selectedProduct.name}
@@ -1381,26 +1380,26 @@ export default function ManageWebsitePage() {
                                                                             />
                                                                         </div>
                                                                         <div className="min-w-0">
-                                                                            <p className="text-xs text-white font-medium line-clamp-1">{selectedProduct.name}</p>
-                                                                            <p className="text-[11px] text-[#9ca3af] line-clamp-1">{selectedProduct.category || "No category"} - SKU: {selectedProduct.sku || "N/A"} - {normalizeProductVariants(selectedProduct.variants || []).length} variants</p>
+                                                                            <p className="line-clamp-1 text-xs font-medium text-slate-900">{selectedProduct.name}</p>
+                                                                            <p className="line-clamp-1 text-[11px] text-slate-500">{selectedProduct.category || "No category"} - SKU: {selectedProduct.sku || "N/A"} - {normalizeProductVariants(selectedProduct.variants || []).length} variants</p>
                                                                         </div>
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <div className="rounded-lg border border-[#2d3324] bg-[#0d100b] p-3 space-y-3">
+                                                            <div className="space-y-3 rounded-lg border border-[#d7e5c9] bg-[#f5faef] p-3">
                                                                 <div>
-                                                                    <p className="text-sm text-white font-medium">Quick add product</p>
-                                                                    <p className="text-[11px] text-[#8c8c8c] mt-1">Create a simple category product.</p>
+                                                                    <p className="text-sm font-medium text-slate-900">Quick add product</p>
+                                                                    <p className="mt-1 text-[11px] text-slate-500">Create a simple category product.</p>
                                                                 </div>
                                                                 <div className="space-y-3">
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                                        <Input value={draftProduct.name} onChange={(e) => updateDraftCategoryProduct(index, { name: e.target.value, category: item.name || draftProduct.category })} placeholder="Product name" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                        <Input value={draftProduct.image} onChange={(e) => updateDraftCategoryProduct(index, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Product image URL" className="bg-[#0D0D0D] border-[#333] text-white md:col-span-2" />
-                                                                        <Textarea value={draftProduct.shortDescription} onChange={(e) => updateDraftCategoryProduct(index, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short product description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[96px] md:col-span-2" />
+                                                                        <Input value={draftProduct.name} onChange={(e) => updateDraftCategoryProduct(index, { name: e.target.value, category: item.name || draftProduct.category })} placeholder="Product name" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                        <Input value={draftProduct.image} onChange={(e) => updateDraftCategoryProduct(index, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Product image URL" className="border-[#d8dfca] bg-white text-slate-900 md:col-span-2" />
+                                                                        <Textarea value={draftProduct.shortDescription} onChange={(e) => updateDraftCategoryProduct(index, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short product description" className="min-h-[96px] border-[#d8dfca] bg-white text-slate-900 md:col-span-2" />
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-2">
                                                                         <input id={`draft-category-product-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "draft-category-product", index)} />
-                                                                        <Button type="button" variant="outline" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`draft-category-product-upload-${index}`)?.click()} disabled={uploading === `draft-category-product-${index}`}>
+                                                                        <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`draft-category-product-upload-${index}`)?.click()} disabled={uploading === `draft-category-product-${index}`}>
                                                                             {uploading === `draft-category-product-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                                                             Upload Product Image
                                                                         </Button>
@@ -1419,10 +1418,10 @@ export default function ManageWebsitePage() {
                                                             const productKey = `${index}-${productIndex}`
                                                             const showProductDetails = expandedProductKey === productKey
                                                             return (
-                                                                <div key={productKey} className="border border-[#2d2d2d] rounded-lg bg-[#0f0f0f] p-3 space-y-2">
+                                                                <div key={productKey} className="space-y-2 rounded-lg border border-[#dde3d0] bg-white p-3">
                                                                     <div className="flex items-center justify-between gap-2">
                                                                         <div className="min-w-0 flex items-center gap-2">
-                                                                            <div className="w-12 h-12 rounded-md overflow-hidden border border-[#333] bg-[#0D0D0D] shrink-0">
+                                                                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
                                                                                 <img
                                                                                     src={previewSrc(product.image || product.images?.[0] || productPreviewFallback)}
                                                                                     alt={product.name}
@@ -1433,8 +1432,8 @@ export default function ManageWebsitePage() {
                                                                                 />
                                                                             </div>
                                                                             <div className="min-w-0">
-                                                                                <p className="text-sm text-white font-medium line-clamp-1">{product.name}</p>
-                                                                                <p className="text-[11px] text-[#919191] line-clamp-1">{product.productId ? `SKU: ${product.sku || "N/A"} - Stock: ${product.stock}` : "Quick category product"} - {normalizeProductVariants(product.variants || []).length} variants</p>
+                                                                                <p className="line-clamp-1 text-sm font-medium text-slate-900">{product.name}</p>
+                                                                                <p className="line-clamp-1 text-[11px] text-slate-500">{product.productId ? `SKU: ${product.sku || "N/A"} - Stock: ${product.stock}` : "Quick category product"} - {normalizeProductVariants(product.variants || []).length} variants</p>
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
@@ -1451,7 +1450,7 @@ export default function ManageWebsitePage() {
                                                                                     Refresh from Catalog
                                                                                 </Button>
                                                                             )}
-                                                                            <Button type="button" variant="outline" size="sm" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => setExpandedProductKey((prev) => prev === productKey ? null : productKey)}>
+                                                                            <Button type="button" variant="outline" size="sm" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => setExpandedProductKey((prev) => prev === productKey ? null : productKey)}>
                                                                                 {showProductDetails ? "Close" : (product.productId ? "Details" : "Edit")}
                                                                             </Button>
                                                                             <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 w-8" onClick={() => removeCategoryProduct(index, productIndex)}>
@@ -1471,24 +1470,24 @@ export default function ManageWebsitePage() {
                                                                                 </div>
                                                                             )}
                                                                             {product.productId ? (
-                                                                                <div className="space-y-2 text-xs text-[#c7c7c7]">
-                                                                                    <p><span className="text-[#8f8f8f]">Category:</span> {product.category || "N/A"}</p>
-                                                                                    <p><span className="text-[#8f8f8f]">SKU:</span> {product.sku || "N/A"}</p>
-                                                                                    <p><span className="text-[#8f8f8f]">Stock:</span> {product.stock}</p>
-                                                                                    <p><span className="text-[#8f8f8f]">Short Description:</span> {product.shortDescription || "N/A"}</p>
+                                                                                <div className="space-y-2 text-xs text-slate-600">
+                                                                                    <p><span className="text-slate-500">Category:</span> {product.category || "N/A"}</p>
+                                                                                    <p><span className="text-slate-500">SKU:</span> {product.sku || "N/A"}</p>
+                                                                                    <p><span className="text-slate-500">Stock:</span> {product.stock}</p>
+                                                                                    <p><span className="text-slate-500">Short Description:</span> {product.shortDescription || "N/A"}</p>
                                                                                 </div>
                                                                             ) : (
                                                                                 <div className="grid grid-cols-1 gap-2">
-                                                                                    <Input value={product.name} onChange={(e) => updateCategoryProduct(index, productIndex, { name: e.target.value })} placeholder="Product name" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                    <Input value={product.image} onChange={(e) => updateCategoryProduct(index, productIndex, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Image URL" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                    <Textarea value={product.shortDescription} onChange={(e) => updateCategoryProduct(index, productIndex, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[80px]" />
+                                                                                    <Input value={product.name} onChange={(e) => updateCategoryProduct(index, productIndex, { name: e.target.value })} placeholder="Product name" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                    <Input value={product.image} onChange={(e) => updateCategoryProduct(index, productIndex, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Image URL" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                    <Textarea value={product.shortDescription} onChange={(e) => updateCategoryProduct(index, productIndex, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short description" className="min-h-[80px] border-[#d8dfca] bg-white text-slate-900" />
                                                                                 </div>
                                                                             )}
-                                                                            <div className="rounded-lg border border-[#283329] bg-[#0b120d] p-3 space-y-3">
+                                                                            <div className="space-y-3 rounded-lg border border-[#d7e5c9] bg-[#f5faef] p-3">
                                                                                 <div className="flex items-center justify-between gap-3">
                                                                                     <div>
-                                                                                        <p className="text-xs font-semibold text-white">Product Variants</p>
-                                                                                        <p className="text-[11px] text-[#8c8c8c]">Sizes, capacities, packings, SKU, price and stock.</p>
+                                                                                        <p className="text-xs font-semibold text-slate-900">Product Variants</p>
+                                                                                        <p className="text-[11px] text-slate-500">Sizes, capacities, packings, SKU, price and stock.</p>
                                                                                     </div>
                                                                                     {!product.productId && (
                                                                                         <Button type="button" size="sm" variant="outline" className="border-[#36533a] bg-[#102016] text-[#b8efc2] hover:bg-[#172a1d]" onClick={() => addCategoryProductVariant(index, productIndex)}>
@@ -1497,13 +1496,13 @@ export default function ManageWebsitePage() {
                                                                                     )}
                                                                                 </div>
                                                                                 {normalizeProductVariants(product.variants || []).length === 0 ? (
-                                                                                    <p className="rounded-md border border-dashed border-[#333] px-3 py-2 text-[11px] text-[#777]">No variants added for this product.</p>
+                                                                                    <p className="rounded-md border border-dashed border-[#dde3d0] px-3 py-2 text-[11px] text-slate-500">No variants added for this product.</p>
                                                                                 ) : (
                                                                                     <div className="space-y-2">
                                                                                         {normalizeProductVariants(product.variants || []).map((variant, variantIndex) => (
-                                                                                            <div key={`${productKey}-variant-${variantIndex}`} className="rounded-md border border-[#28352b] bg-[#101712] p-3 space-y-2">
+                                                                                            <div key={`${productKey}-variant-${variantIndex}`} className="space-y-2 rounded-md border border-[#d7e5c9] bg-white p-3">
                                                                                                 <div className="flex items-center justify-between gap-2">
-                                                                                                    <p className="text-xs font-semibold text-[#dcfce7] line-clamp-1">{variant.name || `Variant ${variantIndex + 1}`}</p>
+                                                                                                    <p className="line-clamp-1 text-xs font-semibold text-slate-900">{variant.name || `Variant ${variantIndex + 1}`}</p>
                                                                                                     {!product.productId && (
                                                                                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:bg-red-900/20" onClick={() => removeCategoryProductVariant(index, productIndex, variantIndex)}>
                                                                                                             <Trash2 className="h-3.5 w-3.5" />
@@ -1511,7 +1510,7 @@ export default function ManageWebsitePage() {
                                                                                                     )}
                                                                                                 </div>
                                                                                                 {product.productId ? (
-                                                                                                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[#a8b5a8] md:grid-cols-4">
+                                                                                                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 md:grid-cols-4">
                                                                                                         <span>SKU: {variant.sku || "N/A"}</span>
                                                                                                         <span>Retail: {variant.retailPrice || 0}</span>
                                                                                                         <span>Wholesale: {variant.wholesalePrice || 0}</span>
@@ -1521,15 +1520,15 @@ export default function ManageWebsitePage() {
                                                                                                     </div>
                                                                                                 ) : (
                                                                                                     <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                                                                                                        <Input value={variant.name} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { name: e.target.value, displayName: e.target.value })} placeholder="Variant name: 1.0 inch / 30 pcs" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input value={variant.sku} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { sku: e.target.value })} placeholder="SKU: SKU-CA-10" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input value={variant.packing} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { packing: e.target.value })} placeholder="Packing: 30 pcs/box" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input type="number" value={variant.mrp} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { mrp: toNumber(e.target.value) })} placeholder="MRP" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input type="number" value={variant.retailPrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { retailPrice: toNumber(e.target.value) })} placeholder="Retail" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input type="number" value={variant.wholesalePrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { wholesalePrice: toNumber(e.target.value) })} placeholder="Wholesale" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input type="number" value={variant.stock} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { stock: toNumber(e.target.value) })} placeholder="Stock" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input value={variant.priceUnit} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { priceUnit: e.target.value })} placeholder="Price unit: piece / coil / set" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                                                                        <Input value={variant.attributes.map((attr) => `${attr.key}:${attr.value}`).join(", ")} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { attributes: e.target.value.split(",").map((pair) => { const [key, ...rest] = pair.split(":"); return { key: key?.trim() || "", value: rest.join(":").trim() } }).filter((attr) => attr.key || attr.value) })} placeholder="Attributes: Size:1.0 inch, Pieces per Box:30" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                                                                                        <Input value={variant.name} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { name: e.target.value, displayName: e.target.value })} placeholder="Variant name: 1.0 inch / 30 pcs" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input value={variant.sku} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { sku: e.target.value })} placeholder="SKU: SKU-CA-10" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input value={variant.packing} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { packing: e.target.value })} placeholder="Packing: 30 pcs/box" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input type="number" value={variant.mrp} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { mrp: toNumber(e.target.value) })} placeholder="MRP" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input type="number" value={variant.retailPrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { retailPrice: toNumber(e.target.value) })} placeholder="Retail" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input type="number" value={variant.wholesalePrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { wholesalePrice: toNumber(e.target.value) })} placeholder="Wholesale" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input type="number" value={variant.stock} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { stock: toNumber(e.target.value) })} placeholder="Stock" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input value={variant.priceUnit} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { priceUnit: e.target.value })} placeholder="Price unit: piece / coil / set" className="border-[#d8dfca] bg-white text-slate-900" />
+                                                                                                        <Input value={variant.attributes.map((attr) => `${attr.key}:${attr.value}`).join(", ")} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { attributes: e.target.value.split(",").map((pair) => { const [key, ...rest] = pair.split(":"); return { key: key?.trim() || "", value: rest.join(":").trim() } }).filter((attr) => attr.key || attr.value) })} placeholder="Attributes: Size:1.0 inch, Pieces per Box:30" className="border-[#d8dfca] bg-white text-slate-900" />
                                                                                                     </div>
                                                                                                 )}
                                                                                             </div>
@@ -1538,10 +1537,10 @@ export default function ManageWebsitePage() {
                                                                                 )}
                                                                             </div>
                                                                             <div>
-                                                                                <p className="text-[11px] uppercase tracking-wide text-[#8f8f8f] mb-1">Product Image Preview</p>
+                                                                                <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-500">Product Image Preview</p>
                                                                                 <div className="flex items-center gap-2 overflow-x-auto">
                                                                                     {(product.images && product.images.length > 0 ? product.images : [product.image || productPreviewFallback]).map((imageUrl, imageIndex) => (
-                                                                                        <div key={`${productKey}-img-${imageIndex}`} className="w-12 h-12 rounded-md overflow-hidden border border-[#333] bg-[#0D0D0D] shrink-0">
+                                                                                        <div key={`${productKey}-img-${imageIndex}`} className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
                                                                                             <img
                                                                                                 src={previewSrc(imageUrl || productPreviewFallback)}
                                                                                                 alt={`${product.name} ${imageIndex + 1}`}
@@ -1556,7 +1555,7 @@ export default function ManageWebsitePage() {
                                                                                 {!product.productId && (
                                                                                     <div className="mt-2">
                                                                                         <input id={`category-product-upload-${index}-${productIndex}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "category-product", index, productIndex)} />
-                                                                                        <Button type="button" variant="outline" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`category-product-upload-${index}-${productIndex}`)?.click()} disabled={uploading === `category-product-${index}-${productIndex}`}>
+                                                                                        <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`category-product-upload-${index}-${productIndex}`)?.click()} disabled={uploading === `category-product-${index}-${productIndex}`}>
                                                                                             {uploading === `category-product-${index}-${productIndex}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                                                                             Upload Product Image
                                                                                         </Button>
@@ -1577,16 +1576,16 @@ export default function ManageWebsitePage() {
                                 {categories.length > 0 && <Button onClick={saveCategories} disabled={isSavingCategories} className="w-full">{isSavingCategories ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Product Categories</Button>}
                             </CardContent>
                         </Card>
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-4 xl:sticky xl:top-24">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
-                                <CardTitle className="text-white text-lg">Live Preview</CardTitle>
-                                <CardDescription className="text-[#919191]">Section header + card details preview.</CardDescription>
+                                <CardTitle className="text-lg text-slate-900">Live Preview</CardTitle>
+                                <CardDescription className="text-slate-500">Section header + card details preview.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-                                    <div className="rounded-2xl border border-[#333] bg-[#111] p-4">
+                                    <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
                                         <p className="text-[11px] tracking-[0.2em] text-[#ff8a32] font-semibold uppercase">{categoriesSection.eyebrow || "PRODUCT CATEGORIES"}</p>
-                                        <p className="text-white text-xl font-bold mt-2">{categoriesSection.title || "The Heart of Modern Farming"}</p>
+                                        <p className="mt-2 text-xl font-bold text-slate-900">{categoriesSection.title || "The Heart of Modern Farming"}</p>
                                         <p className="text-[#a7b0bf] text-xs mt-2 line-clamp-3">{categoriesSection.description || "Section description"}</p>
                                     </div>
                                     {expandedCategoryIndex !== null && categories[expandedCategoryIndex] && hasDraftProductContent(categoryDraftProducts[expandedCategoryIndex]) && (
@@ -1684,23 +1683,23 @@ export default function ManageWebsitePage() {
 
                 <TabsContent value="featured" className="mt-4">
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-8">
-                            <CardHeader><div className="flex items-center justify-between gap-4"><div><CardTitle className="text-white">Our Popular Product</CardTitle></div><Button onClick={() => setFeaturedProducts((prev) => [...prev, { name: "", price: "", image: "", badge: "", specs: [""], shortDescription: "", variants: [], isActive: true, order: prev.length }])} variant="outline" className="border-[#333] text-white hover:bg-[#222]"><Plus className="h-4 w-4 mr-2" /> Add Product Card</Button></div></CardHeader>
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
+                            <CardHeader><div className="flex items-center justify-between gap-4"><div><CardTitle className="text-slate-900">Our Popular Product</CardTitle></div><Button onClick={() => setFeaturedProducts((prev) => [...prev, { name: "", price: "", image: "", badge: "", specs: [""], shortDescription: "", variants: [], isActive: true, order: prev.length }])} variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"><Plus className="h-4 w-4 mr-2" /> Add Product Card</Button></div></CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="border border-[#333] rounded-lg p-4 space-y-3 bg-[#121212]">
-                                    <p className="text-sm font-semibold text-white">Section Content</p>
+                                <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
+                                    <p className="text-sm font-semibold text-slate-900">Section Content</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <Input value={featuredSection.eyebrow || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                        <Input value={featuredSection.title || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                        <Input value={featuredSection.eyebrow || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="border-[#d8dfca] bg-white text-slate-900" />
+                                        <Input value={featuredSection.title || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="border-[#d8dfca] bg-white text-slate-900" />
                                     </div>
-                                    <Textarea value={featuredSection.sideText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, sideText: e.target.value }))} placeholder="Right side section text" className="bg-[#0D0D0D] border-[#333] text-white min-h-[70px]" />
-                                    <Input value={featuredSection.buttonText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, buttonText: e.target.value }))} placeholder="Card button text" className="bg-[#0D0D0D] border-[#333] text-white" />
+                                    <Textarea value={featuredSection.sideText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, sideText: e.target.value }))} placeholder="Right side section text" className="min-h-[70px] border-[#d8dfca] bg-white text-slate-900" />
+                                    <Input value={featuredSection.buttonText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, buttonText: e.target.value }))} placeholder="Card button text" className="border-[#d8dfca] bg-white text-slate-900" />
                                 </div>
                                 {featuredProducts.map((item, index) => (
-                                    <div key={index} className="border border-[#333] rounded-lg p-4 space-y-3">
-                                        <div className="flex justify-between items-center"><p className="text-sm text-white font-medium">Card {index + 1}</p><div className="flex items-center gap-3"><span className="text-xs text-[#919191]">Active</span><Switch checked={item.isActive !== false} onCheckedChange={(v) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, isActive: v } : p))} /><Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 w-8" onClick={() => setFeaturedProducts((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div></div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><Input value={item.name} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, name: e.target.value } : p))} placeholder="Product title" className="bg-[#0D0D0D] border-[#333] text-white" /><Input value={item.price} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, price: e.target.value } : p))} placeholder="Price text" className="bg-[#0D0D0D] border-[#333] text-white" /><Input value={item.image} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, image: e.target.value } : p))} placeholder="Image URL" className="bg-[#0D0D0D] border-[#333] text-white" /><Input value={item.badge} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, badge: e.target.value } : p))} placeholder="Badge" className="bg-[#0D0D0D] border-[#333] text-white" /></div>
-                                        <Textarea value={item.shortDescription || ""} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, shortDescription: e.target.value } : p))} placeholder="Short description (shown instead of specs if provided)" className="bg-[#0D0D0D] border-[#333] text-white min-h-[60px]" />
+                                    <div key={index} className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
+                                        <div className="flex justify-between items-center"><p className="text-sm font-medium text-slate-900">Card {index + 1}</p><div className="flex items-center gap-3"><span className="text-xs text-slate-500">Active</span><Switch checked={item.isActive !== false} onCheckedChange={(v) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, isActive: v } : p))} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-900/20 hover:text-red-300" onClick={() => setFeaturedProducts((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div></div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2"><Input value={item.name} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, name: e.target.value } : p))} placeholder="Product title" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.price} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, price: e.target.value } : p))} placeholder="Price text" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.image} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, image: e.target.value } : p))} placeholder="Image URL" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.badge} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, badge: e.target.value } : p))} placeholder="Badge" className="border-[#d8dfca] bg-white text-slate-900" /></div>
+                                        <Textarea value={item.shortDescription || ""} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, shortDescription: e.target.value } : p))} placeholder="Short description (shown instead of specs if provided)" className="min-h-[60px] border-[#d8dfca] bg-white text-slate-900" />
                                         <Textarea value={(item.specs || []).join("\n")} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, specs: e.target.value.split("\n") } : p))} placeholder="Specs (one per line) - shown if no short description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[90px]" />
                                         <div className="rounded-lg border border-[#283329] bg-[#0b120d] p-3 space-y-3">
                                             <div className="flex items-center justify-between gap-3">
@@ -1741,23 +1740,23 @@ export default function ManageWebsitePage() {
                                 {featuredProducts.length > 0 && <Button onClick={saveProducts} disabled={isSavingProducts} className="w-full">{isSavingProducts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Popular Products</Button>}
                             </CardContent>
                         </Card>
-                        <Card className="bg-[#161616] border-[#333] xl:col-span-4 xl:sticky xl:top-24">
+                        <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
-                                <CardTitle className="text-white text-lg">Live Preview</CardTitle>
-                                <CardDescription className="text-[#919191]">Section header + card details preview.</CardDescription>
+                                <CardTitle className="text-lg text-slate-900">Live Preview</CardTitle>
+                                <CardDescription className="text-slate-500">Section header + card details preview.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-                                    <div className="rounded-2xl border border-[#333] bg-[#111] p-4">
+                                    <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
                                         <p className="text-[11px] tracking-[0.2em] text-[#ff8a32] font-semibold uppercase">{featuredSection.eyebrow || "PRECISION ENGINEERING"}</p>
-                                        <p className="text-white text-xl font-bold mt-2">{featuredSection.title || "Our Popular Product"}</p>
-                                        <p className="text-[#a7b0bf] text-xs mt-2 line-clamp-3">{featuredSection.sideText || "Section side description"}</p>
+                                        <p className="mt-2 text-xl font-bold text-slate-900">{featuredSection.title || "Our Popular Product"}</p>
+                                        <p className="mt-2 line-clamp-3 text-xs text-slate-500">{featuredSection.sideText || "Section side description"}</p>
                                     </div>
                                     {featuredProducts
                                         .filter((p) => p.isActive !== false)
                                         .sort((a, b) => (a.order || 0) - (b.order || 0))
                                         .map((item, i) => (
-                                            <div key={i} className="rounded-2xl overflow-hidden border border-[#333] bg-[#111] p-3">
+                                            <div key={i} className="overflow-hidden rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-3">
                                                 <div className="relative h-28 rounded-xl overflow-hidden bg-[#0d0d0d]">
                                                     {item.image ? (
                                                         <img
@@ -1778,7 +1777,7 @@ export default function ManageWebsitePage() {
                                                     )}
                                                 </div>
                                                 <div className="pt-3">
-                                                    <p className="text-white text-sm font-semibold line-clamp-1">{item.name || "Product title"}</p>
+                                                    <p className="line-clamp-1 text-sm font-semibold text-slate-900">{item.name || "Product title"}</p>
                                                     <p className="text-[#86efac] text-xs font-semibold mt-1">{item.price || "Price text"}</p>
                                                     <ul className="mt-2 space-y-1.5">
                                                         {normalizeList(item.specs || []).slice(0, 3).map((spec, idx) => (
@@ -1792,7 +1791,7 @@ export default function ManageWebsitePage() {
                                                         )}
                                                     </ul>
                                             </div>
-                                            <button className="mt-3 w-full py-2 rounded-lg border border-[#2f3742] bg-[#171c23] text-[#d6dde8] text-xs font-semibold">
+                                            <button className="mt-3 w-full rounded-lg border border-[#d8dfca] bg-white py-2 text-xs font-semibold text-slate-700">
                                                 {featuredSection.buttonText || "Get Quote"}
                                             </button>
                                         </div>

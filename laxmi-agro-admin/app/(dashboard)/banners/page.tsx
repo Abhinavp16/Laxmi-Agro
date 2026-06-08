@@ -421,12 +421,12 @@ export default function BannersPage() {
 
         return (
             <div key={index} className="border border-[#333] rounded-lg p-4 space-y-4 bg-[#0D0D0D]">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
                         <GripVertical className="h-4 w-4 text-[#555]" />
                         <span className="text-sm font-medium text-white">Banner {index + 1}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-[#919191]">Active</span>
                             <Switch
@@ -444,9 +444,9 @@ export default function BannersPage() {
                     </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex flex-col gap-4 md:flex-row">
                     {/* Image Preview */}
-                    <div className="h-32 w-48 rounded-md border border-[#333] overflow-hidden bg-[#161616] flex-shrink-0 flex items-center justify-center relative">
+                    <div className="relative flex h-40 w-full items-center justify-center overflow-hidden rounded-md border border-[#333] bg-[#161616] md:h-32 md:w-48 md:flex-shrink-0">
                         {banner.imageUrl ? (
                             <img
                                 src={resolveBannerPreviewUrl(banner.imageUrl)}
@@ -470,8 +470,8 @@ export default function BannersPage() {
                         )}
                     </div>
 
-                    <div className="flex-1 space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
+                    <div className="flex-1 space-y-3 min-w-0">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label className="text-xs text-[#919191] mb-1 block">Title *</label>
                                 <Input
@@ -500,7 +500,7 @@ export default function BannersPage() {
                                 onChange={(e) => updateFn(index, 'subtitle', e.target.value)}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label className="text-xs text-[#919191] mb-1 block">Banner Image</label>
                                 <input
@@ -523,7 +523,7 @@ export default function BannersPage() {
                                     </span>
                                 </Button>
                                 {banner.imageUrl && (
-                                    <p className="text-[10px] text-[#555] mt-1 truncate max-w-xs">{banner.imageUrl}</p>
+                                    <p className="text-[10px] text-[#555] mt-1 break-all">{banner.imageUrl}</p>
                                 )}
                             </div>
                             <div>
@@ -585,7 +585,7 @@ export default function BannersPage() {
                         </div>
 
                         {/* Button and Icon Customization */}
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#333]">
+                        <div className="grid grid-cols-1 gap-3 pt-2 border-t border-[#333] sm:grid-cols-2">
                             <div>
                                 <label className="text-xs text-[#919191] mb-1 block">Button Text</label>
                                 <div className="space-y-2">
@@ -644,7 +644,7 @@ export default function BannersPage() {
             </div>
 
             <Tabs defaultValue="hero" className="w-full">
-                <TabsList className="bg-[#161616] border border-[#333]">
+                <TabsList className="grid w-full grid-cols-1 bg-[#161616] border border-[#333] sm:grid-cols-2">
                     <TabsTrigger value="hero" className="data-[state=active]:bg-[#333] data-[state=active]:text-white text-[#919191]">
                         Top Banners (Hero)
                     </TabsTrigger>
@@ -656,14 +656,14 @@ export default function BannersPage() {
                 <TabsContent value="hero" className="mt-4">
                     <Card className="bg-[#161616] border-[#333]">
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <CardTitle className="text-white flex items-center gap-2">
                                         <ImageIcon className="h-5 w-5" /> Top Banners
                                     </CardTitle>
                                     <CardDescription className="text-[#919191]">Main carousel at the top of the home screen</CardDescription>
                                 </div>
-                                <Button onClick={addHeroBanner} variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#222]">
+                                <Button onClick={addHeroBanner} variant="outline" size="sm" className="w-full border-[#333] text-white hover:bg-[#222] sm:w-auto">
                                     <Plus className="h-4 w-4 mr-1" /> Add Banner
                                 </Button>
                             </div>
@@ -692,14 +692,14 @@ export default function BannersPage() {
                 <TabsContent value="promo" className="mt-4">
                     <Card className="bg-[#161616] border-[#333]">
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <CardTitle className="text-white flex items-center gap-2">
                                         <ImageIcon className="h-5 w-5" /> Bottom Banners
                                     </CardTitle>
                                     <CardDescription className="text-[#919191]">Promotional carousel displayed just above the "Why Buy From Us" section</CardDescription>
                                 </div>
-                                <Button onClick={addPromoBanner} variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#222]">
+                                <Button onClick={addPromoBanner} variant="outline" size="sm" className="w-full border-[#333] text-white hover:bg-[#222] sm:w-auto">
                                     <Plus className="h-4 w-4 mr-1" /> Add Banner
                                 </Button>
                             </div>

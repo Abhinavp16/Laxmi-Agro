@@ -293,18 +293,18 @@ export default function ProductsPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Products</h1>
                     <p className="text-slate-500">Manage your product catalog. {totalProducts > 0 && `(${totalProducts} products)`}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start lg:justify-end">
                     <Button
                         type="button"
                         onClick={convertMissingHindiNames}
                         disabled={isConvertingHindi}
                         variant="outline"
-                        className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
+                        className="w-full border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900 sm:w-auto"
                     >
                         {isConvertingHindi ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -313,7 +313,7 @@ export default function ProductsPage() {
                         )}
                         Convert Missing Hindi Names
                     </Button>
-                    <div className="flex items-center rounded-xl border border-[#d8dfca] bg-[#f3f6ea] p-1">
+                    <div className="hidden items-center rounded-xl border border-[#d8dfca] bg-[#f3f6ea] p-1 md:flex">
                         <button
                             onClick={() => setViewMode("list")}
                             className={`rounded-lg p-2 transition-colors ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
@@ -327,14 +327,14 @@ export default function ProductsPage() {
                             <LayoutGrid className="h-4 w-4" />
                         </button>
                     </div>
-                    <Link href="/products/add" className="inline-flex h-10 items-center justify-center rounded-md bg-[#86efac] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#86efac]/90">
+                    <Link href="/products/add" className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[#86efac] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#86efac]/90 sm:w-auto">
                         <Plus className="mr-2 h-4 w-4" /> Add Product
                     </Link>
                 </div>
             </div>
 
-            <form onSubmit={handleSearch} className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-md">
+            <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:max-w-md sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                         type="text"
@@ -347,7 +347,7 @@ export default function ProductsPage() {
                 <Button
                     type="submit"
                     variant="outline"
-                    className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
+                    className="w-full border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900 sm:w-auto"
                 >
                     Search
                 </Button>
@@ -359,7 +359,7 @@ export default function ProductsPage() {
                             setSearchQuery("")
                             fetchProducts(1, true)
                         }}
-                        className="text-slate-500 hover:bg-[#f6f8ef] hover:text-slate-900"
+                        className="w-full text-slate-500 hover:bg-[#f6f8ef] hover:text-slate-900 sm:w-auto"
                     >
                         Clear
                     </Button>
@@ -377,7 +377,72 @@ export default function ProductsPage() {
                     <p className="text-sm">Add your first product to get started</p>
                 </div>
             ) : viewMode === "list" ? (
-                <div className="overflow-hidden rounded-[28px] border border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
+                <>
+                <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {products.map((product) => {
+                        const displayPrice = getDisplayPrice(product)
+                        const variantCount = getVariantCount(product)
+                        const totalStock = getTotalStock(product)
+
+                        return (
+                            <div
+                                key={product._id}
+                                className="rounded-[28px] border border-[#dde3d0] bg-white/92 p-4 shadow-[0_24px_60px_rgba(60,80,40,0.08)] transition-colors hover:border-[#cfd8be]"
+                            >
+                                <div className="mb-3 flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3f6ea]">
+                                        <Package className="h-6 w-6 text-slate-500" />
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:bg-[#f1f5e8] hover:text-slate-900">
+                                            <Eye className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Link href={`/products/edit/${product._id}`}>
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-400 hover:bg-blue-400/10 hover:text-blue-300">
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </Link>
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-400/10 hover:text-red-300" onClick={() => deleteProduct(product._id)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <h3 className="mb-1 line-clamp-1 text-base font-semibold text-slate-900">{product.name}</h3>
+                                {product.nameHindi ? (
+                                    <p className="mb-1 line-clamp-1 text-xs text-slate-500">{product.nameHindi}</p>
+                                ) : null}
+                                <p className="mb-3 text-xs text-slate-500">SKU: {getDisplaySku(product)}</p>
+                                <div className="mb-3 flex items-center justify-between gap-2">
+                                    <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-xs text-slate-700">
+                                        {getCategoryLabel(product.category)}
+                                    </Badge>
+                                    <Badge className={product.status === "active" ? "text-xs bg-green-500/10 text-green-600" : "text-xs bg-slate-500/10 text-slate-500"}>
+                                        {product.status}
+                                    </Badge>
+                                    <div className="flex items-center gap-1 text-yellow-500">
+                                        <Star className="h-3 w-3 fill-current" />
+                                        <span className="text-xs font-medium">{product.rating > 0 ? product.rating : "-"}</span>
+                                    </div>
+                                </div>
+                                <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                                    <Badge variant="outline" className="border-[#d8dfca] bg-[#f8faf3] text-slate-700">
+                                        {variantCount} variant{variantCount === 1 ? "" : "s"}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-[#edf0e2] pt-3">
+                                    <div>
+                                        <p className="text-lg font-bold text-[#86efac]">{displayPrice !== null ? `Rs ${displayPrice.toLocaleString()}` : "-"}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-slate-500">Stock</p>
+                                        <p className="font-medium text-slate-900">{totalStock}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+                <div className="hidden overflow-hidden rounded-[28px] border border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] md:block">
                     <Table>
                         <TableHeader>
                             <TableRow className="border-[#edf0e2] hover:bg-[#f8faf3]">
@@ -453,6 +518,7 @@ export default function ProductsPage() {
                         </TableBody>
                     </Table>
                 </div>
+                </>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {products.map((product) => {

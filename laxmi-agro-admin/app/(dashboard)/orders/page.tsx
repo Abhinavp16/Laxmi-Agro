@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import {
     Dialog,
@@ -48,6 +47,10 @@ interface Order {
     }
 }
 
+function formatStatusLabel(status: string) {
+    return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export default function OrdersPage() {
     const router = useRouter()
     const pathname = usePathname()
@@ -65,10 +68,8 @@ export default function OrdersPage() {
     const [courierName, setCourierName] = useState("")
     const [isShipping, setIsShipping] = useState(false)
 
-    // Search & Pagination state
     const [searchQuery, setSearchQuery] = useState("")
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(1)
     const [totalOrders, setTotalOrders] = useState(0)
     const [hasMore, setHasMore] = useState(false)
     const filteredUserId = searchParams.get("userId")?.trim() || ""
@@ -77,7 +78,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         setSearchQuery(searchFromUrl)
-        fetchOrders(1, true, searchFromUrl)
+        void fetchOrders(1, true, searchFromUrl)
     }, [filteredUserId, searchFromUrl])
 
     async function fetchOrders(
@@ -94,16 +95,14 @@ export default function OrdersPage() {
 
         try {
             const params = new URLSearchParams()
-            params.append('page', pageNum.toString())
-            params.append('limit', '20')
+            params.append("page", pageNum.toString())
+            params.append("limit", "20")
             if (filteredUserId) {
-                params.append('userId', filteredUserId)
+                params.append("userId", filteredUserId)
             }
-            const effectiveSearch = typeof searchOverride === "string"
-                ? searchOverride
-                : searchQuery
+            const effectiveSearch = typeof searchOverride === "string" ? searchOverride : searchQuery
             if (effectiveSearch.trim()) {
-                params.append('search', effectiveSearch.trim())
+                params.append("search", effectiveSearch.trim())
             }
 
             const res = await apiFetch(`/admin/orders?${params.toString()}`)
@@ -115,10 +114,9 @@ export default function OrdersPage() {
                 if (reset || pageNum === 1) {
                     setOrders(items)
                 } else {
-                    setOrders(prev => [...prev, ...items])
+                    setOrders((prev) => [...prev, ...items])
                 }
 
-                setTotalPages(pagination.totalPages || 1)
                 setTotalOrders(pagination.total || items.length)
                 setHasMore((pagination.page || 1) < (pagination.totalPages || 1))
             } else {
@@ -149,7 +147,7 @@ export default function OrdersPage() {
         if (hasMore && !isLoadingMore) {
             const nextPage = page + 1
             setPage(nextPage)
-            fetchOrders(nextPage, false, searchFromUrl)
+            void fetchOrders(nextPage, false, searchFromUrl)
         }
     }, [hasMore, isLoadingMore, page, searchFromUrl])
 
@@ -161,7 +159,7 @@ export default function OrdersPage() {
                 setSelectedOrder(data.data)
                 setIsDetailsOpen(true)
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to load details")
         }
     }
@@ -171,17 +169,17 @@ export default function OrdersPage() {
         setIsVerifying(true)
         try {
             const res = await apiFetch(`/admin/payments/${paymentId}/verify`, {
-                method: 'PUT',
+                method: "PUT",
             })
             if (res.ok) {
                 toast.success("Payment verified successfully")
                 setIsDetailsOpen(false)
-                fetchOrders(1, true, searchFromUrl)
+                void fetchOrders(1, true, searchFromUrl)
             } else {
                 const data = await res.json()
                 toast.error(data.message || "Verification failed")
             }
-        } catch (error) {
+        } catch {
             toast.error("Error processing request")
         } finally {
             setIsVerifying(false)
@@ -194,18 +192,18 @@ export default function OrdersPage() {
         setIsRejecting(true)
         try {
             const res = await apiFetch(`/admin/payments/${paymentId}/reject`, {
-                method: 'PUT',
+                method: "PUT",
                 body: JSON.stringify({ reason })
             })
             if (res.ok) {
                 toast.success("Payment rejected")
                 setIsDetailsOpen(false)
-                fetchOrders(1, true, searchFromUrl)
+                void fetchOrders(1, true, searchFromUrl)
             } else {
                 const data = await res.json()
                 toast.error(data.message || "Rejection failed")
             }
-        } catch (error) {
+        } catch {
             toast.error("Error processing request")
         } finally {
             setIsRejecting(false)
@@ -216,19 +214,19 @@ export default function OrdersPage() {
         setIsUpdatingStatus(true)
         try {
             const res = await apiFetch(`/admin/orders/${orderId}/status`, {
-                method: 'PUT',
+                method: "PUT",
                 body: JSON.stringify({ status, note })
             })
             const data = await res.json()
             if (res.ok) {
-                toast.success(`Order ${status.replace(/_/g, ' ')}`)
+                toast.success(`Order ${status.replace(/_/g, " ")}`)
                 setIsDetailsOpen(false)
-                fetchOrders(1, true, searchFromUrl)
+                void fetchOrders(1, true, searchFromUrl)
             } else {
-                toast.error(data.message || 'Failed to update status')
+                toast.error(data.message || "Failed to update status")
             }
         } catch {
-            toast.error('Error updating order status')
+            toast.error("Error updating order status")
         } finally {
             setIsUpdatingStatus(false)
         }
@@ -239,18 +237,18 @@ export default function OrdersPage() {
         setIsUpdatingStatus(true)
         try {
             const res = await apiFetch(`/admin/orders/${orderId}/mark-payment-complete`, {
-                method: 'PUT',
+                method: "PUT",
             })
             const data = await res.json()
             if (res.ok) {
-                toast.success('Payment marked completed')
+                toast.success("Payment marked completed")
                 await fetchOrders(1, true)
                 await fetchOrderDetails(orderId)
             } else {
-                toast.error(data.message || 'Failed to mark payment completed')
+                toast.error(data.message || "Failed to mark payment completed")
             }
         } catch {
-            toast.error('Error marking payment completed')
+            toast.error("Error marking payment completed")
         } finally {
             setIsUpdatingStatus(false)
         }
@@ -258,28 +256,28 @@ export default function OrdersPage() {
 
     async function shipOrder(orderId: string) {
         if (!trackingNumber.trim() || !courierName.trim()) {
-            toast.error('Please enter tracking number and courier name')
+            toast.error("Please enter tracking number and courier name")
             return
         }
         setIsShipping(true)
         try {
             const res = await apiFetch(`/admin/orders/${orderId}/ship`, {
-                method: 'PUT',
+                method: "PUT",
                 body: JSON.stringify({ trackingNumber: trackingNumber.trim(), courierName: courierName.trim() })
             })
             const data = await res.json()
             if (res.ok) {
-                toast.success('Order shipped!')
+                toast.success("Order shipped!")
                 setIsShipDialogOpen(false)
                 setIsDetailsOpen(false)
-                setTrackingNumber('')
-                setCourierName('')
-                fetchOrders(1, true, searchFromUrl)
+                setTrackingNumber("")
+                setCourierName("")
+                void fetchOrders(1, true, searchFromUrl)
             } else {
-                toast.error(data.message || 'Failed to ship order')
+                toast.error(data.message || "Failed to ship order")
             }
         } catch {
-            toast.error('Error shipping order')
+            toast.error("Error shipping order")
         } finally {
             setIsShipping(false)
         }
@@ -287,41 +285,40 @@ export default function OrdersPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'delivered': return "text-green-500 bg-green-500/10"
-            case 'payment_verified': return "text-green-500 bg-green-500/10"
-            case 'payment_uploaded': return "text-blue-500 bg-blue-500/10"
-            case 'processing': return "text-blue-500 bg-blue-500/10"
-            case 'shipped': return "text-purple-500 bg-purple-500/10"
-            case 'pending_payment': return "text-yellow-500 bg-yellow-500/10"
+            case "delivered": return "text-green-500 bg-green-500/10"
+            case "payment_verified": return "text-green-500 bg-green-500/10"
+            case "payment_uploaded": return "text-blue-500 bg-blue-500/10"
+            case "processing": return "text-blue-500 bg-blue-500/10"
+            case "shipped": return "text-purple-500 bg-purple-500/10"
+            case "pending_payment": return "text-yellow-500 bg-yellow-500/10"
             default: return "text-gray-500 bg-gray-500/10"
         }
     }
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Orders</h1>
-                    <p className="text-gray-400 text-sm">{totalOrders > 0 && `(${totalOrders} orders)`}</p>
+                    <p className="text-sm text-gray-400">{totalOrders > 0 && `(${totalOrders} orders)`}</p>
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:max-w-md sm:flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                         type="text"
                         placeholder="Search by order number, customer name, phone..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 bg-[#161616] border-[#333] text-white placeholder:text-gray-500 focus-visible:ring-[#86efac]"
+                        className="bg-[#161616] border-[#333] pl-10 text-white placeholder:text-gray-500 focus-visible:ring-[#86efac]"
                     />
                 </div>
                 <Button
                     type="submit"
                     variant="outline"
-                    className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                    className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
                 >
                     Search
                 </Button>
@@ -336,7 +333,7 @@ export default function OrdersPage() {
                             const query = params.toString()
                             router.replace(query ? `${pathname}?${query}` : pathname)
                         }}
-                        className="text-gray-400 hover:text-white"
+                        className="w-full text-gray-400 hover:text-white sm:w-auto"
                     >
                         Clear
                     </Button>
@@ -344,7 +341,7 @@ export default function OrdersPage() {
             </form>
 
             {filteredUserId && (
-                <div className="flex items-center justify-between rounded-xl border border-[#2f4f3a] bg-[#0D0D0D] px-4 py-3">
+                <div className="flex flex-col gap-3 rounded-xl border border-[#2f4f3a] bg-[#0D0D0D] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div className="text-sm font-semibold text-white">
                             Viewing order history for {filteredCustomerName || "selected shop"}
@@ -356,7 +353,7 @@ export default function OrdersPage() {
                     <Button
                         type="button"
                         variant="outline"
-                        className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                        className="w-full border-[#333] bg-transparent text-white hover:bg-[#1A1A1A] sm:w-auto"
                         onClick={() => {
                             const params = new URLSearchParams(searchParams.toString())
                             params.delete("userId")
@@ -380,53 +377,104 @@ export default function OrdersPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                         </div>
                     ) : orders.length === 0 ? (
-                        <div className="text-center text-gray-500 py-10">No orders found</div>
+                        <div className="py-10 text-center text-gray-500">No orders found</div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="border-[#333] hover:bg-[#1A1A1A]">
-                                    <TableHead className="text-gray-400">Order #</TableHead>
-                                    <TableHead className="text-gray-400">Customer</TableHead>
-                                    <TableHead className="text-gray-400">Items</TableHead>
-                                    <TableHead className="text-gray-400 text-right">Total</TableHead>
-                                    <TableHead className="text-gray-400 text-center">Status</TableHead>
-                                    <TableHead className="text-gray-400 text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {orders.map((order) => (
-                                    <TableRow key={order._id} className="border-[#333] hover:bg-[#1A1A1A]">
-                                        <TableCell className="text-white font-medium">{order.orderNumber}</TableCell>
-                                        <TableCell className="text-white font-medium">{order.customerSnapshot?.name}</TableCell>
-                                        <TableCell className="text-gray-400 text-xs">
-                                            {order.items.length} items ({order.items[0]?.productSnapshot.name}...)
-                                        </TableCell>
-                                        <TableCell className="text-white text-right font-bold">₹{order.total.toLocaleString()}</TableCell>
-                                        <TableCell className="text-center">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getStatusColor(order.status)}`}>
-                                                {order.status.replace('_', ' ')}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0 text-white hover:bg-[#333]"
-                                                onClick={() => fetchOrderDetails(order._id)}
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <>
+                            <div className="space-y-3 md:hidden">
+                                {orders.map((order) => {
+                                    const totalItems = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+                                    const leadItem = order.items[0]?.productSnapshot?.name || "Product"
+
+                                    return (
+                                        <div key={order._id} className="rounded-2xl border border-[#333] bg-[#0D0D0D] p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="text-sm font-semibold text-white">{order.orderNumber}</div>
+                                                    <div className="mt-1 text-xs text-gray-400">
+                                                        {new Date(order.createdAt).toLocaleDateString("en-IN")}
+                                                    </div>
+                                                </div>
+                                                <span className={`rounded-full px-3 py-1 text-[11px] font-medium ${getStatusColor(order.status)}`}>
+                                                    {formatStatusLabel(order.status)}
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-4 space-y-2 text-sm">
+                                                <div className="text-white">{order.customerSnapshot?.name || "-"}</div>
+                                                <div className="text-xs text-gray-400">{order.customerSnapshot?.phone || "-"}</div>
+                                                <div className="text-xs text-gray-400">
+                                                    {totalItems} items, starting with {leadItem}
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex items-center justify-between gap-3">
+                                                <div>
+                                                    <div className="text-xs uppercase tracking-wide text-gray-500">Order Total</div>
+                                                    <div className="text-base font-bold text-white">Rs {order.total.toLocaleString("en-IN")}</div>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                                                    onClick={() => fetchOrderDetails(order._id)}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    View
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="hidden md:block">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-[#333] hover:bg-[#1A1A1A]">
+                                            <TableHead className="text-gray-400">Order #</TableHead>
+                                            <TableHead className="text-gray-400">Customer</TableHead>
+                                            <TableHead className="text-gray-400">Items</TableHead>
+                                            <TableHead className="text-gray-400 text-right">Total</TableHead>
+                                            <TableHead className="text-gray-400 text-center">Status</TableHead>
+                                            <TableHead className="text-gray-400 text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {orders.map((order) => (
+                                            <TableRow key={order._id} className="border-[#333] hover:bg-[#1A1A1A]">
+                                                <TableCell className="font-medium text-white">{order.orderNumber}</TableCell>
+                                                <TableCell className="font-medium text-white">{order.customerSnapshot?.name}</TableCell>
+                                                <TableCell className="text-xs text-gray-400">
+                                                    {order.items.length} items ({order.items[0]?.productSnapshot?.name}...)
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-white">Rs {order.total.toLocaleString("en-IN")}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className={`rounded-full px-2 py-1 text-xs font-medium uppercase ${getStatusColor(order.status)}`}>
+                                                        {order.status.replace(/_/g, " ")}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-white hover:bg-[#333]"
+                                                        onClick={() => fetchOrderDetails(order._id)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
                     )}
                 </CardContent>
             </Card>
 
             <Dialog open={isdetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="bg-[#161616] border-[#333] text-white max-w-2xl max-h-[85vh] flex flex-col">
+                <DialogContent className="max-h-[85vh] max-w-[95vw] border-[#333] bg-[#161616] text-white sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Order Details: {selectedOrder?.orderNumber}</DialogTitle>
                         <DialogDescription>
@@ -435,49 +483,51 @@ export default function OrdersPage() {
                     </DialogHeader>
 
                     {selectedOrder && (
-                        <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: 'calc(85vh - 100px)' }}>
-                            {/* Payment Section */}
-                            <div className="p-4 bg-[#0D0D0D] rounded-lg border border-[#333]">
-                                <h3 className="font-medium mb-2 flex items-center gap-2">
+                        <div className="space-y-6 overflow-y-auto pr-1 sm:pr-2">
+                            <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
+                                <h3 className="mb-2 flex items-center gap-2 font-medium">
                                     Payment Information
-                                    {selectedOrder.status === 'payment_verified' && <div className="text-green-500 flex items-center gap-1 text-xs"><CheckCircle2 className="w-3 h-3" /> Verified</div>}
+                                    {selectedOrder.status === "payment_verified" && (
+                                        <div className="flex items-center gap-1 text-xs text-green-500">
+                                            <CheckCircle2 className="h-3 w-3" /> Verified
+                                        </div>
+                                    )}
                                 </h3>
 
                                 {selectedOrder.payment ? (
                                     <div className="space-y-3">
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                                             <div>
-                                                <span className="text-gray-400 block">Amount</span>
-                                                <span>₹{selectedOrder.payment.amount}</span>
+                                                <span className="block text-gray-400">Amount</span>
+                                                <span>Rs {selectedOrder.payment.amount}</span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-400 block">Method</span>
-                                                <span>{selectedOrder.payment.method ? selectedOrder.payment.method.replace(/_/g, ' ') : (selectedOrder.payment.upiId || 'Manual')}</span>
+                                                <span className="block text-gray-400">Method</span>
+                                                <span>{selectedOrder.payment.method ? selectedOrder.payment.method.replace(/_/g, " ") : (selectedOrder.payment.upiId || "Manual")}</span>
                                             </div>
                                         </div>
 
                                         {selectedOrder.payment.screenshotUrl && (
                                             <div>
-                                                <span className="text-gray-400 block mb-2 text-sm">Payment Screenshot</span>
-                                                <div className="relative aspect-video w-full rounded-md overflow-hidden border border-[#333]">
-                                                    {/* Using standard img tag for external URLs if standard domain not configured in next.config */}
+                                                <span className="mb-2 block text-sm text-gray-400">Payment Screenshot</span>
+                                                <div className="relative aspect-video w-full overflow-hidden rounded-md border border-[#333]">
                                                     <img
                                                         src={selectedOrder.payment.screenshotUrl}
                                                         alt="Payment Proof"
-                                                        className="object-contain w-full h-full bg-black/50"
+                                                        className="h-full w-full object-contain bg-black/50"
                                                     />
                                                 </div>
                                             </div>
                                         )}
 
-                                        {selectedOrder.status === 'payment_uploaded' && (
-                                            <div className="flex gap-3 pt-2">
+                                        {selectedOrder.status === "payment_uploaded" && (
+                                            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                                                 <Button
-                                                    className="w-full bg-green-500 hover:bg-green-600 text-white"
+                                                    className="w-full bg-green-500 text-white hover:bg-green-600"
                                                     onClick={() => selectedOrder.payment && handleVerifyPayment(selectedOrder.payment._id)}
                                                     disabled={isVerifying}
                                                 >
-                                                    {isVerifying && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                    {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                     Verify Payment
                                                 </Button>
                                                 <Button
@@ -486,225 +536,218 @@ export default function OrdersPage() {
                                                     onClick={() => selectedOrder.payment && handleRejectPayment(selectedOrder.payment._id)}
                                                     disabled={isRejecting}
                                                 >
-                                                    {isRejecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                    {isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                     Reject
                                                 </Button>
                                             </div>
                                         )}
-                                        {selectedOrder.status === 'pending_payment' && (
+
+                                        {selectedOrder.status === "pending_payment" && (
                                             <Button
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
                                                 onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
                                                 disabled={isUpdatingStatus}
                                             >
-                                                {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Payment Completed
+                                                {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Payment Completed
                                             </Button>
                                         )}
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        <div className="text-yellow-500 text-sm">No payment information uploaded yet.</div>
-                                        {selectedOrder.status === 'pending_payment' && (
+                                        <div className="text-sm text-yellow-500">No payment information uploaded yet.</div>
+                                        {selectedOrder.status === "pending_payment" && (
                                             <Button
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
                                                 onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
                                                 disabled={isUpdatingStatus}
                                             >
-                                                {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Payment Completed
+                                                {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Payment Completed
                                             </Button>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Items List */}
-                            <div>
-                                <h3 className="font-medium mb-2">Items</h3>
-                                <div className="space-y-2">
-                                    {selectedOrder.items.map((item: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center bg-[#0D0D0D] p-3 rounded border border-[#333]">
-                                            <span>{item.productSnapshot.name}</span>
-                                            <span className="text-gray-400">x{item.quantity}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Shipping Address */}
                             {selectedOrder.shippingAddress && (
-                                <div className="p-4 bg-[#0D0D0D] rounded-lg border border-[#333]">
-                                    <h3 className="font-medium mb-2 flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-gray-400" /> Shipping Address
+                                <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
+                                    <h3 className="mb-3 flex items-center gap-2 font-medium">
+                                        <MapPin className="h-4 w-4" /> Shipping Address
                                     </h3>
-                                    <p className="text-sm text-gray-300">
-                                        {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} - {selectedOrder.shippingAddress.pincode}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Tracking Info */}
-                            {selectedOrder.trackingNumber && (
-                                <div className="p-4 bg-[#0D0D0D] rounded-lg border border-[#333]">
-                                    <h3 className="font-medium mb-2 flex items-center gap-2">
-                                        <Truck className="w-4 h-4 text-gray-400" /> Shipping Details
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                                         <div>
-                                            <span className="text-gray-400 block">Courier</span>
-                                            <span>{selectedOrder.courierName}</span>
+                                            <span className="block text-gray-400">Address</span>
+                                            <span>{selectedOrder.shippingAddress.address}</span>
                                         </div>
                                         <div>
-                                            <span className="text-gray-400 block">Tracking #</span>
-                                            <span className="font-mono">{selectedOrder.trackingNumber}</span>
+                                            <span className="block text-gray-400">City</span>
+                                            <span>{selectedOrder.shippingAddress.city}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-gray-400">State</span>
+                                            <span>{selectedOrder.shippingAddress.state}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-gray-400">Pincode</span>
+                                            <span>{selectedOrder.shippingAddress.pincode}</span>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Status History */}
+                            <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
+                                <h3 className="mb-3 flex items-center gap-2 font-medium">
+                                    <Package className="h-4 w-4" /> Ordered Items
+                                </h3>
+                                <div className="space-y-3">
+                                    {selectedOrder.items.map((item, idx) => (
+                                        <div key={idx} className="flex items-start justify-between gap-4 border-b border-[#222] pb-3 last:border-0 last:pb-0">
+                                            <div>
+                                                <p className="text-sm font-medium">{item.productSnapshot?.name || "Product"}</p>
+                                                <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                                            </div>
+                                            <p className="text-sm font-semibold">Rs {(item.pricePerUnit * item.quantity).toLocaleString("en-IN")}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-[#222] pt-3 text-sm">
+                                    <span className="text-gray-400">Grand Total</span>
+                                    <span className="text-lg font-bold text-white">Rs {selectedOrder.total.toLocaleString("en-IN")}</span>
+                                </div>
+                            </div>
+
                             {selectedOrder.statusHistory && selectedOrder.statusHistory.length > 0 && (
-                                <div className="p-4 bg-[#0D0D0D] rounded-lg border border-[#333]">
-                                    <h3 className="font-medium mb-3">Status History</h3>
-                                    <div className="space-y-2">
-                                        {selectedOrder.statusHistory.slice().reverse().map((h, idx) => (
-                                            <div key={idx} className="flex items-start gap-3 text-sm">
-                                                <div className="w-2 h-2 mt-1.5 rounded-full bg-[#86efac] shrink-0" />
-                                                <div>
-                                                    <span className="text-white capitalize">{h.status.replace(/_/g, ' ')}</span>
-                                                    {h.note && <span className="text-gray-500 ml-2">— {h.note}</span>}
-                                                    <p className="text-xs text-gray-600">{new Date(h.timestamp).toLocaleString('en-IN')}</p>
-                                                </div>
+                                <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
+                                    <h3 className="mb-3 font-medium">Status Timeline</h3>
+                                    <div className="space-y-3">
+                                        {selectedOrder.statusHistory.map((entry, idx) => (
+                                            <div key={idx} className="border-l-2 border-[#86efac] pl-3">
+                                                <div className="text-sm font-medium">{formatStatusLabel(entry.status)}</div>
+                                                <div className="text-xs text-gray-400">{new Date(entry.timestamp).toLocaleString("en-IN")}</div>
+                                                {entry.note ? <div className="mt-1 text-xs text-gray-300">{entry.note}</div> : null}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Status Actions */}
-                            {selectedOrder.status === 'payment_verified' && (
-                                <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                                {selectedOrder.status === "payment_verified" && (
                                     <Button
-                                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                                        onClick={() => updateOrderStatus(selectedOrder._id, 'processing', 'Order confirmed by admin')}
+                                        className="bg-blue-600 text-white hover:bg-blue-700"
+                                        onClick={() => updateOrderStatus(selectedOrder._id, "processing")}
                                         disabled={isUpdatingStatus}
                                     >
-                                        {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                        <Package className="w-4 h-4 mr-2" /> Confirm & Process
+                                        {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Start Processing
                                     </Button>
+                                )}
+
+                                {selectedOrder.status === "processing" && (
+                                    <Button
+                                        className="bg-purple-600 text-white hover:bg-purple-700"
+                                        onClick={() => setIsShipDialogOpen(true)}
+                                        disabled={isUpdatingStatus}
+                                    >
+                                        <Truck className="mr-2 h-4 w-4" />
+                                        Ship Order
+                                    </Button>
+                                )}
+
+                                {selectedOrder.status === "shipped" && (
+                                    <Button
+                                        className="bg-green-600 text-white hover:bg-green-700"
+                                        onClick={() => updateOrderStatus(selectedOrder._id, "delivered")}
+                                        disabled={isUpdatingStatus}
+                                    >
+                                        {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                                        Mark Delivered
+                                    </Button>
+                                )}
+
+                                {!["delivered", "cancelled"].includes(selectedOrder.status) && (
                                     <Button
                                         variant="destructive"
-                                        className="w-full"
-                                        onClick={() => updateOrderStatus(selectedOrder._id, 'cancelled', 'Cancelled by admin')}
-                                        disabled={isUpdatingStatus}
-                                    >
-                                        <XCircle className="w-4 h-4 mr-2" /> Cancel Order
-                                    </Button>
-                                </div>
-                            )}
-
-                            {selectedOrder.status === 'processing' && (
-                                <div className="flex flex-col gap-3">
-                                    <Button
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                                         onClick={() => {
-                                            setTrackingNumber('')
-                                            setCourierName('')
-                                            setIsShipDialogOpen(true)
+                                            const note = prompt("Reason for cancellation (optional):") || undefined
+                                            void updateOrderStatus(selectedOrder._id, "cancelled", note)
                                         }}
                                         disabled={isUpdatingStatus}
                                     >
-                                        <Truck className="w-4 h-4 mr-2" /> Ship Order
+                                        {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Cancel Order
                                     </Button>
-                                    <Button
-                                        variant="destructive"
-                                        className="w-full"
-                                        onClick={() => updateOrderStatus(selectedOrder._id, 'cancelled', 'Cancelled by admin')}
-                                        disabled={isUpdatingStatus}
-                                    >
-                                        <XCircle className="w-4 h-4 mr-2" /> Cancel Order
-                                    </Button>
-                                </div>
-                            )}
-
-                            {selectedOrder.status === 'shipped' && (
-                                <Button
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                    onClick={() => updateOrderStatus(selectedOrder._id, 'delivered', 'Marked as delivered')}
-                                    disabled={isUpdatingStatus}
-                                >
-                                    {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Delivered
-                                </Button>
-                            )}
+                                )}
+                            </div>
                         </div>
                     )}
                 </DialogContent>
             </Dialog>
 
-            {/* Ship Order Dialog */}
             <Dialog open={isShipDialogOpen} onOpenChange={setIsShipDialogOpen}>
-                <DialogContent className="bg-[#161616] border-[#333] text-white max-w-md">
+                <DialogContent className="max-w-[95vw] border-[#333] bg-[#161616] text-white sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Ship Order: {selectedOrder?.orderNumber}</DialogTitle>
+                        <DialogTitle>Ship Order</DialogTitle>
                         <DialogDescription>
-                            Enter courier and tracking details
+                            Enter courier details for {selectedOrder?.orderNumber}
                         </DialogDescription>
                     </DialogHeader>
+
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Courier Name</Label>
+                        <div>
+                            <div className="mb-2 text-sm text-gray-400">Tracking Number</div>
                             <Input
-                                placeholder="e.g. BlueDart, Delhivery, DTDC"
-                                value={courierName}
-                                onChange={(e) => setCourierName(e.target.value)}
+                                value={trackingNumber}
+                                onChange={(e) => setTrackingNumber(e.target.value)}
+                                placeholder="Enter tracking number"
                                 className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Tracking Number</Label>
+                        <div>
+                            <div className="mb-2 text-sm text-gray-400">Courier Name</div>
                             <Input
-                                placeholder="e.g. AWB123456789"
-                                value={trackingNumber}
-                                onChange={(e) => setTrackingNumber(e.target.value)}
+                                value={courierName}
+                                onChange={(e) => setCourierName(e.target.value)}
+                                placeholder="Enter courier name"
                                 className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsShipDialogOpen(false)} className="text-gray-400 hover:bg-[#333]">
+
+                    <DialogFooter className="flex-col gap-3 sm:flex-row">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                            onClick={() => setIsShipDialogOpen(false)}
+                        >
                             Cancel
                         </Button>
                         <Button
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            type="button"
+                            className="bg-[#86efac] text-black hover:bg-[#74db98]"
                             onClick={() => selectedOrder && shipOrder(selectedOrder._id)}
                             disabled={isShipping}
                         >
-                            {isShipping && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Truck className="w-4 h-4 mr-2" /> Confirm Shipment
+                            {isShipping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirm Shipment
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Load More Button */}
             {hasMore && orders.length > 0 && (
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-center pt-2">
                     <Button
                         onClick={loadMore}
                         disabled={isLoadingMore}
                         variant="outline"
-                        className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] min-w-[200px]"
+                        className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:min-w-[200px] sm:w-auto"
                     >
-                        {isLoadingMore ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Loading...
-                            </>
-                        ) : (
-                            `Load More (${orders.length}/${totalOrders})`
-                        )}
+                        {isLoadingMore ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</> : `Load More (${orders.length}/${totalOrders})`}
                     </Button>
                 </div>
             )}

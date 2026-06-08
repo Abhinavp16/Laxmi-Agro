@@ -286,43 +286,43 @@ export default function CategoriesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <FolderTree className="h-8 w-8 text-[#86efac]" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                    <FolderTree className="h-7 w-7 shrink-0 text-[#86efac] sm:h-8 sm:w-8" />
                     <div>
-                        <h1 className="text-3xl font-bold text-white">Categories</h1>
+                        <h1 className="text-2xl font-bold text-white sm:text-3xl">Categories</h1>
                         <p className="text-gray-400 text-sm">{totalCategories > 0 && `(${totalCategories} categories)`}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {/* View Toggle */}
-                    <div className="flex items-center bg-[#161616] rounded-lg p-1 border border-[#333]">
+                    <div className="flex items-center rounded-lg border border-[#333] bg-[#161616] p-1">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`rounded-md p-2 transition-colors ${viewMode === 'list' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
                         >
                             <List className="h-4 w-4" />
                         </button>
                         <button
                             onClick={() => setViewMode('card')}
-                            className={`p-2 rounded-md transition-colors ${viewMode === 'card' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`rounded-md p-2 transition-colors ${viewMode === 'card' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </button>
                     </div>
                     <Button 
                         onClick={openCreateDialog}
-                        className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                        className="h-10 min-w-0 bg-[#86efac] px-3 text-black hover:bg-[#86efac]/90 sm:px-4"
                     >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Category
+                        <Plus className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="truncate">Add Category</span>
                     </Button>
                 </div>
             </div>
 
             {/* Search Bar */}
-            <form onSubmit={handleSearch} className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-md">
+            <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:max-w-md sm:flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                         type="text"
@@ -335,7 +335,7 @@ export default function CategoriesPage() {
                 <Button
                     type="submit"
                     variant="outline"
-                    className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                    className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
                 >
                     Search
                 </Button>
@@ -347,7 +347,7 @@ export default function CategoriesPage() {
                             setSearchQuery("")
                             fetchCategories(1, true)
                         }}
-                        className="text-gray-400 hover:text-white"
+                        className="w-full text-gray-400 hover:text-white sm:w-auto"
                     >
                         Clear
                     </Button>

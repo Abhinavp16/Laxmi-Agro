@@ -9,7 +9,7 @@ export default function Dashboard() {
       <PerformanceChart />
       <RecentOrders />
 
-      <div className="mt-4 flex items-center justify-end gap-2">
+      <div className="mt-2 flex items-center justify-start gap-2 md:mt-4 md:justify-end">
         <div className="h-[13px] w-[13px] rounded-full bg-[#86efac]" />
         <span className="text-sm text-slate-500">System Online</span>
       </div>

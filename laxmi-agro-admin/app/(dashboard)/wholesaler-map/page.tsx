@@ -220,23 +220,23 @@ export default function WholesalerMapPage() {
     }
   }, [filtered, selected])
 
-  return (
+    return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Wholesaler Map</h1>
           <p className="text-gray-400 text-sm">Approved wholesaler shops only</p>
         </div>
         <Button
           variant="outline"
-          className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+          className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
           onClick={() => void fetchLocations()}
         >
           Refresh
         </Button>
       </div>
 
-      <div className="relative max-w-md">
+      <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           value={search}
@@ -262,7 +262,7 @@ export default function WholesalerMapPage() {
                   No approved wholesaler locations found.
                 </div>
               ) : (
-                <div ref={mapRef} className="h-[65vh] w-full rounded-xl overflow-hidden" />
+                <div ref={mapRef} className="h-[42vh] w-full overflow-hidden rounded-xl sm:h-[50vh] lg:h-[65vh]" />
               )}
             </CardContent>
           </Card>
@@ -272,7 +272,7 @@ export default function WholesalerMapPage() {
               <CardHeader>
                 <CardTitle className="text-white">Wholesalers ({filtered.length})</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 max-h-[38vh] overflow-y-auto pr-1">
+              <CardContent className="max-h-[32vh] space-y-3 overflow-y-auto pr-1 sm:max-h-[38vh]">
                 {filtered.map((item) => (
                   <button
                     key={item.id}

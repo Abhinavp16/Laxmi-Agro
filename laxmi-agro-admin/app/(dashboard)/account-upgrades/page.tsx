@@ -217,56 +217,103 @@ export default function AccountUpgradesPage() {
                         <div className="text-center text-gray-500 py-6 text-sm">No history records yet</div>
                     ) : (
                         <div className="space-y-1">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="border-[#333] hover:bg-transparent">
-                                        <TableHead className="text-gray-400 text-xs uppercase">Business</TableHead>
-                                        <TableHead className="text-gray-400 text-xs uppercase">Applicant</TableHead>
-                                        <TableHead className="text-gray-400 text-xs uppercase">Status</TableHead>
-                                        <TableHead className="text-gray-400 text-xs uppercase">Updated On</TableHead>
-                                        <TableHead className="text-gray-400 text-right text-xs uppercase">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {(showFullHistory ? history : history.slice(0, 5)).map((cust) => (
-                                        <TableRow key={cust._id} className="border-[#333] hover:bg-[#1A1A1A]/40 transition-colors">
-                                            <TableCell className="py-3">
-                                                <div className="text-sm text-white font-medium">{cust.businessInfo?.businessName}</div>
-                                            </TableCell>
-                                            <TableCell className="py-3">
-                                                <div className="text-xs text-gray-400">{cust.name}</div>
-                                            </TableCell>
-                                            <TableCell className="py-3">
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`text-[10px] uppercase font-bold ${cust.businessInfo?.status === 'accepted'
-                                                            ? "text-green-400 border-green-500/20 bg-green-500/5"
-                                                            : "text-red-400 border-red-500/20 bg-red-500/5"
-                                                        }`}
-                                                >
-                                                    {cust.businessInfo?.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="py-3 text-xs text-gray-500">
-                                                {new Date(cust.updatedAt).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell className="text-right py-3">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-7 px-2 text-gray-500 hover:text-white"
-                                                    onClick={() => {
-                                                        setSelectedCustomer(cust)
-                                                        setIsDetailsOpen(true)
-                                                    }}
-                                                >
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </TableCell>
+                            <div className="space-y-3 md:hidden">
+                                {(showFullHistory ? history : history.slice(0, 5)).map((cust) => (
+                                    <div key={cust._id} className="rounded-xl border border-[#333] bg-[#0D0D0D] p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-medium text-white">
+                                                    {cust.businessInfo?.businessName || "Business"}
+                                                </div>
+                                                <div className="mt-1 text-xs text-gray-400">{cust.name}</div>
+                                            </div>
+                                            <Badge
+                                                variant="outline"
+                                                className={`text-[10px] uppercase font-bold ${cust.businessInfo?.status === 'accepted'
+                                                        ? "text-green-400 border-green-500/20 bg-green-500/5"
+                                                        : "text-red-400 border-red-500/20 bg-red-500/5"
+                                                    }`}
+                                            >
+                                                {cust.businessInfo?.status}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-[11px] uppercase tracking-wide text-gray-500">Updated On</div>
+                                                <div className="text-xs text-gray-400">
+                                                    {new Date(cust.updatedAt).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                                                onClick={() => {
+                                                    setSelectedCustomer(cust)
+                                                    setIsDetailsOpen(true)
+                                                }}
+                                            >
+                                                <Eye className="mr-2 h-3.5 w-3.5" />
+                                                View
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="hidden md:block">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-[#333] hover:bg-transparent">
+                                            <TableHead className="text-gray-400 text-xs uppercase">Business</TableHead>
+                                            <TableHead className="text-gray-400 text-xs uppercase">Applicant</TableHead>
+                                            <TableHead className="text-gray-400 text-xs uppercase">Status</TableHead>
+                                            <TableHead className="text-gray-400 text-xs uppercase">Updated On</TableHead>
+                                            <TableHead className="text-gray-400 text-right text-xs uppercase">Action</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(showFullHistory ? history : history.slice(0, 5)).map((cust) => (
+                                            <TableRow key={cust._id} className="border-[#333] hover:bg-[#1A1A1A]/40 transition-colors">
+                                                <TableCell className="py-3">
+                                                    <div className="text-sm text-white font-medium">{cust.businessInfo?.businessName}</div>
+                                                </TableCell>
+                                                <TableCell className="py-3">
+                                                    <div className="text-xs text-gray-400">{cust.name}</div>
+                                                </TableCell>
+                                                <TableCell className="py-3">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`text-[10px] uppercase font-bold ${cust.businessInfo?.status === 'accepted'
+                                                                ? "text-green-400 border-green-500/20 bg-green-500/5"
+                                                                : "text-red-400 border-red-500/20 bg-red-500/5"
+                                                            }`}
+                                                    >
+                                                        {cust.businessInfo?.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="py-3 text-xs text-gray-500">
+                                                    {new Date(cust.updatedAt).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="text-right py-3">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 px-2 text-gray-500 hover:text-white"
+                                                        onClick={() => {
+                                                            setSelectedCustomer(cust)
+                                                            setIsDetailsOpen(true)
+                                                        }}
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
 
                             {history.length > 5 && (
                                 <div className="flex justify-center mt-4">
@@ -290,7 +337,7 @@ export default function AccountUpgradesPage() {
             </Card>
 
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="bg-[#161616] border-[#333] text-white max-w-lg">
+                <DialogContent className="flex max-h-[90vh] max-w-[95vw] flex-col overflow-hidden border-[#333] bg-[#161616] text-white sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Application Details</DialogTitle>
                         <DialogDescription>
@@ -299,11 +346,12 @@ export default function AccountUpgradesPage() {
                     </DialogHeader>
 
                     {selectedCustomer && (
-                        <div className="space-y-6 mt-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm bg-[#0D0D0D] p-5 rounded-lg border border-[#333]">
+                        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 sm:pr-2">
+                            <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-4 rounded-lg border border-[#333] bg-[#0D0D0D] p-5 text-sm sm:grid-cols-2">
                                 <div className="col-span-2 pb-3 border-b border-[#333] mb-1">
                                     <h3 className="font-semibold text-white mb-3">Personal Information</h3>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
                                             <span className="text-gray-500 block text-xs mb-1">Name</span>
                                             {selectedCustomer.name}
@@ -327,7 +375,7 @@ export default function AccountUpgradesPage() {
 
                                 <div className="col-span-2 pt-1">
                                     <h3 className="font-semibold text-white mb-3">Business Information</h3>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div className="col-span-2">
                                             <span className="text-gray-500 block text-xs mb-1">Business Name</span>
                                             <div className="font-medium text-lg">{selectedCustomer.businessInfo?.businessName || 'N/A'}</div>
@@ -397,10 +445,10 @@ export default function AccountUpgradesPage() {
                                 )}
                             </div>
 
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#333]">
+                            <div className="flex flex-col-reverse gap-3 border-t border-[#333] pt-4 sm:flex-row sm:items-center sm:justify-end">
                                 <Button
                                     variant="outline"
-                                    className="border-[#333] bg-transparent text-white hover:bg-[#333]"
+                                    className="w-full border-[#333] bg-transparent text-white hover:bg-[#333] sm:w-auto"
                                     onClick={() => setIsDetailsOpen(false)}
                                 >
                                     Close
@@ -409,7 +457,7 @@ export default function AccountUpgradesPage() {
                                     <>
                                         <Button
                                             variant="default"
-                                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/50"
+                                            className="w-full border border-red-500/50 bg-red-500/10 text-red-500 hover:bg-red-500/20 sm:w-auto"
                                             disabled={isProcessing === selectedCustomer._id}
                                             onClick={() => handleAction(selectedCustomer._id, 'reject')}
                                         >
@@ -418,7 +466,7 @@ export default function AccountUpgradesPage() {
                                         </Button>
                                         <Button
                                             variant="default"
-                                            className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/50"
+                                            className="w-full border border-green-500/50 bg-green-500/10 text-green-500 hover:bg-green-500/20 sm:w-auto"
                                             disabled={isProcessing === selectedCustomer._id}
                                             onClick={() => handleAction(selectedCustomer._id, 'accept')}
                                         >
@@ -437,6 +485,7 @@ export default function AccountUpgradesPage() {
                                         Previously Rejected
                                     </Badge>
                                 )}
+                            </div>
                             </div>
                         </div>
                     )}
