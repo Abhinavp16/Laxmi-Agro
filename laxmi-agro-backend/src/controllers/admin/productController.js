@@ -319,6 +319,51 @@ function prepareProductData(productData) {
   return prepared;
 }
 
+function buildPriceChangeRow({
+  product,
+  scope,
+  variant = null,
+}) {
+  const target = variant || product;
+  const currentRetailPrice = Number(target.retailPrice ?? product.retailPrice ?? 0);
+  const currentWholesalePrice = Number(target.wholesalePrice ?? product.wholesalePrice ?? 0);
+  const newRetailPrice = target.pendingRetailPrice ?? null;
+  const newWholesalePrice = target.pendingWholesalePrice ?? null;
+  const scheduledAt = target.priceChangeScheduledAt || product.priceChangeScheduledAt || null;
+  const effectiveAt = target.priceChangeEffectiveAt || product.priceChangeEffectiveAt || null;
+  const productName = String(product.name || '').trim();
+  const variantName = variant ? getVariantDisplayName(product, variant) : '';
+  const searchText = [
+    productName,
+    product.sku,
+    product.category,
+    variantName,
+    variant?.sku,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return {
+    id: scope === 'variant' ? `${product._id}:${variant?._id}` : String(product._id),
+    productId: String(product._id),
+    productName,
+    productSku: String(product.sku || '').trim(),
+    category: String(product.category || '').trim(),
+    scope,
+    variantId: variant?._id ? String(variant._id) : null,
+    variantName,
+    variantSku: String(variant?.sku || '').trim(),
+    oldRetailPrice: currentRetailPrice,
+    newRetailPrice,
+    oldWholesalePrice: currentWholesalePrice,
+    newWholesalePrice,
+    scheduledAt,
+    effectiveAt,
+    searchText,
+  };
+}
+
 exports.getProducts = async (req, res, next) => {
   try {
     const { status, category, search, sort } = req.query;
@@ -353,6 +398,50 @@ exports.getProducts = async (req, res, next) => {
     res.json({
       success: true,
       ...formatPaginationResponse(products, total, page, limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPriceChanges = async (req, res, next) => {
+  try {
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const search = String(req.query.search || '').trim().toLowerCase();
+
+    const products = await Product.find({
+      status: { $ne: PRODUCT_STATUS.ARCHIVED },
+      $or: [
+        { priceChangeEffectiveAt: { $ne: null } },
+        { 'variants.priceChangeEffectiveAt': { $ne: null } },
+      ],
+    })
+      .select('name sku category retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt variants')
+      .sort({ priceChangeEffectiveAt: 1, updatedAt: -1 })
+      .lean();
+
+    const rows = [];
+
+    for (const product of products) {
+      if (product.priceChangeEffectiveAt) {
+        rows.push(buildPriceChangeRow({ product, scope: 'product' }));
+      }
+
+      for (const variant of product.variants || []) {
+        if (!variant?.priceChangeEffectiveAt) continue;
+        rows.push(buildPriceChangeRow({ product, variant, scope: 'variant' }));
+      }
+    }
+
+    const filteredRows = search
+      ? rows.filter((row) => row.searchText.includes(search))
+      : rows;
+
+    const paginatedRows = filteredRows.slice(skip, skip + limit);
+
+    res.json({
+      success: true,
+      ...formatPaginationResponse(paginatedRows, filteredRows.length, page, limit),
     });
   } catch (error) {
     next(error);

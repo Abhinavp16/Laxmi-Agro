@@ -14,6 +14,7 @@ import {
   MessageSquareMore,
   Moon,
   Package,
+  Clock3,
   Settings,
   ShoppingCart,
   Star,
@@ -49,6 +50,7 @@ type NavItem = {
 export const adminPrimaryNavItems: NavItem[] = [
   { href: "/", label: "DASHBOARD", icon: LayoutDashboard },
   { href: "/products", label: "PRODUCTS", icon: Package },
+  { href: "/price-changes", label: "PRICE CHANGES", icon: Clock3 },
   { href: "/brands", label: "BRANDS", icon: Building2 },
   { href: "/categories", label: "CATEGORIES", icon: FolderTree },
   { href: "/manage-website?tab=labels", label: "LABELS", icon: BadgeCheck, matches: ["/manage-website", "/labels"] },

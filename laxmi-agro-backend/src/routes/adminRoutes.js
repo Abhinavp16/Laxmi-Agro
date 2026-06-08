@@ -34,6 +34,7 @@ router.use(adminOnly);
 
 // Products
 router.get('/products', adminProductController.getProducts);
+router.get('/price-changes', adminProductController.getPriceChanges);
 router.post(
   '/products',
   optionalUpload(uploadProductImages.array('images', 10)),
