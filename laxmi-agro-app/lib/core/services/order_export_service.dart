@@ -42,6 +42,7 @@ class WhatsAppDocumentShareResult {
 }
 
 class OrderExportService {
+  static const String _defaultWhatsAppNumber = '9179110159';
   static const MethodChannel _shareChannel = MethodChannel(
     'laxmi_agro/whatsapp_share',
   );
@@ -74,7 +75,8 @@ class OrderExportService {
     if (responseData is! Map) return null;
     final data = responseData['data'];
     if (data is! Map) return null;
-    final raw = data['whatsappNumber']?.toString().trim() ?? '';
+    final raw =
+        data['whatsappNumber']?.toString().trim() ?? _defaultWhatsAppNumber;
     if (raw.isEmpty) return null;
     final digits = raw.replaceAll(RegExp(r'[^\d]'), '');
     if (digits.isEmpty) return null;
@@ -167,7 +169,9 @@ class OrderExportService {
       await _shareChannel.invokeMethod('shareDocumentToWhatsApp', {
         'filePath': file.path,
         'phoneNumber': phoneNumber,
-        'caption': caption ?? 'Hi, I am customer. Please find my order receipt attached.',
+        'caption':
+            caption ??
+            'Hi, I am customer. Please find my order receipt attached.',
       });
       return const WhatsAppDocumentShareResult(
         status: WhatsAppDocumentShareStatus.launched,

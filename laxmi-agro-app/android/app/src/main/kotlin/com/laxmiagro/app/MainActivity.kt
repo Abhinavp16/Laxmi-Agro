@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL = "laxmi_agro/whatsapp_share"
         private const val WHATSAPP_PACKAGE = "com.whatsapp"
         private const val PDF_MIME = "application/pdf"
+        private const val DEFAULT_WHATSAPP_NUMBER = "9179110159"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -35,11 +36,6 @@ class MainActivity : FlutterActivity() {
                         return@setMethodCallHandler
                     }
 
-                    if (phoneNumber.isNullOrBlank()) {
-                        result.error("INVALID_ARGUMENT", "phoneNumber is required", null)
-                        return@setMethodCallHandler
-                    }
-
                     shareDocumentToWhatsApp(filePath, phoneNumber, caption, result)
                 }
 
@@ -50,7 +46,7 @@ class MainActivity : FlutterActivity() {
 
     private fun shareDocumentToWhatsApp(
         filePath: String,
-        phoneNumber: String,
+        phoneNumber: String?,
         caption: String?,
         result: MethodChannel.Result,
     ) {
@@ -65,22 +61,19 @@ class MainActivity : FlutterActivity() {
             "${applicationContext.packageName}.fileprovider",
             file,
         )
+        grantUriPermission(
+            WHATSAPP_PACKAGE,
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
         val sanitizedPhone = sanitizePhoneForWhatsApp(phoneNumber)
-        val jid = "$sanitizedPhone@s.whatsapp.net"
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = PDF_MIME
             `package` = WHATSAPP_PACKAGE
+            setDataAndType(uri, PDF_MIME)
             putExtra(Intent.EXTRA_STREAM, uri)
-            if (!caption.isNullOrBlank()) {
-                putExtra(Intent.EXTRA_TEXT, caption)
-                putExtra("android.intent.extra.TEXT", caption)
-                putExtra("text", caption)
-                putExtra(Intent.EXTRA_SUBJECT, caption)
-            }
-            putExtra("jid", jid)
-            putStringArrayListExtra("jids", arrayListOf(jid))
-            putExtra("mime_type", PDF_MIME)
+            putExtra("jid", "$sanitizedPhone@s.whatsapp.net")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             clipData = ClipData.newUri(contentResolver, file.name, uri)
         }
@@ -108,17 +101,18 @@ class MainActivity : FlutterActivity() {
             result.error(
                 "WHATSAPP_LAUNCH_FAILED",
                 "Could not launch WhatsApp document share",
-                error.localizedMessage,
+                error.localizedMessage ?: phoneNumber,
             )
         }
     }
 
-    private fun sanitizePhoneForWhatsApp(value: String): String {
-        val digits = value.filter { it.isDigit() }
+    private fun sanitizePhoneForWhatsApp(value: String?): String {
+        val digits = (value ?: DEFAULT_WHATSAPP_NUMBER).filter { it.isDigit() }
         return when {
             digits.length == 10 -> "91$digits"
             digits.length == 12 && digits.startsWith("91") -> digits
-            else -> digits
+            digits.isNotBlank() -> digits
+            else -> DEFAULT_WHATSAPP_NUMBER
         }
     }
 }

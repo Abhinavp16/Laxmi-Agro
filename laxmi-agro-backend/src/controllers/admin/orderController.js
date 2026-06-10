@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Order, Payment, Product, StockLog } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
@@ -34,9 +35,23 @@ exports.getOrders = async (req, res, next) => {
       Order.countDocuments(query),
     ]);
 
+    const orderIds = orders.map((order) => order._id);
+    const payments = orderIds.length > 0
+      ? await Payment.find({ orderId: { $in: orderIds } })
+          .select('_id orderId status amount method upiId screenshotUrl rejectionReason')
+          .lean()
+      : [];
+    const paymentsByOrderId = new Map(
+      payments.map((payment) => [String(payment.orderId), payment])
+    );
+    const ordersWithPayments = orders.map((order) => ({
+      ...order,
+      payment: paymentsByOrderId.get(String(order._id)) || null,
+    }));
+
     res.json({
       success: true,
-      ...formatPaginationResponse(orders, total, page, limit),
+      ...formatPaginationResponse(ordersWithPayments, total, page, limit),
     });
   } catch (error) {
     next(error);
@@ -280,6 +295,72 @@ exports.shipOrder = async (req, res, next) => {
       },
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteOrder = async (req, res, next) => {
+  let session = null;
+
+  try {
+    const order = await Order.findById(req.params.id).lean();
+    if (!order) {
+      throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
+    }
+
+    const payment = await Payment.findOne({ orderId: order._id }).lean();
+    const canDelete =
+      order.status === ORDER_STATUS.CANCELLED ||
+      payment?.status === PAYMENT_STATUS.REJECTED;
+
+    if (!canDelete) {
+      throw new BadRequestError(
+        'Only cancelled orders or orders with rejected payments can be deleted',
+        'ORDER_DELETE_NOT_ALLOWED'
+      );
+    }
+
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+
+      await Payment.deleteMany({ orderId: order._id }).session(session);
+      await StockLog.deleteMany({ orderId: order._id }).session(session);
+      await Order.deleteOne({ _id: order._id }).session(session);
+
+      await session.commitTransaction();
+    } catch (transactionError) {
+      if (session) {
+        await session.abortTransaction();
+      }
+
+      await Payment.deleteMany({ orderId: order._id });
+      await StockLog.deleteMany({ orderId: order._id });
+      await Order.deleteOne({ _id: order._id });
+
+      if (transactionError) {
+        console.warn('Order delete transaction fallback executed:', transactionError.message);
+      }
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Order deleted successfully',
+      data: {
+        orderId: String(order._id),
+        orderNumber: order.orderNumber,
+      },
+    });
+  } catch (error) {
+    if (session) {
+      try {
+        await session.endSession();
+      } catch (_) {}
+    }
     next(error);
   }
 };

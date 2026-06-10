@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search } from "lucide-react"
+import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import {
@@ -67,6 +67,7 @@ export default function OrdersPage() {
     const [trackingNumber, setTrackingNumber] = useState("")
     const [courierName, setCourierName] = useState("")
     const [isShipping, setIsShipping] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const [searchQuery, setSearchQuery] = useState("")
     const [page, setPage] = useState(1)
@@ -283,6 +284,39 @@ export default function OrdersPage() {
         }
     }
 
+    function canDeleteOrder(order: Order) {
+        return order.status === "cancelled" || order.payment?.status === "rejected"
+    }
+
+    async function deleteOrder(order: Order) {
+        const confirmed = window.confirm(
+            `Delete ${order.orderNumber}? This will permanently remove the order and its linked payment and stock-log history.`
+        )
+        if (!confirmed) return
+
+        setIsDeleting(true)
+        try {
+            const res = await apiFetch(`/admin/orders/${order._id}`, {
+                method: "DELETE",
+            })
+            const data = await res.json()
+
+            if (res.ok) {
+                toast.success("Order deleted successfully")
+                setIsDetailsOpen(false)
+                setSelectedOrder(null)
+                void fetchOrders(1, true, searchFromUrl)
+            } else {
+                toast.error(data.message || "Failed to delete order")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Error deleting order")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case "delivered": return "text-green-500 bg-green-500/10"
@@ -412,15 +446,29 @@ export default function OrdersPage() {
                                                     <div className="text-xs uppercase tracking-wide text-gray-500">Order Total</div>
                                                     <div className="text-base font-bold text-white">Rs {order.total.toLocaleString("en-IN")}</div>
                                                 </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
-                                                    onClick={() => fetchOrderDetails(order._id)}
-                                                >
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    View
-                                                </Button>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                                                        onClick={() => fetchOrderDetails(order._id)}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View
+                                                    </Button>
+                                                    {canDeleteOrder(order) && (
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => void deleteOrder(order)}
+                                                            disabled={isDeleting}
+                                                        >
+                                                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )
@@ -454,14 +502,27 @@ export default function OrdersPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-white hover:bg-[#333]"
-                                                        onClick={() => fetchOrderDetails(order._id)}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-white hover:bg-[#333]"
+                                                            onClick={() => fetchOrderDetails(order._id)}
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        {canDeleteOrder(order) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-8 w-8 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                                                onClick={() => void deleteOrder(order)}
+                                                                disabled={isDeleting}
+                                                            >
+                                                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -633,6 +694,18 @@ export default function OrdersPage() {
                             )}
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                                {canDeleteOrder(selectedOrder) && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => void deleteOrder(selectedOrder)}
+                                        disabled={isDeleting}
+                                    >
+                                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete History
+                                    </Button>
+                                )}
+
                                 {selectedOrder.status === "payment_verified" && (
                                     <Button
                                         className="bg-blue-600 text-white hover:bg-blue-700"

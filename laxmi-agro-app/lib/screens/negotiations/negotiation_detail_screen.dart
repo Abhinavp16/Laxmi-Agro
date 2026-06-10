@@ -9,7 +9,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/services/whatsapp_checkout_service.dart';
+import '../../widgets/order_checkout_actions_sheet.dart';
 
 class NegotiationDetailScreen extends ConsumerStatefulWidget {
   final String negotiationId;
@@ -243,16 +243,11 @@ class _NegotiationDetailScreenState
 
         if (!mounted) return;
         if (response.data['success'] == true) {
-          final opened = await WhatsAppCheckoutService.openFromResponse(
-            response.data,
+          await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
+            context: context,
+            apiClient: api,
+            responseData: response.data,
           );
-          if (!opened && mounted) {
-            _showError(
-              WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
-                  ? WhatsAppCheckoutService.extractMessage(response.data)
-                  : 'Unable to open WhatsApp',
-            );
-          }
         }
       } on DioException catch (e) {
         _showError(

@@ -22,11 +22,11 @@ import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/transliteration_service.dart';
-import '../../core/services/whatsapp_checkout_service.dart';
 import '../categories/categories_screen.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
@@ -6990,27 +6990,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         _clearAppliedCouponPreview(clearInput: true);
         ref.read(cartProvider.notifier).clearCart();
         await Future.delayed(const Duration(milliseconds: 100));
-        final opened = await WhatsAppCheckoutService.openFromResponse(
-          response.data,
+        if (!mounted) return;
+        await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
+          context: context,
+          apiClient: api,
+          responseData: response.data,
         );
-        if (!opened && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
-                    ? WhatsAppCheckoutService.extractMessage(response.data)
-                    : 'Unable to open WhatsApp',
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-              ),
-              backgroundColor: const Color(0xFFDC2626),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
       }
     } on DioException catch (e) {
       if (!mounted) return;
@@ -7225,27 +7210,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
       if (!mounted) return;
       if (response.data['success'] == true) {
-        final opened = await WhatsAppCheckoutService.openFromResponse(
-          response.data,
+        await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
+          context: context,
+          apiClient: api,
+          responseData: response.data,
         );
-        if (!opened && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                WhatsAppCheckoutService.extractMessage(response.data).isNotEmpty
-                    ? WhatsAppCheckoutService.extractMessage(response.data)
-                    : t('Unable to open WhatsApp'),
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-              ),
-              backgroundColor: const Color(0xFFDC2626),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
       }
     } on DioException catch (e) {
       if (!mounted) return;
