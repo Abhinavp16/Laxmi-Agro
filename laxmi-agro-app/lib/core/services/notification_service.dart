@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../providers/auth_provider.dart';
 import '../../main.dart';
+import 'live_activity_service.dart';
 import 'local_notification_service.dart';
 
 /// Handles background messages (must be top-level function)
@@ -20,6 +21,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (_) {}
   debugPrint('[FCM] Background message: ${message.messageId}');
   await LocalNotificationService.instance.handleRemoteMessage(message);
+  await LiveActivityService.instance.syncFromNotificationData(
+    message.data,
+    title: message.notification?.title,
+    body: message.notification?.body,
+  );
 }
 
 class NotificationService {
@@ -36,6 +42,7 @@ class NotificationService {
 
     final messaging = FirebaseMessaging.instance;
     await LocalNotificationService.instance.ensureInitialized();
+    await LiveActivityService.instance.ensureInitialized();
 
     // Request permission (Android 13+ requires explicit permission)
     final settings = await messaging.requestPermission(
@@ -89,6 +96,11 @@ class NotificationService {
       final type = message.data['type']?.toString();
       if (LocalNotificationService.instance.isPriceCampaignType(type)) {
         await LocalNotificationService.instance.handleRemoteMessage(message);
+        await LiveActivityService.instance.syncFromNotificationData(
+          message.data,
+          title: message.notification?.title,
+          body: message.notification?.body,
+        );
       } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         final title = message.notification?.title ?? 'Notification';
         final body = message.notification?.body ?? '';
@@ -153,6 +165,11 @@ class NotificationService {
       debugPrint('[FCM] Message opened app: ${message.data}');
 
       await LocalNotificationService.instance.handleRemoteMessage(message);
+      await LiveActivityService.instance.syncFromNotificationData(
+        message.data,
+        title: message.notification?.title,
+        body: message.notification?.body,
+      );
 
       if (message.data['type'] == 'ROLE_UPDATED') {
         _ref.read(authProvider.notifier).fetchCurrentUser();
@@ -207,6 +224,7 @@ class NotificationService {
 
         if (type == 'price_change_campaign_applied') {
           await LocalNotificationService.instance.cancelPriceCountdown();
+          await LiveActivityService.instance.clearAll();
           return;
         }
 
@@ -220,17 +238,25 @@ class NotificationService {
 
       if (latestActive == null) {
         await LocalNotificationService.instance.cancelPriceCountdown();
+        await LiveActivityService.instance.clearAll();
         return;
       }
 
+      final notificationData = latestActive['data'] is Map
+          ? Map<String, dynamic>.from(latestActive['data'])
+          : null;
+
       await LocalNotificationService.instance
           .syncPriceCountdownFromNotificationData(
-            latestActive['data'] is Map
-                ? Map<String, dynamic>.from(latestActive['data'])
-                : null,
+            notificationData,
             title: latestActive['title']?.toString(),
             body: latestActive['body']?.toString(),
           );
+      await LiveActivityService.instance.syncFromNotificationData(
+        notificationData,
+        title: latestActive['title']?.toString(),
+        body: latestActive['body']?.toString(),
+      );
     } catch (e) {
       debugPrint('[FCM] Active price countdown sync skipped: $e');
     }
