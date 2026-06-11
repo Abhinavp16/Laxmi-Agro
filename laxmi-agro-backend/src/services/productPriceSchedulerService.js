@@ -54,7 +54,13 @@ async function fetchScheduledProducts() {
     status: { $ne: PRODUCT_STATUS.ARCHIVED },
     $or: [
       { priceChangeEffectiveAt: { $ne: null } },
-      { 'variants.priceChangeEffectiveAt': { $ne: null } },
+      {
+        variants: {
+          $elemMatch: {
+            priceChangeEffectiveAt: { $ne: null },
+          },
+        },
+      },
     ],
   })
     .select('_id orderCount purchaseCountMax priceChangeEffectiveAt variants')
@@ -270,7 +276,13 @@ async function processDuePriceChanges() {
   const dueProducts = await Product.find({
     $or: [
       { priceChangeEffectiveAt: { $lte: now } },
-      { 'variants.priceChangeEffectiveAt': { $lte: now } },
+      {
+        variants: {
+          $elemMatch: {
+            priceChangeEffectiveAt: { $lte: now },
+          },
+        },
+      },
     ],
   });
 
@@ -325,7 +337,7 @@ async function processDuePriceChanges() {
 
 async function runPriceSchedulerTick() {
   await processDuePriceChanges();
-  await sendDueCampaignStages();
+  await registerPriceChangeCampaign();
   await finalizeCompletedCampaignIfNeeded();
 }
 

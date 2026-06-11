@@ -2,7 +2,18 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../router/app_router.dart';
+
+const String _shopNowActionId = 'price_campaign_shop_now';
+const String _priceCampaignPayload = 'price_campaign_open_home';
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  // Keep a background entry point registered for Android action taps.
+}
 
 class LocalNotificationService {
   LocalNotificationService._();
@@ -37,7 +48,11 @@ class LocalNotificationService {
       iOS: DarwinInitializationSettings(),
     );
 
-    await _plugin.initialize(initializationSettings);
+    await _plugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
 
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
@@ -82,7 +97,7 @@ class LocalNotificationService {
     if (type == 'price_change_campaign_applied') {
       await cancelPriceCountdown();
       await showSimpleNotification(
-        title: _extractTitle(message, fallback: 'Prices updated'),
+        title: _extractTitle(message, fallback: 'Laxmi Agro'),
         body: _extractBody(message, fallback: 'New prices are now applied.'),
       );
       return;
@@ -154,7 +169,7 @@ class LocalNotificationService {
     if (!remaining.isNegative && remaining > Duration.zero) {
       await _plugin.show(
         _priceCountdownNotificationId,
-        title,
+        'Laxmi Agro',
         body,
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -172,9 +187,26 @@ class LocalNotificationService {
             usesChronometer: true,
             chronometerCountDown: true,
             timeoutAfter: remaining.inMilliseconds,
+            largeIcon: const DrawableResourceAndroidBitmap('ic_launcher'),
+            color: const Color(0xFF1B8E3E),
+            category: AndroidNotificationCategory.promo,
+            subText: title,
+            styleInformation: BigTextStyleInformation(
+              body,
+              contentTitle: 'Laxmi Agro',
+              summaryText: title,
+            ),
+            actions: const <AndroidNotificationAction>[
+              AndroidNotificationAction(
+                _shopNowActionId,
+                'Shop Now',
+                showsUserInterface: true,
+                cancelNotification: false,
+              ),
+            ],
           ),
         ),
-        payload: type,
+        payload: _priceCampaignPayload,
       );
     } else {
       await cancelPriceCountdown();
@@ -192,16 +224,24 @@ class LocalNotificationService {
       DateTime.now().millisecondsSinceEpoch.remainder(100000),
       title,
       body,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           _defaultChannelId,
           'General Notifications',
           channelDescription: 'General notifications for Laxmi Agro',
           importance: Importance.high,
           priority: Priority.high,
+          largeIcon: const DrawableResourceAndroidBitmap('ic_launcher'),
+          color: const Color(0xFF1B8E3E),
+          styleInformation: BigTextStyleInformation(
+            body,
+            contentTitle: title,
+            summaryText: 'Laxmi Agro',
+          ),
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(),
       ),
+      payload: _priceCampaignPayload,
     );
   }
 
@@ -221,5 +261,12 @@ class LocalNotificationService {
     return message.notification?.body ??
         message.data['body']?.toString() ??
         fallback;
+  }
+
+  void _handleNotificationResponse(NotificationResponse response) {
+    if (response.payload == _priceCampaignPayload ||
+        response.actionId == _shopNowActionId) {
+      appRouter.go('/home');
+    }
   }
 }

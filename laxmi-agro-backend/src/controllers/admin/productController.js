@@ -413,7 +413,13 @@ exports.getPriceChanges = async (req, res, next) => {
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
       $or: [
         { priceChangeEffectiveAt: { $ne: null } },
-        { 'variants.priceChangeEffectiveAt': { $ne: null } },
+        {
+          variants: {
+            $elemMatch: {
+              priceChangeEffectiveAt: { $ne: null },
+            },
+          },
+        },
       ],
     })
       .select('name sku category retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt variants')
