@@ -13,7 +13,7 @@ class NotificationService {
     return this.messaging;
   }
 
-  async sendToDevice(fcmToken, notification, data = {}) {
+  async sendToDevice(fcmToken, notification, data = {}, options = {}) {
     const messaging = this.getMessagingInstance();
     if (!messaging) {
       console.warn('FCM not configured, skipping notification');
@@ -21,34 +21,12 @@ class NotificationService {
     }
 
     try {
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: notification.title,
-          body: notification.body,
-          ...(notification.imageUrl && { imageUrl: notification.imageUrl }),
-        },
-        data: {
-          ...data,
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-        android: {
-          priority: 'high',
-          notification: {
-            channelId: 'laxmi_agro_default',
-            priority: 'high',
-            defaultSound: true,
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1,
-            },
-          },
-        },
-      };
+      const message = this._buildMessagePayload(
+        notification,
+        data,
+        options,
+      );
+      message.token = fcmToken;
 
       const response = await messaging.send(message);
       console.log('Notification sent successfully:', response);
@@ -64,7 +42,7 @@ class NotificationService {
     }
   }
 
-  async sendToMultipleDevices(fcmTokens, notification, data = {}) {
+  async sendToMultipleDevices(fcmTokens, notification, data = {}, options = {}) {
     const messaging = this.getMessagingInstance();
     if (!messaging) {
       console.warn('FCM not configured, skipping notification');
@@ -76,33 +54,11 @@ class NotificationService {
     }
 
     try {
-      const message = {
-        notification: {
-          title: notification.title,
-          body: notification.body,
-          ...(notification.imageUrl && { imageUrl: notification.imageUrl }),
-        },
-        data: {
-          ...data,
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-        android: {
-          priority: 'high',
-          notification: {
-            channelId: 'laxmi_agro_default',
-            priority: 'high',
-            defaultSound: true,
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1,
-            },
-          },
-        },
-      };
+      const message = this._buildMessagePayload(
+        notification,
+        data,
+        options,
+      );
 
       const response = await messaging.sendEachForMulticast({
         tokens: fcmTokens,
@@ -128,6 +84,50 @@ class NotificationService {
       console.error('Error sending multicast notification:', error);
       throw error;
     }
+  }
+
+  _buildMessagePayload(notification, data = {}, options = {}) {
+    const payloadData = {
+      ...data,
+      title: notification.title,
+      body: notification.body,
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
+    };
+
+    const message = {
+      data: payloadData,
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1,
+          },
+        },
+      },
+    };
+
+    if (options.androidDataOnly) {
+      message.apns.payload.aps.alert = {
+        title: notification.title,
+        body: notification.body,
+      };
+    } else {
+      message.notification = {
+        title: notification.title,
+        body: notification.body,
+        ...(notification.imageUrl && { imageUrl: notification.imageUrl }),
+      };
+      message.android.notification = {
+        channelId: 'laxmi_agro_default',
+        priority: 'high',
+        defaultSound: true,
+      };
+    }
+
+    return message;
   }
 
   async sendToUser(userId, notification, data = {}) {

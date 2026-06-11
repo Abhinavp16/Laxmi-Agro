@@ -12,9 +12,9 @@ const PRICE_CHANGE_POLL_INTERVAL_MS = 60 * 1000;
 const CAMPAIGN_STAGES = [
   {
     key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED,
-    thresholdMs: 20 * 60 * 60 * 1000,
+    thresholdMs: 24 * 60 * 60 * 1000,
     title: 'Price update scheduled',
-    body: 'New prices will apply after 20 hours.',
+    body: 'New prices will apply after 24 hours.',
   },
   {
     key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_12H,
@@ -23,10 +23,16 @@ const CAMPAIGN_STAGES = [
     body: 'Most product prices will update in 12 hours.',
   },
   {
-    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_3H,
-    thresholdMs: 10 * 60 * 1000,
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_6H,
+    thresholdMs: 6 * 60 * 60 * 1000,
     title: 'Price update reminder',
-    body: 'Prices on many products will update in 10 minutes.',
+    body: 'Most product prices will update in 6 hours.',
+  },
+  {
+    key: NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_20M,
+    thresholdMs: 20 * 60 * 1000,
+    title: 'Price update reminder',
+    body: 'Prices on many products will update in 20 minutes.',
   },
 ];
 
@@ -129,7 +135,14 @@ async function broadcastCampaignNotification(stage, campaign) {
 
   if (fcmTokens.length > 0) {
     try {
-      await notificationService.sendToMultipleDevices(fcmTokens, notification, data);
+      await notificationService.sendToMultipleDevices(
+        fcmTokens,
+        notification,
+        data,
+        {
+          androidDataOnly: true,
+        }
+      );
     } catch (error) {
       logger.error('Failed to send price campaign notification:', error);
     }

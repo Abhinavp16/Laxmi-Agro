@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../widgets/notification_countdown_label.dart';
 
 class NotificationsCenterScreen extends ConsumerStatefulWidget {
   const NotificationsCenterScreen({super.key, this.initialTab = 4});
@@ -10,10 +11,12 @@ class NotificationsCenterScreen extends ConsumerStatefulWidget {
   final int initialTab;
 
   @override
-  ConsumerState<NotificationsCenterScreen> createState() => _NotificationsCenterScreenState();
+  ConsumerState<NotificationsCenterScreen> createState() =>
+      _NotificationsCenterScreenState();
 }
 
-class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterScreen> {
+class _NotificationsCenterScreenState
+    extends ConsumerState<NotificationsCenterScreen> {
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
 
@@ -24,12 +27,10 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
   static const Color statusGreen = Color(0xFF22c55e);
   static const Color statusBlue = Color(0xFF3b82f6);
   static const Color statusOrange = Color(0xFFf97316);
-  static const Color gray100 = Color(0xFFf3f4f6);
   static const Color gray200 = Color(0xFFe5e7eb);
   static const Color gray400 = Color(0xFF9ca3af);
   static const Color gray500 = Color(0xFF6b7280);
   static const Color gray600 = Color(0xFF4b5563);
-  static const Color red500 = Color(0xFFef4444);
 
   @override
   void initState() {
@@ -86,6 +87,8 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         return Icons.campaign;
       case 'price_change_campaign_started':
       case 'price_change_campaign_12h':
+      case 'price_change_campaign_6h':
+      case 'price_change_campaign_20m':
       case 'price_change_campaign_3h':
       case 'price_change_campaign_1h':
       case 'price_change_campaign_5m':
@@ -112,6 +115,8 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         return statusOrange;
       case 'price_change_campaign_started':
       case 'price_change_campaign_12h':
+      case 'price_change_campaign_6h':
+      case 'price_change_campaign_20m':
       case 'price_change_campaign_3h':
       case 'price_change_campaign_1h':
       case 'price_change_campaign_5m':
@@ -156,7 +161,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         children: [
           // Header
           Container(
-            color: backgroundLight.withOpacity(0.8),
+            color: backgroundLight.withValues(alpha: 0.8),
             child: SafeArea(
               bottom: false,
               child: Container(
@@ -170,7 +175,11 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
                       width: 40,
                       height: 40,
                       child: IconButton(
-                        icon: Icon(Icons.arrow_back_ios_new, color: textDark, size: 18),
+                        icon: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: textDark,
+                          size: 18,
+                        ),
                         onPressed: () {
                           if (context.canPop()) {
                             context.pop();
@@ -191,10 +200,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
                         ),
                       ),
                     ),
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                    ),
+                    SizedBox(width: 40, height: 40),
                   ],
                 ),
               ),
@@ -206,18 +212,18 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _notifications.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _fetchNotifications,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _notifications.length,
-                          itemBuilder: (context, index) {
-                            final notification = _notifications[index];
-                            return _buildNotificationItem(notification);
-                          },
-                        ),
-                      ),
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _fetchNotifications,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return _buildNotificationItem(notification);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -229,11 +235,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_none,
-            size: 64,
-            color: gray400,
-          ),
+          Icon(Icons.notifications_none, size: 64, color: gray400),
           const SizedBox(height: 16),
           Text(
             'No notifications yet',
@@ -246,10 +248,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
           const SizedBox(height: 8),
           Text(
             'You\'ll see your notifications here',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: gray500,
-            ),
+            style: GoogleFonts.plusJakartaSans(fontSize: 14, color: gray500),
           ),
         ],
       ),
@@ -262,6 +261,13 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
     final title = notification['title']?.toString() ?? '';
     final body = notification['body']?.toString() ?? '';
     final createdAt = notification['createdAt']?.toString();
+    final rawData = notification['data'];
+    final data = rawData is Map
+        ? {
+            ...rawData.map((key, value) => MapEntry(key.toString(), value)),
+            'type': type,
+          }
+        : {'type': type};
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -270,7 +276,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
         borderRadius: BorderRadius.circular(12),
         border: isRead
             ? null
-            : Border.all(color: primary.withOpacity(0.3), width: 1),
+            : Border.all(color: primary.withValues(alpha: 0.3), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -296,7 +302,7 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _getIconColor(type).withOpacity(0.1),
+                    color: _getIconColor(type).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -318,7 +324,9 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
                               title,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
-                                fontWeight: isRead ? FontWeight.w500 : FontWeight.w600,
+                                fontWeight: isRead
+                                    ? FontWeight.w500
+                                    : FontWeight.w600,
                                 color: textDark,
                               ),
                             ),
@@ -339,6 +347,11 @@ class _NotificationsCenterScreenState extends ConsumerState<NotificationsCenterS
                           fontSize: 13,
                           color: gray600,
                         ),
+                      ),
+                      NotificationCountdownLabel(
+                        data: data,
+                        color: const Color(0xFFEA580C),
+                        fontSize: 12,
                       ),
                     ],
                   ),

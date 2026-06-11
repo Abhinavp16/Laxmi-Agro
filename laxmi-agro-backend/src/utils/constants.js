@@ -84,6 +84,8 @@ module.exports = {
     PRICE_CHANGE_ACTIVATED: 'price_change_activated',
     PRICE_CHANGE_CAMPAIGN_STARTED: 'price_change_campaign_started',
     PRICE_CHANGE_CAMPAIGN_12H: 'price_change_campaign_12h',
+    PRICE_CHANGE_CAMPAIGN_6H: 'price_change_campaign_6h',
+    PRICE_CHANGE_CAMPAIGN_20M: 'price_change_campaign_20m',
     PRICE_CHANGE_CAMPAIGN_3H: 'price_change_campaign_3h',
     PRICE_CHANGE_CAMPAIGN_1H: 'price_change_campaign_1h',
     PRICE_CHANGE_CAMPAIGN_5M: 'price_change_campaign_5m',

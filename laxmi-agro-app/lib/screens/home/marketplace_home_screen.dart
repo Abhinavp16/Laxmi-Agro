@@ -26,6 +26,7 @@ import '../categories/categories_screen.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/notification_countdown_label.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
@@ -1335,6 +1336,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final isRead = notification['isRead'] == true;
     final type = notification['type']?.toString() ?? 'general';
     final createdAt = notification['createdAt']?.toString() ?? '';
+    final data = notification['data'] is Map
+        ? {
+            ...(notification['data'] as Map).map(
+              (key, value) => MapEntry(key.toString(), value),
+            ),
+            'type': type,
+          }
+        : {'type': type};
 
     IconData icon;
     Color iconColor;
@@ -1363,6 +1372,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         break;
       case 'price_change_campaign_started':
       case 'price_change_campaign_12h':
+      case 'price_change_campaign_6h':
+      case 'price_change_campaign_20m':
       case 'price_change_campaign_3h':
       case 'price_change_campaign_1h':
       case 'price_change_campaign_5m':
@@ -1452,6 +1463,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     color: textSecondary,
                     height: 1.4,
                   ),
+                ),
+                NotificationCountdownLabel(
+                  data: data,
+                  color: const Color(0xFFEA580C),
+                  fontSize: 11,
                 ),
                 if (timeAgo.isNotEmpty) ...[
                   const SizedBox(height: 4),
