@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2, FolderTree, Loader2, ImageIcon, LayoutGrid, List, Upload, Link, ToggleLeft, ToggleRight, Package, Search } from "lucide-react"
+import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Link, Package, Search, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -35,10 +35,11 @@ import { toast } from "sonner"
 interface Category {
     _id: string
     name: string
+    nameHindi?: string
     slug: string
     description?: string
     image?: { url?: string; publicId?: string }
-    parent?: { _id: string; name: string; slug: string } | null
+    parent?: { _id: string; name: string; nameHindi?: string; slug: string } | null
     order: number
     isActive: boolean
     productCount: number
@@ -63,9 +64,11 @@ export default function CategoriesPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalCategories, setTotalCategories] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+    const [isConvertingHindi, setIsConvertingHindi] = useState(false)
 
     // Form state
     const [name, setName] = useState("")
+    const [nameHindi, setNameHindi] = useState("")
     const [description, setDescription] = useState("")
     const [imageUrl, setImageUrl] = useState("")
     const [imagePublicId, setImagePublicId] = useState("")
@@ -137,6 +140,7 @@ export default function CategoriesPage() {
     function openCreateDialog() {
         setEditingCategory(null)
         setName("")
+        setNameHindi("")
         setDescription("")
         setImageUrl("")
         setImagePublicId("")
@@ -150,6 +154,7 @@ export default function CategoriesPage() {
     function openEditDialog(category: Category) {
         setEditingCategory(category)
         setName(category.name)
+        setNameHindi(category.nameHindi || "")
         setDescription(category.description || "")
         setImageUrl(category.image?.url || "")
         setImagePublicId(category.image?.publicId || "")
@@ -228,6 +233,7 @@ export default function CategoriesPage() {
         try {
             const payload: any = {
                 name: name.trim(),
+                nameHindi: nameHindi.trim() || undefined,
                 description: description.trim() || undefined,
                 image: imageUrl.trim() ? { url: imageUrl.trim(), publicId: imagePublicId || undefined } : undefined,
                 parent: parentId !== "none" ? parentId : null,
@@ -256,6 +262,33 @@ export default function CategoriesPage() {
             toast.error(error.message || "Failed to save category")
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    async function convertMissingHindiNames() {
+        setIsConvertingHindi(true)
+        try {
+            const res = await apiFetch("/categories/hindi-names/generate-missing", {
+                method: "POST",
+                body: JSON.stringify({}),
+            })
+
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok || data?.success === false) {
+                toast.error(data?.message || "Failed to convert Hindi names")
+                return
+            }
+
+            const stats = data.data || {}
+            toast.success(
+                `Hindi conversion done: ${stats.updated ?? 0} updated, ${stats.skipped ?? 0} skipped (processed ${stats.processed ?? 0}).`
+            )
+            fetchCategories(1, true)
+        } catch (error) {
+            console.error(error)
+            toast.error("Error converting Hindi names")
+        } finally {
+            setIsConvertingHindi(false)
         }
     }
 
@@ -295,6 +328,20 @@ export default function CategoriesPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <Button
+                        type="button"
+                        onClick={convertMissingHindiNames}
+                        disabled={isConvertingHindi}
+                        variant="outline"
+                        className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
+                    >
+                        {isConvertingHindi ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Languages className="mr-2 h-4 w-4" />
+                        )}
+                        Convert Missing Hindi Names
+                    </Button>
                     {/* View Toggle */}
                     <div className="flex items-center rounded-lg border border-[#333] bg-[#161616] p-1">
                         <button
@@ -397,7 +444,12 @@ export default function CategoriesPage() {
                                         )}
                                     </TableCell>
                                     <TableCell className="font-medium text-white">
-                                        {category.name}
+                                        <div>
+                                            <div>{category.name}</div>
+                                            {category.nameHindi ? (
+                                                <div className="text-xs font-normal text-gray-400">{category.nameHindi}</div>
+                                            ) : null}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-gray-400">
                                         {category.slug}
@@ -487,6 +539,9 @@ export default function CategoriesPage() {
                                 </div>
                             </div>
                             <h3 className="font-semibold text-white text-lg mb-1">{category.name}</h3>
+                            {category.nameHindi ? (
+                                <p className="text-[#86efac] text-sm mb-1">{category.nameHindi}</p>
+                            ) : null}
                             <p className="text-gray-500 text-sm mb-2">/{category.slug}</p>
                             <div className="flex items-center gap-3 text-xs">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
@@ -536,6 +591,18 @@ export default function CategoriesPage() {
                                 placeholder="e.g., Machinery, Seeds, Fertilizers"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                className="bg-[#0D0D0D] border-[#333] text-white"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Category Name (Hindi)
+                            </label>
+                            <Input
+                                placeholder="e.g., मशीनरी, बीज, उर्वरक"
+                                value={nameHindi}
+                                onChange={(e) => setNameHindi(e.target.value)}
                                 className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                         </div>

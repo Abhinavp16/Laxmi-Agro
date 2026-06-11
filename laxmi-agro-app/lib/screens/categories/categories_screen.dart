@@ -116,6 +116,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               return <String, dynamic>{
                 'id': metadata['id']?.toString() ?? '',
                 'name': name,
+                'nameHindi':
+                    item['nameHindi']?.toString() ??
+                    metadata['nameHindi']?.toString() ??
+                    '',
                 'slug': metadata['slug']?.toString() ?? '',
                 'image': metadata['image']?.toString() ?? '',
                 'count': item['count'] ?? item['productCount'],
@@ -173,6 +177,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final payload = {
       'id': item['_id']?.toString() ?? item['id']?.toString() ?? '',
       'slug': slug,
+      'nameHindi': item['nameHindi']?.toString() ?? '',
       'image': _extractCategoryImageUrl(item),
     };
 
@@ -328,6 +333,17 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           .join(' ');
     }
     return name;
+  }
+
+  String _getDisplayCategoryName(Map<String, dynamic> category) {
+    final currentLang = ref.watch(localeProvider);
+    final nameEnglish = category['name']?.toString() ?? '';
+    final nameHindi = category['nameHindi']?.toString() ?? '';
+
+    if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
+      return nameHindi;
+    }
+    return nameEnglish;
   }
 
   @override
@@ -513,7 +529,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    cat['name'] ?? '',
+                    _getDisplayCategoryName(cat),
                     style: GoogleFonts.outfit(
                       fontSize: 10,
                       fontWeight: isSelected
@@ -575,7 +591,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             children: [
               Expanded(
                 child: Text(
-                  _categories[_selectedCategoryIndex]['name'] ?? '',
+                  _getDisplayCategoryName(
+                    _categories[_selectedCategoryIndex],
+                  ),
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

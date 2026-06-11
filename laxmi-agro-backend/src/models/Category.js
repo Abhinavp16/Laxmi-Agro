@@ -9,6 +9,12 @@ const categorySchema = new mongoose.Schema({
     unique: true,
     maxlength: [100, 'Name cannot exceed 100 characters'],
   },
+  nameHindi: {
+    type: String,
+    trim: true,
+    default: '',
+    maxlength: [100, 'Hindi name cannot exceed 100 characters'],
+  },
   slug: {
     type: String,
     unique: true,

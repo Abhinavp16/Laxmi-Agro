@@ -11,6 +11,7 @@ const {
   getDefaultVariant,
 } = require('../utils/productVariants');
 const { normalizeMediaUrl, normalizeImageObject } = require('../utils/mediaUrls');
+const Category = require('../models/Category');
 
 const formatProductCard = (product, userRole, req) => {
   const defaultVariant = getDefaultVariant(product);
@@ -241,9 +242,52 @@ exports.getCategories = async (req, res, next) => {
       { $sort: { name: 1 } },
     ]);
 
+    const categoryNames = categories
+      .map((category) => category.name?.toString().trim())
+      .filter(Boolean);
+    const normalizedNames = categoryNames.map((name) => name.replace(/[-_]+/g, ' ').trim());
+    const slugs = categoryNames
+      .map((name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))
+      .filter(Boolean);
+
+    const categoryDocs = await Category.find({
+      $or: [
+        { name: { $in: categoryNames } },
+        { name: { $in: normalizedNames } },
+        { slug: { $in: slugs } },
+      ],
+    })
+      .select('name nameHindi slug')
+      .lean();
+
+    const categoryLookup = new Map();
+    const registerCategoryDoc = (key, doc) => {
+      if (!key) return;
+      categoryLookup.set(key.trim().toLowerCase(), doc);
+    };
+
+    for (const doc of categoryDocs) {
+      registerCategoryDoc(doc.name, doc);
+      registerCategoryDoc(doc.slug, doc);
+      registerCategoryDoc((doc.name || '').replace(/[-_]+/g, ' '), doc);
+      registerCategoryDoc((doc.slug || '').replace(/[-_]+/g, ' '), doc);
+    }
+
+    const enrichedCategories = categories.map((category) => {
+      const lookupKey = category.name?.toString().trim().toLowerCase() ?? '';
+      const normalizedLookupKey = category.name?.toString().replace(/[-_]+/g, ' ').trim().toLowerCase() ?? '';
+      const doc = categoryLookup.get(lookupKey) || categoryLookup.get(normalizedLookupKey);
+
+      return {
+        ...category,
+        nameHindi: doc?.nameHindi || '',
+        slug: doc?.slug || '',
+      };
+    });
+
     res.json({
       success: true,
-      data: categories,
+      data: enrichedCategories,
     });
   } catch (error) {
     next(error);

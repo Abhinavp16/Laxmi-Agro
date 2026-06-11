@@ -467,6 +467,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     categoryMetaByName[_normalizedCategoryKey(name)] ?? {};
                 return {
                   'name': name,
+                  'nameHindi':
+                      item['nameHindi']?.toString() ??
+                      metadata['nameHindi']?.toString() ??
+                      '',
                   'image': metadata['image']?.toString() ?? '',
                   'blurHash': metadata['blurHash']?.toString(),
                   'slug': metadata['slug']?.toString() ?? '',
@@ -505,6 +509,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final slug = item['slug']?.toString() ?? '';
     final payload = {
       'slug': slug,
+      'nameHindi': item['nameHindi']?.toString() ?? '',
       'image': _extractCategoryImageUrl(item),
       'blurHash': item['image'] is Map
           ? item['image']['blurHash']?.toString()
@@ -893,7 +898,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       : null,
                                 ),
                                 child: Text(
-                                  cat,
+                                  _getDisplayCategoryNameByKey(cat),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -2259,6 +2264,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         .join(' ');
   }
 
+  String _getDisplayCategoryName(Map<String, dynamic> category) {
+    final currentLang = ref.watch(localeProvider);
+    final nameEnglish = category['name']?.toString() ?? '';
+    final nameHindi = category['nameHindi']?.toString() ?? '';
+
+    if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
+      return nameHindi;
+    }
+    return _fmtCatName(nameEnglish);
+  }
+
+  String _getDisplayCategoryNameByKey(String categoryName) {
+    final category = _categoryData.firstWhere(
+      (item) => (item['name']?.toString() ?? '') == categoryName,
+      orElse: () => {'name': categoryName},
+    );
+    return _getDisplayCategoryName(category);
+  }
+
   // Skeleton loader for categories
   Widget _buildCategorySkeleton() {
     return SizedBox(
@@ -2490,7 +2514,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 vertical: 8,
                               ),
                               child: Text(
-                                _fmtCatName(cat['name']?.toString() ?? ''),
+                                _getDisplayCategoryName(cat),
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
