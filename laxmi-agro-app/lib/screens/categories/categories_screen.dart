@@ -591,9 +591,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             children: [
               Expanded(
                 child: Text(
-                  _getDisplayCategoryName(
-                    _categories[_selectedCategoryIndex],
-                  ),
+                  _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

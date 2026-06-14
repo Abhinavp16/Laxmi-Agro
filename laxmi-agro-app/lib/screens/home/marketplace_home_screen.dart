@@ -1715,8 +1715,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     _buildPromoBannerCarousel(),
                     const SizedBox(height: 32),
                   ],
-                  _buildReferralBanner(),
-                  const SizedBox(height: 32),
                   _buildWhyBuySection(),
                   const SizedBox(height: 32),
                   _buildReviewSection(),
@@ -6409,15 +6407,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 decoration: TextDecoration.lineThrough,
                               ),
                             ),
-                          PendingPriceChangeNotice(
-                            pendingPriceChange:
-                                product['pendingPriceChange']
-                                    as Map<String, dynamic>?,
-                            compact: true,
-                            primaryColor: textPrimary,
-                            accentColor: const Color(0xFFB45309),
-                            backgroundColor: const Color(0xFFFFF7ED),
-                          ),
                         ],
                       ),
                       GestureDetector(
@@ -6481,6 +6470,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  PendingPriceChangeNotice(
+                    pendingPriceChange:
+                        product['pendingPriceChange'] as Map<String, dynamic>?,
+                    compact: true,
+                    primaryColor: textPrimary,
+                    accentColor: const Color(0xFFB45309),
+                    backgroundColor: const Color(0xFFFFF7ED),
                   ),
                 ],
               ),
@@ -7827,47 +7824,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildReferralBanner() {
-    final t = ref.watch(localeProvider.notifier).translate;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GestureDetector(
-        onTap: () => context.push('/referral'),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Image.asset(
-            'assets/images/referral_banner.png',
-            width: double.infinity,
-            height: 160,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 160,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF008E46), Color(0xFF00C853)],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Center(
-                  child: Text(
-                    t('REFERRAL PROGRAM'),
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
       ),
     );
   }

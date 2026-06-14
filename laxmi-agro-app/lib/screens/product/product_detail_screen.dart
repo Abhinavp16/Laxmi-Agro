@@ -395,6 +395,184 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return v.toStringAsFixed(0);
   }
 
+  Future<void> _openVariantSelectorSheet(
+    List<Map<String, dynamic>> variants,
+    String? selectedId,
+    String Function(String) t,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: false,
+      builder: (context) {
+        final media = MediaQuery.of(context);
+        final maxHeight = media.size.height * 0.72;
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + media.padding.bottom),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t('Select Variant'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: _txt,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            t('Choose size or pack option'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _txtSec,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded, color: _txtSec),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: variants.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final variant = variants[index];
+                      final variantId = variant['id']?.toString();
+                      final isSelected = variantId == selectedId;
+                      final variantPrice =
+                          variant['price'] ?? variant['retailPrice'];
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: variantId == null
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                setState(() {
+                                  _selectedVariantId = variantId;
+                                  _quantity = 1;
+                                });
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 13,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFFEFF6FF)
+                                : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: isSelected
+                                  ? _blue
+                                  : const Color(0xFFE2E8F0),
+                              width: isSelected ? 1.4 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _variantLabel(variant),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: isSelected ? _blue : _txt,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      variantPrice != null
+                                          ? '₹${_fmt(variantPrice)}'
+                                          : t('Tap to select'),
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected ? _blue : _txtSec,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? _blue : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? _blue
+                                        : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: Icon(
+                                  isSelected
+                                      ? Icons.check_rounded
+                                      : Icons.circle_outlined,
+                                  size: isSelected ? 17 : 14,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // ------------------------------------------
   // BUILD
   // ------------------------------------------
@@ -513,9 +691,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         '';
     final selectedVariant = _selectedVariant;
     final sku =
-        selectedVariant?['sku']?.toString() ?? _product!['sku']?.toString() ?? '';
+        selectedVariant?['sku']?.toString() ??
+        _product!['sku']?.toString() ??
+        '';
     final price =
-        selectedVariant?['price'] ?? _product!['price'] ?? _product!['retailPrice'];
+        selectedVariant?['price'] ??
+        _product!['price'] ??
+        _product!['retailPrice'];
     final customerPrice =
         selectedVariant?['retailPrice'] ??
         _product!['retailPrice'] ??
@@ -523,8 +705,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final mrp = selectedVariant?['mrp'] ?? _product!['mrp'];
     final wsPrice =
         selectedVariant?['wholesalePrice'] ?? _product!['wholesalePrice'];
-    final pendingPriceChange =
-        selectedVariant?['pendingPriceChange'] ?? _product!['pendingPriceChange'];
+    final hasVariants = _variants.isNotEmpty;
+    final selectedVariantPendingPriceChange =
+        selectedVariant?['pendingPriceChange'];
+    final pendingPriceChange = hasVariants
+        ? selectedVariantPendingPriceChange
+        : (_product!)['pendingPriceChange'];
     final minWsQty = _product!['minWholesaleQuantity'] ?? 5;
     final stock = selectedVariant?['stock'] ?? _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
@@ -552,7 +738,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   SliverToBoxAdapter(child: SizedBox(height: tp + 64)),
                   SliverToBoxAdapter(child: _imageCarousel(name)),
                   SliverToBoxAdapter(
-                  child: _infoSection(
+                    child: _infoSection(
                       name,
                       sku,
                       price,
@@ -895,6 +1081,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       }
       return 'Laxmi Agro';
     }
+
     final brandDetails = getBrand();
 
     return Container(
@@ -1002,116 +1189,95 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ),
           if (_variants.isNotEmpty) ...[
             const SizedBox(height: 14),
-            Text(
-              t('Select Variant'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _txt,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                children: _variants.map((variant) {
-                  final variantId = variant['id']?.toString();
-                  final isSelected = variantId == _selectedVariantId;
-                  final label = _variantLabel(variant);
-                  return GestureDetector(
-                    onTap: () {
-                      if (variantId == null) return;
-                      setState(() {
-                        _selectedVariantId = variantId;
-                        _quantity = 1;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
+            Builder(
+              builder: (context) {
+                final variantOptions = _variants
+                    .where((variant) => variant['id'] != null)
+                    .toList();
+                if (variantOptions.isEmpty) return const SizedBox.shrink();
+
+                final selectedIdExists = variantOptions.any(
+                  (variant) => variant['id']?.toString() == _selectedVariantId,
+                );
+                final selectedId = selectedIdExists
+                    ? _selectedVariantId
+                    : variantOptions.first['id']?.toString();
+
+                final selectedVariant = variantOptions.firstWhere(
+                  (variant) => variant['id']?.toString() == selectedId,
+                  orElse: () => variantOptions.first,
+                );
+
+                return GestureDetector(
+                  onTap: () =>
+                      _openVariantSelectorSheet(variantOptions, selectedId, t),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFF4F9FF), Color(0xFFFFFFFF)],
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 158,
-                        minHeight: 64,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: isSelected
-                            ? const LinearGradient(
-                                colors: [_blue, Color(0xFF1D4ED8)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : const LinearGradient(
-                                colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: isSelected ? _blue : const Color(0xFFDCE5F1),
-                          width: isSelected ? 1.6 : 1,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFCFE2FF)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _blue.withOpacity(0.08),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isSelected
-                                ? _blue.withOpacity(0.20)
-                                : const Color(0xFF0F172A).withOpacity(0.06),
-                            blurRadius: isSelected ? 18 : 10,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white.withOpacity(0.18)
-                                  : _blue.withOpacity(0.08),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.white.withOpacity(0.65)
-                                    : _blue.withOpacity(0.18),
-                              ),
-                            ),
-                            child: Icon(
-                              isSelected
-                                  ? Icons.check_rounded
-                                  : Icons.circle_outlined,
-                              size: isSelected ? 16 : 14,
-                              color: isSelected ? Colors.white : _blue,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            child: Text(
-                              label,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isSelected ? Colors.white : _txt,
-                                height: 1.15,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                  );
-                }).toList(),
-              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t('Select Variant'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: _blue,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _variantLabel(selectedVariant),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: _txt,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFCFE2FF)),
+                          ),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: _blue,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
           const SizedBox(height: 8),
@@ -1219,10 +1385,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ],
             ),
             PendingPriceChangeNotice(
-              pendingPriceChange:
-                  pendingPriceChange is Map<String, dynamic>
-                      ? pendingPriceChange
-                      : null,
+              pendingPriceChange: pendingPriceChange is Map<String, dynamic>
+                  ? pendingPriceChange
+                  : null,
               primaryColor: _txtSec,
               accentColor: const Color(0xFFC2410C),
               backgroundColor: const Color(0xFFFFF7ED),
@@ -1313,8 +1478,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  inStock ? t('In Stock')
-                      : t('Out of Stock'),
+                  inStock ? t('In Stock') : t('Out of Stock'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -2314,7 +2478,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               colors: const [
                 Color(0xFFEFF6FF), // Sky Blue 50
                 Color(0xFFDBEAFE), // Sky Blue 100
-                Color(0xFFEFF6FF), 
+                Color(0xFFEFF6FF),
               ],
             ),
           ),
@@ -2333,276 +2497,348 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 ),
               ),
               SizedBox(
-                height: 255, // Increased from 210 to accommodate action buttons and avoid overflow
+                height:
+                    255, // Increased from 210 to accommodate action buttons and avoid overflow
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
 
-            itemCount: _relatedProducts.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final item = _relatedProducts[index];
-              final pid = item['id']?.toString() ?? item['_id']?.toString() ?? '';
-              final img = item['primaryImage'] ?? (item['images'] != null && (item['images'] as List).isNotEmpty ? item['images'][0]['url'] : '');
-              
-              final currentLang = ref.watch(localeProvider);
-              final nameHindi = item['nameHindi']?.toString() ?? '';
-              final nameEnglish = item['name']?.toString() ?? '';
-              final displayName = currentLang == 'Hindi' && nameHindi.isNotEmpty ? nameHindi : nameEnglish;
+                  itemCount: _relatedProducts.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final item = _relatedProducts[index];
+                    final pid =
+                        item['id']?.toString() ?? item['_id']?.toString() ?? '';
+                    final img =
+                        item['primaryImage'] ??
+                        (item['images'] != null &&
+                                (item['images'] as List).isNotEmpty
+                            ? item['images'][0]['url']
+                            : '');
 
-              final price = item['price'] ?? 0;
-              final mrp = item['mrp'] ?? 0;
-              final defaultVariant =
-                  item['defaultVariant'] is Map<String, dynamic>
-                  ? item['defaultVariant'] as Map<String, dynamic>
-                  : null;
-              final hasMrp = mrp != null && mrp != price && (mrp as num) > 0;
-              final discount = hasMrp
-                  ? (((mrp - price) / mrp) * 100).round()
-                  : 0;
-              final inStock = (item['stock'] ?? 0) > 0;
-              final stock = item['stock'] ?? 0;
+                    final currentLang = ref.watch(localeProvider);
+                    final nameHindi = item['nameHindi']?.toString() ?? '';
+                    final nameEnglish = item['name']?.toString() ?? '';
+                    final displayName =
+                        currentLang == 'Hindi' && nameHindi.isNotEmpty
+                        ? nameHindi
+                        : nameEnglish;
 
-              return GestureDetector(
-                onTap: () => context.push('/product/$pid'),
-                child: Container(
-                  width: 155,
-                  decoration: BoxDecoration(
-                    color: _card,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _border.withOpacity(0.5)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Image Area
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                        child: Stack(
-                          children: [
-                            Container(
-                              height: 110,
-                              width: double.infinity,
-                              color: Colors.white,
-                              child: Center(
-                                child: CachedNetworkImage(
-                                  imageUrl: img,
-                                  fit: BoxFit.contain,
-                                  placeholder: (_, __) => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: _blue)),
-                                  errorWidget: (_, __, ___) => const Icon(Icons.image, color: _txtMuted),
-                                ),
-                              ),
+                    final price = item['price'] ?? 0;
+                    final mrp = item['mrp'] ?? 0;
+                    final defaultVariant =
+                        item['defaultVariant'] is Map<String, dynamic>
+                        ? item['defaultVariant'] as Map<String, dynamic>
+                        : null;
+                    final hasMrp =
+                        mrp != null && mrp != price && (mrp as num) > 0;
+                    final discount = hasMrp
+                        ? (((mrp - price) / mrp) * 100).round()
+                        : 0;
+                    final inStock = (item['stock'] ?? 0) > 0;
+                    final stock = item['stock'] ?? 0;
+
+                    return GestureDetector(
+                      onTap: () => context.push('/product/$pid'),
+                      child: Container(
+                        width: 155,
+                        decoration: BoxDecoration(
+                          color: _card,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: _border.withOpacity(0.5)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
                             ),
-                            if (discount > 0)
-                              Positioned(
-                                top: 6,
-                                left: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _green,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                  child: Text(
-                                    '$discount% OFF',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (!inStock)
-                              Positioned.fill(
-                                child: Container(
-                                  color: Colors.white.withOpacity(0.6),
-                                  child: Center(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.8),
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                      child: Text(
-                                        'Out of Stock',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
-                      ),
-                      // Info Area
-                      Padding(
-                        padding: const EdgeInsets.all(8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(
-                              height: 44, // Reduced from 48 for compactness
-                              child: Text(
-                                displayName.split(' ').map((word) {
-                                  if (word.isEmpty) return word;
-                                  return word[0].toUpperCase() + word.substring(1).toLowerCase();
-                                }).join(' '),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _txt,
-                                ),
+                            // Image Area
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4),
                               ),
-                            ),
-                            const SizedBox(height: 2), // Reduced gap from 4 to 2
-                            Row(
-                              children: [
-                                Text(
-                                  '₹${_fmt(price)}',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: _txt,
-                                  ),
-                                ),
-                                if (hasMrp) ...[
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '₹${_fmt(mrp)}',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 9,
-                                      color: _red,
-                                      decoration: TextDecoration.lineThrough,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    height: 110,
+                                    width: double.infinity,
+                                    color: Colors.white,
+                                    child: Center(
+                                      child: CachedNetworkImage(
+                                        imageUrl: img,
+                                        fit: BoxFit.contain,
+                                        placeholder: (_, __) => const Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: _blue,
+                                          ),
+                                        ),
+                                        errorWidget: (_, __, ___) => const Icon(
+                                          Icons.image,
+                                          color: _txtMuted,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            // ACTION BUTTONS
-                            if (inStock)
-                              Row(
-                                children: [
-                                  // BUY NOW
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _trackEvent('related_buy_now_$pid');
-                                        context.push(
-                                          '/buy-now',
-                                          extra: {
-                                            'productId': pid,
-                                            'variantId':
-                                                defaultVariant?['id']?.toString(),
-                                            'productName': displayName,
-                                            'variantName':
-                                                defaultVariant?['displayName']
-                                                    ?.toString(),
-                                            'productImage': img,
-                                            'price': (price is num) ? price.toDouble() : 0.0,
-                                            'mrp': (mrp is num) ? mrp.toDouble() : null,
-                                            'quantity': 1,
-                                            'stock': stock,
-                                          },
-                                        );
-                                      },
+                                  if (discount > 0)
+                                    Positioned(
+                                      top: 6,
+                                      left: 6,
                                       child: Container(
-                                        height: 30,
-                                        decoration: BoxDecoration(
-                                          color: _blue,
-                                          borderRadius: BorderRadius.circular(4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 2,
                                         ),
-                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: _green,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
                                         child: Text(
-                                          t('Buy Now'),
+                                          '$discount% OFF',
                                           style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                            fontSize: 9,
+                                            fontSize: 8,
                                             fontWeight: FontWeight.w800,
+                                            color: Colors.white,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  // ADD TO CART ICON
-                                  GestureDetector(
-                                    onTap: () {
-                                      final pPrice = (price is num) ? price.toDouble() : 0.0;
-                                      _trackEvent('related_add_to_cart_$pid');
-                                       ref.read(cartProvider.notifier).addItem(
-                                         productId: pid,
-                                         variantId:
-                                             defaultVariant?['id']?.toString(),
-                                         name: displayName,
-                                         variantName:
-                                             defaultVariant?['displayName']
-                                                 ?.toString(),
-                                         price: pPrice,
-                                         image: img,
-                                        quantity: 1,
-                                      );
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(t('Added to cart')),
-                                          duration: const Duration(seconds: 1),
-                                          behavior: SnackBarBehavior.floating,
+                                  if (!inStock)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.white.withOpacity(0.6),
+                                        child: Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(
+                                                0.8,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                            child: Text(
+                                              'Out of Stock',
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    color: Colors.white,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    },
-                                    child: Container(
-                                      width: 30,
-                                      height: 30,
-                                      decoration: BoxDecoration(
-                                        color: _blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: _blue.withOpacity(0.2)),
                                       ),
-                                      child: const Icon(Icons.add_shopping_cart_rounded, size: 14, color: _blue),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            // Info Area
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    height:
+                                        44, // Reduced from 48 for compactness
+                                    child: Text(
+                                      displayName
+                                          .split(' ')
+                                          .map((word) {
+                                            if (word.isEmpty) return word;
+                                            return word[0].toUpperCase() +
+                                                word.substring(1).toLowerCase();
+                                          })
+                                          .join(' '),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: _txt,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              )
-                            else
-                              Container(
-                                height: 30,
-                                width: double.infinity,
-                                alignment: Alignment.center,
-                                child: Text(
-                                  t('Out of Stock'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: _red,
+                                  const SizedBox(
+                                    height: 2,
+                                  ), // Reduced gap from 4 to 2
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '₹${_fmt(price)}',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: _txt,
+                                        ),
+                                      ),
+                                      if (hasMrp) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '₹${_fmt(mrp)}',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 9,
+                                            color: _red,
+                                            decoration:
+                                                TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ),
+                                  const SizedBox(height: 8),
+                                  // ACTION BUTTONS
+                                  if (inStock)
+                                    Row(
+                                      children: [
+                                        // BUY NOW
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              _trackEvent(
+                                                'related_buy_now_$pid',
+                                              );
+                                              context.push(
+                                                '/buy-now',
+                                                extra: {
+                                                  'productId': pid,
+                                                  'variantId':
+                                                      defaultVariant?['id']
+                                                          ?.toString(),
+                                                  'productName': displayName,
+                                                  'variantName':
+                                                      defaultVariant?['displayName']
+                                                          ?.toString(),
+                                                  'productImage': img,
+                                                  'price': (price is num)
+                                                      ? price.toDouble()
+                                                      : 0.0,
+                                                  'mrp': (mrp is num)
+                                                      ? mrp.toDouble()
+                                                      : null,
+                                                  'quantity': 1,
+                                                  'stock': stock,
+                                                },
+                                              );
+                                            },
+                                            child: Container(
+                                              height: 30,
+                                              decoration: BoxDecoration(
+                                                color: _blue,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                t('Buy Now'),
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        // ADD TO CART ICON
+                                        GestureDetector(
+                                          onTap: () {
+                                            final pPrice = (price is num)
+                                                ? price.toDouble()
+                                                : 0.0;
+                                            _trackEvent(
+                                              'related_add_to_cart_$pid',
+                                            );
+                                            ref
+                                                .read(cartProvider.notifier)
+                                                .addItem(
+                                                  productId: pid,
+                                                  variantId:
+                                                      defaultVariant?['id']
+                                                          ?.toString(),
+                                                  name: displayName,
+                                                  variantName:
+                                                      defaultVariant?['displayName']
+                                                          ?.toString(),
+                                                  price: pPrice,
+                                                  image: img,
+                                                  quantity: 1,
+                                                );
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  t('Added to cart'),
+                                                ),
+                                                duration: const Duration(
+                                                  seconds: 1,
+                                                ),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          },
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: BoxDecoration(
+                                              color: _blue.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: _blue.withOpacity(0.2),
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.add_shopping_cart_rounded,
+                                              size: 14,
+                                              color: _blue,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Container(
+                                      height: 30,
+                                      width: double.infinity,
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        t('Out of Stock'),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: _red,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ),
+              ),
               const SizedBox(height: 20),
             ],
           ),
@@ -2617,7 +2853,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       },
     );
   }
-
 
   Future<void> _fetchRelatedProducts() async {
     try {

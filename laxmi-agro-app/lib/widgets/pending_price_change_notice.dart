@@ -46,7 +46,8 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
   }
 
   void _refreshRemaining() {
-    final effectiveAtRaw = widget.pendingPriceChange?['effectiveAt']?.toString();
+    final effectiveAtRaw = widget.pendingPriceChange?['effectiveAt']
+        ?.toString();
     final effectiveAt = effectiveAtRaw == null
         ? null
         : DateTime.tryParse(effectiveAtRaw)?.toLocal();
@@ -60,7 +61,9 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
 
     final remaining = effectiveAt.difference(DateTime.now());
     if (mounted) {
-      setState(() => _remaining = remaining.isNegative ? Duration.zero : remaining);
+      setState(
+        () => _remaining = remaining.isNegative ? Duration.zero : remaining,
+      );
     }
   }
 
@@ -87,6 +90,102 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
     return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
   }
 
+  Widget _buildCompactNotice({
+    required String currentPrice,
+    required String newPrice,
+    required String timerText,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFFBEB), Color(0xFFFFF7ED)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: widget.accentColor.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: widget.accentColor.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Icon(
+                  Icons.schedule_rounded,
+                  size: 12,
+                  color: widget.accentColor,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Price changes soon',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: widget.primaryColor,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '₹$currentPrice → ₹$newPrice',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: widget.accentColor,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: widget.accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  timerText,
+                  style: GoogleFonts.outfit(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    color: widget.accentColor,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.pendingPriceChange;
@@ -98,38 +197,72 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
     final currentPrice = data['currentPrice'];
     final newPrice = data['newPrice'];
     final timerText = _formatDuration(remaining);
+    final currentPriceText = _formatPrice(currentPrice);
+    final newPriceText = _formatPrice(newPrice);
+
+    if (widget.compact) {
+      return _buildCompactNotice(
+        currentPrice: currentPriceText,
+        newPrice: newPriceText,
+        timerText: timerText,
+      );
+    }
 
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(top: widget.compact ? 6 : 10),
-      padding: EdgeInsets.symmetric(
-        horizontal: widget.compact ? 8 : 10,
-        vertical: widget.compact ? 6 : 8,
-      ),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: widget.backgroundColor,
-        borderRadius: BorderRadius.circular(widget.compact ? 8 : 10),
-        border: Border.all(color: widget.accentColor.withOpacity(0.18)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [widget.backgroundColor, const Color(0xFFFFFBEB)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: widget.accentColor.withValues(alpha: 0.18)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            widget.compact ? 'Price update pending' : 'Upcoming price change',
-            style: GoogleFonts.outfit(
-              fontSize: widget.compact ? 10.5 : 12,
-              fontWeight: FontWeight.w700,
-              color: widget.primaryColor,
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.accentColor.withValues(alpha: 0.16),
+              ),
+            ),
+            child: Icon(
+              Icons.trending_up_rounded,
+              size: 19,
+              color: widget.accentColor,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            '₹${_formatPrice(currentPrice)} -> ₹${_formatPrice(newPrice)} in $timerText',
-            style: GoogleFonts.outfit(
-              fontSize: widget.compact ? 10 : 11.5,
-              fontWeight: FontWeight.w600,
-              color: widget.accentColor,
-              height: 1.25,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Upcoming price change',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: widget.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '₹$currentPriceText → ₹$newPriceText in $timerText',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: widget.accentColor,
+                    height: 1.25,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
