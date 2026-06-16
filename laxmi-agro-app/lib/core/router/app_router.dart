@@ -220,9 +220,7 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         return BuyNowScreen(
           productId: extra?['productId'] ?? '',
-          variantId: extra?['variantId']?.toString(),
           productName: extra?['productName'] ?? '',
-          variantName: extra?['variantName']?.toString(),
           productImage: extra?['productImage'],
           price: (extra?['price'] ?? 0).toDouble(),
           mrp: extra?['mrp']?.toDouble(),

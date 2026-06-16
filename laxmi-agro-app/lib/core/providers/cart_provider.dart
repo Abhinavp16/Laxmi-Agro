@@ -6,10 +6,8 @@ import '../services/storage_service.dart';
 
 class CartItem {
   final String productId;
-  final String? variantId;
   final String cartItemKey;
   final String name;
-  final String? variantName;
   final String? image;
   final String? nameHindi;
   final double price;
@@ -20,10 +18,8 @@ class CartItem {
 
   CartItem({
     required this.productId,
-    this.variantId,
     required this.cartItemKey,
     required this.name,
-    this.variantName,
     this.image,
     this.nameHindi,
     required this.price,
@@ -41,10 +37,8 @@ class CartItem {
   }) {
     return CartItem(
       productId: productId,
-      variantId: variantId,
       cartItemKey: cartItemKey,
       name: name,
-      variantName: variantName,
       image: image,
       nameHindi: nameHindi,
       price: price,
@@ -137,16 +131,11 @@ class CartNotifier extends StateNotifier<CartState> {
     final List<dynamic> rawItems = data['items'] ?? [];
     return rawItems.map<CartItem>((item) {
       final product = item['product'] as Map<String, dynamic>? ?? {};
-      final variant = item['variant'] as Map<String, dynamic>? ?? {};
-      final variantId = item['variantId']?.toString();
       final productId = item['productId']?.toString() ?? '';
       return CartItem(
         productId: productId,
-        variantId: variantId,
-        cartItemKey:
-            item['cartItemKey']?.toString() ?? '${productId}:${variantId ?? 'default'}',
+        cartItemKey: item['cartItemKey']?.toString() ?? '$productId:default',
         name: product['name']?.toString() ?? '',
-        variantName: variant['displayName']?.toString() ?? variant['name']?.toString(),
         nameHindi: product['nameHindi']?.toString(),
         image: product['image']?.toString(),
         price: (item['currentPrice'] ?? product['price'] ?? 0).toDouble(),
@@ -158,9 +147,7 @@ class CartNotifier extends StateNotifier<CartState> {
 
   Future<bool> addItem({
     required String productId,
-    String? variantId,
     required String name,
-    String? variantName,
     String? nameHindi,
     String? image,
     required double price,
@@ -168,7 +155,7 @@ class CartNotifier extends StateNotifier<CartState> {
     required int quantity,
     int stock = 99,
   }) async {
-    final itemKey = '$productId:${variantId ?? 'default'}';
+    final itemKey = '$productId:default';
     // Optimistic local update for instant UI feedback
     final existingIndex = state.items.indexWhere(
       (i) => i.cartItemKey == itemKey,
@@ -184,10 +171,8 @@ class CartNotifier extends StateNotifier<CartState> {
       updatedItems.add(
         CartItem(
           productId: productId,
-          variantId: variantId,
           cartItemKey: itemKey,
           name: name,
-          variantName: variantName,
           nameHindi: nameHindi,
           image: image,
           price: price,
@@ -204,7 +189,7 @@ class CartNotifier extends StateNotifier<CartState> {
       final dio = await _authedDio;
       final response = await dio.post(
         '/cart/items',
-        data: {'productId': productId, 'variantId': variantId, 'quantity': quantity},
+        data: {'productId': productId, 'quantity': quantity},
       );
       if (response.data?['data'] != null) {
         final serverItems = _parseServerCart(response.data['data']);
@@ -217,12 +202,12 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 
   Future<String?> updateQuantity(String productId, int quantity, {String? variantId}) async {
-    final itemKey = '$productId:${variantId ?? 'default'}';
+    final itemKey = '$productId:default';
     if (quantity < 1) {
       // Cancel any pending debounce and remove item
       _quantityDebounceTimers[itemKey]?.cancel();
       _quantityDebounceTimers.remove(itemKey);
-      removeItem(productId, variantId: variantId);
+      removeItem(productId);
       return null;
     }
 
@@ -250,15 +235,15 @@ class CartNotifier extends StateNotifier<CartState> {
     // Debounce the API call - wait 500ms before sending to backend
     // This prevents race conditions from rapid clicks
     _quantityDebounceTimers[itemKey] = Timer(const Duration(milliseconds: 500), () async {
-      await _syncQuantityToBackend(productId, quantity, variantId: variantId);
+      await _syncQuantityToBackend(productId, quantity);
     });
 
     return null;
   }
 
   // Separate method to sync quantity to backend (called after debounce)
-  Future<void> _syncQuantityToBackend(String productId, int quantity, {String? variantId}) async {
-    final itemKey = '$productId:${variantId ?? 'default'}';
+  Future<void> _syncQuantityToBackend(String productId, int quantity) async {
+    final itemKey = '$productId:default';
     // Find current quantity from state (may have changed since debounce started)
     final currentItem = state.items.firstWhere(
       (i) => i.cartItemKey == itemKey,
@@ -272,7 +257,6 @@ class CartNotifier extends StateNotifier<CartState> {
       final dio = await _authedDio;
       final response = await dio.put(
         '/cart/items/$productId',
-        queryParameters: variantId != null ? {'variantId': variantId} : null,
         data: {'quantity': quantity},
       );
       if (response.data?['data'] != null) {
@@ -348,7 +332,7 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 
   Future<void> removeItem(String productId, {String? variantId}) async {
-    final itemKey = '$productId:${variantId ?? 'default'}';
+    final itemKey = '$productId:default';
     final updatedItems = state.items
         .where((i) => i.cartItemKey != itemKey)
         .toList();
@@ -357,10 +341,7 @@ class CartNotifier extends StateNotifier<CartState> {
     // Sync with backend — use server response as source of truth
     try {
       final dio = await _authedDio;
-      final response = await dio.delete(
-        '/cart/items/$productId',
-        queryParameters: variantId != null ? {'variantId': variantId} : null,
-      );
+      final response = await dio.delete('/cart/items/$productId');
       if (response.data?['data'] != null) {
         final serverItems = _parseServerCart(response.data['data']);
         state = state.copyWith(items: serverItems);

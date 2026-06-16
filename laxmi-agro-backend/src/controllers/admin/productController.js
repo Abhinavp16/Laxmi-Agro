@@ -11,10 +11,7 @@ const sharp = require('sharp');
 const slugify = require('slugify');
 const { encode } = require('blurhash');
 const {
-  normalizeObjectIdLike,
   normalizeVariantsForPersistence,
-  applyVariantSummaryToProduct,
-  getVariantDisplayName,
 } = require('../../utils/productVariants');
 const {
   registerPriceChangeCampaign,
@@ -32,24 +29,6 @@ function numberOrNull(value) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function buildVariantLookup(existingVariants = []) {
-  const lookup = new Map();
-
-  for (const variant of existingVariants) {
-    const byId = normalizeObjectIdLike(variant?._id || variant?.id);
-    const bySku = String(variant?.sku || '').trim().toUpperCase();
-
-    if (byId) {
-      lookup.set(`id:${byId}`, variant);
-    }
-    if (bySku) {
-      lookup.set(`sku:${bySku}`, variant);
-    }
-  }
-
-  return lookup;
 }
 
 function syncScheduledBasePrices(product, updateData, mode, scheduledAt, effectiveAt) {
@@ -108,92 +87,6 @@ function syncScheduledBasePrices(product, updateData, mode, scheduledAt, effecti
     newWholesalePrice: nextPendingWholesale,
     effectiveAt,
   }];
-}
-
-function syncScheduledVariantPrices(product, incomingVariants, mode, scheduledAt, effectiveAt) {
-  if (!Array.isArray(incomingVariants) || incomingVariants.length === 0) {
-    return { variants: incomingVariants, notifications: [] };
-  }
-
-  const existingVariantLookup = buildVariantLookup(product.variants || []);
-  const notifications = [];
-
-  const variants = incomingVariants.map((variant) => {
-    const variantId = normalizeObjectIdLike(variant?._id || variant?.id);
-    const skuKey = String(variant?.sku || '').trim().toUpperCase();
-    const existingVariant =
-      (variantId && existingVariantLookup.get(`id:${variantId}`)) ||
-      (skuKey && existingVariantLookup.get(`sku:${skuKey}`)) ||
-      null;
-
-    const nextVariant = {
-      ...variant,
-      _id: variantId || variant?._id,
-    };
-
-    if (!existingVariant) {
-      clearPendingFields(nextVariant);
-      return nextVariant;
-    }
-
-    const retailChanged = Number(variant.retailPrice) !== Number(existingVariant.retailPrice);
-    const wholesaleChanged = Number(variant.wholesalePrice) !== Number(existingVariant.wholesalePrice);
-
-    if (mode === PRICE_CHANGE_MODE_IMMEDIATE) {
-      if (retailChanged || wholesaleChanged) {
-        clearPendingFields(nextVariant);
-      } else {
-        nextVariant.pendingRetailPrice = existingVariant.pendingRetailPrice ?? null;
-        nextVariant.pendingWholesalePrice = existingVariant.pendingWholesalePrice ?? null;
-        nextVariant.priceChangeScheduledAt = existingVariant.priceChangeScheduledAt ?? null;
-        nextVariant.priceChangeEffectiveAt = existingVariant.priceChangeEffectiveAt ?? null;
-      }
-      return nextVariant;
-    }
-
-    if (!retailChanged && !wholesaleChanged) {
-      nextVariant.pendingRetailPrice = existingVariant.pendingRetailPrice ?? null;
-      nextVariant.pendingWholesalePrice = existingVariant.pendingWholesalePrice ?? null;
-      nextVariant.priceChangeScheduledAt = existingVariant.priceChangeScheduledAt ?? null;
-      nextVariant.priceChangeEffectiveAt = existingVariant.priceChangeEffectiveAt ?? null;
-      return nextVariant;
-    }
-
-    const nextPendingRetail = retailChanged
-      ? Number(variant.retailPrice)
-      : numberOrNull(existingVariant.pendingRetailPrice);
-    const nextPendingWholesale = wholesaleChanged
-      ? Number(variant.wholesalePrice)
-      : numberOrNull(existingVariant.pendingWholesalePrice);
-
-    nextVariant.pendingRetailPrice = nextPendingRetail;
-    nextVariant.pendingWholesalePrice = nextPendingWholesale;
-    nextVariant.priceChangeScheduledAt = scheduledAt;
-    nextVariant.priceChangeEffectiveAt = effectiveAt;
-
-    if (retailChanged) {
-      nextVariant.retailPrice = existingVariant.retailPrice;
-    }
-    if (wholesaleChanged) {
-      nextVariant.wholesalePrice = existingVariant.wholesalePrice;
-    }
-
-    notifications.push({
-      productId: product._id,
-      productName: product.name,
-      variantId: existingVariant._id,
-      variantName: getVariantDisplayName(product, existingVariant),
-      currentRetailPrice: existingVariant.retailPrice,
-      newRetailPrice: nextPendingRetail,
-      currentWholesalePrice: existingVariant.wholesalePrice,
-      newWholesalePrice: nextPendingWholesale,
-      effectiveAt,
-    });
-
-    return nextVariant;
-  });
-
-  return { variants, notifications };
 }
 
 async function uploadFilesToStorage(files, folder = 'products') {
@@ -312,9 +205,6 @@ function prepareProductData(productData) {
   }
 
   prepared.variants = normalizeVariantsForPersistence(prepared.variants, prepared);
-  if (prepared.variants.length > 0) {
-    applyVariantSummaryToProduct(prepared);
-  }
 
   return prepared;
 }
@@ -322,38 +212,33 @@ function prepareProductData(productData) {
 function buildPriceChangeRow({
   product,
   scope,
-  variant = null,
 }) {
-  const target = variant || product;
-  const currentRetailPrice = Number(target.retailPrice ?? product.retailPrice ?? 0);
-  const currentWholesalePrice = Number(target.wholesalePrice ?? product.wholesalePrice ?? 0);
-  const newRetailPrice = target.pendingRetailPrice ?? null;
-  const newWholesalePrice = target.pendingWholesalePrice ?? null;
-  const scheduledAt = target.priceChangeScheduledAt || product.priceChangeScheduledAt || null;
-  const effectiveAt = target.priceChangeEffectiveAt || product.priceChangeEffectiveAt || null;
+  const currentRetailPrice = Number(product.retailPrice ?? 0);
+  const currentWholesalePrice = Number(product.wholesalePrice ?? 0);
+  const newRetailPrice = product.pendingRetailPrice ?? null;
+  const newWholesalePrice = product.pendingWholesalePrice ?? null;
+  const scheduledAt = product.priceChangeScheduledAt || null;
+  const effectiveAt = product.priceChangeEffectiveAt || null;
   const productName = String(product.name || '').trim();
-  const variantName = variant ? getVariantDisplayName(product, variant) : '';
   const searchText = [
     productName,
     product.sku,
     product.category,
-    variantName,
-    variant?.sku,
   ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
 
   return {
-    id: scope === 'variant' ? `${product._id}:${variant?._id}` : String(product._id),
+    id: String(product._id),
     productId: String(product._id),
     productName,
     productSku: String(product.sku || '').trim(),
     category: String(product.category || '').trim(),
     scope,
-    variantId: variant?._id ? String(variant._id) : null,
-    variantName,
-    variantSku: String(variant?.sku || '').trim(),
+    variantId: null,
+    variantName: '',
+    variantSku: '',
     oldRetailPrice: currentRetailPrice,
     newRetailPrice,
     oldWholesalePrice: currentWholesalePrice,
@@ -380,7 +265,6 @@ exports.getProducts = async (req, res, next) => {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { sku: { $regex: search, $options: 'i' } },
-        { 'variants.sku': { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -394,10 +278,14 @@ exports.getProducts = async (req, res, next) => {
       Product.find(query).sort(sortOption).skip(skip).limit(limit).lean(),
       Product.countDocuments(query),
     ]);
+    const sanitizedProducts = products.map(({ variants, ...product }) => ({
+      ...product,
+      variants: [],
+    }));
 
     res.json({
       success: true,
-      ...formatPaginationResponse(products, total, page, limit),
+      ...formatPaginationResponse(sanitizedProducts, total, page, limit),
     });
   } catch (error) {
     next(error);
@@ -411,18 +299,9 @@ exports.getPriceChanges = async (req, res, next) => {
 
     const products = await Product.find({
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
-      $or: [
-        { priceChangeEffectiveAt: { $ne: null } },
-        {
-          variants: {
-            $elemMatch: {
-              priceChangeEffectiveAt: { $ne: null },
-            },
-          },
-        },
-      ],
+      priceChangeEffectiveAt: { $ne: null },
     })
-      .select('name sku category retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt variants')
+      .select('name sku category retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt')
       .sort({ priceChangeEffectiveAt: 1, updatedAt: -1 })
       .lean();
 
@@ -433,10 +312,6 @@ exports.getPriceChanges = async (req, res, next) => {
         rows.push(buildPriceChangeRow({ product, scope: 'product' }));
       }
 
-      for (const variant of product.variants || []) {
-        if (!variant?.priceChangeEffectiveAt) continue;
-        rows.push(buildPriceChangeRow({ product, variant, scope: 'variant' }));
-      }
     }
 
     const filteredRows = search
@@ -461,9 +336,12 @@ exports.getProductById = async (req, res, next) => {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
+    const data = product.toObject();
+    data.variants = [];
+
     res.json({
       success: true,
-      data: product,
+      data,
     });
   } catch (error) {
     next(error);
@@ -474,7 +352,7 @@ exports.createProduct = async (req, res, next) => {
   try {
     const productData = prepareProductData(req.body);
 
-    if (!productData.sku && (!Array.isArray(productData.variants) || productData.variants.length === 0)) {
+    if (!productData.sku) {
       productData.sku = generateSKU(productData.category, productData.name);
     }
 
@@ -543,33 +421,10 @@ exports.updateProduct = async (req, res, next) => {
       updateData.labelIds = await normalizeProductLabelIds(updateData.labelIds);
     }
 
-    const hasIncomingVariants = Array.isArray(updateData.variants) && updateData.variants.length > 0;
-
-    if (hasIncomingVariants) {
-      updateData.pendingRetailPrice = product.pendingRetailPrice ?? null;
-      updateData.pendingWholesalePrice = product.pendingWholesalePrice ?? null;
-      updateData.priceChangeScheduledAt = product.priceChangeScheduledAt ?? null;
-      updateData.priceChangeEffectiveAt = product.priceChangeEffectiveAt ?? null;
-    } else {
-      scheduledNotifications.push(
-        ...syncScheduledBasePrices(product, updateData, priceChangeMode, scheduledAt, effectiveAt)
-      );
-    }
-
-    if (Array.isArray(updateData.variants)) {
-      const scheduledVariantState = syncScheduledVariantPrices(
-        product,
-        updateData.variants,
-        priceChangeMode,
-        scheduledAt,
-        effectiveAt
-      );
-      updateData.variants = scheduledVariantState.variants;
-      scheduledNotifications.push(...scheduledVariantState.notifications);
-      if (updateData.variants.length > 0) {
-        applyVariantSummaryToProduct(updateData);
-      }
-    }
+    updateData.variants = [];
+    scheduledNotifications.push(
+      ...syncScheduledBasePrices(product, updateData, priceChangeMode, scheduledAt, effectiveAt)
+    );
 
     Object.assign(product, updateData);
     await product.save();

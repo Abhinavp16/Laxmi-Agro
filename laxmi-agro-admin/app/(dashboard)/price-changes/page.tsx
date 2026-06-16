@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Clock3, Loader2, RefreshCw, Search } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import {
   Table,
@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -24,10 +23,6 @@ type PriceChangeRow = {
   productName: string
   productSku: string
   category: string
-  scope: "product" | "variant"
-  variantId: string | null
-  variantName: string
-  variantSku: string
   oldRetailPrice: number
   newRetailPrice: number | null
   oldWholesalePrice: number
@@ -120,10 +115,7 @@ export default function PriceChangesPage() {
   }, [fetchPriceChanges])
 
   const totalRows = rows.length
-  const pendingProducts = useMemo(
-    () => new Set(rows.map((row) => row.productId)).size,
-    [rows]
-  )
+  const pendingProducts = rows.length
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,7 +154,7 @@ export default function PriceChangesPage() {
           <Input
             value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by product, variant, SKU, category"
+          placeholder="Search by product, SKU, category"
           className="border-[#d8dfca] bg-white pl-9 text-slate-900 placeholder:text-slate-400"
         />
       </div>
@@ -189,18 +181,6 @@ export default function PriceChangesPage() {
         <div className="rounded-[24px] border border-[#dde3d0] bg-white px-5 py-4 shadow-[0_20px_45px_rgba(60,80,40,0.06)]">
           <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Products</div>
           <div className="mt-2 text-3xl font-bold text-slate-900">{pendingProducts}</div>
-        </div>
-        <div className="rounded-[24px] border border-[#dde3d0] bg-white px-5 py-4 shadow-[0_20px_45px_rgba(60,80,40,0.06)]">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Product Level</div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">
-            {rows.filter((row) => row.scope === "product").length}
-          </div>
-        </div>
-        <div className="rounded-[24px] border border-[#dde3d0] bg-white px-5 py-4 shadow-[0_20px_45px_rgba(60,80,40,0.06)]">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Variant Level</div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">
-            {rows.filter((row) => row.scope === "variant").length}
-          </div>
         </div>
       </div>
 
@@ -236,7 +216,6 @@ export default function PriceChangesPage() {
                 <TableHeader>
                   <TableRow className="border-[#eef2e2]">
                     <TableHead>Product</TableHead>
-                    <TableHead>Scope</TableHead>
                     <TableHead>Old Customer</TableHead>
                     <TableHead>New Customer</TableHead>
                     <TableHead>Old Wholesale</TableHead>
@@ -252,17 +231,9 @@ export default function PriceChangesPage() {
                         <div className="min-w-[220px]">
                           <div className="font-semibold text-slate-900">{row.productName}</div>
                           <div className="mt-1 text-xs text-slate-500">
-                            {row.scope === "variant" ? row.variantName : row.category || row.productSku || "Base product"}
+                            {row.category || row.productSku || "Base product"}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className="border-[#d8dfca] bg-[#f6f8ef] text-slate-700"
-                        >
-                          {row.scope === "variant" ? "Variant" : "Product"}
-                        </Badge>
                       </TableCell>
                       <TableCell>{formatPrice(row.oldRetailPrice)}</TableCell>
                       <TableCell className="font-semibold text-emerald-700">{formatPrice(row.newRetailPrice)}</TableCell>
@@ -289,15 +260,9 @@ export default function PriceChangesPage() {
                     <div>
                       <div className="font-semibold text-slate-900">{row.productName}</div>
                       <div className="mt-1 text-sm text-slate-500">
-                        {row.scope === "variant" ? row.variantName : row.category || row.productSku || "Base product"}
+                        {row.category || row.productSku || "Base product"}
                       </div>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="border-[#d8dfca] bg-white text-slate-700"
-                    >
-                      {row.scope === "variant" ? "Variant" : "Product"}
-                    </Badge>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">

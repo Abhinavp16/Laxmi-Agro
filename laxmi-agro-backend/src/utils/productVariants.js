@@ -11,30 +11,20 @@ const toPositiveNumber = (value, fallback = 0) => {
   return Number.isFinite(number) && number >= 0 ? number : fallback;
 };
 
-const sortVariants = (variants = []) => [...variants].sort((a, b) => {
-  const orderA = Number(a?.order ?? 0);
-  const orderB = Number(b?.order ?? 0);
-  if (orderA !== orderB) return orderA - orderB;
-  return String(a?.name || '').localeCompare(String(b?.name || ''));
-});
+const sortVariants = () => [];
 
-const hasRealVariants = (product = {}) => Array.isArray(product?.variants) && product.variants.length > 0;
+const hasRealVariants = () => false;
 
 const getActiveVariants = (product = {}) => {
-  if (!hasRealVariants(product)) return [];
-
-  return sortVariants(product.variants).filter((variant) => variant?.isActive !== false);
+  return [];
 };
 
 const getAnyVariant = (product = {}) => {
-  const sorted = sortVariants(product?.variants || []);
-  return sorted[0] || null;
+  return null;
 };
 
 const getDefaultVariant = (product = {}) => {
-  const active = getActiveVariants(product);
-  if (active.length > 0) return active[0];
-  return getAnyVariant(product);
+  return getLegacyVariant(product);
 };
 
 const getLegacyVariant = (product = {}) => ({
@@ -57,39 +47,10 @@ const getLegacyVariant = (product = {}) => ({
 const getVariantById = (product = {}, variantId) => {
   const normalizedVariantId = normalizeObjectIdLike(variantId);
 
-  if (!hasRealVariants(product)) {
-    if (!normalizedVariantId) {
-      return {
-        variant: getLegacyVariant(product),
-        variantId: null,
-        isLegacy: true,
-      };
-    }
-
-    return null;
-  }
-
-  if (!normalizedVariantId) {
-    const defaultVariant = getDefaultVariant(product);
-    return defaultVariant
-      ? {
-          variant: defaultVariant,
-          variantId: normalizeObjectIdLike(defaultVariant?._id),
-          isLegacy: false,
-        }
-      : null;
-  }
-
-  const variant = (product.variants || []).find(
-    (item) => normalizeObjectIdLike(item?._id) === normalizedVariantId
-  );
-
-  if (!variant) return null;
-
   return {
-    variant,
-    variantId: normalizedVariantId,
-    isLegacy: false,
+    variant: getLegacyVariant(product),
+    variantId: null,
+    isLegacy: true,
   };
 };
 
@@ -134,7 +95,7 @@ const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER,
     newPrice: nextPrice,
     scheduledAt,
     effectiveAt,
-    scope: variantInput ? 'variant' : 'product',
+    scope: 'product',
     targetRole: isWholesaler ? USER_ROLES.WHOLESALER : USER_ROLES.BUYER,
   };
 };
@@ -142,11 +103,7 @@ const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER,
 const getVariantStock = (variant = {}) => toPositiveNumber(variant?.stock);
 
 const getProductStockTotal = (product = {}) => {
-  if (!hasRealVariants(product)) {
-    return toPositiveNumber(product?.stock);
-  }
-
-  return getActiveVariants(product).reduce((sum, variant) => sum + getVariantStock(variant), 0);
+  return toPositiveNumber(product?.stock);
 };
 
 const buildVariantAttributes = (attributes = []) => {
@@ -199,54 +156,19 @@ const serializeVariantForUser = (product = {}, variant = {}, userRole = USER_ROL
 };
 
 const buildVariantSnapshot = (product = {}, variant = {}) => ({
-  name: String(variant?.name || '').trim(),
-  displayName: getVariantDisplayName(product, variant),
-  sku: String(variant?.sku || '').trim(),
-  attributes: buildVariantAttributes(variant?.attributes),
-  packing: String(variant?.packing || '').trim(),
-  priceUnit: String(variant?.priceUnit || '').trim(),
+  name: '',
+  displayName: '',
+  sku: '',
+  attributes: [],
+  packing: String(product?.packing || '').trim(),
+  priceUnit: String(product?.priceUnit || '').trim(),
 });
 
 const normalizeVariantsForPersistence = (variants = [], product = {}) => {
-  if (!Array.isArray(variants)) return [];
-
-  return sortVariants(variants)
-    .map((variant, index) => ({
-      ...variant,
-      name: String(variant?.name || '').trim(),
-      sku: String(variant?.sku || '').trim().toUpperCase(),
-      attributes: buildVariantAttributes(variant?.attributes),
-      mrp: toPositiveNumber(variant?.mrp),
-      retailPrice: toPositiveNumber(variant?.retailPrice),
-      wholesalePrice: toPositiveNumber(variant?.wholesalePrice),
-      stock: toPositiveNumber(variant?.stock),
-      lowStockThreshold: toPositiveNumber(variant?.lowStockThreshold, product?.lowStockThreshold || 5),
-      minOrderQuantity: toPositiveNumber(variant?.minOrderQuantity, 1),
-      priceUnit: String(variant?.priceUnit || '').trim(),
-      packing: String(variant?.packing || '').trim(),
-      isActive: variant?.isActive !== false,
-      order: Number(variant?.order ?? index),
-    }))
-    .filter((variant) => variant.name && variant.sku);
+  return [];
 };
 
 const applyVariantSummaryToProduct = (product = {}) => {
-  if (!hasRealVariants(product)) {
-    return product;
-  }
-
-  const activeVariants = getActiveVariants(product);
-  const summarySource = activeVariants[0] || getAnyVariant(product);
-
-  if (!summarySource) return product;
-
-  product.sku = String(summarySource.sku || '').trim().toUpperCase();
-  product.mrp = toPositiveNumber(summarySource.mrp);
-  product.retailPrice = toPositiveNumber(summarySource.retailPrice);
-  product.wholesalePrice = toPositiveNumber(summarySource.wholesalePrice);
-  product.lowStockThreshold = toPositiveNumber(summarySource.lowStockThreshold, product.lowStockThreshold || 5);
-  product.stock = activeVariants.reduce((sum, variant) => sum + getVariantStock(variant), 0);
-
   return product;
 };
 

@@ -12,9 +12,7 @@ import '../../widgets/order_checkout_actions_sheet.dart';
 
 class BuyNowScreen extends ConsumerStatefulWidget {
   final String productId;
-  final String? variantId;
   final String productName;
-  final String? variantName;
   final String? productImage;
   final double price;
   final double? mrp;
@@ -24,9 +22,7 @@ class BuyNowScreen extends ConsumerStatefulWidget {
   const BuyNowScreen({
     super.key,
     required this.productId,
-    this.variantId,
     required this.productName,
-    this.variantName,
     this.productImage,
     required this.price,
     this.mrp,
@@ -299,9 +295,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  (widget.variantName?.isNotEmpty == true
-                          ? widget.variantName!
-                          : widget.productName)
+                  widget.productName
                       .split(' ')
                       .map((word) {
                         if (word.isEmpty) return word;
@@ -1235,7 +1229,6 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
           'items': [
             {
               'productId': widget.productId,
-              'variantId': widget.variantId,
               'quantity': widget.quantity,
             },
           ],

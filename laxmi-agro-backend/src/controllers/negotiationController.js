@@ -5,8 +5,6 @@ const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../utils/constants'
 const {
   getVariantById,
   getPriceForUser,
-  getVariantDisplayName,
-  normalizeObjectIdLike,
 } = require('../utils/productVariants');
 
 exports.getMyNegotiations = async (req, res, next) => {
@@ -59,7 +57,7 @@ exports.getMyNegotiations = async (req, res, next) => {
 
 exports.createNegotiation = async (req, res, next) => {
   try {
-    const { productId, variantId, quantity, pricePerUnit, message } = req.body;
+    const { productId, quantity, pricePerUnit, message } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
@@ -70,9 +68,9 @@ exports.createNegotiation = async (req, res, next) => {
       throw new BadRequestError('Negotiation is not enabled for this product', 'NEGOTIATION_DISABLED');
     }
 
-    const resolved = getVariantById(product, variantId);
+    const resolved = getVariantById(product, null);
     if (!resolved) {
-      throw new NotFoundError('Product variant not found', 'VARIANT_NOT_FOUND');
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
     const pricing = getPriceForUser(product, req.user.role, resolved.variant);
@@ -85,15 +83,15 @@ exports.createNegotiation = async (req, res, next) => {
     const negotiation = await Negotiation.create({
       wholesalerId: req.user._id,
       productId,
-      variantId: normalizeObjectIdLike(resolved.variantId),
+      variantId: null,
       productSnapshot: {
         name: product.name,
-        variantName: resolved.variant.name,
-        variantDisplayName: getVariantDisplayName(product, resolved.variant),
+        variantName: '',
+        variantDisplayName: product.name,
         price: pricing.price,
         image: product.primaryImage,
         sku: product.sku,
-        variantSku: resolved.variant.sku,
+        variantSku: '',
       },
       requestedQuantity: quantity,
       requestedPricePerUnit: pricePerUnit,

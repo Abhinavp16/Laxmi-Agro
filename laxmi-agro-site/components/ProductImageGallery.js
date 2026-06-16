@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function ProductImageGallery({ images, name, displayPrice, productKey = name }) {
+export default function ProductImageGallery({ images, name, displayPrice }) {
     const galleryImages = images?.length > 0 ? images.slice(0, 4) : [];
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -20,16 +20,6 @@ export default function ProductImageGallery({ images, name, displayPrice, produc
     useEffect(() => {
         setCurrentDisplayPrice(displayPrice);
     }, [displayPrice]);
-
-    useEffect(() => {
-        const handleVariantChange = (event) => {
-            if (event.detail?.productKey !== productKey) return;
-            setCurrentDisplayPrice(event.detail?.price || displayPrice);
-        };
-
-        window.addEventListener('product-variant-change', handleVariantChange);
-        return () => window.removeEventListener('product-variant-change', handleVariantChange);
-    }, [displayPrice, productKey]);
 
     const openLightbox = (index) => {
         setCurrentIndex(index);

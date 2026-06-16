@@ -2,10 +2,7 @@ const mongoose = require('mongoose');
 const slugify = require('slugify');
 const { PRODUCT_STATUS } = require('../utils/constants');
 const {
-  normalizeVariantsForPersistence,
-  applyVariantSummaryToProduct,
   getProductStockTotal,
-  getDefaultVariant,
 } = require('../utils/productVariants');
 
 const variantAttributeSchema = new mongoose.Schema({
@@ -209,6 +206,16 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 5,
   },
+  priceUnit: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  packing: {
+    type: String,
+    default: '',
+    trim: true,
+  },
   trackInventory: {
     type: Boolean,
     default: true,
@@ -306,7 +313,6 @@ const productSchema = new mongoose.Schema({
 
 productSchema.index({ slug: 1 }, { unique: true });
 productSchema.index({ sku: 1 }, { unique: true });
-productSchema.index({ 'variants.sku': 1 }, { unique: true, sparse: true });
 productSchema.index({ category: 1, status: 1 });
 productSchema.index({ status: 1, isFeatured: -1 });
 productSchema.index({ retailPrice: 1 });
@@ -315,10 +321,7 @@ productSchema.index({ stock: 1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 
 productSchema.pre('save', function (next) {
-  if (Array.isArray(this.variants) && this.variants.length > 0) {
-    this.variants = normalizeVariantsForPersistence(this.variants, this);
-    applyVariantSummaryToProduct(this);
-  }
+  this.variants = [];
 
   if (this.isModified('name') || !this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });
@@ -343,10 +346,6 @@ productSchema.virtual('primaryImage').get(function () {
 productSchema.virtual('primaryBlurHash').get(function () {
   const primary = this.images.find(img => img.isPrimary);
   return primary ? primary.blurHash : (this.images[0]?.blurHash || null);
-});
-
-productSchema.virtual('defaultVariant').get(function () {
-  return getDefaultVariant(this);
 });
 
 productSchema.set('toJSON', { virtuals: true });

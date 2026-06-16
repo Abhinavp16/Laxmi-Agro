@@ -13,23 +13,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Loader2, Plus, Save, Trash2, Upload, Globe, ChevronDown, ChevronRight, BadgeCheck, RefreshCcw, Package, Headphones, ShieldCheck, CircleDollarSign, Truck, Wrench, Pencil } from "lucide-react"
 
-type ProductVariantAttribute = { key: string; value: string }
-type WebsiteProductVariant = {
-    id?: string
-    name: string
-    displayName?: string
-    sku: string
-    attributes: ProductVariantAttribute[]
-    mrp: number
-    retailPrice: number
-    wholesalePrice: number
-    stock: number
-    minOrderQuantity: number
-    priceUnit: string
-    packing: string
-    isActive: boolean
-    order: number
-}
 type WebsiteCategoryProduct = {
     productId: string
     name: string
@@ -42,14 +25,15 @@ type WebsiteCategoryProduct = {
     retailPrice: number
     wholesalePrice: number
     stock: number
+    priceUnit: string
+    packing: string
     status: string
     image: string
     images: string[]
-    variants: WebsiteProductVariant[]
     order: number
 }
 type WebsiteCategory = { name: string; description: string; image: string; products: string[]; productDetails: WebsiteCategoryProduct[]; isActive: boolean; order: number }
-type WebsiteFeaturedProduct = { name: string; price: string; image: string; badge: string; specs: string[]; shortDescription: string; variants: WebsiteProductVariant[]; isActive: boolean; order: number }
+type WebsiteFeaturedProduct = { name: string; price: string; image: string; badge: string; specs: string[]; shortDescription: string; isActive: boolean; order: number }
 type WebsiteHeroCard = { image: string; order: number }
 type LabelSourceType = "image" | "icon"
 type WebsiteLabel = { id: string; title: string; sourceType: LabelSourceType; image: string; icon: string; isActive: boolean; order: number }
@@ -67,9 +51,10 @@ type AdminProductOption = {
     retailPrice?: number
     wholesalePrice?: number
     stock?: number
+    priceUnit?: string
+    packing?: string
     status?: string
     images?: AdminProductImage[]
-    variants?: WebsiteProductVariant[]
 }
 
 const DEFAULT_HERO_CARD_IMAGES = ["/images/Banner/1.jpg", "/images/Banner/2.jpg", "/images/Banner/3.jpg", "/images/Banner/4.jpg", "/images/Banner/5.jpg"]
@@ -80,53 +65,6 @@ const toNumber = (value: unknown): number => {
     const num = Number(value)
     return Number.isFinite(num) ? num : 0
 }
-const createEmptyVariant = (order = 0): WebsiteProductVariant => ({
-    id: "",
-    name: "",
-    displayName: "",
-    sku: "",
-    attributes: [],
-    mrp: 0,
-    retailPrice: 0,
-    wholesalePrice: 0,
-    stock: 0,
-    minOrderQuantity: 1,
-    priceUnit: "",
-    packing: "",
-    isActive: true,
-    order,
-})
-const normalizeVariantAttributes = (values: any[]): ProductVariantAttribute[] => {
-    if (!Array.isArray(values)) return []
-    return values
-        .map((attribute) => ({
-            key: String(attribute?.key || "").trim(),
-            value: String(attribute?.value || "").trim(),
-        }))
-        .filter((attribute) => attribute.key || attribute.value)
-}
-const normalizeProductVariants = (values: any[]): WebsiteProductVariant[] => {
-    if (!Array.isArray(values)) return []
-    return values
-        .map((variant, index) => ({
-            id: String(variant?._id || variant?.id || ""),
-            name: String(variant?.name || "").trim(),
-            displayName: String(variant?.displayName || variant?.name || "").trim(),
-            sku: String(variant?.sku || "").trim(),
-            attributes: normalizeVariantAttributes(variant?.attributes || []),
-            mrp: toNumber(variant?.mrp),
-            retailPrice: toNumber(variant?.retailPrice),
-            wholesalePrice: toNumber(variant?.wholesalePrice),
-            stock: toNumber(variant?.stock),
-            minOrderQuantity: toNumber(variant?.minOrderQuantity) || 1,
-            priceUnit: String(variant?.priceUnit || "").trim(),
-            packing: String(variant?.packing || "").trim(),
-            isActive: variant?.isActive !== false,
-            order: Number.isFinite(variant?.order) ? variant.order : index,
-        }))
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
-}
-const getPersistableProductVariants = (values: any[]): WebsiteProductVariant[] => normalizeProductVariants(values).filter((variant) => variant.name && variant.sku)
 const createEmptyCategoryProduct = (categoryName = ""): WebsiteCategoryProduct => ({
     productId: "",
     name: "",
@@ -139,10 +77,11 @@ const createEmptyCategoryProduct = (categoryName = ""): WebsiteCategoryProduct =
     retailPrice: 0,
     wholesalePrice: 0,
     stock: 0,
+    priceUnit: "",
+    packing: "",
     status: "active",
     image: "",
     images: [],
-    variants: [],
     order: 0,
 })
 const normalizeCategoryProduct = (value: any, order: number): WebsiteCategoryProduct => {
@@ -160,10 +99,11 @@ const normalizeCategoryProduct = (value: any, order: number): WebsiteCategoryPro
             retailPrice: 0,
             wholesalePrice: 0,
             stock: 0,
+            priceUnit: "",
+            packing: "",
             status: "",
             image: "",
             images: [],
-            variants: [],
             order,
         }
     }
@@ -181,10 +121,11 @@ const normalizeCategoryProduct = (value: any, order: number): WebsiteCategoryPro
         retailPrice: toNumber(value?.retailPrice),
         wholesalePrice: toNumber(value?.wholesalePrice),
         stock: toNumber(value?.stock),
+        priceUnit: String(value?.priceUnit || ""),
+        packing: String(value?.packing || ""),
         status: String(value?.status || ""),
         image: String(value?.image || images[0] || ""),
         images,
-        variants: normalizeProductVariants(value?.variants || []),
         order: Number.isFinite(value?.order) ? value.order : order,
     }
 }
@@ -212,8 +153,9 @@ const normalizeAdminProductOption = (item: any): AdminProductOption => ({
     retailPrice: toNumber(item?.retailPrice),
     wholesalePrice: toNumber(item?.wholesalePrice),
     stock: toNumber(item?.stock),
+    priceUnit: String(item?.priceUnit || ""),
+    packing: String(item?.packing || ""),
     status: String(item?.status || ""),
-    variants: normalizeProductVariants(item?.variants || []),
     images: Array.isArray(item?.images) ? item.images.map((image: any) => ({
         url: String(image?.url || ""),
         isPrimary: Boolean(image?.isPrimary),
@@ -235,10 +177,11 @@ const mapAdminProductToWebsiteProduct = (product: AdminProductOption, order: num
         retailPrice: toNumber(product.retailPrice),
         wholesalePrice: toNumber(product.wholesalePrice),
         stock: toNumber(product.stock),
+        priceUnit: String(product.priceUnit || ""),
+        packing: String(product.packing || ""),
         status: String(product.status || ""),
         image,
         images,
-        variants: normalizeProductVariants(product.variants || []),
         order,
     }
 }
@@ -378,7 +321,6 @@ export default function ManageWebsitePage() {
                 ...p,
                 shortDescription: p.shortDescription || '',
                 specs: Array.isArray(p.specs) ? p.specs : [],
-                variants: normalizeProductVariants(p.variants || []),
             }))
             const loadedLabels = Array.isArray(data.data.labels)
                 ? data.data.labels.map((item: any, index: number) => normalizeLabel(item, index))
@@ -429,7 +371,6 @@ export default function ManageWebsitePage() {
                 ...product,
                 category: product.category || category.name,
                 images: product.image ? [product.image] : normalizeList(product.images || []),
-                variants: getPersistableProductVariants(product.variants || []),
                 order: productIndex,
             }))
             return {
@@ -572,7 +513,6 @@ export default function ManageWebsitePage() {
             category: draftProduct.category || currentCategory.name,
             image: draftProduct.image.trim(),
             images: draftProduct.image ? [draftProduct.image.trim()] : [],
-            variants: getPersistableProductVariants(draftProduct.variants || []),
             order: productDetails.length,
         }
 
@@ -628,29 +568,6 @@ export default function ManageWebsitePage() {
                 products: normalizeList(nextProductDetails.map((product) => product.name)),
             }
         }))
-    }
-
-    function updateCategoryProductVariant(categoryIndex: number, productIndex: number, variantIndex: number, updates: Partial<WebsiteProductVariant>) {
-        const product = getCategoryProducts(categories[categoryIndex])?.[productIndex]
-        if (!product) return
-        const variants = normalizeProductVariants(product.variants || []).map((variant, index) => index === variantIndex ? { ...variant, ...updates } : variant)
-        updateCategoryProduct(categoryIndex, productIndex, { variants })
-    }
-
-    function addCategoryProductVariant(categoryIndex: number, productIndex: number) {
-        const product = getCategoryProducts(categories[categoryIndex])?.[productIndex]
-        if (!product) return
-        const variants = normalizeProductVariants(product.variants || [])
-        updateCategoryProduct(categoryIndex, productIndex, { variants: [...variants, createEmptyVariant(variants.length)] })
-    }
-
-    function removeCategoryProductVariant(categoryIndex: number, productIndex: number, variantIndex: number) {
-        const product = getCategoryProducts(categories[categoryIndex])?.[productIndex]
-        if (!product) return
-        const variants = normalizeProductVariants(product.variants || [])
-            .filter((_, index) => index !== variantIndex)
-            .map((variant, index) => ({ ...variant, order: index }))
-        updateCategoryProduct(categoryIndex, productIndex, { variants })
     }
 
     async function removeCategoryProduct(categoryIndex: number, productIndex: number) {
@@ -790,39 +707,13 @@ export default function ManageWebsitePage() {
     async function saveProducts() {
         setIsSavingProducts(true)
         try {
-            const featuredProductsPayload = featuredProducts.map((p, i) => ({ ...p, specs: normalizeList(p.specs || []), shortDescription: p.shortDescription || '', variants: getPersistableProductVariants(p.variants || []), order: Number.isFinite(p.order) ? p.order : i }))
+            const featuredProductsPayload = featuredProducts.map((p, i) => ({ ...p, specs: normalizeList(p.specs || []), shortDescription: p.shortDescription || '', order: Number.isFinite(p.order) ? p.order : i }))
             const res = await apiFetch("/admin/website-settings", { method: "PUT", body: JSON.stringify({ featuredProducts: featuredProductsPayload, featuredSection }) })
             if (!res.ok) throw new Error()
             toast.success("Website featured products saved")
         } catch {
             toast.error("Failed to save featured products")
         } finally { setIsSavingProducts(false) }
-    }
-
-    function updateFeaturedProductVariant(productIndex: number, variantIndex: number, updates: Partial<WebsiteProductVariant>) {
-        setFeaturedProducts((prev) => prev.map((product, index) => {
-            if (index !== productIndex) return product
-            const variants = normalizeProductVariants(product.variants || []).map((variant, idx) => idx === variantIndex ? { ...variant, ...updates } : variant)
-            return { ...product, variants }
-        }))
-    }
-
-    function addFeaturedProductVariant(productIndex: number) {
-        setFeaturedProducts((prev) => prev.map((product, index) => {
-            if (index !== productIndex) return product
-            const variants = normalizeProductVariants(product.variants || [])
-            return { ...product, variants: [...variants, createEmptyVariant(variants.length)] }
-        }))
-    }
-
-    function removeFeaturedProductVariant(productIndex: number, variantIndex: number) {
-        setFeaturedProducts((prev) => prev.map((product, index) => {
-            if (index !== productIndex) return product
-            const variants = normalizeProductVariants(product.variants || [])
-                .filter((_, idx) => idx !== variantIndex)
-                .map((variant, idx) => ({ ...variant, order: idx }))
-            return { ...product, variants }
-        }))
     }
 
     function resetDraftLabel() {
@@ -1381,7 +1272,7 @@ export default function ManageWebsitePage() {
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <p className="line-clamp-1 text-xs font-medium text-slate-900">{selectedProduct.name}</p>
-                                                                            <p className="line-clamp-1 text-[11px] text-slate-500">{selectedProduct.category || "No category"} - SKU: {selectedProduct.sku || "N/A"} - {normalizeProductVariants(selectedProduct.variants || []).length} variants</p>
+                                                                            <p className="line-clamp-1 text-[11px] text-slate-500">{selectedProduct.category || "No category"} - SKU: {selectedProduct.sku || "N/A"}</p>
                                                                         </div>
                                                                     </div>
                                                                 )}
@@ -1433,7 +1324,7 @@ export default function ManageWebsitePage() {
                                                                             </div>
                                                                             <div className="min-w-0">
                                                                                 <p className="line-clamp-1 text-sm font-medium text-slate-900">{product.name}</p>
-                                                                                <p className="line-clamp-1 text-[11px] text-slate-500">{product.productId ? `SKU: ${product.sku || "N/A"} - Stock: ${product.stock}` : "Quick category product"} - {normalizeProductVariants(product.variants || []).length} variants</p>
+                                                                                <p className="line-clamp-1 text-[11px] text-slate-500">{product.productId ? `SKU: ${product.sku || "N/A"} - Stock: ${product.stock}` : "Quick category product"}</p>
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
@@ -1462,7 +1353,7 @@ export default function ManageWebsitePage() {
                                                                         <div className="space-y-2">
                                                                             {product.productId ? (
                                                                                 <div className="rounded-md border border-[#244033] bg-[#102016] px-3 py-2 text-[11px] text-[#9fdfb6]">
-                                                                                    This card is linked to a real catalog product. Use `Refresh from Catalog` to pull the latest images, prices, stock, and variants. Use `Edit Product` to update the source item.
+                                                                                    This card is linked to a real catalog product. Use `Refresh from Catalog` to pull the latest images, prices, and stock. Use `Edit Product` to update the source item.
                                                                                 </div>
                                                                             ) : (
                                                                                 <div className="rounded-md border border-[#3b3020] bg-[#1b1610] px-3 py-2 text-[11px] text-[#facc15]">
@@ -1483,59 +1374,6 @@ export default function ManageWebsitePage() {
                                                                                     <Textarea value={product.shortDescription} onChange={(e) => updateCategoryProduct(index, productIndex, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short description" className="min-h-[80px] border-[#d8dfca] bg-white text-slate-900" />
                                                                                 </div>
                                                                             )}
-                                                                            <div className="space-y-3 rounded-lg border border-[#d7e5c9] bg-[#f5faef] p-3">
-                                                                                <div className="flex items-center justify-between gap-3">
-                                                                                    <div>
-                                                                                        <p className="text-xs font-semibold text-slate-900">Product Variants</p>
-                                                                                        <p className="text-[11px] text-slate-500">Sizes, capacities, packings, SKU, price and stock.</p>
-                                                                                    </div>
-                                                                                    {!product.productId && (
-                                                                                        <Button type="button" size="sm" variant="outline" className="border-[#36533a] bg-[#102016] text-[#b8efc2] hover:bg-[#172a1d]" onClick={() => addCategoryProductVariant(index, productIndex)}>
-                                                                                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Variant
-                                                                                        </Button>
-                                                                                    )}
-                                                                                </div>
-                                                                                {normalizeProductVariants(product.variants || []).length === 0 ? (
-                                                                                    <p className="rounded-md border border-dashed border-[#dde3d0] px-3 py-2 text-[11px] text-slate-500">No variants added for this product.</p>
-                                                                                ) : (
-                                                                                    <div className="space-y-2">
-                                                                                        {normalizeProductVariants(product.variants || []).map((variant, variantIndex) => (
-                                                                                            <div key={`${productKey}-variant-${variantIndex}`} className="space-y-2 rounded-md border border-[#d7e5c9] bg-white p-3">
-                                                                                                <div className="flex items-center justify-between gap-2">
-                                                                                                    <p className="line-clamp-1 text-xs font-semibold text-slate-900">{variant.name || `Variant ${variantIndex + 1}`}</p>
-                                                                                                    {!product.productId && (
-                                                                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:bg-red-900/20" onClick={() => removeCategoryProductVariant(index, productIndex, variantIndex)}>
-                                                                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                                                                        </Button>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                                {product.productId ? (
-                                                                                                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 md:grid-cols-4">
-                                                                                                        <span>SKU: {variant.sku || "N/A"}</span>
-                                                                                                        <span>Retail: {variant.retailPrice || 0}</span>
-                                                                                                        <span>Wholesale: {variant.wholesalePrice || 0}</span>
-                                                                                                        <span>Stock: {variant.stock || 0}</span>
-                                                                                                        {variant.packing && <span className="md:col-span-2">Packing: {variant.packing}</span>}
-                                                                                                        {variant.attributes.length > 0 && <span className="md:col-span-2">{variant.attributes.map((attr) => `${attr.key}: ${attr.value}`).join(" / ")}</span>}
-                                                                                                    </div>
-                                                                                                ) : (
-                                                                                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                                                                                                        <Input value={variant.name} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { name: e.target.value, displayName: e.target.value })} placeholder="Variant name: 1.0 inch / 30 pcs" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input value={variant.sku} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { sku: e.target.value })} placeholder="SKU: SKU-CA-10" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input value={variant.packing} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { packing: e.target.value })} placeholder="Packing: 30 pcs/box" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input type="number" value={variant.mrp} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { mrp: toNumber(e.target.value) })} placeholder="MRP" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input type="number" value={variant.retailPrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { retailPrice: toNumber(e.target.value) })} placeholder="Retail" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input type="number" value={variant.wholesalePrice} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { wholesalePrice: toNumber(e.target.value) })} placeholder="Wholesale" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input type="number" value={variant.stock} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { stock: toNumber(e.target.value) })} placeholder="Stock" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input value={variant.priceUnit} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { priceUnit: e.target.value })} placeholder="Price unit: piece / coil / set" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                        <Input value={variant.attributes.map((attr) => `${attr.key}:${attr.value}`).join(", ")} onChange={(e) => updateCategoryProductVariant(index, productIndex, variantIndex, { attributes: e.target.value.split(",").map((pair) => { const [key, ...rest] = pair.split(":"); return { key: key?.trim() || "", value: rest.join(":").trim() } }).filter((attr) => attr.key || attr.value) })} placeholder="Attributes: Size:1.0 inch, Pieces per Box:30" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
                                                                             <div>
                                                                                 <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-500">Product Image Preview</p>
                                                                                 <div className="flex items-center gap-2 overflow-x-auto">
@@ -1684,7 +1522,7 @@ export default function ManageWebsitePage() {
                 <TabsContent value="featured" className="mt-4">
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                         <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
-                            <CardHeader><div className="flex items-center justify-between gap-4"><div><CardTitle className="text-slate-900">Our Popular Product</CardTitle></div><Button onClick={() => setFeaturedProducts((prev) => [...prev, { name: "", price: "", image: "", badge: "", specs: [""], shortDescription: "", variants: [], isActive: true, order: prev.length }])} variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"><Plus className="h-4 w-4 mr-2" /> Add Product Card</Button></div></CardHeader>
+                            <CardHeader><div className="flex items-center justify-between gap-4"><div><CardTitle className="text-slate-900">Our Popular Product</CardTitle></div><Button onClick={() => setFeaturedProducts((prev) => [...prev, { name: "", price: "", image: "", badge: "", specs: [""], shortDescription: "", isActive: true, order: prev.length }])} variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"><Plus className="h-4 w-4 mr-2" /> Add Product Card</Button></div></CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
                                     <p className="text-sm font-semibold text-slate-900">Section Content</p>
@@ -1701,39 +1539,6 @@ export default function ManageWebsitePage() {
                                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2"><Input value={item.name} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, name: e.target.value } : p))} placeholder="Product title" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.price} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, price: e.target.value } : p))} placeholder="Price text" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.image} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, image: e.target.value } : p))} placeholder="Image URL" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.badge} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, badge: e.target.value } : p))} placeholder="Badge" className="border-[#d8dfca] bg-white text-slate-900" /></div>
                                         <Textarea value={item.shortDescription || ""} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, shortDescription: e.target.value } : p))} placeholder="Short description (shown instead of specs if provided)" className="min-h-[60px] border-[#d8dfca] bg-white text-slate-900" />
                                         <Textarea value={(item.specs || []).join("\n")} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, specs: e.target.value.split("\n") } : p))} placeholder="Specs (one per line) - shown if no short description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[90px]" />
-                                        <div className="rounded-lg border border-[#283329] bg-[#0b120d] p-3 space-y-3">
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div>
-                                                    <p className="text-xs font-semibold text-white">Variants</p>
-                                                    <p className="text-[11px] text-[#8c8c8c]">Optional size/spec variants for this featured card.</p>
-                                                </div>
-                                                <Button type="button" size="sm" variant="outline" className="border-[#36533a] bg-[#102016] text-[#b8efc2] hover:bg-[#172a1d]" onClick={() => addFeaturedProductVariant(index)}>
-                                                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Variant
-                                                </Button>
-                                            </div>
-                                            {normalizeProductVariants(item.variants || []).map((variant, variantIndex) => (
-                                                <div key={`featured-${index}-variant-${variantIndex}`} className="rounded-md border border-[#28352b] bg-[#101712] p-3 space-y-2">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <p className="text-xs font-semibold text-[#dcfce7]">Variant {variantIndex + 1}</p>
-                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:bg-red-900/20" onClick={() => removeFeaturedProductVariant(index, variantIndex)}>
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                                                        <Input value={variant.name} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { name: e.target.value, displayName: e.target.value })} placeholder="Variant name: 8 mm / 70 No." className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input value={variant.sku} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { sku: e.target.value })} placeholder="SKU: PDF-SWA-8MM" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input value={variant.packing} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { packing: e.target.value })} placeholder="Packing: 300 meter coil" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input type="number" value={variant.mrp} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { mrp: toNumber(e.target.value) })} placeholder="MRP" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input type="number" value={variant.retailPrice} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { retailPrice: toNumber(e.target.value) })} placeholder="Retail" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input type="number" value={variant.wholesalePrice} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { wholesalePrice: toNumber(e.target.value) })} placeholder="Wholesale" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input type="number" value={variant.stock} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { stock: toNumber(e.target.value) })} placeholder="Stock" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input value={variant.priceUnit} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { priceUnit: e.target.value })} placeholder="Price unit: piece / coil / set" className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                        <Input value={variant.attributes.map((attr) => `${attr.key}:${attr.value}`).join(", ")} onChange={(e) => updateFeaturedProductVariant(index, variantIndex, { attributes: e.target.value.split(",").map((pair) => { const [key, ...rest] = pair.split(":"); return { key: key?.trim() || "", value: rest.join(":").trim() } }).filter((attr) => attr.key || attr.value) })} placeholder="Attributes: Size:8 mm, Gauge:70 No." className="bg-[#0D0D0D] border-[#333] text-white" />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {normalizeProductVariants(item.variants || []).length === 0 && <p className="rounded-md border border-dashed border-[#333] px-3 py-2 text-[11px] text-[#777]">No variants added.</p>}
-                                        </div>
                                         <div className="flex justify-end"><div className="flex items-center gap-2"><input id={`featured-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "featured", index)} /><Button type="button" variant="outline" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`featured-upload-${index}`)?.click()} disabled={uploading === `featured-${index}`}>{uploading === `featured-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}Upload Image</Button></div></div>
                                     </div>
                                 ))}

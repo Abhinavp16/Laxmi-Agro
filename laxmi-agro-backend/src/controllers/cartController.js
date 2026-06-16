@@ -1,10 +1,8 @@
 const { Cart, Product } = require('../models');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 const {
-  normalizeObjectIdLike,
   getVariantById,
   getPriceForUser,
-  serializeVariantForUser,
   buildVariantSnapshot,
   getVariantDisplayName,
 } = require('../utils/productVariants');
@@ -14,11 +12,7 @@ const buildCartItemKey = (productId, variantId) => `${productId}:${variantId || 
 const resolveVariantForCart = (product, variantId) => {
   const resolved = getVariantById(product, variantId);
   if (!resolved) {
-    throw new BadRequestError('Selected product variant was not found', 'VARIANT_NOT_FOUND');
-  }
-
-  if (!resolved.isLegacy && resolved.variant.isActive === false) {
-    throw new BadRequestError('Selected product variant is inactive', 'VARIANT_INACTIVE');
+    throw new BadRequestError('Selected product was not found', 'PRODUCT_NOT_FOUND');
   }
 
   return resolved;
@@ -30,14 +24,13 @@ const buildProductMap = (products = []) => products.reduce((acc, product) => {
 }, {});
 
 const formatCartItem = (item, product, userRole) => {
-  const resolved = getVariantById(product, item.variantId);
+  const resolved = getVariantById(product, null);
   if (!resolved) return null;
 
   const pricing = getPriceForUser(product, userRole, resolved.variant);
   const currentPrice = pricing.price;
-  const serializedVariant = serializeVariantForUser(product, resolved.variant, userRole);
   const productId = item.productId.toString();
-  const variantId = normalizeObjectIdLike(item.variantId) || serializedVariant.id || null;
+  const variantId = null;
 
   return {
     productId: item.productId,
@@ -51,11 +44,12 @@ const formatCartItem = (item, product, userRole) => {
       price: pricing.price,
       retailPrice: pricing.retailPrice,
       wholesalePrice: pricing.wholesalePrice,
-      stock: serializedVariant.stock,
+      stock: product.stock,
       image: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
-      hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
+      priceUnit: product.priceUnit || '',
+      packing: product.packing || '',
     },
-    variant: serializedVariant,
+    variant: null,
     quantity: item.quantity,
     priceAtAdd: item.priceAtAdd,
     currentPrice,
@@ -67,7 +61,7 @@ const formatCartItem = (item, product, userRole) => {
 const populateCartItems = async (cart, userRole = 'guest') => {
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
   const products = await Product.find({ _id: { $in: productIds } })
-    .select('name nameHindi slug retailPrice wholesalePrice stock images variants negotiationEnabled minWholesaleQuantity')
+    .select('name nameHindi slug retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
     .lean();
 
   const productMap = buildProductMap(products);
@@ -113,7 +107,7 @@ exports.addItem = async (req, res, next) => {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
-    const resolved = resolveVariantForCart(product, variantId);
+    const resolved = resolveVariantForCart(product, null);
     if (resolved.variant.stock < quantity) {
       throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
     }
@@ -126,7 +120,7 @@ exports.addItem = async (req, res, next) => {
       cart = new Cart({ userId: req.user._id, items: [] });
     }
 
-    cart.addItem(productId, resolved.variantId, quantity, pricing.price, variantSnapshot);
+    cart.addItem(productId, null, quantity, pricing.price, variantSnapshot);
     await cart.save();
 
     const data = await populateCartItems(cart, userRole);
@@ -144,7 +138,7 @@ exports.updateItemQuantity = async (req, res, next) => {
   try {
     const userRole = req.user?.role || 'guest';
     const { productId } = req.params;
-    const variantId = req.query.variantId || null;
+    const variantId = null;
     const { quantity } = req.body;
 
     const product = await Product.findById(productId);
@@ -180,7 +174,7 @@ exports.removeItem = async (req, res, next) => {
   try {
     const userRole = req.user?.role || 'guest';
     const { productId } = req.params;
-    const variantId = req.query.variantId || null;
+    const variantId = null;
 
     const cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) {
@@ -210,7 +204,7 @@ exports.validateCart = async (req, res, next) => {
 
     const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
     const products = await Product.find({ _id: { $in: productIds } })
-      .select('name stock retailPrice status variants')
+      .select('name stock retailPrice status')
       .lean();
 
     const productMap = buildProductMap(products);
@@ -218,7 +212,7 @@ exports.validateCart = async (req, res, next) => {
 
     for (const item of cart.items) {
       const product = productMap[item.productId.toString()];
-      const itemVariantId = normalizeObjectIdLike(item.variantId);
+      const itemVariantId = null;
 
       if (!product) {
         issues.push({
@@ -247,15 +241,15 @@ exports.validateCart = async (req, res, next) => {
         continue;
       }
 
-      const resolved = getVariantById(product, item.variantId);
-      if (!resolved || (!resolved.isLegacy && resolved.variant.isActive === false)) {
+      const resolved = getVariantById(product, null);
+      if (!resolved) {
         issues.push({
           productId: item.productId.toString(),
           variantId: itemVariantId,
           cartItemKey: buildCartItemKey(item.productId.toString(), itemVariantId),
           name: product.name,
-          type: 'variant_unavailable',
-          message: 'Selected variant is no longer available',
+          type: 'unavailable',
+          message: 'Selected product is no longer available',
           availableStock: 0,
           requestedQty: item.quantity,
         });

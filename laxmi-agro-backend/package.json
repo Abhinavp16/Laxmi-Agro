@@ -10,6 +10,7 @@
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:local": "node src/scripts/seedLocalCatalog.js",
     "catalog:pdf": "node src/scripts/importPdfCatalog.js",
+    "products:remove-variants": "node src/scripts/removeProductVariants.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [

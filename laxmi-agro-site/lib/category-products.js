@@ -91,10 +91,11 @@ export function normalizeCategoryProduct(product, index) {
             productId: '',
             sku: '',
             stock: 0,
+            priceUnit: '',
+            packing: '',
             retailPrice: 0,
             wholesalePrice: 0,
             mrp: 0,
-            variants: [],
             order: index,
         };
     }
@@ -113,59 +114,21 @@ export function normalizeCategoryProduct(product, index) {
         productId: String(product?.productId || '').trim(),
         sku: String(product?.sku || '').trim(),
         stock: Number(product?.stock) || 0,
+        priceUnit: String(product?.priceUnit || '').trim(),
+        packing: String(product?.packing || '').trim(),
         retailPrice: Number(product?.retailPrice) || 0,
         wholesalePrice: Number(product?.wholesalePrice) || 0,
         mrp: Number(product?.mrp) || 0,
-        variants: normalizeProductVariants(product?.variants || []),
         order: Number.isFinite(product?.order) ? product.order : index,
     };
 }
 
 export function normalizeProductVariants(variants = []) {
-    if (!Array.isArray(variants)) return [];
-
-    return variants
-        .map((variant, index) => ({
-            id: String(variant?.id || variant?._id || '').trim(),
-            name: String(variant?.name || '').trim(),
-            displayName: String(variant?.displayName || variant?.name || '').trim(),
-            sku: String(variant?.sku || '').trim(),
-            attributes: Array.isArray(variant?.attributes)
-                ? variant.attributes
-                    .map((attribute) => ({
-                        key: String(attribute?.key || '').trim(),
-                        value: String(attribute?.value || '').trim(),
-                    }))
-                    .filter((attribute) => attribute.key && attribute.value)
-                : [],
-            mrp: Number(variant?.mrp) || 0,
-            retailPrice: Number(variant?.retailPrice) || 0,
-            wholesalePrice: Number(variant?.wholesalePrice) || 0,
-            stock: Number(variant?.stock) || 0,
-            minOrderQuantity: Number(variant?.minOrderQuantity) || 1,
-            priceUnit: String(variant?.priceUnit || '').trim(),
-            packing: String(variant?.packing || '').trim(),
-            isActive: variant?.isActive !== false,
-            order: Number.isFinite(variant?.order) ? variant.order : index,
-        }))
-        .filter((variant) => (variant.name || variant.sku) && variant.isActive)
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
+    return [];
 }
 
 export function getVariantSummary(product = {}) {
-    const variants = normalizeProductVariants(product?.variants || []);
-    if (variants.length === 0) return null;
-
-    const prices = variants
-        .map((variant) => variant.retailPrice || variant.wholesalePrice || variant.mrp)
-        .filter((price) => price > 0);
-    const fromPrice = prices.length > 0 ? Math.min(...prices) : 0;
-
-    return {
-        count: variants.length,
-        fromPrice,
-        labels: variants.slice(0, 3).map((variant) => variant.name),
-    };
+    return null;
 }
 
 export function getCategoryProducts(category) {
@@ -209,10 +172,6 @@ export function buildProductInquiryDetails(product) {
 
     if (product.stock > 0) {
         details.push(`Stock: ${product.stock}`);
-    }
-
-    if (Array.isArray(product.variants) && product.variants.length > 0) {
-        details.push(`${product.variants.length} variants available`);
     }
 
     return details;

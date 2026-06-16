@@ -1,10 +1,6 @@
 const { Product, User, DeviceToken, Notification, PriceChangeCampaign } = require('../models');
 const logger = require('../utils/logger');
 const { USER_ROLES, NOTIFICATION_TYPES, PRODUCT_STATUS } = require('../utils/constants');
-const {
-  applyVariantSummaryToProduct,
-  hasRealVariants,
-} = require('../utils/productVariants');
 const notificationService = require('./notificationService');
 
 const PRICE_CHANGE_POLL_INTERVAL_MS = 60 * 1000;
@@ -52,18 +48,9 @@ function clearPendingFields(target) {
 async function fetchScheduledProducts() {
   return Product.find({
     status: { $ne: PRODUCT_STATUS.ARCHIVED },
-    $or: [
-      { priceChangeEffectiveAt: { $ne: null } },
-      {
-        variants: {
-          $elemMatch: {
-            priceChangeEffectiveAt: { $ne: null },
-          },
-        },
-      },
-    ],
+    priceChangeEffectiveAt: { $ne: null },
   })
-    .select('_id orderCount purchaseCountMax priceChangeEffectiveAt variants')
+    .select('_id orderCount purchaseCountMax priceChangeEffectiveAt')
     .lean();
 }
 
@@ -74,12 +61,6 @@ function computeCampaignEffectiveAt(products = []) {
     const timestamps = [];
     if (product?.priceChangeEffectiveAt) {
       timestamps.push(new Date(product.priceChangeEffectiveAt).getTime());
-    }
-
-    for (const variant of product?.variants || []) {
-      if (variant?.priceChangeEffectiveAt) {
-        timestamps.push(new Date(variant.priceChangeEffectiveAt).getTime());
-      }
     }
 
     for (const timestamp of timestamps) {
@@ -274,16 +255,7 @@ async function finalizeCompletedCampaignIfNeeded() {
 async function processDuePriceChanges() {
   const now = new Date();
   const dueProducts = await Product.find({
-    $or: [
-      { priceChangeEffectiveAt: { $lte: now } },
-      {
-        variants: {
-          $elemMatch: {
-            priceChangeEffectiveAt: { $lte: now },
-          },
-        },
-      },
-    ],
+    priceChangeEffectiveAt: { $lte: now },
   });
 
   for (const product of dueProducts) {
@@ -304,31 +276,8 @@ async function processDuePriceChanges() {
       didChange = true;
     }
 
-    for (const variant of product.variants || []) {
-      if (!variant.priceChangeEffectiveAt || variant.priceChangeEffectiveAt > now) {
-        continue;
-      }
-
-      const nextRetail = variant.pendingRetailPrice;
-      const nextWholesale = variant.pendingWholesalePrice;
-
-      if (nextRetail !== null && nextRetail !== undefined) {
-        variant.retailPrice = nextRetail;
-      }
-      if (nextWholesale !== null && nextWholesale !== undefined) {
-        variant.wholesalePrice = nextWholesale;
-      }
-
-      clearPendingFields(variant);
-      didChange = true;
-    }
-
     if (!didChange) {
       continue;
-    }
-
-    if (hasRealVariants(product)) {
-      applyVariantSummaryToProduct(product);
     }
 
     await product.save();

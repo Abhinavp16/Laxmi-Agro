@@ -255,43 +255,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       value?.toString().trim().toLowerCase() ?? '';
 
   List<Map<String, dynamic>> get _variants {
-    final raw = _product?['variants'];
-    if (raw is! List) return const [];
-    return raw
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
+    return const [];
   }
 
   String? _resolveInitialVariantId(Map<String, dynamic> product) {
-    final defaultVariant = product['defaultVariant'];
-    if (defaultVariant is Map && defaultVariant['id'] != null) {
-      return defaultVariant['id'].toString();
-    }
-
-    final variants = product['variants'];
-    if (variants is List && variants.isNotEmpty) {
-      final first = variants.first;
-      if (first is Map && first['id'] != null) {
-        return first['id'].toString();
-      }
-    }
-
     return null;
   }
 
   Map<String, dynamic>? get _selectedVariant {
-    if (_variants.isEmpty) return null;
-
-    if (_selectedVariantId != null) {
-      for (final variant in _variants) {
-        if (variant['id']?.toString() == _selectedVariantId) {
-          return variant;
-        }
-      }
-    }
-
-    return _variants.first;
+    return null;
   }
 
   String _variantLabel(Map<String, dynamic> variant) {
@@ -689,30 +661,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         _product!['description']?.toString() ??
         _product!['shortDescription']?.toString() ??
         '';
-    final selectedVariant = _selectedVariant;
-    final sku =
-        selectedVariant?['sku']?.toString() ??
-        _product!['sku']?.toString() ??
-        '';
-    final price =
-        selectedVariant?['price'] ??
-        _product!['price'] ??
-        _product!['retailPrice'];
+    final sku = _product!['sku']?.toString() ?? '';
+    final price = _product!['price'] ?? _product!['retailPrice'];
     final customerPrice =
-        selectedVariant?['retailPrice'] ??
         _product!['retailPrice'] ??
         _product!['price'];
-    final mrp = selectedVariant?['mrp'] ?? _product!['mrp'];
-    final wsPrice =
-        selectedVariant?['wholesalePrice'] ?? _product!['wholesalePrice'];
-    final hasVariants = _variants.isNotEmpty;
-    final selectedVariantPendingPriceChange =
-        selectedVariant?['pendingPriceChange'];
-    final pendingPriceChange = hasVariants
-        ? selectedVariantPendingPriceChange
-        : (_product!)['pendingPriceChange'];
+    final mrp = _product!['mrp'];
+    final wsPrice = _product!['wholesalePrice'];
+    final pendingPriceChange = (_product!)['pendingPriceChange'];
     final minWsQty = _product!['minWholesaleQuantity'] ?? 5;
-    final stock = selectedVariant?['stock'] ?? _product!['stock'] ?? 0;
+    final stock = _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
     final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
     final negEnabled = _product!['negotiationEnabled'] == true && isWholesaler;
@@ -2526,10 +2484,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
                     final price = item['price'] ?? 0;
                     final mrp = item['mrp'] ?? 0;
-                    final defaultVariant =
-                        item['defaultVariant'] is Map<String, dynamic>
-                        ? item['defaultVariant'] as Map<String, dynamic>
-                        : null;
                     final hasMrp =
                         mrp != null && mrp != price && (mrp as num) > 0;
                     final discount = hasMrp
@@ -2715,13 +2669,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                 '/buy-now',
                                                 extra: {
                                                   'productId': pid,
-                                                  'variantId':
-                                                      defaultVariant?['id']
-                                                          ?.toString(),
                                                   'productName': displayName,
-                                                  'variantName':
-                                                      defaultVariant?['displayName']
-                                                          ?.toString(),
                                                   'productImage': img,
                                                   'price': (price is num)
                                                       ? price.toDouble()
@@ -2769,13 +2717,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                 .read(cartProvider.notifier)
                                                 .addItem(
                                                   productId: pid,
-                                                  variantId:
-                                                      defaultVariant?['id']
-                                                          ?.toString(),
                                                   name: displayName,
-                                                  variantName:
-                                                      defaultVariant?['displayName']
-                                                          ?.toString(),
                                                   price: pPrice,
                                                   image: img,
                                                   quantity: 1,
@@ -3310,12 +3252,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 .read(cartProvider.notifier)
                                 .addItem(
                                   productId: widget.productId,
-                                  variantId: _selectedVariantId,
                                   name: name,
-                                  variantName:
-                                      _selectedVariant?['displayName']
-                                          ?.toString() ??
-                                      _selectedVariant?['name']?.toString(),
                                   image: img,
                                   price: (price is int)
                                       ? price.toDouble()
@@ -3392,12 +3329,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 '/buy-now',
                                 extra: {
                                   'productId': widget.productId,
-                                  'variantId': _selectedVariantId,
                                   'productName': name,
-                                  'variantName':
-                                      _selectedVariant?['displayName']
-                                          ?.toString() ??
-                                      _selectedVariant?['name']?.toString(),
                                   'productImage': img,
                                   'price': productPrice,
                                   'mrp': productMrp,

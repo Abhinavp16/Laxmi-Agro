@@ -1037,9 +1037,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 item.nameHindi != null &&
                                 item.nameHindi!.isNotEmpty)
                             ? item.nameHindi!
-                            : (item.variantName?.isNotEmpty == true
-                                  ? item.variantName!
-                                  : item.name),
+                            : item.name,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -1088,7 +1086,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               .updateQuantity(
                                 item.productId,
                                 item.quantity - 1,
-                                variantId: item.variantId,
                               ),
                           child: Container(
                             width: 32,
@@ -1144,7 +1141,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       .updateQuantity(
                                         item.productId,
                                         item.quantity + 1,
-                                        variantId: item.variantId,
                                       );
                                   if (err != null && mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1191,7 +1187,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   IconButton(
                     onPressed: () => ref
                         .read(cartProvider.notifier)
-                        .removeItem(item.productId, variantId: item.variantId),
+                        .removeItem(item.productId),
                     icon: const Icon(
                       Icons.delete_outline_rounded,
                       color: AppColors.error,
@@ -1255,7 +1251,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 .updateQuantity(
                                   item.productId,
                                   item.stock,
-                                  variantId: item.variantId,
                                 );
                           },
                           child: Container(

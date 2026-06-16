@@ -7,30 +7,6 @@ const discountRuleSchema = Joi.object({
   maxDiscountAmount: Joi.number().min(0).allow('', null),
 });
 
-const variantAttributeValidationSchema = Joi.object({
-  key: Joi.string().required(),
-  value: Joi.string().required(),
-});
-
-const variantValidationSchema = Joi.object({
-  id: Joi.string().allow('', null),
-  _id: Joi.any(),
-  name: Joi.string().required().max(120),
-  displayName: Joi.string().allow('', null),
-  sku: Joi.string().required(),
-  attributes: Joi.array().items(variantAttributeValidationSchema).default([]),
-  mrp: Joi.number().min(0).required(),
-  retailPrice: Joi.number().min(0).required(),
-  wholesalePrice: Joi.number().min(0).required(),
-  stock: Joi.number().integer().min(0).default(0),
-  lowStockThreshold: Joi.number().integer().min(0).default(5),
-  minOrderQuantity: Joi.number().integer().min(1).default(1),
-  priceUnit: Joi.string().allow('', null),
-  packing: Joi.string().allow('', null),
-  isActive: Joi.boolean().default(true),
-  order: Joi.number().integer().default(0),
-});
-
 const authValidation = {
   register: Joi.object({
     name: Joi.string().required().max(100),
@@ -230,15 +206,17 @@ const adminValidation = {
     subCategory: Joi.string().allow('', null),
     tags: Joi.array().items(Joi.string()),
     // 3-Tier Pricing
-    mrp: Joi.number().min(0),
-    retailPrice: Joi.number().min(0),
-    wholesalePrice: Joi.number().min(0),
+    mrp: Joi.number().min(0).required(),
+    retailPrice: Joi.number().min(0).required(),
+    wholesalePrice: Joi.number().min(0).required(),
     minWholesaleQuantity: Joi.number().integer().min(1).default(10),
     negotiationEnabled: Joi.boolean().default(true),
-    sku: Joi.string(),
+    sku: Joi.string().required(),
     stock: Joi.number().integer().min(0).default(0),
     lowStockThreshold: Joi.number().integer().min(0).default(5),
-    variants: Joi.array().items(variantValidationSchema).default([]),
+    priceUnit: Joi.string().allow('', null),
+    packing: Joi.string().allow('', null),
+    variants: Joi.array().items(Joi.any()).default([]).strip(),
     images: Joi.array().items(Joi.object({
       url: Joi.string().required(),
       publicId: Joi.string().required(),
@@ -260,17 +238,6 @@ const adminValidation = {
     videoUrl: Joi.string().allow('', null),
     shippingTerms: Joi.string().allow('', null),
     priceChangeMode: Joi.string().valid('schedule_24h', 'immediate').optional(),
-  }).custom((value, helpers) => {
-    const hasVariants = Array.isArray(value.variants) && value.variants.length > 0;
-    if (hasVariants) return value;
-
-    if (value.mrp === undefined || value.retailPrice === undefined || value.wholesalePrice === undefined || !value.sku) {
-      return helpers.error('any.invalid', {
-        message: 'Provide either variants or base SKU/pricing fields',
-      });
-    }
-
-    return value;
   }),
 
   updateProduct: Joi.object({
@@ -289,7 +256,9 @@ const adminValidation = {
     negotiationEnabled: Joi.boolean(),
     stock: Joi.number().integer().min(0),
     lowStockThreshold: Joi.number().integer().min(0),
-    variants: Joi.array().items(variantValidationSchema),
+    priceUnit: Joi.string().allow('', null),
+    packing: Joi.string().allow('', null),
+    variants: Joi.array().items(Joi.any()).strip(),
     images: Joi.array().items(Joi.object({
       url: Joi.string().required(),
       publicId: Joi.string().required(),
@@ -433,7 +402,9 @@ const adminValidation = {
         status: Joi.string().allow('', null),
         image: Joi.string().allow('', null),
         images: Joi.array().items(Joi.string().allow('', null)),
-        variants: Joi.array().items(variantValidationSchema),
+        priceUnit: Joi.string().allow('', null),
+        packing: Joi.string().allow('', null),
+        variants: Joi.array().items(Joi.any()).strip(),
         order: Joi.number().integer(),
       })),
       isActive: Joi.boolean(),
@@ -446,7 +417,9 @@ const adminValidation = {
       badge: Joi.string().allow('', null),
       specs: Joi.array().items(Joi.string().allow('', null)),
       shortDescription: Joi.string().allow('', null),
-      variants: Joi.array().items(variantValidationSchema),
+      priceUnit: Joi.string().allow('', null),
+      packing: Joi.string().allow('', null),
+      variants: Joi.array().items(Joi.any()).strip(),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
     })),

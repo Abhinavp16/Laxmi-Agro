@@ -416,7 +416,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
               'purchaseCountMin': item['purchaseCountMin'] ?? 0,
               'purchaseCountMax': item['purchaseCountMax'] ?? 0,
-              'defaultVariant': item['defaultVariant'],
               'pendingPriceChange': item['pendingPriceChange'],
             };
           }).toList();
@@ -3460,7 +3459,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       direction: DismissDirection.endToStart,
                       onDismissed: (_) => _removeCartItemAndRefreshCoupon(
                         item.productId,
-                        variantId: item.variantId,
                       ),
                       background: Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -3537,9 +3535,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    item.variantName?.isNotEmpty == true
-                                        ? item.variantName!
-                                        : item.name,
+                                    item.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.plusJakartaSans(
@@ -3591,7 +3587,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                               _updateCartQtyAndRefreshCoupon(
                                                 item.productId,
                                                 item.quantity - 1,
-                                                variantId: item.variantId,
                                               ),
                                           child: Container(
                                             width: 32,
@@ -3631,7 +3626,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                               _updateCartQtyAndRefreshCoupon(
                                                 item.productId,
                                                 item.quantity + 1,
-                                                variantId: item.variantId,
                                               ),
                                           child: Container(
                                             width: 32,
@@ -6415,12 +6409,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               .read(cartProvider.notifier)
                               .addItem(
                                 productId: product['id'].toString(),
-                                variantId: product['defaultVariant']?['id']
-                                    ?.toString(),
                                 name: product['name'] ?? '',
-                                variantName:
-                                    product['defaultVariant']?['displayName']
-                                        ?.toString(),
                                 nameHindi: product['nameHindi']?.toString(),
                                 price: (product['price'] as num).toDouble(),
                                 mrp: hasOriginalPrice
@@ -6653,22 +6642,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Future<void> _updateCartQtyAndRefreshCoupon(
     String productId,
-    int quantity, {
-    String? variantId,
-  }) async {
-    await ref
-        .read(cartProvider.notifier)
-        .updateQuantity(productId, quantity, variantId: variantId);
+    int quantity,
+  ) async {
+    await ref.read(cartProvider.notifier).updateQuantity(productId, quantity);
     await _autoReapplyCouponIfNeeded();
   }
 
-  Future<void> _removeCartItemAndRefreshCoupon(
-    String productId, {
-    String? variantId,
-  }) async {
-    await ref
-        .read(cartProvider.notifier)
-        .removeItem(productId, variantId: variantId);
+  Future<void> _removeCartItemAndRefreshCoupon(String productId) async {
+    await ref.read(cartProvider.notifier).removeItem(productId);
     await _autoReapplyCouponIfNeeded();
   }
 

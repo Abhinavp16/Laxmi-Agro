@@ -351,7 +351,7 @@ const getCurrentCartPricing = async (userId, userRole) => {
   }
 
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
-  const products = await Product.find({ _id: { $in: productIds } }).select('retailPrice wholesalePrice variants');
+  const products = await Product.find({ _id: { $in: productIds } }).select('retailPrice wholesalePrice stock');
   const productMap = products.reduce((acc, product) => {
     acc[product._id.toString()] = product;
     return acc;
@@ -364,7 +364,7 @@ const getCurrentCartPricing = async (userId, userRole) => {
     const product = productMap[item.productId.toString()];
     if (!product) continue;
 
-    const resolved = getVariantById(product, item.variantId);
+    const resolved = getVariantById(product, null);
     if (!resolved) continue;
 
     const pricing = getPriceForUser(product, userRole, resolved.variant);
@@ -391,7 +391,7 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
 
   for (const item of itemsToProcess) {
     const product = productMap[item.productId.toString()];
-    const normalizedVariantId = normalizeObjectIdLike(item.variantId);
+    const normalizedVariantId = null;
 
     if (!product) {
       stockIssues.push({
@@ -403,14 +403,14 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
       continue;
     }
 
-    const resolved = getVariantById(product, item.variantId);
+    const resolved = getVariantById(product, null);
     if (!resolved || (!resolved.isLegacy && resolved.variant.isActive === false)) {
       stockIssues.push({
         productId: item.productId.toString(),
         variantId: normalizedVariantId,
         cartItemKey: cartItemKey(item.productId.toString(), normalizedVariantId),
         name: product.name,
-        message: 'Selected product variant is no longer available',
+        message: 'Selected product is no longer available',
       });
       continue;
     }
@@ -734,9 +734,9 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
-    const resolved = getVariantById(product, negotiation.variantId);
+    const resolved = getVariantById(product, null);
     if (!resolved) {
-      throw new BadRequestError('Negotiated product variant no longer exists', 'VARIANT_NOT_FOUND');
+      throw new BadRequestError('Negotiated product no longer exists', 'PRODUCT_NOT_FOUND');
     }
 
     if (resolved.variant.stock < negotiation.requestedQuantity) {
@@ -759,7 +759,7 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
     let order = null;
     const orderItems = [{
       productId: product._id,
-      variantId: negotiation.variantId || null,
+      variantId: null,
       productSnapshot: {
         name: product.name,
         sku: product.sku,

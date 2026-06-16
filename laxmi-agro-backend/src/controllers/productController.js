@@ -6,16 +6,13 @@ const mongoose = require('mongoose');
 const {
   getPriceForUser,
   getPendingPriceChangeForUser,
-  serializeVariantForUser,
   getProductStockTotal,
-  getDefaultVariant,
 } = require('../utils/productVariants');
 const { normalizeMediaUrl, normalizeImageObject } = require('../utils/mediaUrls');
 const Category = require('../models/Category');
 
 const formatProductCard = (product, userRole, req) => {
-  const defaultVariant = getDefaultVariant(product);
-  const pricing = getPriceForUser(product, userRole, defaultVariant);
+  const pricing = getPriceForUser(product, userRole);
   const stock = getProductStockTotal(product);
 
   return {
@@ -29,6 +26,8 @@ const formatProductCard = (product, userRole, req) => {
     ...pricing,
     stock,
     inStock: stock > 0,
+    priceUnit: product.priceUnit || '',
+    packing: product.packing || '',
     primaryImage: normalizeMediaUrl(
       product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
       req
@@ -39,10 +38,7 @@ const formatProductCard = (product, userRole, req) => {
     rating: product.rating,
     purchaseCountMin: product.purchaseCountMin,
     purchaseCountMax: product.purchaseCountMax,
-    hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
-    variantCount: Array.isArray(product.variants) ? product.variants.length : 0,
-    defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
-    pendingPriceChange: getPendingPriceChangeForUser(product, userRole, defaultVariant),
+    pendingPriceChange: getPendingPriceChangeForUser(product, userRole),
   };
 };
 
@@ -100,7 +96,7 @@ exports.getProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company variants')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company')
         .populate('company', 'name')
         .sort(sortOption)
         .skip(skip)
@@ -142,8 +138,7 @@ exports.getProductBySlug = async (req, res, next) => {
     }
 
     // Build response with role-based pricing
-    const defaultVariant = getDefaultVariant(product);
-    const pricing = getPriceForUser(product, userRole, defaultVariant);
+    const pricing = getPriceForUser(product, userRole);
     let resolvedLabels = [];
     if (Array.isArray(product.labelIds) && product.labelIds.length > 0) {
       const settings = await WebsiteSettings.getSettings();
@@ -193,12 +188,7 @@ exports.getProductBySlug = async (req, res, next) => {
       ...pricing,
       labels: resolvedLabels,
       stock: getProductStockTotal(product),
-      hasVariants: Array.isArray(product.variants) && product.variants.length > 0,
-      defaultVariant: defaultVariant ? serializeVariantForUser(product, defaultVariant, userRole) : null,
-      pendingPriceChange: getPendingPriceChangeForUser(product, userRole, defaultVariant),
-      variants: Array.isArray(product.variants)
-        ? product.variants.map((variant) => serializeVariantForUser(product, variant, userRole))
-        : [],
+      pendingPriceChange: getPendingPriceChangeForUser(product, userRole),
     };
 
     // Remove raw price fields for non-admin users, but keep for wholesalers so they can see customer price
@@ -302,7 +292,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
       status: PRODUCT_STATUS.ACTIVE,
       isFeatured: true,
     })
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax variants')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax')
       .limit(10)
       .lean();
 
@@ -346,7 +336,6 @@ exports.searchProducts = async (req, res, next) => {
           { category: regex },
           { tags: { $in: [new RegExp(escaped, 'i')] } },
           { sku: regex },
-          { 'variants.sku': regex },
         ]
       });
     }
@@ -379,7 +368,7 @@ exports.searchProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images isHot isNew rating purchaseCountMin purchaseCountMax company variants')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company')
         .populate('company', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -518,7 +507,7 @@ exports.getRelatedProducts = async (req, res, next) => {
       category: currentProduct.category,
       _id: { $ne: currentProduct._id }
     })
-      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company variants')
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company')
       .populate('company', 'name')
       .limit(limit)
       .lean();
