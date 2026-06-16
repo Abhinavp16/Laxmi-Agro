@@ -42,10 +42,17 @@ interface Customer {
         }
         verified: boolean
         status?: 'pending' | 'accepted' | 'rejected' | 'none'
+        excludedCategories?: string[]
         proofImages?: string[]
     }
     createdAt: string
     updatedAt: string
+}
+
+interface CategoryOption {
+    name: string
+    nameHindi?: string
+    slug?: string
 }
 
 function buildOsmEmbedUrl(lat: number, lng: number) {
@@ -62,13 +69,43 @@ export default function AccountUpgradesPage() {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
     const [isDetailsOpen, setIsDetailsOpen] = useState(false)
     const [showFullHistory, setShowFullHistory] = useState(false)
+    const [categories, setCategories] = useState<CategoryOption[]>([])
+    const [selectedExcludedCategories, setSelectedExcludedCategories] = useState<string[]>([])
+    const [isSavingCategoryAccess, setIsSavingCategoryAccess] = useState(false)
 
     // Load applications - assuming an endpoint or passing a query param to getCustomers
     // For now using /admin/customers as base, you may need to update this endpoint 
     // to point to your specific upgrade requests route e.g., `/admin/customers/upgrades`
     useEffect(() => {
         fetchUpgradeRequests()
+        fetchCategories()
     }, [])
+
+    useEffect(() => {
+        if (!selectedCustomer || !isDetailsOpen) return
+        setSelectedExcludedCategories(selectedCustomer.businessInfo?.excludedCategories || [])
+    }, [selectedCustomer, isDetailsOpen])
+
+    async function fetchCategories() {
+        try {
+            const res = await apiFetch(`/categories?active=true&limit=200`)
+            const data = await res.json()
+            if (!res.ok) return
+
+            const items = Array.isArray(data.data) ? data.data : []
+            setCategories(
+                items
+                    .map((item: any) => ({
+                        name: String(item?.name || '').trim(),
+                        nameHindi: String(item?.nameHindi || '').trim(),
+                        slug: String(item?.slug || '').trim(),
+                    }))
+                    .filter((item: CategoryOption) => item.name)
+            )
+        } catch (error) {
+            console.error(error)
+        }
+    }
 
     async function fetchUpgradeRequests() {
         setIsLoading(true)
@@ -109,7 +146,10 @@ export default function AccountUpgradesPage() {
             // Replace with your actual endpoint for handling applications
             const res = await apiFetch(`/admin/customers/${id}/upgrade`, {
                 method: 'PUT',
-                body: JSON.stringify({ action })
+                body: JSON.stringify({
+                    action,
+                    excludedCategories: action === 'accept' ? selectedExcludedCategories : undefined,
+                })
             })
 
             if (res.ok) {
@@ -125,6 +165,48 @@ export default function AccountUpgradesPage() {
         } finally {
             setIsProcessing(null)
         }
+    }
+
+    async function handleSaveCategoryAccess() {
+        if (!selectedCustomer) return
+
+        setIsSavingCategoryAccess(true)
+        try {
+            const res = await apiFetch(`/admin/customers/${selectedCustomer._id}/category-access`, {
+                method: 'PUT',
+                body: JSON.stringify({ excludedCategories: selectedExcludedCategories }),
+            })
+            const data = await res.json()
+
+            if (!res.ok) {
+                toast.error(data.message || 'Failed to update category permissions')
+                return
+            }
+
+            toast.success('Category permissions updated')
+            if (data.data) {
+                setSelectedCustomer(data.data)
+            }
+            fetchUpgradeRequests()
+        } catch (error) {
+            toast.error('Error updating category permissions')
+        } finally {
+            setIsSavingCategoryAccess(false)
+        }
+    }
+
+    function toggleExcludedCategory(categoryName: string) {
+        setSelectedExcludedCategories((prev) =>
+            prev.includes(categoryName)
+                ? prev.filter((item) => item !== categoryName)
+                : [...prev, categoryName]
+        )
+    }
+
+    function openCustomerDetails(customer: Customer) {
+        setSelectedCustomer(customer)
+        setSelectedExcludedCategories(customer.businessInfo?.excludedCategories || [])
+        setIsDetailsOpen(true)
     }
 
     return (
@@ -188,8 +270,7 @@ export default function AccountUpgradesPage() {
                                                 size="sm"
                                                 className="h-8 px-3 text-[#86efac] hover:text-white hover:bg-[#86efac]/10 border border-transparent hover:border-[#86efac]/20"
                                                 onClick={() => {
-                                                    setSelectedCustomer(cust)
-                                                    setIsDetailsOpen(true)
+                                                    openCustomerDetails(cust)
                                                 }}
                                             >
                                                 <Eye className="h-4 w-4 mr-2" />
@@ -250,8 +331,7 @@ export default function AccountUpgradesPage() {
                                                 size="sm"
                                                 className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
                                                 onClick={() => {
-                                                    setSelectedCustomer(cust)
-                                                    setIsDetailsOpen(true)
+                                                    openCustomerDetails(cust)
                                                 }}
                                             >
                                                 <Eye className="mr-2 h-3.5 w-3.5" />
@@ -302,8 +382,7 @@ export default function AccountUpgradesPage() {
                                                         size="sm"
                                                         className="h-7 px-2 text-gray-500 hover:text-white"
                                                         onClick={() => {
-                                                            setSelectedCustomer(cust)
-                                                            setIsDetailsOpen(true)
+                                                            openCustomerDetails(cust)
                                                         }}
                                                     >
                                                         <Eye className="h-3.5 w-3.5" />
@@ -418,6 +497,59 @@ export default function AccountUpgradesPage() {
                                     </div>
                                 </div>
 
+                                {(selectedCustomer.businessInfo?.status === 'pending' || selectedCustomer.businessInfo?.status === 'accepted') && (
+                                    <div className="col-span-2 border-t border-[#333] pt-4">
+                                        <div className="mb-3 flex flex-col gap-1">
+                                            <h3 className="font-semibold text-white">Category Permissions</h3>
+                                            <p className="text-xs text-gray-500">
+                                                Select categories that should be hidden from this wholesaler's app dropdown and product lists.
+                                            </p>
+                                        </div>
+
+                                        {categories.length === 0 ? (
+                                            <div className="rounded-lg border border-dashed border-[#333] px-3 py-2 text-xs text-gray-500">
+                                                No active categories found.
+                                            </div>
+                                        ) : (
+                                            <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                                                {categories.map((category) => {
+                                                    const checked = selectedExcludedCategories.includes(category.name)
+                                                    return (
+                                                        <label
+                                                            key={category.name}
+                                                            className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${checked
+                                                                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+                                                                    : 'border-[#333] bg-[#111] text-gray-300 hover:border-[#555]'
+                                                                }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={() => toggleExcludedCategory(category.name)}
+                                                                className="mt-0.5 h-4 w-4 accent-amber-500"
+                                                            />
+                                                            <span className="min-w-0">
+                                                                <span className="block font-medium">{category.name}</span>
+                                                                {category.nameHindi && <span className="block text-xs text-gray-500">{category.nameHindi}</span>}
+                                                            </span>
+                                                        </label>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {selectedExcludedCategories.length > 0 && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {selectedExcludedCategories.map((category) => (
+                                                    <Badge key={category} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300">
+                                                        Hidden: {category}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {selectedCustomer.businessInfo?.proofImages && selectedCustomer.businessInfo.proofImages.length > 0 && (
                                     <div className="col-span-2 pt-4 border-t border-[#333] mt-2">
                                         <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
@@ -476,9 +608,20 @@ export default function AccountUpgradesPage() {
                                     </>
                                 )}
                                 {selectedCustomer.businessInfo?.status === 'accepted' && (
-                                    <Badge className="bg-green-500/10 text-green-500 border-green-500/50">
-                                        Previously Accepted
-                                    </Badge>
+                                    <>
+                                        <Button
+                                            variant="default"
+                                            className="w-full border border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 sm:w-auto"
+                                            disabled={isSavingCategoryAccess}
+                                            onClick={handleSaveCategoryAccess}
+                                        >
+                                            {isSavingCategoryAccess ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Save Category Permissions
+                                        </Button>
+                                        <Badge className="bg-green-500/10 text-green-500 border-green-500/50">
+                                            Previously Accepted
+                                        </Badge>
+                                    </>
                                 )}
                                 {selectedCustomer.businessInfo?.status === 'rejected' && (
                                     <Badge className="bg-red-500/10 text-red-500 border-red-500/50">

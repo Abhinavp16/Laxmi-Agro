@@ -9,6 +9,7 @@ class StorageService {
   static const _userDataKey = 'user_data';
   static const _isFirstLaunchKey = 'is_first_launch';
   static const _guestTrialStartedAtKey = 'guest_trial_started_at_ms';
+  static const _guestAuthPromptLastShownAtKey = 'guest_auth_prompt_last_shown_at_ms';
 
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -134,6 +135,18 @@ class StorageService {
     final now = DateTime.now();
     await prefs.setInt(_guestTrialStartedAtKey, now.millisecondsSinceEpoch);
     return now;
+  }
+
+  static Future<DateTime?> getGuestAuthPromptLastShownAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedMs = prefs.getInt(_guestAuthPromptLastShownAtKey);
+    if (storedMs == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(storedMs);
+  }
+
+  static Future<void> setGuestAuthPromptLastShownAt(DateTime value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_guestAuthPromptLastShownAtKey, value.millisecondsSinceEpoch);
   }
 
   // Clear All

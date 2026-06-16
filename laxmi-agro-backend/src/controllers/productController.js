@@ -10,6 +10,11 @@ const {
 } = require('../utils/productVariants');
 const { normalizeMediaUrl, normalizeImageObject } = require('../utils/mediaUrls');
 const Category = require('../models/Category');
+const {
+  applyCategoryAccessToProductQuery,
+  filterCategoriesForUser,
+  isCategoryExcludedForUser,
+} = require('../utils/categoryAccess');
 
 const formatProductCard = (product, userRole, req) => {
   const pricing = getPriceForUser(product, userRole);
@@ -83,6 +88,8 @@ exports.getProducts = async (req, res, next) => {
     if (inStock === 'true') query.stock = { $gt: 0 };
     if (featured === 'true') query.isFeatured = true;
 
+    applyCategoryAccessToProductQuery(query, req.user);
+
     console.log('getProducts final query:', JSON.stringify(query));
 
     let sortOption = { createdAt: -1 };
@@ -134,6 +141,10 @@ exports.getProductBySlug = async (req, res, next) => {
     }
 
     if (!product) {
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+
+    if (isCategoryExcludedForUser(req.user, product.category)) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
@@ -208,8 +219,9 @@ exports.getProductBySlug = async (req, res, next) => {
 
 exports.getCategories = async (req, res, next) => {
   try {
+    const categoryMatch = applyCategoryAccessToProductQuery({ status: PRODUCT_STATUS.ACTIVE }, req.user);
     const categories = await Product.aggregate([
-      { $match: { status: PRODUCT_STATUS.ACTIVE } },
+      { $match: categoryMatch },
       {
         $group: {
           _id: '$category',
@@ -263,7 +275,7 @@ exports.getCategories = async (req, res, next) => {
       registerCategoryDoc((doc.slug || '').replace(/[-_]+/g, ' '), doc);
     }
 
-    const enrichedCategories = categories.map((category) => {
+    const enrichedCategories = filterCategoriesForUser(categories.map((category) => {
       const lookupKey = category.name?.toString().trim().toLowerCase() ?? '';
       const normalizedLookupKey = category.name?.toString().replace(/[-_]+/g, ' ').trim().toLowerCase() ?? '';
       const doc = categoryLookup.get(lookupKey) || categoryLookup.get(normalizedLookupKey);
@@ -273,7 +285,7 @@ exports.getCategories = async (req, res, next) => {
         nameHindi: doc?.nameHindi || '',
         slug: doc?.slug || '',
       };
-    });
+    }), req.user);
 
     res.json({
       success: true,
@@ -288,10 +300,12 @@ exports.getFeaturedProducts = async (req, res, next) => {
   try {
     const userRole = req.user?.role || 'guest';
 
-    const products = await Product.find({
+    const query = applyCategoryAccessToProductQuery({
       status: PRODUCT_STATUS.ACTIVE,
       isFeatured: true,
-    })
+    }, req.user);
+
+    const products = await Product.find(query)
       .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax')
       .limit(10)
       .lean();
@@ -363,6 +377,8 @@ exports.searchProducts = async (req, res, next) => {
     if (andConditions.length > 0) {
       query.$and = andConditions;
     }
+
+    applyCategoryAccessToProductQuery(query, req.user);
 
     console.log('Final search query:', JSON.stringify(query));
 
@@ -501,12 +517,17 @@ exports.getRelatedProducts = async (req, res, next) => {
 
     const currentProduct = await Product.findOne(productQuery).select('category _id');
     if (!currentProduct) return res.json({ success: true, data: [] });
+    if (isCategoryExcludedForUser(req.user, currentProduct.category)) {
+      return res.json({ success: true, data: [] });
+    }
 
-    const relatedProducts = await Product.find({
+    const relatedQuery = applyCategoryAccessToProductQuery({
       status: 'active',
       category: currentProduct.category,
       _id: { $ne: currentProduct._id }
-    })
+    }, req.user);
+
+    const relatedProducts = await Product.find(relatedQuery)
       .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company')
       .populate('company', 'name')
       .limit(limit)

@@ -70,6 +70,7 @@ const userSchema = new mongoose.Schema({
     },
     verified: { type: Boolean, default: false },
     verifiedAt: { type: Date, default: null },
+    excludedCategories: [{ type: String, trim: true }],
     proofImages: [{ type: String }],
   },
 

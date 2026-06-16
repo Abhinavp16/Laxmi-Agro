@@ -1,7 +1,12 @@
 const { User, Order, Negotiation, DeviceToken, Notification } = require('../../models');
 const notificationService = require('../../services/notificationService');
-const { NotFoundError } = require('../../utils/errors');
+const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
+
+const normalizeExcludedCategories = (values = []) => {
+  if (!Array.isArray(values)) return [];
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
+};
 
 exports.getCustomers = async (req, res, next) => {
   try {
@@ -95,7 +100,7 @@ exports.getCustomerById = async (req, res, next) => {
 exports.upgradeCustomer = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { action } = req.body;
+    const { action, excludedCategories } = req.body;
 
     const customer = await User.findById(id);
 
@@ -109,6 +114,7 @@ exports.upgradeCustomer = async (req, res, next) => {
         customer.businessInfo.status = 'accepted';
         customer.businessInfo.verified = true;
         customer.businessInfo.verifiedAt = new Date();
+        customer.businessInfo.excludedCategories = normalizeExcludedCategories(excludedCategories);
       }
     } else if (action === 'reject') {
       if (customer.businessInfo) {
@@ -148,6 +154,38 @@ exports.upgradeCustomer = async (req, res, next) => {
     res.json({
       success: true,
       message: `Customer application ${action}ed successfully.`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateWholesalerCategoryAccess = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { excludedCategories } = req.body;
+
+    const customer = await User.findById(id);
+
+    if (!customer || customer.role === 'admin') {
+      throw new NotFoundError('Customer not found', 'CUSTOMER_NOT_FOUND');
+    }
+
+    if (customer.role !== 'wholesaler' && customer.businessInfo?.status !== 'accepted') {
+      throw new BadRequestError('Category access can only be updated for accepted wholesalers', 'NOT_ACCEPTED_WHOLESALER');
+    }
+
+    if (!customer.businessInfo) {
+      customer.businessInfo = {};
+    }
+
+    customer.businessInfo.excludedCategories = normalizeExcludedCategories(excludedCategories);
+    await customer.save();
+
+    res.json({
+      success: true,
+      message: 'Wholesaler category permissions updated',
+      data: customer,
     });
   } catch (error) {
     next(error);
@@ -244,4 +282,3 @@ exports.sendNotification = async (req, res, next) => {
     next(error);
   }
 };
-

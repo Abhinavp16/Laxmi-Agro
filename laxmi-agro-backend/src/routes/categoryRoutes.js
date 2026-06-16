@@ -8,10 +8,10 @@ const {
   deleteCategory,
   generateMissingHindiNames,
 } = require('../controllers/categoryController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, optionalAuth, authorize } = require('../middlewares/auth');
 
 // Public routes
-router.get('/', getCategories);
+router.get('/', optionalAuth, getCategories);
 router.get('/:id', getCategory);
 
 // Admin routes

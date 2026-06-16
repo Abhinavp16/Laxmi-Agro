@@ -78,6 +78,7 @@ router.put('/payments/:id/reject', validate(adminValidation.rejectPayment), admi
 router.get('/customers', adminCustomerController.getCustomers);
 router.get('/customers/:id', adminCustomerController.getCustomerById);
 router.put('/customers/:id/upgrade', adminCustomerController.upgradeCustomer);
+router.put('/customers/:id/category-access', validate(adminValidation.updateWholesalerCategoryAccess), adminCustomerController.updateWholesalerCategoryAccess);
 router.get('/wholesaler-locations', adminCustomerController.getWholesalerLocations);
 router.post('/customers/notifications', validate(adminValidation.sendNotification), adminCustomerController.sendNotification);
 

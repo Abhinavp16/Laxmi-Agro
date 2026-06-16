@@ -48,7 +48,7 @@ class MarketplaceHomeScreen extends ConsumerStatefulWidget {
 
 class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   static const Duration _guestInitialFreeUseDuration = Duration(minutes: 3);
-  static const Duration _guestPromptRepeatDuration = Duration(minutes: 3);
+  static const Duration _guestPromptRepeatDuration = Duration(hours: 24);
   late int _selectedNavIndex;
   bool _isCheckingOut = false;
   int _currentCarouselIndex = 0;
@@ -207,6 +207,20 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final trialStartAt = await StorageService.getOrCreateGuestTrialStartedAt();
     if (!mounted) return;
 
+    final lastPromptAt = await StorageService.getGuestAuthPromptLastShownAt();
+    if (!mounted) return;
+
+    if (lastPromptAt != null) {
+      final repeatDelay = _guestPromptRepeatDuration - DateTime.now().difference(lastPromptAt);
+      if (repeatDelay.isNegative || repeatDelay == Duration.zero) {
+        _showGuestAuthPrompt();
+      } else {
+        _guestAuthPromptTimer?.cancel();
+        _guestAuthPromptTimer = Timer(repeatDelay, _showGuestAuthPrompt);
+      }
+      return;
+    }
+
     final elapsed = DateTime.now().difference(trialStartAt);
     final initialDelay = _guestInitialFreeUseDuration - elapsed;
     if (initialDelay.isNegative || initialDelay == Duration.zero) {
@@ -253,6 +267,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
 
     _isGuestAuthDialogVisible = true;
+    await StorageService.setGuestAuthPromptLastShownAt(DateTime.now());
+    if (!mounted) {
+      _isGuestAuthDialogVisible = false;
+      return;
+    }
     final shouldOpenLogin = await showDialog<bool>(
       context: context,
       barrierDismissible: false,

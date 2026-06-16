@@ -4,17 +4,21 @@ const { transliterateToHindi } = require('../services/hindiTransliterationServic
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
 const { normalizeImageObject } = require('../utils/mediaUrls');
+const {
+  applyCategoryAccessToProductQuery,
+  filterCategoriesForUser,
+} = require('../utils/categoryAccess');
 
-async function getProductCountMap(categorySlugs = []) {
+async function getProductCountMap(categorySlugs = [], user = null) {
   if (categorySlugs.length === 0) return new Map();
 
+  const match = applyCategoryAccessToProductQuery({
+    category: { $in: categorySlugs },
+    status: { $ne: PRODUCT_STATUS.ARCHIVED },
+  }, user);
+
   const counts = await Product.aggregate([
-    {
-      $match: {
-        category: { $in: categorySlugs },
-        status: { $ne: PRODUCT_STATUS.ARCHIVED },
-      },
-    },
+    { $match: match },
     {
       $group: {
         _id: '$category',
@@ -67,8 +71,9 @@ exports.getCategories = async (req, res, next) => {
       category.name,
       category.slug,
     ]).filter(Boolean);
-    const countsByKey = await getProductCountMap(categoryKeys);
-    const categoriesWithCounts = categories.map((category) => ({
+    const visibleCategories = filterCategoriesForUser(categories, req.user);
+    const countsByKey = await getProductCountMap(categoryKeys, req.user);
+    const categoriesWithCounts = visibleCategories.map((category) => ({
       ...category,
       image: normalizeImageObject(category.image, req),
       productCount: countsByKey.get(category.name) ?? countsByKey.get(category.slug) ?? 0,
@@ -76,7 +81,7 @@ exports.getCategories = async (req, res, next) => {
 
     res.json({
       success: true,
-      ...formatPaginationResponse(categoriesWithCounts, total, page, limit),
+      ...formatPaginationResponse(categoriesWithCounts, categoriesWithCounts.length, page, limit),
     });
   } catch (error) {
     next(error);

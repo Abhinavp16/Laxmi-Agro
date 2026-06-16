@@ -302,6 +302,10 @@ const adminValidation = {
     note: Joi.string().max(500).allow('', null),
   }),
 
+  updateWholesalerCategoryAccess: Joi.object({
+    excludedCategories: Joi.array().items(Joi.string().allow('', null)).default([]),
+  }),
+
   shipOrder: Joi.object({
     trackingNumber: Joi.string().required(),
     courierName: Joi.string().required(),
