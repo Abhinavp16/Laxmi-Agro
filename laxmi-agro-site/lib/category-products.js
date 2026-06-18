@@ -1,5 +1,10 @@
 import { getApiBaseUrl } from '@/lib/api-base';
 import { normalizeWebsiteImageUrl } from '@/lib/media-url';
+import {
+    getGeneralCategories,
+    getGeneralCategoryProducts,
+    normalizeCatalogProduct,
+} from '@/lib/catalog-api';
 
 const productCardFallbackImage = 'https://placehold.co/800x520/f3f4f6/94a3b8?text=Product';
 
@@ -188,6 +193,22 @@ export function getProductHighlights(product) {
 }
 
 export async function getCategories() {
+    const liveCategories = await getGeneralCategories();
+    if (liveCategories.length > 0) {
+        const categoriesWithProducts = await Promise.all(
+            liveCategories.map(async (category) => {
+                const result = await getGeneralCategoryProducts(category.slug);
+                const productDetails = result.products.map((product, index) => normalizeCatalogProduct(product, index));
+                return {
+                    ...category,
+                    products: productDetails.map((product) => product.name),
+                    productDetails,
+                };
+            })
+        );
+        return categoriesWithProducts;
+    }
+
     const apiBase = getApiBaseUrl();
 
     try {

@@ -22,6 +22,7 @@ const adminPaymentController = require('../controllers/admin/paymentController')
 const adminAnalyticsController = require('../controllers/admin/analyticsController');
 const adminSettingsController = require('../controllers/admin/settingsController');
 const websiteSettingsController = require('../controllers/admin/websiteSettingsController');
+const websiteCatalogController = require('../controllers/admin/websiteCatalogController');
 const adminCustomerController = require('../controllers/admin/customerController');
 const adminOfferController = require('../controllers/admin/offerController');
 const adminAffiliateController = require('../controllers/admin/affiliateCodeController');
@@ -94,6 +95,10 @@ router.get('/settings', adminSettingsController.getSettings);
 router.put('/settings', validate(adminValidation.updateSettings), adminSettingsController.updateSettings);
 router.get('/website-settings', websiteSettingsController.getWebsiteSettings);
 router.put('/website-settings', validate(adminValidation.updateWebsiteSettings), websiteSettingsController.updateWebsiteSettings);
+router.get('/website-catalog/brands', websiteCatalogController.getBrands);
+router.get('/website-catalog/categories', websiteCatalogController.getCategories);
+router.get('/website-catalog/products', websiteCatalogController.getProducts);
+router.patch('/website-catalog/visibility', websiteCatalogController.updateVisibility);
 
 // Offers
 router.get('/offers', adminOfferController.getOffers);

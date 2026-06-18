@@ -20,6 +20,7 @@ const categoryRoutes = require('./categoryRoutes');
 const uploadRoutes = require('./uploadRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const razorpayRoutes = require('./razorpayRoutes');
+const websiteCatalogController = require('../controllers/websiteCatalogController');
 
 const normalizeNumber = (value) => {
   const num = Number(value);
@@ -418,6 +419,14 @@ router.get('/settings/website-content', async (req, res, next) => {
     next(error);
   }
 });
+
+router.get('/website/catalog/home', websiteCatalogController.getHomeCatalog);
+router.get('/website/catalog/brands', websiteCatalogController.getBrands);
+router.get('/website/catalog/brands/:brandSlug/categories', websiteCatalogController.getBrandCategories);
+router.get('/website/catalog/brands/:brandSlug/categories/:categorySlug/products', websiteCatalogController.getProductsByBrandCategory);
+router.get('/website/catalog/categories/general', websiteCatalogController.getGeneralCategories);
+router.get('/website/catalog/categories/:categorySlug/products', websiteCatalogController.getGeneralCategoryProducts);
+router.get('/website/catalog/products/:productSlug', websiteCatalogController.getProduct);
 
 router.use('/auth', authRoutes);
 router.use('/products', productRoutes);

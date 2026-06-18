@@ -85,6 +85,9 @@ export default async function CategoryPage({ params }) {
                                         <p className="mt-2 min-h-[4.5rem] text-sm leading-6 text-gray-500 line-clamp-3">
                                             {cardDescription}
                                         </p>
+                                        <p className="mt-2 text-sm font-black text-brand-primary">
+                                            MRP: ₹{Number(product.mrp || product.retailPrice || 0).toLocaleString('en-IN')}
+                                        </p>
 
                                         <div className="mt-auto pt-4">
                                             <Link

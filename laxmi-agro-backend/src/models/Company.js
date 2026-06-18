@@ -31,6 +31,10 @@ const companySchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  showOnWebsite: {
+    type: Boolean,
+    default: true,
+  },
   productCount: {
     type: Number,
     default: 0,
@@ -42,6 +46,7 @@ const companySchema = new mongoose.Schema({
 companySchema.index({ slug: 1 }, { unique: true });
 companySchema.index({ name: 1 }, { unique: true });
 companySchema.index({ isActive: 1 });
+companySchema.index({ showOnWebsite: 1 });
 
 companySchema.pre('save', function (next) {
   if (this.isModified('name') || !this.slug) {

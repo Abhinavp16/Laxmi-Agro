@@ -71,9 +71,12 @@ export function normalizeFeaturedProduct(product, index = 0) {
         ? product.images.map((image) => String(image || '').trim()).filter(Boolean)
         : [];
 
+    const mrp = Number(product?.mrp) || 0;
+
     return {
         name: String(product?.name || `Product ${index + 1}`).trim(),
-        price: String(product?.price || 'Request Quote').trim(),
+        price: String(product?.price || (mrp > 0 ? `MRP: Rs. ${mrp}` : 'Request Quote')).trim(),
+        mrp,
         image: String(product?.image || images[0] || featuredProductFallbackImage).trim(),
         images,
         badge: String(product?.badge || '').trim(),
@@ -82,6 +85,11 @@ export function normalizeFeaturedProduct(product, index = 0) {
         shortDescription: String(product?.shortDescription || '').trim(),
         specs,
         slug: String(product?.slug || '').trim(),
+        href: String(product?.href || '').trim(),
+        brand: String(product?.brand || '').trim(),
+        categoryName: String(product?.categoryName || '').trim(),
+        priceUnit: String(product?.priceUnit || '').trim(),
+        packing: String(product?.packing || '').trim(),
     };
 }
 

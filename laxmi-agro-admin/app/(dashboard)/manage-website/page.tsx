@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Plus, Save, Trash2, Upload, Globe, ChevronDown, ChevronRight, BadgeCheck, RefreshCcw, Package, Headphones, ShieldCheck, CircleDollarSign, Truck, Wrench, Pencil } from "lucide-react"
 
 type WebsiteCategoryProduct = {
@@ -56,6 +57,10 @@ type AdminProductOption = {
     status?: string
     images?: AdminProductImage[]
 }
+type WebsiteCatalogBrand = { _id: string; name: string; slug: string; showOnWebsite?: boolean; isActive?: boolean; productCount?: number }
+type WebsiteCatalogCategory = { _id: string; name: string; slug: string; showOnWebsite?: boolean; isActive?: boolean; productCount?: number; company?: { _id: string; name: string; slug: string } }
+type WebsiteCatalogProduct = { _id: string; name: string; slug: string; sku?: string; showOnWebsite?: boolean; status?: string; stock?: number; company?: { _id: string; name: string; slug: string }; categoryRef?: { _id: string; name: string; slug: string } }
+type WebsiteCatalogType = "brand" | "category" | "product"
 
 const DEFAULT_HERO_CARD_IMAGES = ["/images/Banner/1.jpg", "/images/Banner/2.jpg", "/images/Banner/3.jpg", "/images/Banner/4.jpg", "/images/Banner/5.jpg"]
 const HERO_CARD_PAGE_LABELS = ["Home", "About Us", "Products", "Dealership", "Contact / Other Pages"]
@@ -247,7 +252,7 @@ const hasLabelVisual = (label: WebsiteLabel) => label.sourceType === "image" ? B
 export default function ManageWebsitePage() {
     const searchParams = useSearchParams()
     const requestedTab = searchParams.get("tab")
-    const initialTab = requestedTab === "labels" || requestedTab === "categories" || requestedTab === "featured" || requestedTab === "hero"
+    const initialTab = requestedTab === "labels" || requestedTab === "categories" || requestedTab === "featured" || requestedTab === "hero" || requestedTab === "catalog"
         ? requestedTab
         : "hero"
     const [isLoading, setIsLoading] = useState(true)
@@ -255,6 +260,7 @@ export default function ManageWebsitePage() {
     const [isSavingCategories, setIsSavingCategories] = useState(false)
     const [isSavingProducts, setIsSavingProducts] = useState(false)
     const [isSavingLabels, setIsSavingLabels] = useState(false)
+    const [isSavingVisibility, setIsSavingVisibility] = useState(false)
     const [uploading, setUploading] = useState<string | null>(null)
     const [heroCards, setHeroCards] = useState<WebsiteHeroCard[]>(defaultHeroCards())
     const [labels, setLabels] = useState<WebsiteLabel[]>([])
@@ -271,7 +277,11 @@ export default function ManageWebsitePage() {
     const [expandedProductKey, setExpandedProductKey] = useState<string | null>(null)
     const [draftLabel, setDraftLabel] = useState<WebsiteLabel>(createEmptyLabel())
     const [editingLabelIndex, setEditingLabelIndex] = useState<number | null>(null)
-    const [activeTab, setActiveTab] = useState<"hero" | "labels" | "categories" | "featured">(initialTab)
+    const [activeTab, setActiveTab] = useState<"hero" | "labels" | "categories" | "featured" | "catalog">(initialTab)
+    const [catalogBrands, setCatalogBrands] = useState<WebsiteCatalogBrand[]>([])
+    const [catalogCategories, setCatalogCategories] = useState<WebsiteCatalogCategory[]>([])
+    const [catalogProducts, setCatalogProducts] = useState<WebsiteCatalogProduct[]>([])
+    const [selectedCatalogItems, setSelectedCatalogItems] = useState<Record<WebsiteCatalogType, string[]>>({ brand: [], category: [], product: [] })
 
     const uploadUrl = useMemo(() => buildApiUrl("/upload/image?folder=website"), [])
     const websiteBaseUrl = useMemo(() => {
@@ -289,6 +299,7 @@ export default function ManageWebsitePage() {
     useEffect(() => {
         loadData()
         loadProductOptions()
+        loadCatalogVisibility()
     }, [])
 
     useEffect(() => {
@@ -335,6 +346,59 @@ export default function ManageWebsitePage() {
             toast.error("Failed to load website settings")
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    async function loadCatalogVisibility() {
+        try {
+            const [brandsRes, categoriesRes, productsRes] = await Promise.all([
+                apiFetch("/admin/website-catalog/brands"),
+                apiFetch("/admin/website-catalog/categories"),
+                apiFetch("/admin/website-catalog/products"),
+            ])
+            const [brandsData, categoriesData, productsData] = await Promise.all([
+                brandsRes.json(),
+                categoriesRes.json(),
+                productsRes.json(),
+            ])
+            if (!brandsRes.ok || !categoriesRes.ok || !productsRes.ok) throw new Error("Failed to load catalog visibility")
+            setCatalogBrands(Array.isArray(brandsData?.data) ? brandsData.data : [])
+            setCatalogCategories(Array.isArray(categoriesData?.data) ? categoriesData.data : [])
+            setCatalogProducts(Array.isArray(productsData?.data) ? productsData.data : [])
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to load catalog visibility")
+        }
+    }
+
+    function toggleCatalogSelection(type: WebsiteCatalogType, id: string) {
+        setSelectedCatalogItems((prev) => {
+            const current = prev[type] || []
+            const exists = current.includes(id)
+            return { ...prev, [type]: exists ? current.filter((item) => item !== id) : [...current, id] }
+        })
+    }
+
+    async function updateCatalogVisibility(type: WebsiteCatalogType, showOnWebsite: boolean) {
+        const ids = selectedCatalogItems[type] || []
+        if (ids.length === 0) {
+            toast.error("Select at least one item")
+            return
+        }
+        try {
+            setIsSavingVisibility(true)
+            const res = await apiFetch("/admin/website-catalog/visibility", {
+                method: "PATCH",
+                body: JSON.stringify({ type, ids, showOnWebsite }),
+            })
+            const data = await res.json().catch(() => null)
+            if (!res.ok) throw new Error(data?.message || "Failed to update visibility")
+            toast.success(showOnWebsite ? "Selected items are visible on website" : "Selected items hidden from website")
+            setSelectedCatalogItems((prev) => ({ ...prev, [type]: [] }))
+            await loadCatalogVisibility()
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to update visibility")
+        } finally {
+            setIsSavingVisibility(false)
         }
     }
 
@@ -805,6 +869,52 @@ export default function ManageWebsitePage() {
 
     if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-[#86efac]" /></div>
 
+    function renderVisibilityBadge(showOnWebsite?: boolean) {
+        return showOnWebsite === false
+            ? <span className="rounded-full bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">Hidden</span>
+            : <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">Visible</span>
+    }
+
+    function renderCatalogList<T extends { _id: string; name: string; showOnWebsite?: boolean }>(
+        type: WebsiteCatalogType,
+        title: string,
+        description: string,
+        items: T[],
+        meta: (item: T) => string,
+    ) {
+        const selected = selectedCatalogItems[type] || []
+        return (
+            <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
+                <CardHeader>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <CardTitle className="text-slate-900">{title}</CardTitle>
+                            <CardDescription className="mt-1 text-slate-500">{description}</CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || selected.length === 0} onClick={() => updateCatalogVisibility(type, true)}>Show</Button>
+                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || selected.length === 0} onClick={() => updateCatalogVisibility(type, false)}>Hide</Button>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {items.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No items found.</div>
+                    ) : items.map((item) => (
+                        <label key={item._id} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#d8dfca] bg-[#f8faf3] p-3">
+                            <Checkbox checked={selected.includes(item._id)} onCheckedChange={() => toggleCatalogSelection(type, item._id)} />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                                <p className="truncate text-xs text-slate-500">{meta(item)}</p>
+                            </div>
+                            {renderVisibilityBadge(item.showOnWebsite)}
+                        </label>
+                    ))}
+                </CardContent>
+            </Card>
+        )
+    }
+
     return (
         <div className="space-y-6">
             <div>
@@ -812,10 +922,11 @@ export default function ManageWebsitePage() {
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Each hero card controls one page banner. Admin can only update image.</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured")} className="w-full">
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 border border-[#dde3d0] bg-white/90 p-1 sm:grid-cols-4">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured" | "catalog")} className="w-full">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 border border-[#dde3d0] bg-white/90 p-1 sm:grid-cols-5">
                     <TabsTrigger value="hero" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Hero Section</TabsTrigger>
                     <TabsTrigger value="labels" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Labels</TabsTrigger>
+                    <TabsTrigger value="catalog" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Catalog Visibility</TabsTrigger>
                     <TabsTrigger value="categories" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Product Categories</TabsTrigger>
                     <TabsTrigger value="featured" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Popular Products</TabsTrigger>
                 </TabsList>
@@ -1085,6 +1196,41 @@ export default function ManageWebsitePage() {
                                 )}
                             </CardContent>
                         </Card>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="catalog" className="mt-4">
+                    <div className="mb-4 flex items-center justify-between rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-900">Website Catalog Visibility</h2>
+                            <p className="text-sm text-slate-500">Hide brands, categories, or products from the website only. The app and admin catalog remain unchanged.</p>
+                        </div>
+                        <Button type="button" variant="outline" onClick={loadCatalogVisibility} disabled={isSavingVisibility}>
+                            <RefreshCcw className="mr-2 h-4 w-4" />Refresh
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                        {renderCatalogList<WebsiteCatalogBrand>(
+                            "brand",
+                            "Brands",
+                            "Control which brands appear on the website.",
+                            catalogBrands,
+                            (item) => `${item.productCount || 0} products • ${item.slug}`,
+                        )}
+                        {renderCatalogList<WebsiteCatalogCategory>(
+                            "category",
+                            "Categories",
+                            "Control website category visibility per brand.",
+                            catalogCategories,
+                            (item) => `${item.company?.name || "No brand"} • ${item.productCount || 0} products`,
+                        )}
+                        {renderCatalogList<WebsiteCatalogProduct>(
+                            "product",
+                            "Products",
+                            "Control individual website product visibility.",
+                            catalogProducts,
+                            (item) => `${item.company?.name || "No brand"} • ${item.categoryRef?.name || item.sku || "No category"}`,
+                        )}
                     </div>
                 </TabsContent>
 
