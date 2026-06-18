@@ -421,7 +421,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'name': name,
               'nameHindi': item['nameHindi']?.toString() ?? '',
               'category': cat,
-              'brand': cat,
+              'brand': item['brand']?.toString() ?? '',
               'price': item['price'] ?? item['retailPrice'] ?? 0,
               'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
               'image': image,
@@ -777,7 +777,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
                   'name': item['name']?.toString() ?? '',
                   'nameHindi': item['nameHindi']?.toString() ?? '',
-                  'brand': item['category']?.toString() ?? '',
+                  'brand': item['brand']?.toString() ?? '',
                   'price': item['price'] ?? item['retailPrice'] ?? 0,
                   'originalPrice': item['mrp'] ?? 0,
                   'image': ApiConfig.normalizeMediaUrl(
@@ -5796,7 +5796,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         child: GestureDetector(
                           onTap: () {
                             final name = brand['name']?.toString() ?? '';
-                            context.push('/brand/$name');
+                            final id = brand['id']?.toString() ?? '';
+                            if (id.isEmpty) return;
+                            context.push(
+                              '/brand/${Uri.encodeComponent(id)}?name=${Uri.encodeQueryComponent(name)}',
+                            );
                           },
                           child: Container(
                             width: 168,

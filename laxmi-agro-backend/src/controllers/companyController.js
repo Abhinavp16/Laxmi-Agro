@@ -1,4 +1,4 @@
-const { Company, Product } = require('../models');
+const { Company, Product, Category } = require('../models');
 const { NotFoundError, ConflictError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
@@ -134,6 +134,14 @@ exports.deleteCompany = async (req, res, next) => {
       throw new ConflictError(
         `Cannot delete company. ${productCount} product(s) are linked to it.`,
         'COMPANY_HAS_PRODUCTS'
+      );
+    }
+
+    const categoryCount = await Category.countDocuments({ company: company._id });
+    if (categoryCount > 0) {
+      throw new ConflictError(
+        `Cannot delete brand. ${categoryCount} categor${categoryCount === 1 ? 'y is' : 'ies are'} linked to it.`,
+        'COMPANY_HAS_CATEGORIES'
       );
     }
 

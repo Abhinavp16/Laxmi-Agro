@@ -203,6 +203,7 @@ const adminValidation = {
     description: Joi.string().required(),
     shortDescription: Joi.string().max(300),
     category: Joi.string().required(),
+    categoryId: Joi.string().allow('', null),
     subCategory: Joi.string().allow('', null),
     tags: Joi.array().items(Joi.string()),
     // 3-Tier Pricing
@@ -246,6 +247,7 @@ const adminValidation = {
     description: Joi.string(),
     shortDescription: Joi.string().max(300),
     category: Joi.string(),
+    categoryId: Joi.string().allow('', null),
     subCategory: Joi.string().allow('', null),
     tags: Joi.array().items(Joi.string()),
     // 3-Tier Pricing

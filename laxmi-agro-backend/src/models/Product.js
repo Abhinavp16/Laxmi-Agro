@@ -131,6 +131,11 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Category is required'],
     index: true,
   },
+  categoryRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null,
+  },
   brand: {
     type: String,
     default: '',
@@ -314,6 +319,8 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ slug: 1 }, { unique: true });
 productSchema.index({ sku: 1 }, { unique: true });
 productSchema.index({ category: 1, status: 1 });
+productSchema.index({ company: 1, category: 1, status: 1 });
+productSchema.index({ categoryRef: 1, status: 1 });
 productSchema.index({ status: 1, isFeatured: -1 });
 productSchema.index({ retailPrice: 1 });
 productSchema.index({ wholesalePrice: 1 });

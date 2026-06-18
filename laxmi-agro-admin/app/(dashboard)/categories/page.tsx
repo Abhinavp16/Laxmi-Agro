@@ -39,6 +39,7 @@ interface Category {
     slug: string
     description?: string
     image?: { url?: string; publicId?: string }
+    company?: { _id: string; name: string; slug: string } | string | null
     parent?: { _id: string; name: string; nameHindi?: string; slug: string } | null
     order: number
     isActive: boolean
@@ -46,10 +47,17 @@ interface Category {
     createdAt: string
 }
 
+interface Company {
+    _id: string
+    name: string
+    slug: string
+}
+
 type UploadStatus = 'idle' | 'converting' | 'uploading' | 'done'
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([])
+    const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -73,6 +81,7 @@ export default function CategoriesPage() {
     const [imageUrl, setImageUrl] = useState("")
     const [imagePublicId, setImagePublicId] = useState("")
     const [parentId, setParentId] = useState<string>("none")
+    const [companyId, setCompanyId] = useState<string>("")
     const [order, setOrder] = useState("0")
     const [isActive, setIsActive] = useState(true)
     const [imageUploadMode, setImageUploadMode] = useState<'url' | 'file'>('url')
@@ -81,7 +90,31 @@ export default function CategoriesPage() {
 
     useEffect(() => {
         fetchCategories(1, true)
+        fetchCompanies()
     }, [])
+
+    async function fetchCompanies() {
+        try {
+            const res = await apiFetch('/companies?page=1&limit=500', { skipAuth: true })
+            if (res.ok) {
+                const data = await res.json()
+                setCompanies(Array.isArray(data.data) ? data.data : [])
+            }
+        } catch (error) {
+            console.error("Failed to fetch brands:", error)
+        }
+    }
+
+    function getCategoryCompanyId(category: Category) {
+        return typeof category.company === 'object' && category.company
+            ? category.company._id
+            : String(category.company || '')
+    }
+
+    function getCategoryCompanyName(category: Category) {
+        if (typeof category.company === 'object' && category.company) return category.company.name
+        return companies.find(company => company._id === category.company)?.name || 'Unassigned'
+    }
 
     async function fetchCategories(pageNum: number = 1, reset: boolean = false) {
         if (reset) {
@@ -145,6 +178,7 @@ export default function CategoriesPage() {
         setImageUrl("")
         setImagePublicId("")
         setParentId("none")
+        setCompanyId(companies[0]?._id || "")
         setOrder("0")
         setIsActive(true)
         setImageUploadMode('url')
@@ -159,6 +193,7 @@ export default function CategoriesPage() {
         setImageUrl(category.image?.url || "")
         setImagePublicId(category.image?.publicId || "")
         setParentId(category.parent?._id || "none")
+        setCompanyId(getCategoryCompanyId(category))
         setOrder(String(category.order || 0))
         setIsActive(category.isActive)
         setImageUploadMode('url')
@@ -228,11 +263,17 @@ export default function CategoriesPage() {
             return
         }
 
+        if (!companyId) {
+            toast.error("Brand is required")
+            return
+        }
+
         setIsSubmitting(true)
 
         try {
             const payload: any = {
                 name: name.trim(),
+                company: companyId,
                 nameHindi: nameHindi.trim() || undefined,
                 description: description.trim() || undefined,
                 image: imageUrl.trim() ? { url: imageUrl.trim(), publicId: imagePublicId || undefined } : undefined,
@@ -313,7 +354,8 @@ export default function CategoriesPage() {
 
     // Get parent categories for the dropdown (exclude the category being edited)
     const parentOptions = categories.filter(c => 
-        !editingCategory || c._id !== editingCategory._id
+        (!editingCategory || c._id !== editingCategory._id) &&
+        (!companyId || getCategoryCompanyId(c) === companyId)
     )
 
     return (
@@ -420,6 +462,7 @@ export default function CategoriesPage() {
                             <TableRow className="border-[#333] hover:bg-transparent">
                                 <TableHead className="text-gray-400">Image</TableHead>
                                 <TableHead className="text-gray-400">Name</TableHead>
+                                <TableHead className="text-gray-400">Brand</TableHead>
                                 <TableHead className="text-gray-400">Slug</TableHead>
                                 <TableHead className="text-gray-400">Parent</TableHead>
                                 <TableHead className="text-gray-400">Products</TableHead>
@@ -450,6 +493,9 @@ export default function CategoriesPage() {
                                                 <div className="text-xs font-normal text-gray-400">{category.nameHindi}</div>
                                             ) : null}
                                         </div>
+                                    </TableCell>
+                                    <TableCell className="text-gray-400">
+                                        {getCategoryCompanyName(category)}
                                     </TableCell>
                                     <TableCell className="text-gray-400">
                                         {category.slug}
@@ -543,6 +589,7 @@ export default function CategoriesPage() {
                                 <p className="text-[#86efac] text-sm mb-1">{category.nameHindi}</p>
                             ) : null}
                             <p className="text-gray-500 text-sm mb-2">/{category.slug}</p>
+                            <p className="text-[#86efac] text-xs font-medium mb-2">{getCategoryCompanyName(category)}</p>
                             <div className="flex items-center gap-3 text-xs">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
                                     category.isActive 
@@ -583,6 +630,33 @@ export default function CategoriesPage() {
                     </DialogHeader>
                     
                     <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Brand *
+                            </label>
+                            <Select
+                                value={companyId}
+                                onValueChange={(value) => {
+                                    setCompanyId(value)
+                                    setParentId("none")
+                                }}
+                            >
+                                <SelectTrigger className="bg-[#0D0D0D] border-[#333] text-white">
+                                    <SelectValue placeholder="Select brand" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#0D0D0D] border-[#333]">
+                                    {companies.map((company) => (
+                                        <SelectItem key={company._id} value={company._id}>
+                                            {company.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Category names are unique only inside the selected brand.
+                            </p>
+                        </div>
+
                         <div>
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Category Name *

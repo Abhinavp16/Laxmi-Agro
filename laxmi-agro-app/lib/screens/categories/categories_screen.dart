@@ -14,11 +14,15 @@ import '../../widgets/pending_price_change_notice.dart';
 class CategoriesScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSearchTap;
   final String? initialCategoryName;
+  final String? brandName;
+  final String? brandId;
 
   const CategoriesScreen({
     super.key,
     this.onSearchTap,
     this.initialCategoryName,
+    this.brandName,
+    this.brandId,
   });
 
   @override
@@ -69,6 +73,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   void didUpdateWidget(covariant CategoriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.brandId != oldWidget.brandId ||
+        widget.brandName != oldWidget.brandName) {
+      setState(() {
+        _categories = [];
+        _products = [];
+        _selectedCategoryIndex = 0;
+        _isLoadingCategories = true;
+      });
+      _fetchCategories();
+      return;
+    }
+
     if (widget.initialCategoryName != null &&
         widget.initialCategoryName != oldWidget.initialCategoryName) {
       final idx = _categories.indexWhere(
@@ -87,6 +103,87 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   Future<void> _fetchCategories() async {
     try {
+      final brandName = widget.brandName?.trim();
+      final brandId = widget.brandId?.trim();
+      if ((brandId != null && brandId.isNotEmpty) ||
+          (brandName != null && brandName.isNotEmpty)) {
+        final brandFilter = brandName?.isNotEmpty == true ? brandName! : brandId!;
+        final products = <Map<String, dynamic>>[];
+        var page = 1;
+        var hasNext = true;
+
+        while (hasNext) {
+          final response = await _dio.get(
+            '/products',
+            queryParameters: {
+              'brand': brandFilter,
+              'page': page,
+              'limit': 50,
+            },
+          );
+
+          if (response.statusCode != 200) break;
+
+          final List<dynamic> items = response.data['data'] ?? [];
+          products.addAll(items.whereType<Map>().map(Map<String, dynamic>.from));
+          final pagination = response.data['pagination'];
+          hasNext = pagination is Map && pagination['hasNext'] == true;
+          page += 1;
+        }
+
+        final categoryMetaByName = <String, Map<String, dynamic>>{};
+        try {
+          final metaResponse = await _dio.get(
+            '/categories',
+            queryParameters: {'active': true, 'limit': 200},
+          );
+          if (metaResponse.statusCode == 200 &&
+              metaResponse.data['success'] == true) {
+            final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
+            categoryMetaByName.addAll({
+              for (final item in metaItems) ..._categoryMetadataEntries(item),
+            });
+          }
+        } catch (e) {
+          debugPrint('Error fetching category metadata: $e');
+        }
+
+        final countsByCategory = <String, int>{};
+        final displayNameByKey = <String, String>{};
+        for (final product in products) {
+          final categoryName = product['category']?.toString().trim() ?? '';
+          if (categoryName.isEmpty) continue;
+          final key = _normalizedCategoryKey(categoryName);
+          countsByCategory[key] = (countsByCategory[key] ?? 0) + 1;
+          displayNameByKey.putIfAbsent(key, () => categoryName);
+        }
+
+        final cats = countsByCategory.entries.map((entry) {
+          final name = displayNameByKey[entry.key] ?? '';
+          final metadata = categoryMetaByName[entry.key] ?? {};
+          return <String, dynamic>{
+            'id': metadata['id']?.toString() ?? '',
+            'name': name,
+            'nameHindi': metadata['nameHindi']?.toString() ?? '',
+            'slug': metadata['slug']?.toString() ?? name,
+            'image': metadata['image']?.toString() ?? '',
+            'count': entry.value,
+          };
+        }).where((c) => (c['name'] as String).isNotEmpty).toList()
+          ..sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
+
+        setState(() {
+          _categories = cats;
+          _selectedCategoryIndex = 0;
+          _isLoadingCategories = false;
+        });
+
+        if (cats.isNotEmpty) {
+          _fetchProductsForCategory(cats[_selectedCategoryIndex]);
+        }
+        return;
+      }
+
       final response = await _dio.get('/products/categories');
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
@@ -214,7 +311,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           : categorySlug;
       final response = await _dio.get(
         '/products',
-        queryParameters: {'category': categoryFilter},
+        queryParameters: {
+          'category': categoryFilter,
+          if (widget.brandName?.trim().isNotEmpty == true)
+            'brand': widget.brandName!.trim(),
+        },
       );
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
@@ -364,7 +465,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 child: Row(
                   children: [
                     Text(
-                      t('Categories'),
+                      widget.brandName?.trim().isNotEmpty == true
+                          ? '${widget.brandName} Categories'
+                          : t('Categories'),
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,

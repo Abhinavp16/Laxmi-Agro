@@ -1,4 +1,4 @@
-const { Product, StockLog, WebsiteSettings } = require('../../models');
+const { Product, StockLog, WebsiteSettings, Category } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
 const { deleteImage } = require('../../config/cloudinary');
@@ -209,6 +209,37 @@ function prepareProductData(productData) {
   return prepared;
 }
 
+async function applyCategoryBrand(productData, currentProduct = null) {
+  const categoryId = String(productData.categoryId || productData.categoryRef || '').trim();
+  let category = null;
+
+  if (categoryId) {
+    category = await Category.findById(categoryId).select('name slug company');
+  } else if (productData.category && productData.company) {
+    category = await Category.findOne({
+      company: productData.company,
+      $or: [
+        { name: productData.category },
+        { slug: productData.category },
+      ],
+    }).select('name slug company');
+  }
+
+  delete productData.categoryId;
+
+  if (!category) {
+    if (currentProduct && !categoryId && productData.category === undefined) {
+      return productData;
+    }
+    throw new BadRequestError('Select a valid brand category', 'INVALID_CATEGORY');
+  }
+
+  productData.categoryRef = category._id;
+  productData.category = category.slug || category.name;
+  productData.company = category.company;
+  return productData;
+}
+
 function buildPriceChangeRow({
   product,
   scope,
@@ -350,7 +381,7 @@ exports.getProductById = async (req, res, next) => {
 
 exports.createProduct = async (req, res, next) => {
   try {
-    const productData = prepareProductData(req.body);
+    const productData = await applyCategoryBrand(prepareProductData(req.body));
 
     if (!productData.sku) {
       productData.sku = generateSKU(productData.category, productData.name);
@@ -374,7 +405,7 @@ exports.createProduct = async (req, res, next) => {
 
     const product = await Product.create(productData);
     if (product.category) {
-      await updateProductCount(product.category);
+      await updateProductCount(product.category, product.company);
     }
 
     res.status(201).json({
@@ -395,7 +426,8 @@ exports.updateProduct = async (req, res, next) => {
     }
 
     const previousCategory = product.category;
-    const updateData = prepareProductData(req.body);
+    const previousCompany = product.company;
+    const updateData = await applyCategoryBrand(prepareProductData(req.body), product);
     const priceChangeMode = req.body.priceChangeMode || PRICE_CHANGE_MODE_SCHEDULED;
     const scheduledAt = new Date();
     const effectiveAt = new Date(scheduledAt.getTime() + PRICE_CHANGE_DELAY_MS);
@@ -434,9 +466,12 @@ exports.updateProduct = async (req, res, next) => {
     }
 
     await Promise.all(
-      [...new Set([previousCategory, product.category].filter(Boolean))].map((categorySlug) =>
-        updateProductCount(categorySlug)
-      )
+      [
+        [previousCategory, previousCompany],
+        [product.category, product.company],
+      ]
+        .filter(([categorySlug]) => Boolean(categorySlug))
+        .map(([categorySlug, companyId]) => updateProductCount(categorySlug, companyId))
     );
 
     res.json({
@@ -460,7 +495,7 @@ exports.deleteProduct = async (req, res, next) => {
     product.status = 'archived';
     await product.save();
     if (previousCategory) {
-      await updateProductCount(previousCategory);
+      await updateProductCount(previousCategory, product.company);
     }
 
     res.json({

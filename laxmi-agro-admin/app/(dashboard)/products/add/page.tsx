@@ -78,6 +78,7 @@ interface Category {
   _id: string;
   name: string;
   slug: string;
+  company?: { _id: string; name: string; slug: string } | string | null;
 }
 
 interface Company {
@@ -206,15 +207,11 @@ export default function AddProductPage() {
   const [availableLabels, setAvailableLabels] = useState<ProductLabelOption[]>(
     [],
   );
-  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [isLoadingLabels, setIsLoadingLabels] = useState(true);
-  const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState("");
-  const [newCompanyLogo, setNewCompanyLogo] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+  const [newCategoryCompanyId, setNewCategoryCompanyId] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
@@ -266,11 +263,14 @@ export default function AddProductPage() {
       await fetchLabels();
 
       // Fetch companies and categories in parallel
-      await Promise.all([fetchCompanies(), fetchCategories()]);
+      const [, loadedCategories] = await Promise.all([
+        fetchCompanies(),
+        fetchCategories(),
+      ]);
 
       // Fetch product if in edit mode
       if (isEditMode && editId) {
-        await fetchProduct(editId);
+        await fetchProduct(editId, loadedCategories);
       }
 
       setIsInitialLoading(false);
@@ -278,7 +278,7 @@ export default function AddProductPage() {
     initData();
   }, [editId, isEditMode]);
 
-  async function fetchProduct(id: string) {
+  async function fetchProduct(id: string, loadedCategories: Category[] = categories) {
     setIsLoadingProduct(true);
     try {
       const res = await apiFetch(`/admin/products/${id}`);
@@ -289,6 +289,18 @@ export default function AddProductPage() {
 
       if (!product) throw new Error("Product data is empty");
 
+      const productCompanyId = product.company?._id || product.company || "";
+      const matchedCategory = loadedCategories.find((category) => {
+        const categoryCompanyId =
+          typeof category.company === "object" && category.company
+            ? category.company._id
+            : String(category.company || "");
+        return (
+          categoryCompanyId === productCompanyId &&
+          (category.slug === product.category || category.name === product.category)
+        );
+      });
+
       // Set form values
       form.reset({
         name: product.name || "",
@@ -296,7 +308,8 @@ export default function AddProductPage() {
         description: product.description || "",
         shortDescription: product.shortDescription || "",
         bulletPoints: [],
-        category: product.category || "",
+        category:
+          product.categoryRef || product.categoryId || matchedCategory?._id || "",
         tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
         sku: product.sku || "",
         mrp:
@@ -357,7 +370,7 @@ export default function AddProductPage() {
     }
   }
 
-  async function fetchCategories() {
+  async function fetchCategories(): Promise<Category[]> {
     try {
       const response = await apiFetch("/categories?page=1&limit=500", {
         skipAuth: true,
@@ -366,12 +379,14 @@ export default function AddProductPage() {
         const data = await response.json();
         const nextCategories = Array.isArray(data.data) ? data.data : [];
         setCategories(nextCategories);
+        return nextCategories;
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
     } finally {
       setIsLoadingCategories(false);
     }
+    return [];
   }
 
   async function fetchCompanies() {
@@ -383,11 +398,10 @@ export default function AddProductPage() {
         const data = await response.json();
         const nextCompanies = Array.isArray(data.data) ? data.data : [];
         setCompanies(nextCompanies);
+        setNewCategoryCompanyId((current) => current || nextCompanies[0]?._id || "");
       }
     } catch (error) {
       console.error("Failed to fetch companies:", error);
-    } finally {
-      setIsLoadingCompanies(false);
     }
   }
 
@@ -560,50 +574,14 @@ export default function AddProductPage() {
     setBulletPoints(bulletPoints.filter((_, i) => i !== index));
   };
 
-  async function createNewCompany() {
-    if (!newCompanyName.trim()) {
-      toast.error("Company name is required");
-      return;
-    }
-
-    setIsCreatingCompany(true);
-    try {
-      const response = await apiFetch("/companies", {
-        method: "POST",
-        body: JSON.stringify({
-          name: newCompanyName.trim(),
-          logo: newCompanyLogo.trim()
-            ? { url: newCompanyLogo.trim() }
-            : undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create company");
-      }
-
-      const data = await response.json();
-      const newCompany = data.data;
-
-      setCompanies((prev) =>
-        [...prev, newCompany].sort((a, b) => a.name.localeCompare(b.name)),
-      );
-      form.setValue("company", newCompany._id);
-      setNewCompanyName("");
-      setNewCompanyLogo("");
-      setShowNewCompanyDialog(false);
-      toast.success(`Company "${newCompany.name}" created successfully`);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create company");
-    } finally {
-      setIsCreatingCompany(false);
-    }
-  }
-
   async function createNewCategory() {
     if (!newCategoryName.trim()) {
       toast.error("Category name is required");
+      return;
+    }
+
+    if (!newCategoryCompanyId) {
+      toast.error("Select a brand for this category");
       return;
     }
 
@@ -611,7 +589,10 @@ export default function AddProductPage() {
     try {
       const response = await apiFetch("/categories", {
         method: "POST",
-        body: JSON.stringify({ name: newCategoryName.trim() }),
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          company: newCategoryCompanyId,
+        }),
       });
 
       if (!response.ok) {
@@ -625,7 +606,8 @@ export default function AddProductPage() {
       setCategories((prev) =>
         [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      form.setValue("category", newCategory.slug);
+      form.setValue("category", newCategory._id);
+      form.setValue("company", newCategoryCompanyId);
       setNewCategoryName("");
       setShowNewCategoryDialog(false);
       toast.success(`Category "${newCategory.name}" created successfully`);
@@ -634,6 +616,13 @@ export default function AddProductPage() {
     } finally {
       setIsCreatingCategory(false);
     }
+  }
+
+  function getCategoryCompanyName(category: Category) {
+    if (typeof category.company === "object" && category.company) {
+      return category.company.name;
+    }
+    return companies.find((company) => company._id === category.company)?.name || "Brand not set";
   }
 
   async function onSubmit(values: z.infer<typeof productSchema>) {
@@ -677,6 +666,20 @@ export default function AddProductPage() {
         return;
       }
 
+      const selectedCategory = categories.find(
+        (category) => category._id === values.category,
+      );
+      if (!selectedCategory) {
+        toast.error("Select a valid category.");
+        setIsLoading(false);
+        return;
+      }
+
+      const selectedCategoryCompany =
+        typeof selectedCategory.company === "object" && selectedCategory.company
+          ? selectedCategory.company._id
+          : String(selectedCategory.company || "");
+
       // Construct payload matching backend expectation
       const payload = {
         name: values.name.trim(),
@@ -685,7 +688,8 @@ export default function AddProductPage() {
         shortDescription:
           values.shortDescription?.trim() ||
           values.description.substring(0, 200),
-        category: values.category,
+        category: selectedCategory.slug || selectedCategory.name,
+        categoryId: selectedCategory._id,
         subCategory: null,
         tags: normalizedTags,
         sku: values.sku.trim() || undefined,
@@ -706,8 +710,7 @@ export default function AddProductPage() {
         negotiationEnabled: values.negotiationEnabled,
         isFeatured: values.isFeatured,
         isHot: values.isHot,
-        company:
-          values.company && values.company !== "none" ? values.company : null,
+        company: selectedCategoryCompany || null,
         labelIds: normalizedLabelIds,
         images: normalizedImages,
         specifications: validBulletPoints.map((point, index) => ({
@@ -919,7 +922,7 @@ export default function AddProductPage() {
                                       {field.value
                                         ? categories.find(
                                             (category) =>
-                                              category.slug === field.value,
+                                              category._id === field.value,
                                           )?.name || field.value
                                         : isLoadingCategories
                                           ? "Loading categories..."
@@ -945,10 +948,15 @@ export default function AddProductPage() {
                                     {categories.map((category) => (
                                       <CommandItem
                                         key={category._id}
-                                        value={`${category.name} ${category.slug}`}
-                                        onSelect={() =>
-                                          field.onChange(category.slug)
-                                        }
+                                        value={`${category.name} ${category.slug} ${getCategoryCompanyName(category)}`}
+                                        onSelect={() => {
+                                          field.onChange(category._id);
+                                          const companyId =
+                                            typeof category.company === "object" && category.company
+                                              ? category.company._id
+                                              : String(category.company || "");
+                                          form.setValue("company", companyId || "none");
+                                        }}
                                         className="flex items-center justify-between rounded-none px-3 py-2 text-white aria-selected:bg-[#1A1A1A]"
                                       >
                                         <div className="min-w-0">
@@ -956,11 +964,11 @@ export default function AddProductPage() {
                                             {category.name}
                                           </p>
                                           <p className="truncate text-xs text-[#7d7d7d]">
-                                            {category.slug}
+                                            {getCategoryCompanyName(category)} / {category.slug}
                                           </p>
                                         </div>
                                         <Check
-                                          className={`h-4 w-4 ${field.value === category.slug ? "text-[#86efac]" : "text-transparent"}`}
+                                          className={`h-4 w-4 ${field.value === category._id ? "text-[#86efac]" : "text-transparent"}`}
                                         />
                                       </CommandItem>
                                     ))}
@@ -991,7 +999,27 @@ export default function AddProductPage() {
                                     Create a new category for your products.
                                   </DialogDescription>
                                 </DialogHeader>
-                                <div className="py-4">
+                                <div className="space-y-4 py-4">
+                                  <div>
+                                    <label className="text-sm font-medium text-white mb-2 block">
+                                      Brand *
+                                    </label>
+                                    <Select
+                                      value={newCategoryCompanyId}
+                                      onValueChange={setNewCategoryCompanyId}
+                                    >
+                                      <SelectTrigger className="bg-[#0D0D0D] border-[#333] text-white">
+                                        <SelectValue placeholder="Select brand" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-[#0D0D0D] border-[#333]">
+                                        {companies.map((company) => (
+                                          <SelectItem key={company._id} value={company._id}>
+                                            {company.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                   <Input
                                     placeholder="Category name (e.g., Machinery, Seeds)"
                                     value={newCategoryName}
@@ -1027,8 +1055,7 @@ export default function AddProductPage() {
                             </Dialog>
                           </div>
                           <FormDescription className="text-gray-500">
-                            Search by category name and pick from all created
-                            categories.
+                            Pick the brand-specific category. Brand is assigned from the selected category.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -1809,194 +1836,22 @@ export default function AddProductPage() {
                     Company & Visibility
                   </h3>
 
-                  {/* Company Dropdown */}
-                  <FormField
-                    control={form.control}
-                    name="company"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Company / Brand
-                        </FormLabel>
-                        <div className="flex gap-2">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="flex-1 justify-between border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
-                                >
-                                  <span className="truncate">
-                                    {field.value && field.value !== "none"
-                                      ? companies.find(
-                                          (company) =>
-                                            company._id === field.value,
-                                        )?.name || field.value
-                                      : isLoadingCompanies
-                                        ? "Loading brands..."
-                                        : "Select brand"}
-                                  </span>
-                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-[#8d8d8d]" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="start"
-                              className="w-[360px] border-[#333] bg-[#111] p-0 text-white"
-                            >
-                              <Command className="bg-[#111] text-white">
-                                <CommandInput
-                                  placeholder="Search brands..."
-                                  className="text-white placeholder:text-[#7d7d7d]"
-                                />
-                                <CommandList>
-                                  <CommandEmpty className="text-[#8d8d8d]">
-                                    No brand found.
-                                  </CommandEmpty>
-                                  <CommandItem
-                                    value="No Company"
-                                    onSelect={() => field.onChange("none")}
-                                    className="flex items-center justify-between rounded-none px-3 py-2 text-white aria-selected:bg-[#1A1A1A]"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium">
-                                        No Company
-                                      </p>
-                                      <p className="truncate text-xs text-[#7d7d7d]">
-                                        Use product without a linked brand
-                                      </p>
-                                    </div>
-                                    <Check
-                                      className={`h-4 w-4 ${!field.value || field.value === "none" ? "text-[#86efac]" : "text-transparent"}`}
-                                    />
-                                  </CommandItem>
-                                  {companies.map((company) => (
-                                    <CommandItem
-                                      key={company._id}
-                                      value={company.name}
-                                      onSelect={() =>
-                                        field.onChange(company._id)
-                                      }
-                                      className="flex items-center justify-between rounded-none px-3 py-2 text-white aria-selected:bg-[#1A1A1A]"
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium">
-                                          {company.name}
-                                        </p>
-                                      </div>
-                                      <Check
-                                        className={`h-4 w-4 ${field.value === company._id ? "text-[#86efac]" : "text-transparent"}`}
-                                      />
-                                    </CommandItem>
-                                  ))}
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <Dialog
-                            open={showNewCompanyDialog}
-                            onOpenChange={setShowNewCompanyDialog}
-                          >
-                            <DialogTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="border-[#333] bg-[#1A1A1A] text-white hover:bg-[#333]"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="bg-[#161616] border-[#333]">
-                              <DialogHeader>
-                                <DialogTitle className="text-white">
-                                  Add New Company
-                                </DialogTitle>
-                                <DialogDescription className="text-gray-400">
-                                  Create a new company/brand to associate with
-                                  products.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div>
-                                  <label className="text-sm font-medium text-white mb-2 block">
-                                    Brand Name *
-                                  </label>
-                                  <Input
-                                    placeholder="Company name (e.g., Mahindra, Tata)"
-                                    value={newCompanyName}
-                                    onChange={(e) =>
-                                      setNewCompanyName(e.target.value)
-                                    }
-                                    className="bg-[#0D0D0D] border-[#333] text-white"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-white mb-2 block">
-                                    Logo URL
-                                  </label>
-                                  <div className="flex gap-2">
-                                    <Input
-                                      placeholder="https://example.com/logo.png"
-                                      value={newCompanyLogo}
-                                      onChange={(e) =>
-                                        setNewCompanyLogo(e.target.value)
-                                      }
-                                      className="bg-[#0D0D0D] border-[#333] text-white flex-1"
-                                    />
-                                    {newCompanyLogo && (
-                                      <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] border border-[#333] overflow-hidden shrink-0">
-                                        <img
-                                          src={newCompanyLogo}
-                                          alt="Preview"
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            (
-                                              e.target as HTMLImageElement
-                                            ).style.display = "none";
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Optional: Enter a direct link to the brand
-                                    logo
-                                  </p>
-                                </div>
-                              </div>
-                              <DialogFooter>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => setShowNewCompanyDialog(false)}
-                                  className="border-[#333] text-gray-400 hover:text-white"
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  type="button"
-                                  onClick={createNewCompany}
-                                  disabled={isCreatingCompany}
-                                >
-                                  {isCreatingCompany && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Create Company
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                        <FormDescription className="text-gray-500">
-                          Search and select from all created brands.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-white">
+                      <Building2 className="h-4 w-4 text-[#86efac]" />
+                      Brand is assigned by category
+                    </div>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {(() => {
+                        const selectedCategory = categories.find(
+                          (category) => category._id === form.watch("category"),
+                        );
+                        return selectedCategory
+                          ? getCategoryCompanyName(selectedCategory)
+                          : "Select a category to set the brand automatically.";
+                      })()}
+                    </p>
+                  </div>
 
                   <FormField
                     control={form.control}

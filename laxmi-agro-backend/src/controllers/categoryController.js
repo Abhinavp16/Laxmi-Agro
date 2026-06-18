@@ -1,5 +1,6 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
+const Company = require('../models/Company');
 const { transliterateToHindi } = require('../services/hindiTransliterationService');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
@@ -9,25 +10,53 @@ const {
   filterCategoriesForUser,
 } = require('../utils/categoryAccess');
 
-async function getProductCountMap(categorySlugs = [], user = null) {
-  if (categorySlugs.length === 0) return new Map();
+async function getProductCountMap(categories = [], user = null) {
+  if (categories.length === 0) return new Map();
+
+  const categoryNames = [...new Set(categories.flatMap((category) => [
+    category.name,
+    category.slug,
+  ]).filter(Boolean))];
 
   const match = applyCategoryAccessToProductQuery({
-    category: { $in: categorySlugs },
+    category: { $in: categoryNames },
     status: { $ne: PRODUCT_STATUS.ARCHIVED },
   }, user);
+
+  const companyIds = categories
+    .map((category) => category.company?._id || category.company)
+    .filter(Boolean);
+  if (companyIds.length > 0) {
+    match.company = { $in: companyIds };
+  }
 
   const counts = await Product.aggregate([
     { $match: match },
     {
       $group: {
-        _id: '$category',
+        _id: { company: '$company', category: '$category' },
         count: { $sum: 1 },
       },
     },
   ]);
 
-  return new Map(counts.map((item) => [item._id, item.count]));
+  const countsByKey = new Map();
+  counts.forEach((item) => {
+    countsByKey.set(`${String(item._id.company || '')}:${item._id.category}`, item.count);
+  });
+  return countsByKey;
+}
+
+async function resolveCompanyId(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  const query = raw.match(/^[0-9a-fA-F]{24}$/)
+    ? { _id: raw }
+    : { $or: [{ slug: raw }, { name: { $regex: new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }] };
+
+  const company = await Company.findOne(query).select('_id');
+  return company?._id || null;
 }
 
 // @desc    Get all categories
@@ -35,7 +64,7 @@ async function getProductCountMap(categorySlugs = [], user = null) {
 // @access  Public
 exports.getCategories = async (req, res, next) => {
   try {
-    const { parent, active, search } = req.query;
+    const { parent, active, search, company, brand } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
 
     const query = {};
@@ -57,9 +86,21 @@ exports.getCategories = async (req, res, next) => {
       query.name = { $regex: search, $options: 'i' };
     }
 
+    const companyFilter = await resolveCompanyId(company || brand);
+    if (company || brand) {
+      if (!companyFilter) {
+        return res.json({
+          success: true,
+          ...formatPaginationResponse([], 0, page, limit),
+        });
+      }
+      query.company = companyFilter;
+    }
+
     const [categories, total] = await Promise.all([
       Category.find(query)
         .populate('parent', 'name nameHindi slug')
+        .populate('company', 'name slug logo')
         .sort({ order: 1, name: 1 })
         .skip(skip)
         .limit(limit)
@@ -67,16 +108,15 @@ exports.getCategories = async (req, res, next) => {
       Category.countDocuments(query),
     ]);
 
-    const categoryKeys = categories.flatMap((category) => [
-      category.name,
-      category.slug,
-    ]).filter(Boolean);
     const visibleCategories = filterCategoriesForUser(categories, req.user);
-    const countsByKey = await getProductCountMap(categoryKeys, req.user);
+    const countsByKey = await getProductCountMap(visibleCategories, req.user);
     const categoriesWithCounts = visibleCategories.map((category) => ({
       ...category,
       image: normalizeImageObject(category.image, req),
-      productCount: countsByKey.get(category.name) ?? countsByKey.get(category.slug) ?? 0,
+      productCount:
+        countsByKey.get(`${String(category.company?._id || category.company || '')}:${category.name}`) ??
+        countsByKey.get(`${String(category.company?._id || category.company || '')}:${category.slug}`) ??
+        0,
     }));
 
     res.json({
@@ -95,6 +135,7 @@ exports.getCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id)
       .populate('parent', 'name nameHindi slug')
+      .populate('company', 'name slug logo')
       .populate('subcategories');
 
     if (!category) {
@@ -108,6 +149,7 @@ exports.getCategory = async (req, res, next) => {
     categoryData.image = normalizeImageObject(categoryData.image, req);
     categoryData.productCount = await Product.countDocuments({
       category: { $in: [category.name, category.slug].filter(Boolean) },
+      company: category.company,
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
     });
 
@@ -125,17 +167,26 @@ exports.getCategory = async (req, res, next) => {
 // @access  Private/Admin
 exports.createCategory = async (req, res, next) => {
   try {
-    const { name, nameHindi, description, image, parent, order, isActive } = req.body;
+    const { name, nameHindi, description, image, parent, order, isActive, company } = req.body;
 
-    // Check if category with same name exists
+    const companyId = await resolveCompanyId(company);
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Brand is required for category',
+      });
+    }
+
+    // Check if category with same name exists inside this brand.
     const existingCategory = await Category.findOne({ 
-      name: { $regex: new RegExp(`^${name}$`, 'i') } 
+      company: companyId,
+      name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });
     
     if (existingCategory) {
       return res.status(400).json({
         success: false,
-        message: 'Category with this name already exists',
+        message: 'Category with this name already exists for this brand',
       });
     }
 
@@ -152,6 +203,7 @@ exports.createCategory = async (req, res, next) => {
 
     const category = await Category.create({
       name,
+      company: companyId,
       nameHindi: typeof nameHindi === 'string' ? nameHindi.trim() : '',
       description,
       image,
@@ -174,7 +226,7 @@ exports.createCategory = async (req, res, next) => {
 // @access  Private/Admin
 exports.updateCategory = async (req, res, next) => {
   try {
-    const { name, nameHindi, description, image, parent, order, isActive } = req.body;
+    const { name, nameHindi, description, image, parent, order, isActive, company } = req.body;
 
     let category = await Category.findById(req.params.id);
 
@@ -185,17 +237,29 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
 
-    // Check for duplicate name (excluding current category)
-    if (name && name !== category.name) {
+    const nextCompanyId = company !== undefined
+      ? await resolveCompanyId(company)
+      : category.company;
+
+    if (!nextCompanyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Brand is required for category',
+      });
+    }
+
+    // Check for duplicate name in same brand (excluding current category)
+    if ((name && name !== category.name) || String(nextCompanyId) !== String(category.company)) {
       const existingCategory = await Category.findOne({ 
-        name: { $regex: new RegExp(`^${name}$`, 'i') },
+        company: nextCompanyId,
+        name: { $regex: new RegExp(`^${(name || category.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         _id: { $ne: req.params.id }
       });
       
       if (existingCategory) {
         return res.status(400).json({
           success: false,
-          message: 'Category with this name already exists',
+          message: 'Category with this name already exists for this brand',
         });
       }
     }
@@ -223,6 +287,7 @@ exports.updateCategory = async (req, res, next) => {
       req.params.id,
       {
         name: name || category.name,
+        company: nextCompanyId,
         nameHindi: nameHindi !== undefined ? String(nameHindi || '').trim() : category.nameHindi,
         description: description !== undefined ? description : category.description,
         image: image !== undefined ? image : category.image,
@@ -231,7 +296,7 @@ exports.updateCategory = async (req, res, next) => {
         isActive: isActive !== undefined ? isActive : category.isActive,
       },
       { new: true, runValidators: true }
-    ).populate('parent', 'name nameHindi slug');
+    ).populate('parent', 'name nameHindi slug').populate('company', 'name slug logo');
 
     res.json({
       success: true,
@@ -268,6 +333,7 @@ exports.deleteCategory = async (req, res, next) => {
     // Check if category has products
     const products = await Product.countDocuments({
       category: { $in: [category.name, category.slug].filter(Boolean) },
+      company: category.company,
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
     });
     if (products > 0) {
@@ -290,15 +356,19 @@ exports.deleteCategory = async (req, res, next) => {
 
 // @desc    Update product count for category
 // @route   Internal use
-exports.updateProductCount = async (categorySlug) => {
+exports.updateProductCount = async (categorySlug, companyId = null) => {
   try {
-    const count = await Product.countDocuments({ 
+    const query = { 
       category: categorySlug,
       status: { $ne: PRODUCT_STATUS.ARCHIVED }
-    });
+    };
+    if (companyId) query.company = companyId;
+    const count = await Product.countDocuments(query);
     
+    const categoryQuery = { slug: categorySlug };
+    if (companyId) categoryQuery.company = companyId;
     await Category.findOneAndUpdate(
-      { slug: categorySlug },
+      categoryQuery,
       { productCount: count }
     );
   } catch (error) {

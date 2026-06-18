@@ -9,6 +9,7 @@ import '../../screens/auth/apple_signup_screen.dart';
 import '../../screens/auth/auth_screen.dart';
 import '../../screens/home/marketplace_home_screen.dart';
 import '../../screens/home/featured_products_screen.dart';
+import '../../screens/categories/categories_screen.dart';
 import '../../screens/product/product_detail_screen.dart';
 import '../../screens/product/product_negotiation_screen.dart';
 import '../../screens/product/power_tiller_detail_screen.dart';
@@ -120,9 +121,10 @@ final appRouter = GoRouter(
           const FeaturedProductsScreen(isHotDeals: true),
     ),
     GoRoute(
-      path: '/brand/:name',
-      builder: (context, state) => FeaturedProductsScreen(
-        brandName: state.pathParameters['name'],
+      path: '/brand/:id',
+      builder: (context, state) => CategoriesScreen(
+        brandId: state.pathParameters['id'],
+        brandName: state.uri.queryParameters['name'] ?? state.pathParameters['id'],
       ),
     ),
     GoRoute(

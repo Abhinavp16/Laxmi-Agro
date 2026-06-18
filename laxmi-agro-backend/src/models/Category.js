@@ -6,7 +6,6 @@ const categorySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Category name is required'],
     trim: true,
-    unique: true,
     maxlength: [100, 'Name cannot exceed 100 characters'],
   },
   nameHindi: {
@@ -17,8 +16,13 @@ const categorySchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    unique: true,
     lowercase: true,
+  },
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: [true, 'Brand is required'],
+    index: true,
   },
   description: {
     type: String,
@@ -50,7 +54,8 @@ const categorySchema = new mongoose.Schema({
   timestamps: true,
 });
 
-categorySchema.index({ slug: 1 }, { unique: true });
+categorySchema.index({ company: 1, name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
+categorySchema.index({ company: 1, slug: 1 }, { unique: true });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1, order: 1 });
 

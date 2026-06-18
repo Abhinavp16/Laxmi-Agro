@@ -8,6 +8,7 @@ const Analytics = require('./Analytics');
 const Settings = require('./Settings');
 const RefreshToken = require('./RefreshToken');
 const Company = require('./Company');
+const Category = require('./Category');
 const StockLog = require('./StockLog');
 const DeviceToken = require('./DeviceToken');
 const Notification = require('./Notification');
@@ -29,6 +30,7 @@ module.exports = {
   Settings,
   RefreshToken,
   Company,
+  Category,
   StockLog,
   DeviceToken,
   Notification,
