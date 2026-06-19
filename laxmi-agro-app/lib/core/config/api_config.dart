@@ -3,7 +3,7 @@
 library;
 
 class ApiConfig {
-  static const String hostedUrl = 'https://laxmi-agro.vercel.app/api/v1';
+  static const String hostedUrl = 'https://api.laxmiagroenterprises.com/api/v1';
 
   // Override at build/run time:
   // flutter run --dart-define=API_BASE_URL=http://192.168.1.8:5000/api/v1
