@@ -127,7 +127,7 @@ export default function CategoriesPage() {
         try {
             const params = new URLSearchParams()
             params.append('page', pageNum.toString())
-            params.append('limit', '20')
+            params.append('limit', '200')
             if (searchQuery.trim()) {
                 params.append('search', searchQuery.trim())
             }

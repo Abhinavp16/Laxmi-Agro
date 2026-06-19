@@ -2182,14 +2182,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildPartnershipStrip() {
-    final items = <Map<String, dynamic>>[
-      {'image': 'assets/images/laxmi-agro-logo.png', 'label': 'Laxmi Agro'},
-      {'icon': Icons.eco_outlined, 'label': 'EcoTech'},
-      {'icon': Icons.bolt_rounded, 'label': 'Kargill'},
-      {'icon': Icons.layers_outlined, 'label': 'AgriPlus'},
-      {'icon': Icons.water_drop_outlined, 'label': 'V-Flow'},
-      {'icon': Icons.build_outlined, 'label': 'HeavyDuty'},
+    const displayBrands = [
+      'Aqua Golden',
+      'Green Valley',
+      'Mayur Pankh',
+      'Shivnath',
+      'Harit',
     ];
+    final brandByName = {
+      for (final brand in _brands)
+        (brand['name']?.toString().trim().toLowerCase() ?? ''): brand,
+    };
+    final items = displayBrands.map((name) {
+      final brand = brandByName[name.toLowerCase()];
+      return <String, dynamic>{
+        'label': name,
+        'imageUrl': brand?['logo']?.toString() ?? '',
+      };
+    }).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -8540,6 +8550,7 @@ class _PartnershipMarqueeState extends State<_PartnershipMarquee> {
 
   Widget _buildPill(Map<String, dynamic> item) {
     final imagePath = item['image'] as String?;
+    final imageUrl = item['imageUrl'] as String?;
     final icon = item['icon'] as IconData?;
     final label = (item['label'] ?? '') as String;
 
@@ -8554,7 +8565,19 @@ class _PartnershipMarqueeState extends State<_PartnershipMarquee> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (imagePath != null)
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 20,
+                height: 20,
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) =>
+                    Icon(Icons.handshake_outlined, size: 16, color: _blue),
+              ),
+            )
+          else if (imagePath != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: Image.asset(
@@ -8562,7 +8585,7 @@ class _PartnershipMarqueeState extends State<_PartnershipMarquee> {
                 width: 20,
                 height: 20,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (context, error, stackTrace) =>
                     Icon(Icons.handshake_outlined, size: 16, color: _blue),
               ),
             )
