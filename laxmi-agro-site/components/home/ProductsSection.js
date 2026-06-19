@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
 import FeaturedProductCard from '@/components/products/FeaturedProductCard';
 import { normalizeFeaturedProduct } from '@/lib/featured-products';
@@ -50,29 +51,29 @@ export default function ProductsSection({
     section = defaultFeaturedSection,
 }) {
     return (
-        <section id="products" className="bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
+        <section id="products" className="bg-[#dfe8d3] px-4 pb-14 pt-8 sm:px-6 sm:py-24 lg:px-7">
             <div className="mx-auto max-w-7xl">
-                <div className="mb-10 grid grid-cols-1 gap-6 lg:mb-12 lg:grid-cols-[0.72fr_1fr] lg:items-end">
+                <div className="mb-7 text-center sm:mb-12 lg:text-left">
                     <ScrollReveal>
-                        <div className="home-kicker">{section.eyebrow}</div>
-                        <h3 className="mt-5 max-w-[18ch] text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.024em] text-text-primary sm:text-5xl lg:text-6xl">
+                        <h3 className="mx-auto max-w-[15ch] text-[2.15rem] font-semibold leading-[1.05] tracking-[-0.024em] text-text-primary sm:max-w-[18ch] sm:text-5xl lg:mx-0 lg:text-6xl">
                             {section.title}
                         </h3>
-                    </ScrollReveal>
-                    <ScrollReveal className="lg:justify-self-end">
-                        <p className="max-w-lg text-base leading-7 text-text-secondary">
-                            {section.sideText}
-                        </p>
                     </ScrollReveal>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5 lg:gap-4">
                     {products.map((product, i) => (
-                        <ScrollReveal key={i} delay={i * 50}>
+                        <ScrollReveal key={i} delay={i * 50} className={i >= 4 ? 'hidden sm:block' : ''}>
                             <FeaturedProductCard product={normalizeFeaturedProduct(product, i)} />
                         </ScrollReveal>
                     ))}
                 </div>
+
+                <ScrollReveal className="mt-10 flex justify-center">
+                    <Link href="/products/all" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#0b3b1f]/15 bg-white/70 px-7 text-sm font-bold text-brand-primary shadow-sm transition hover:-translate-y-0.5 hover:bg-[#062712] hover:text-white">
+                        View All Products
+                    </Link>
+                </ScrollReveal>
             </div>
         </section>
     );

@@ -4,6 +4,10 @@ const { normalizeMediaUrl } = require('../utils/mediaUrls');
 
 const GENERAL_PRODUCTS_NAME = 'GENERAL PRODUCTS';
 
+function escapeRegex(value = '') {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function productImage(product, req) {
   const images = Array.isArray(product.images) ? [...product.images] : [];
   images.sort((a, b) => (a?.order || 0) - (b?.order || 0));
@@ -287,6 +291,41 @@ exports.getGeneralCategoryProducts = async (req, res, next) => {
     }).populate('company', 'name slug').populate('categoryRef', 'name slug').sort({ createdAt: -1 }).lean();
 
     res.json({ success: true, data: { category: mapCategory(category), products: products.map((product) => mapProduct(product, req)) } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getProducts = async (req, res, next) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const searchRegex = search ? new RegExp(escapeRegex(search), 'i') : null;
+
+    const products = await Product.find(visibleProductQuery)
+      .populate('company', 'name slug isActive showOnWebsite')
+      .populate('categoryRef', 'name slug isActive showOnWebsite')
+      .sort({ name: 1 })
+      .lean();
+
+    let visibleProducts = products.filter((product) => (
+      product.company?.isActive !== false
+      && product.company?.showOnWebsite !== false
+      && product.categoryRef?.isActive !== false
+      && product.categoryRef?.showOnWebsite !== false
+    ));
+
+    if (searchRegex) {
+      visibleProducts = visibleProducts.filter((product) => [
+        product.name,
+        product.sku,
+        product.shortDescription,
+        product.description,
+        product.company?.name,
+        product.categoryRef?.name,
+      ].some((value) => searchRegex.test(String(value || ''))));
+    }
+
+    res.json({ success: true, data: visibleProducts.map((product) => mapProduct(product, req)) });
   } catch (error) {
     next(error);
   }

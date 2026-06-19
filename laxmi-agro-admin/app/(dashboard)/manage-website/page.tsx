@@ -927,8 +927,8 @@ export default function ManageWebsitePage() {
                     <TabsTrigger value="hero" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Hero Section</TabsTrigger>
                     <TabsTrigger value="labels" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Labels</TabsTrigger>
                     <TabsTrigger value="catalog" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Catalog Visibility</TabsTrigger>
-                    <TabsTrigger value="categories" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Product Categories</TabsTrigger>
-                    <TabsTrigger value="featured" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Popular Products</TabsTrigger>
+                    <TabsTrigger value="categories" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Category Section Text</TabsTrigger>
+                    <TabsTrigger value="featured" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Featured Section Text</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="hero" className="mt-4">
@@ -1214,7 +1214,7 @@ export default function ManageWebsitePage() {
                             "brand",
                             "Brands",
                             "Control which brands appear on the website.",
-                            catalogBrands,
+                            catalogBrands.filter((item) => item.name !== "GENERAL PRODUCTS"),
                             (item) => `${item.productCount || 0} products • ${item.slug}`,
                         )}
                         {renderCatalogList<WebsiteCatalogCategory>(
@@ -1235,430 +1235,46 @@ export default function ManageWebsitePage() {
                 </TabsContent>
 
                 <TabsContent value="categories" className="mt-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-start">
                         <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
                             <CardHeader>
-                                <CardTitle className="text-slate-900">The Heart of Modern Farming</CardTitle>
+                                <CardTitle className="text-slate-900">Category Section Text</CardTitle>
+                                <CardDescription className="text-slate-500">
+                                    Website category and brand cards now come from the live catalog. Edit only the section heading, description, and button text here.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
                                     <p className="text-sm font-semibold text-slate-900">Section Content</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         <Input value={categoriesSection.eyebrow || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="border-[#d8dfca] bg-white text-slate-900" />
                                         <Input value={categoriesSection.title || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="border-[#d8dfca] bg-white text-slate-900" />
                                     </div>
-                                    <Textarea value={categoriesSection.description || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, description: e.target.value }))} placeholder="Section description" className="min-h-[70px] border-[#d8dfca] bg-white text-slate-900" />
+                                    <Textarea value={categoriesSection.description || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, description: e.target.value }))} placeholder="Section description" className="min-h-[90px] border-[#d8dfca] bg-white text-slate-900" />
+                                    <Input value={categoriesSection.buttonText || ""} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, buttonText: e.target.value }))} placeholder="Card button text" className="border-[#d8dfca] bg-white text-slate-900" />
                                 </div>
-                                <div className="flex justify-start">
-                                    <Button
-                                        onClick={() => {
-                                            setCategories((prev) => {
-                                                const reordered = prev.map((category, index) => ({ ...category, order: index }))
-                                                return [...reordered, { name: "", description: "", image: "", products: [], productDetails: [], isActive: true, order: reordered.length }]
-                                            })
-                                            setExpandedCategoryIndex(categories.length)
-                                        }}
-                                        variant="outline"
-                                        className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" /> Add Category Card
-                                    </Button>
+                                <div className="rounded-2xl border border-[#d8dfca] bg-white p-4 text-sm leading-6 text-slate-600">
+                                    Cards are generated automatically from visible brands and general product categories. Use <span className="font-semibold text-slate-900">Catalog Visibility</span> to hide or show brands, categories, and products.
                                 </div>
-                                {categories.length === 0 && (
-                                    <div className="rounded-lg border border-dashed border-[#dde3d0] p-6 text-center text-sm text-slate-500">
-                                        No category cards yet. Click `Add Category Card` to create one.
-                                    </div>
-                                )}
-                                {categories.map((item, index) => {
-                                    const isExpanded = expandedCategoryIndex === index
-                                    const categoryProducts = getCategoryProducts(item)
-                                    const selectedProduct = availableProducts.find((product) => product._id === (categorySelectedProductIds[index] || ""))
-                                    const draftProduct = categoryDraftProducts[index] || createEmptyCategoryProduct(item.name)
-                                    return (
-                                        <div key={index} className="overflow-hidden rounded-lg border border-[#dde3d0] bg-white">
-                                            <button
-                                                type="button"
-                                                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[#f8faf3]"
-                                                onClick={() => setExpandedCategoryIndex((prev) => prev === index ? null : index)}
-                                            >
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
-                                                        <img
-                                                            src={previewSrc(item.image || categoryPreviewFallback)}
-                                                            alt={item.name || `Category ${index + 1}`}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = categoryPreviewFallback
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="line-clamp-1 text-sm font-semibold text-slate-900">{item.name || `Card ${index + 1}`}</p>
-                                                        <p className="mt-1 line-clamp-1 text-xs text-slate-500">{categoryProducts.length} products - Order {item.order ?? index}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`text-[11px] px-2 py-1 rounded-full border ${item.isActive !== false ? "border-[#2e4d35] text-[#86efac] bg-[#1d2a1f]" : "border-[#444] text-[#aaa] bg-[#1b1b1b]"}`}>
-                                                        {item.isActive !== false ? "Active" : "Inactive"}
-                                                    </span>
-                                                    {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                                                </div>
-                                            </button>
-                                            {isExpanded && (
-                                                <div className="space-y-3 border-t border-[#dde3d0] bg-[#f8faf3] p-4">
-                                                    <div className="flex justify-between items-center">
-                                                        <div>
-                                                            <p className="text-sm font-medium text-slate-900">Category Setup</p>
-                                                            <p className="mt-1 text-[11px] text-slate-500">Set the category, then add products.</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xs text-slate-500">Active</span>
-                                                            <Switch checked={item.isActive !== false} onCheckedChange={(v) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, isActive: v } : c))} />
-                                                            <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 w-8" onClick={() => removeCategoryCard(index)}><Trash2 className="h-4 w-4" /></Button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-4 rounded-xl border border-[#dde3d0] bg-white p-4">
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category name</p>
-                                                                <Input
-                                                                    value={item.name}
-                                                                    onChange={(e) => {
-                                                                        const name = e.target.value
-                                                                        setCategories((prev) => prev.map((c, i) => i === index ? { ...c, name } : c))
-                                                                        if (!categoryDraftProducts[index]?.category) {
-                                                                            updateDraftCategoryProduct(index, { category: name })
-                                                                        }
-                                                                    }}
-                                                                    placeholder="Rice Mills & Mini Rice Mills"
-                                                                    className="border-[#d8dfca] bg-white text-slate-900"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category image URL</p>
-                                                                <Input value={item.image} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, image: e.target.value } : c))} placeholder="Paste category image URL" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <p className="text-[11px] uppercase tracking-wide text-slate-500">Category description</p>
-                                                            <Textarea value={item.description} onChange={(e) => setCategories((prev) => prev.map((c, i) => i === index ? { ...c, description: e.target.value } : c))} placeholder="Write a short category summary for the website card and category page." className="min-h-[90px] border-[#d8dfca] bg-white text-slate-900" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <p className="text-[11px] uppercase tracking-wide text-slate-500">Category button text</p>
-                                                            <Input value={categoriesSection.buttonText || "View All products"} onChange={(e) => setCategoriesSection((prev) => ({ ...prev, buttonText: e.target.value || "View All products" }))} placeholder="View All products" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                        </div>
-                                                        <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4 items-stretch">
-                                                            <div className="h-full space-y-2 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
-                                                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Category image preview</p>
-                                                                <div className="h-[148px] w-full overflow-hidden rounded-md border border-[#d8dfca] bg-white">
-                                                                    <img
-                                                                        src={previewSrc(item.image || categoryPreviewFallback)}
-                                                                        alt={item.name || `Category ${index + 1}`}
-                                                                        className="w-full h-full object-cover"
-                                                                        onError={(e) => {
-                                                                            (e.target as HTMLImageElement).src = categoryPreviewFallback
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex min-h-[188px] flex-col justify-between rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
-                                                                <div className="space-y-2">
-                                                                <p className="text-sm font-medium text-slate-900">Upload category image</p>
-                                                                <p className="text-[11px] text-slate-500">This upload is only for the category card image.</p>
-                                                                </div>
-                                                                <input id={`category-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "category", index)} />
-                                                                <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`category-upload-${index}`)?.click()} disabled={uploading === `category-${index}`}>
-                                                                    {uploading === `category-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                                                    Upload Category Image
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-white p-3">
-                                                        <div className="flex items-center justify-between">
-                                                            <p className="text-xs font-medium uppercase tracking-wide text-slate-700">Products In This Category</p>
-                                                            <span className="text-[11px] text-slate-500">{categoryProducts.length} added</span>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                            <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-3">
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-slate-900">Add existing product</p>
-                                                                    <p className="mt-1 text-[11px] text-slate-500">Attach a product from your catalog.</p>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_auto] gap-2">
-                                                                    <select
-                                                                        value={categorySelectedProductIds[index] || ""}
-                                                                        onChange={(e) => setCategorySelectedProductIds((prev) => ({ ...prev, [index]: e.target.value }))}
-                                                                        className="h-10 w-full min-w-0 rounded-md border border-[#d8dfca] bg-white px-3 text-sm text-slate-900"
-                                                                        disabled={isLoadingProductOptions}
-                                                                    >
-                                                                        <option value="">{isLoadingProductOptions ? "Loading products..." : "Select product to add"}</option>
-                                                                        {availableProducts.map((product) => (
-                                                                            <option key={product._id} value={product._id}>
-                                                                                {product.name}{product.category ? ` (${product.category})` : ""}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <Button type="button" variant="outline" className="w-full 2xl:w-auto whitespace-normal border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => addProductToCategory(index)} disabled={isLoadingProductOptions || !categorySelectedProductIds[index]}>
-                                                                        <Plus className="h-4 w-4 mr-2" />
-                                                                        Add Existing
-                                                                    </Button>
-                                                                </div>
-                                                                {selectedProduct && (
-                                                                    <div className="flex items-center gap-2 rounded-md border border-[#dde3d0] bg-white p-2">
-                                                                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
-                                                                            <img
-                                                                                src={previewSrc(getPrimaryProductImage(selectedProduct) || productPreviewFallback)}
-                                                                                alt={selectedProduct.name}
-                                                                                className="w-full h-full object-cover"
-                                                                                onError={(e) => {
-                                                                                    (e.target as HTMLImageElement).src = productPreviewFallback
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <p className="line-clamp-1 text-xs font-medium text-slate-900">{selectedProduct.name}</p>
-                                                                            <p className="line-clamp-1 text-[11px] text-slate-500">{selectedProduct.category || "No category"} - SKU: {selectedProduct.sku || "N/A"}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="space-y-3 rounded-lg border border-[#d7e5c9] bg-[#f5faef] p-3">
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-slate-900">Quick add product</p>
-                                                                    <p className="mt-1 text-[11px] text-slate-500">Create a simple category product.</p>
-                                                                </div>
-                                                                <div className="space-y-3">
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                                        <Input value={draftProduct.name} onChange={(e) => updateDraftCategoryProduct(index, { name: e.target.value, category: item.name || draftProduct.category })} placeholder="Product name" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                        <Input value={draftProduct.image} onChange={(e) => updateDraftCategoryProduct(index, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Product image URL" className="border-[#d8dfca] bg-white text-slate-900 md:col-span-2" />
-                                                                        <Textarea value={draftProduct.shortDescription} onChange={(e) => updateDraftCategoryProduct(index, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short product description" className="min-h-[96px] border-[#d8dfca] bg-white text-slate-900 md:col-span-2" />
-                                                                    </div>
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <input id={`draft-category-product-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "draft-category-product", index)} />
-                                                                        <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`draft-category-product-upload-${index}`)?.click()} disabled={uploading === `draft-category-product-${index}`}>
-                                                                            {uploading === `draft-category-product-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                                                            Upload Product Image
-                                                                        </Button>
-                                                                        <Button type="button" className="bg-[#86efac] text-black hover:opacity-95" onClick={() => addDraftProductToCategory(index)}>
-                                                                            <Plus className="h-4 w-4 mr-2" />
-                                                                            Add Quick Product
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {categoryProducts.length === 0 && (
-                                                            <p className="text-[11px] text-[#717171]">No products added yet.</p>
-                                                        )}
-                                                        {categoryProducts.map((product, productIndex) => {
-                                                            const productKey = `${index}-${productIndex}`
-                                                            const showProductDetails = expandedProductKey === productKey
-                                                            return (
-                                                                <div key={productKey} className="space-y-2 rounded-lg border border-[#dde3d0] bg-white p-3">
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <div className="min-w-0 flex items-center gap-2">
-                                                                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
-                                                                                <img
-                                                                                    src={previewSrc(product.image || product.images?.[0] || productPreviewFallback)}
-                                                                                    alt={product.name}
-                                                                                    className="w-full h-full object-cover"
-                                                                                    onError={(e) => {
-                                                                                        (e.target as HTMLImageElement).src = productPreviewFallback
-                                                                                    }}
-                                                                                />
-                                                                            </div>
-                                                                            <div className="min-w-0">
-                                                                                <p className="line-clamp-1 text-sm font-medium text-slate-900">{product.name}</p>
-                                                                                <p className="line-clamp-1 text-[11px] text-slate-500">{product.productId ? `SKU: ${product.sku || "N/A"} - Stock: ${product.stock}` : "Quick category product"}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                             {product.productId && (
-                                                                                <Link href={`/products/edit/${product.productId}`}>
-                                                                                    <Button type="button" variant="outline" size="sm" className="border-[#2d4771] bg-[#101722] text-[#cfe2ff] hover:bg-[#162033]">
-                                                                                        Edit Product
-                                                                                    </Button>
-                                                                                </Link>
-                                                                            )}
-                                                                            {product.productId && (
-                                                                                <Button type="button" variant="outline" size="sm" className="border-[#36533a] bg-[#102016] text-[#b8efc2] hover:bg-[#172a1d]" onClick={() => refreshCategoryProductFromCatalog(index, productIndex)} disabled={refreshingProductKey === productKey}>
-                                                                                    {refreshingProductKey === productKey ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5 mr-1" />}
-                                                                                    Refresh from Catalog
-                                                                                </Button>
-                                                                            )}
-                                                                            <Button type="button" variant="outline" size="sm" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => setExpandedProductKey((prev) => prev === productKey ? null : productKey)}>
-                                                                                {showProductDetails ? "Close" : (product.productId ? "Details" : "Edit")}
-                                                                            </Button>
-                                                                            <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 w-8" onClick={() => removeCategoryProduct(index, productIndex)}>
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                    {showProductDetails && (
-                                                                        <div className="space-y-2">
-                                                                            {product.productId ? (
-                                                                                <div className="rounded-md border border-[#244033] bg-[#102016] px-3 py-2 text-[11px] text-[#9fdfb6]">
-                                                                                    This card is linked to a real catalog product. Use `Refresh from Catalog` to pull the latest images, prices, and stock. Use `Edit Product` to update the source item.
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="rounded-md border border-[#3b3020] bg-[#1b1610] px-3 py-2 text-[11px] text-[#facc15]">
-                                                                                    This entry is a quick category product. You can edit its content and upload its image here.
-                                                                                </div>
-                                                                            )}
-                                                                            {product.productId ? (
-                                                                                <div className="space-y-2 text-xs text-slate-600">
-                                                                                    <p><span className="text-slate-500">Category:</span> {product.category || "N/A"}</p>
-                                                                                    <p><span className="text-slate-500">SKU:</span> {product.sku || "N/A"}</p>
-                                                                                    <p><span className="text-slate-500">Stock:</span> {product.stock}</p>
-                                                                                    <p><span className="text-slate-500">Short Description:</span> {product.shortDescription || "N/A"}</p>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="grid grid-cols-1 gap-2">
-                                                                                    <Input value={product.name} onChange={(e) => updateCategoryProduct(index, productIndex, { name: e.target.value })} placeholder="Product name" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                    <Input value={product.image} onChange={(e) => updateCategoryProduct(index, productIndex, { image: e.target.value, images: e.target.value ? [e.target.value] : [] })} placeholder="Image URL" className="border-[#d8dfca] bg-white text-slate-900" />
-                                                                                    <Textarea value={product.shortDescription} onChange={(e) => updateCategoryProduct(index, productIndex, { shortDescription: e.target.value, description: e.target.value })} placeholder="Short description" className="min-h-[80px] border-[#d8dfca] bg-white text-slate-900" />
-                                                                                </div>
-                                                                            )}
-                                                                            <div>
-                                                                                <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-500">Product Image Preview</p>
-                                                                                <div className="flex items-center gap-2 overflow-x-auto">
-                                                                                    {(product.images && product.images.length > 0 ? product.images : [product.image || productPreviewFallback]).map((imageUrl, imageIndex) => (
-                                                                                        <div key={`${productKey}-img-${imageIndex}`} className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#d8dfca] bg-white">
-                                                                                            <img
-                                                                                                src={previewSrc(imageUrl || productPreviewFallback)}
-                                                                                                alt={`${product.name} ${imageIndex + 1}`}
-                                                                                                className="w-full h-full object-cover"
-                                                                                                onError={(e) => {
-                                                                                                    (e.target as HTMLImageElement).src = productPreviewFallback
-                                                                                                }}
-                                                                                            />
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                                {!product.productId && (
-                                                                                    <div className="mt-2">
-                                                                                        <input id={`category-product-upload-${index}-${productIndex}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "category-product", index, productIndex)} />
-                                                                                        <Button type="button" variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900" onClick={() => document.getElementById(`category-product-upload-${index}-${productIndex}`)?.click()} disabled={uploading === `category-product-${index}-${productIndex}`}>
-                                                                                            {uploading === `category-product-${index}-${productIndex}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                                                                            Upload Product Image
-                                                                                        </Button>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                                {categories.length > 0 && <Button onClick={saveCategories} disabled={isSavingCategories} className="w-full">{isSavingCategories ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Product Categories</Button>}
+                                <Button onClick={saveCategories} disabled={isSavingCategories} className="w-full">
+                                    {isSavingCategories ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Save Category Section Text
+                                </Button>
                             </CardContent>
                         </Card>
                         <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
                                 <CardTitle className="text-lg text-slate-900">Live Preview</CardTitle>
-                                <CardDescription className="text-slate-500">Section header + card details preview.</CardDescription>
+                                <CardDescription className="text-slate-500">Preview of the section text only.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-                                    <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
-                                        <p className="text-[11px] tracking-[0.2em] text-[#ff8a32] font-semibold uppercase">{categoriesSection.eyebrow || "PRODUCT CATEGORIES"}</p>
-                                        <p className="mt-2 text-xl font-bold text-slate-900">{categoriesSection.title || "The Heart of Modern Farming"}</p>
-                                        <p className="text-[#a7b0bf] text-xs mt-2 line-clamp-3">{categoriesSection.description || "Section description"}</p>
-                                    </div>
-                                    {expandedCategoryIndex !== null && categories[expandedCategoryIndex] && hasDraftProductContent(categoryDraftProducts[expandedCategoryIndex]) && (
-                                        <div className="rounded-2xl overflow-hidden border border-[#355028] bg-[#11160d]">
-                                            <div className="p-3 border-b border-[#2f4126]">
-                                                <p className="text-[11px] tracking-[0.18em] text-[#b7e08b] font-semibold uppercase">Draft Product Preview</p>
-                                                <p className="text-[#8fa17b] text-xs mt-1">This shows the quick product you are currently typing.</p>
-                                            </div>
-                                            <div className="relative h-32">
-                                                {(categoryDraftProducts[expandedCategoryIndex]?.image || "").trim() ? (
-                                                    <img
-                                                        src={previewSrc(categoryDraftProducts[expandedCategoryIndex]?.image || productPreviewFallback)}
-                                                        alt={categoryDraftProducts[expandedCategoryIndex]?.name || "Draft product"}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).src = productPreviewFallback
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Image</div>
-                                                )}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                                                <div className="absolute top-2 right-2 rounded-full border border-[#4b6738] bg-[#182411] px-2 py-1 text-[10px] font-medium text-[#c3eca0]">
-                                                    Draft
-                                                </div>
-                                            </div>
-                                            <div className="p-3">
-                                                <p className="text-white text-base font-semibold line-clamp-2">
-                                                    {categoryDraftProducts[expandedCategoryIndex]?.name || "Product name"}
-                                                </p>
-                                                <p className="text-[#ff8a32] text-xs mt-1 line-clamp-2">
-                                                    {categoryDraftProducts[expandedCategoryIndex]?.shortDescription || "Short description"}
-                                                </p>
-                                                <div className="mt-3 flex items-center justify-between text-[11px] text-[#a5b097]">
-                                                    <span>Quick product</span>
-                                                    <span>{categories[expandedCategoryIndex]?.name || "Category"}</span>
-                                                </div>
-                                                <button className="mt-3 w-full py-2 rounded-lg border border-[#3c4d30] bg-[#171c23] text-[#d6dde8] text-xs font-semibold">
-                                                    Draft Product CTA
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {categories
-                                        .filter((c) => c.isActive !== false)
-                                        .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                        .map((item, i) => (
-                                            <div key={i} className="rounded-2xl overflow-hidden border border-[#333] bg-[#111]">
-                                                <div className="relative h-32">
-                                                    {item.image ? (
-                                                        <img
-                                                            src={previewSrc(item.image)}
-                                                            alt={item.name || "Category"}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = `https://placehold.co/600x300/0b0f16/9ca3af?text=Category+${i + 1}`;
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Image</div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                                                    <div className="absolute bottom-2 left-2 right-2">
-                                                        <p className="text-white text-base font-semibold line-clamp-1">{item.name || "Category title"}</p>
-                                                        <p className="text-[#ff8a32] text-xs mt-0.5 line-clamp-1">{item.description || "Short description"}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="p-3">
-                                                    <ul className="space-y-1.5">
-                                                        {getCategoryProductNames(item).slice(0, 3).map((product, idx) => (
-                                                            <li key={idx} className="text-[11px] text-[#c8ced8] line-clamp-1 flex items-center gap-2">
-                                                                <span className="w-1 h-1 rounded-full bg-[#86efac] shrink-0" />
-                                                                {product}
-                                                            </li>
-                                                        ))}
-                                                        {getCategoryProductNames(item).length === 0 && (
-                                                            <li className="text-[11px] text-[#717171]">No list items yet</li>
-                                                        )}
-                                                    </ul>
-                                                    <button className="mt-3 w-full py-2 rounded-lg border border-[#2f3742] bg-[#171c23] text-[#d6dde8] text-xs font-semibold">
-                                                        {categoriesSection.buttonText || "View Products"}
-                                                    </button>
-                                                    <div className="mt-3 text-[11px] text-[#9aa3b2] flex items-center justify-between">
-                                                        <span>Order: {item.order ?? i}</span>
-                                                        <span className="px-2 py-0.5 rounded-full bg-[#1d2a1f] text-[#86efac] border border-[#2e4d35]">Active</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ff8a32]">{categoriesSection.eyebrow || "PRODUCT CATEGORIES"}</p>
+                                    <p className="mt-2 text-xl font-bold text-slate-900">{categoriesSection.title || "The Heart of Modern Farming"}</p>
+                                    <p className="mt-2 text-xs leading-5 text-slate-500">{categoriesSection.description || "Section description"}</p>
+                                    <button className="mt-4 rounded-lg border border-[#d8dfca] bg-white px-4 py-2 text-xs font-semibold text-slate-700">
+                                        {categoriesSection.buttonText || "View Products"}
+                                    </button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1666,92 +1282,52 @@ export default function ManageWebsitePage() {
                 </TabsContent>
 
                 <TabsContent value="featured" className="mt-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-start">
                         <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-8">
-                            <CardHeader><div className="flex items-center justify-between gap-4"><div><CardTitle className="text-slate-900">Our Popular Product</CardTitle></div><Button onClick={() => setFeaturedProducts((prev) => [...prev, { name: "", price: "", image: "", badge: "", specs: [""], shortDescription: "", isActive: true, order: prev.length }])} variant="outline" className="border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900"><Plus className="h-4 w-4 mr-2" /> Add Product Card</Button></div></CardHeader>
+                            <CardHeader>
+                                <CardTitle className="text-slate-900">Featured Section Text</CardTitle>
+                                <CardDescription className="text-slate-500">
+                                    Featured product cards are randomly selected from the live catalog. Edit only the section copy here.
+                                </CardDescription>
+                            </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
                                     <p className="text-sm font-semibold text-slate-900">Section Content</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         <Input value={featuredSection.eyebrow || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Eyebrow text" className="border-[#d8dfca] bg-white text-slate-900" />
                                         <Input value={featuredSection.title || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, title: e.target.value }))} placeholder="Section title" className="border-[#d8dfca] bg-white text-slate-900" />
                                     </div>
-                                    <Textarea value={featuredSection.sideText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, sideText: e.target.value }))} placeholder="Right side section text" className="min-h-[70px] border-[#d8dfca] bg-white text-slate-900" />
+                                    <Textarea value={featuredSection.sideText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, sideText: e.target.value }))} placeholder="Right side section text" className="min-h-[90px] border-[#d8dfca] bg-white text-slate-900" />
                                     <Input value={featuredSection.buttonText || ""} onChange={(e) => setFeaturedSection((prev) => ({ ...prev, buttonText: e.target.value }))} placeholder="Card button text" className="border-[#d8dfca] bg-white text-slate-900" />
                                 </div>
-                                {featuredProducts.map((item, index) => (
-                                    <div key={index} className="space-y-3 rounded-lg border border-[#dde3d0] bg-[#f8faf3] p-4">
-                                        <div className="flex justify-between items-center"><p className="text-sm font-medium text-slate-900">Card {index + 1}</p><div className="flex items-center gap-3"><span className="text-xs text-slate-500">Active</span><Switch checked={item.isActive !== false} onCheckedChange={(v) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, isActive: v } : p))} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-900/20 hover:text-red-300" onClick={() => setFeaturedProducts((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div></div>
-                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2"><Input value={item.name} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, name: e.target.value } : p))} placeholder="Product title" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.price} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, price: e.target.value } : p))} placeholder="Price text" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.image} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, image: e.target.value } : p))} placeholder="Image URL" className="border-[#d8dfca] bg-white text-slate-900" /><Input value={item.badge} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, badge: e.target.value } : p))} placeholder="Badge" className="border-[#d8dfca] bg-white text-slate-900" /></div>
-                                        <Textarea value={item.shortDescription || ""} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, shortDescription: e.target.value } : p))} placeholder="Short description (shown instead of specs if provided)" className="min-h-[60px] border-[#d8dfca] bg-white text-slate-900" />
-                                        <Textarea value={(item.specs || []).join("\n")} onChange={(e) => setFeaturedProducts((prev) => prev.map((p, i) => i === index ? { ...p, specs: e.target.value.split("\n") } : p))} placeholder="Specs (one per line) - shown if no short description" className="bg-[#0D0D0D] border-[#333] text-white min-h-[90px]" />
-                                        <div className="flex justify-end"><div className="flex items-center gap-2"><input id={`featured-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, "featured", index)} /><Button type="button" variant="outline" className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]" onClick={() => document.getElementById(`featured-upload-${index}`)?.click()} disabled={uploading === `featured-${index}`}>{uploading === `featured-${index}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}Upload Image</Button></div></div>
-                                    </div>
-                                ))}
-                                {featuredProducts.length > 0 && <Button onClick={saveProducts} disabled={isSavingProducts} className="w-full">{isSavingProducts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Popular Products</Button>}
+                                <div className="rounded-2xl border border-[#d8dfca] bg-white p-4 text-sm leading-6 text-slate-600">
+                                    Product cards are picked automatically from products that are visible on the website. Use <span className="font-semibold text-slate-900">Catalog Visibility</span> to control the pool.
+                                </div>
+                                <Button onClick={saveProducts} disabled={isSavingProducts} className="w-full">
+                                    {isSavingProducts ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Save Featured Section Text
+                                </Button>
                             </CardContent>
                         </Card>
                         <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)] xl:col-span-4 xl:sticky xl:top-24">
                             <CardHeader>
                                 <CardTitle className="text-lg text-slate-900">Live Preview</CardTitle>
-                                <CardDescription className="text-slate-500">Section header + card details preview.</CardDescription>
+                                <CardDescription className="text-slate-500">Preview of the section text only.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-                                    <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
-                                        <p className="text-[11px] tracking-[0.2em] text-[#ff8a32] font-semibold uppercase">{featuredSection.eyebrow || "PRECISION ENGINEERING"}</p>
-                                        <p className="mt-2 text-xl font-bold text-slate-900">{featuredSection.title || "Our Popular Product"}</p>
-                                        <p className="mt-2 line-clamp-3 text-xs text-slate-500">{featuredSection.sideText || "Section side description"}</p>
-                                    </div>
-                                    {featuredProducts
-                                        .filter((p) => p.isActive !== false)
-                                        .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                        .map((item, i) => (
-                                            <div key={i} className="overflow-hidden rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-3">
-                                                <div className="relative h-28 rounded-xl overflow-hidden bg-[#0d0d0d]">
-                                                    {item.image ? (
-                                                        <img
-                                                            src={previewSrc(item.image)}
-                                                            alt={item.name || "Product"}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = `https://placehold.co/600x300/0b0f16/9ca3af?text=Product+${i + 1}`;
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Image</div>
-                                                    )}
-                                                    {item.badge && (
-                                                        <span className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full bg-white/90 text-black font-semibold">
-                                                            {item.badge}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="pt-3">
-                                                    <p className="line-clamp-1 text-sm font-semibold text-slate-900">{item.name || "Product title"}</p>
-                                                    <p className="text-[#86efac] text-xs font-semibold mt-1">{item.price || "Price text"}</p>
-                                                    <ul className="mt-2 space-y-1.5">
-                                                        {normalizeList(item.specs || []).slice(0, 3).map((spec, idx) => (
-                                                            <li key={idx} className="text-[11px] text-[#c8ced8] line-clamp-1 flex items-center gap-2">
-                                                                <span className="w-1 h-1 rounded-full bg-[#ff8a32] shrink-0" />
-                                                                {spec}
-                                                            </li>
-                                                        ))}
-                                                        {normalizeList(item.specs || []).length === 0 && (
-                                                            <li className="text-[11px] text-[#717171]">No specs yet</li>
-                                                        )}
-                                                    </ul>
-                                            </div>
-                                            <button className="mt-3 w-full rounded-lg border border-[#d8dfca] bg-white py-2 text-xs font-semibold text-slate-700">
-                                                {featuredSection.buttonText || "Get Quote"}
-                                            </button>
-                                        </div>
-                                    ))}
+                                <div className="rounded-2xl border border-[#dde3d0] bg-[#f8faf3] p-4">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ff8a32]">{featuredSection.eyebrow || "PRECISION ENGINEERING"}</p>
+                                    <p className="mt-2 text-xl font-bold text-slate-900">{featuredSection.title || "Our Popular Product"}</p>
+                                    <p className="mt-2 text-xs leading-5 text-slate-500">{featuredSection.sideText || "Section side description"}</p>
+                                    <button className="mt-4 rounded-lg border border-[#d8dfca] bg-white px-4 py-2 text-xs font-semibold text-slate-700">
+                                        {featuredSection.buttonText || "Get Quote"}
+                                    </button>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
                 </TabsContent>
+
             </Tabs>
         </div>
     )

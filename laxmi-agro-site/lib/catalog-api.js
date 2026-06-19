@@ -135,6 +135,17 @@ export async function getGeneralCategoryProducts(categorySlug) {
     return { category, products };
 }
 
+export async function getAllWebsiteProducts(search = '') {
+    const query = String(search || '').trim();
+    const path = query
+        ? `/website/catalog/products?search=${encodeURIComponent(query)}`
+        : '/website/catalog/products';
+    const json = await fetchJson(path);
+    return Array.isArray(json?.data)
+        ? json.data.map(normalizeCatalogProduct).filter((item) => item.name)
+        : [];
+}
+
 export async function getWebsiteProduct(productSlug) {
     const json = await fetchJson(`/website/catalog/products/${productSlug}`);
     return json?.data ? normalizeCatalogProduct(json.data) : null;

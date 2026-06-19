@@ -426,6 +426,7 @@ router.get('/website/catalog/brands/:brandSlug/categories', websiteCatalogContro
 router.get('/website/catalog/brands/:brandSlug/categories/:categorySlug/products', websiteCatalogController.getProductsByBrandCategory);
 router.get('/website/catalog/categories/general', websiteCatalogController.getGeneralCategories);
 router.get('/website/catalog/categories/:categorySlug/products', websiteCatalogController.getGeneralCategoryProducts);
+router.get('/website/catalog/products', websiteCatalogController.getProducts);
 router.get('/website/catalog/products/:productSlug', websiteCatalogController.getProduct);
 
 router.use('/auth', authRoutes);
