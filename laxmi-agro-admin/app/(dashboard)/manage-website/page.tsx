@@ -281,7 +281,8 @@ export default function ManageWebsitePage() {
     const [catalogBrands, setCatalogBrands] = useState<WebsiteCatalogBrand[]>([])
     const [catalogCategories, setCatalogCategories] = useState<WebsiteCatalogCategory[]>([])
     const [catalogProducts, setCatalogProducts] = useState<WebsiteCatalogProduct[]>([])
-    const [selectedCatalogItems, setSelectedCatalogItems] = useState<Record<WebsiteCatalogType, string[]>>({ brand: [], category: [], product: [] })
+    const [hiddenCatalogItems, setHiddenCatalogItems] = useState<Record<WebsiteCatalogType, string[]>>({ brand: [], category: [], product: [] })
+    const [catalogSearch, setCatalogSearch] = useState<Record<WebsiteCatalogType, string>>({ brand: "", category: "", product: "" })
 
     const uploadUrl = useMemo(() => buildApiUrl("/upload/image?folder=website"), [])
     const websiteBaseUrl = useMemo(() => {
@@ -362,38 +363,56 @@ export default function ManageWebsitePage() {
                 productsRes.json(),
             ])
             if (!brandsRes.ok || !categoriesRes.ok || !productsRes.ok) throw new Error("Failed to load catalog visibility")
-            setCatalogBrands(Array.isArray(brandsData?.data) ? brandsData.data : [])
-            setCatalogCategories(Array.isArray(categoriesData?.data) ? categoriesData.data : [])
-            setCatalogProducts(Array.isArray(productsData?.data) ? productsData.data : [])
+            const nextBrands = Array.isArray(brandsData?.data) ? brandsData.data : []
+            const nextCategories = Array.isArray(categoriesData?.data) ? categoriesData.data : []
+            const nextProducts = Array.isArray(productsData?.data) ? productsData.data : []
+            setCatalogBrands(nextBrands)
+            setCatalogCategories(nextCategories)
+            setCatalogProducts(nextProducts)
+            setHiddenCatalogItems({
+                brand: nextBrands.filter((item: WebsiteCatalogBrand) => item.showOnWebsite === false).map((item: WebsiteCatalogBrand) => item._id),
+                category: nextCategories.filter((item: WebsiteCatalogCategory) => item.showOnWebsite === false).map((item: WebsiteCatalogCategory) => item._id),
+                product: nextProducts.filter((item: WebsiteCatalogProduct) => item.showOnWebsite === false).map((item: WebsiteCatalogProduct) => item._id),
+            })
         } catch (error: any) {
             toast.error(error?.message || "Failed to load catalog visibility")
         }
     }
 
-    function toggleCatalogSelection(type: WebsiteCatalogType, id: string) {
-        setSelectedCatalogItems((prev) => {
+    function toggleCatalogHidden(type: WebsiteCatalogType, id: string) {
+        setHiddenCatalogItems((prev) => {
             const current = prev[type] || []
             const exists = current.includes(id)
             return { ...prev, [type]: exists ? current.filter((item) => item !== id) : [...current, id] }
         })
     }
 
-    async function updateCatalogVisibility(type: WebsiteCatalogType, showOnWebsite: boolean) {
-        const ids = selectedCatalogItems[type] || []
-        if (ids.length === 0) {
-            toast.error("Select at least one item")
+    async function updateCatalogVisibility<T extends { _id: string; showOnWebsite?: boolean }>(type: WebsiteCatalogType, items: T[]) {
+        const hiddenIds = hiddenCatalogItems[type] || []
+        const idsToHide = items.filter((item) => item.showOnWebsite !== false && hiddenIds.includes(item._id)).map((item) => item._id)
+        const idsToShow = items.filter((item) => item.showOnWebsite === false && !hiddenIds.includes(item._id)).map((item) => item._id)
+
+        if (idsToHide.length === 0 && idsToShow.length === 0) {
+            toast.info("No visibility changes to update")
             return
         }
         try {
             setIsSavingVisibility(true)
-            const res = await apiFetch("/admin/website-catalog/visibility", {
-                method: "PATCH",
-                body: JSON.stringify({ type, ids, showOnWebsite }),
-            })
-            const data = await res.json().catch(() => null)
-            if (!res.ok) throw new Error(data?.message || "Failed to update visibility")
-            toast.success(showOnWebsite ? "Selected items are visible on website" : "Selected items hidden from website")
-            setSelectedCatalogItems((prev) => ({ ...prev, [type]: [] }))
+            const requests = [
+                idsToHide.length > 0 ? { ids: idsToHide, showOnWebsite: false } : null,
+                idsToShow.length > 0 ? { ids: idsToShow, showOnWebsite: true } : null,
+            ].filter(Boolean) as Array<{ ids: string[]; showOnWebsite: boolean }>
+
+            for (const request of requests) {
+                const res = await apiFetch("/admin/website-catalog/visibility", {
+                    method: "PATCH",
+                    body: JSON.stringify({ type, ids: request.ids, showOnWebsite: request.showOnWebsite }),
+                })
+                const data = await res.json().catch(() => null)
+                if (!res.ok) throw new Error(data?.message || "Failed to update visibility")
+            }
+
+            toast.success("Website visibility updated")
             await loadCatalogVisibility()
         } catch (error: any) {
             toast.error(error?.message || "Failed to update visibility")
@@ -882,32 +901,46 @@ export default function ManageWebsitePage() {
         items: T[],
         meta: (item: T) => string,
     ) {
-        const selected = selectedCatalogItems[type] || []
+        const hiddenIds = hiddenCatalogItems[type] || []
+        const search = catalogSearch[type].trim().toLowerCase()
+        const filteredItems = search
+            ? items.filter((item) => `${item.name} ${meta(item)}`.toLowerCase().includes(search))
+            : items
+        const hasChanges = items.some((item) => (item.showOnWebsite === false) !== hiddenIds.includes(item._id))
         return (
             <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
                 <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <CardTitle className="text-slate-900">{title}</CardTitle>
-                            <CardDescription className="mt-1 text-slate-500">{description}</CardDescription>
+                            <CardDescription className="mt-1 text-slate-500">{description} Check items to hide them from the website.</CardDescription>
                         </div>
                         <div className="flex gap-2">
-                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || selected.length === 0} onClick={() => updateCatalogVisibility(type, true)}>Show</Button>
-                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || selected.length === 0} onClick={() => updateCatalogVisibility(type, false)}>Hide</Button>
+                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || !hasChanges} onClick={() => updateCatalogVisibility(type, items)}>
+                                Update Visibility
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                    <Input
+                        value={catalogSearch[type]}
+                        onChange={(e) => setCatalogSearch((prev) => ({ ...prev, [type]: e.target.value }))}
+                        placeholder={`Search ${title.toLowerCase()}...`}
+                        className="mb-3 border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400"
+                    />
                     {items.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No items found.</div>
-                    ) : items.map((item) => (
+                    ) : filteredItems.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No matching {title.toLowerCase()} found.</div>
+                    ) : filteredItems.map((item) => (
                         <label key={item._id} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#d8dfca] bg-[#f8faf3] p-3">
-                            <Checkbox checked={selected.includes(item._id)} onCheckedChange={() => toggleCatalogSelection(type, item._id)} />
+                            <Checkbox checked={hiddenIds.includes(item._id)} onCheckedChange={() => toggleCatalogHidden(type, item._id)} />
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
                                 <p className="truncate text-xs text-slate-500">{meta(item)}</p>
                             </div>
-                            {renderVisibilityBadge(item.showOnWebsite)}
+                            {renderVisibilityBadge(hiddenIds.includes(item._id) ? false : true)}
                         </label>
                     ))}
                 </CardContent>
