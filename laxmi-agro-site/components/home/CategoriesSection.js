@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
 
-const INITIAL_VISIBLE_COUNT = 7;
+const INITIAL_VISIBLE_COUNT = 12;
 
 const defaultCategories = [
     {
@@ -72,28 +72,29 @@ export default function CategoriesSection({
                 <p className="max-w-xl text-base leading-7 text-text-secondary lg:justify-self-end">{section.description}</p>
             </ScrollReveal>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6 lg:gap-4">
                 {visibleCategories.map((cat, i) => {
+                    const href = cat.href || `/category/${encodeURIComponent(cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '')}`;
                     return (
                         <ScrollReveal key={i} delay={i * 80}>
                             <Link
-                                href={`/category/${encodeURIComponent(cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '')}`}
-                                className="group mx-auto flex h-full w-full max-w-[420px] cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]"
+                                href={href}
+                                className="group mx-auto flex h-full w-full max-w-[220px] cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-2 shadow-[0_16px_40px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(8,36,18,0.14)]"
                             >
-                                <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.55rem] bg-[#d6e0c9]">
+                                <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[1.2rem] bg-[#d6e0c9]">
                                     <img
                                         src={cat.image}
                                         className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                                         alt={cat.name}
                                     />
                                 </div>
-                                <div className="flex min-h-[124px] flex-1 flex-col justify-between px-2 py-5">
-                                    <h3 className="text-[1.45rem] font-semibold leading-tight tracking-[-0.018em] text-text-primary">
+                                <div className="flex min-h-[84px] flex-1 flex-col justify-between px-1.5 py-3">
+                                    <h3 className="text-sm font-semibold leading-tight tracking-[-0.018em] text-text-primary sm:text-base">
                                         {cat.name}
                                     </h3>
-                                    <div className="mt-5 flex items-center justify-between border-t border-[#0b3b1f]/10 pt-4 text-sm font-semibold text-brand-primary">
+                                    <div className="mt-3 flex items-center justify-between border-t border-[#0b3b1f]/10 pt-2.5 text-[11px] font-semibold text-brand-primary">
                                         <span>{section.buttonText || 'View Products'}</span>
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/60">→</span>
+                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/60">→</span>
                                     </div>
                                 </div>
                             </Link>
@@ -106,7 +107,7 @@ export default function CategoriesSection({
                         <button
                             type="button"
                             onClick={() => setExpanded(true)}
-                            className="group mx-auto flex h-full min-h-[26rem] w-full max-w-[420px] flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-[#062712] px-8 text-center text-white shadow-[0_20px_55px_rgba(8,36,18,0.16)] transition-all duration-300 hover:-translate-y-1"
+                            className="group mx-auto flex h-full min-h-[15rem] w-full max-w-[220px] flex-col items-center justify-center rounded-[1.35rem] border border-white/10 bg-[#062712] px-5 text-center text-white shadow-[0_16px_40px_rgba(8,36,18,0.16)] transition-all duration-300 hover:-translate-y-1"
                         >
                             <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/8">
                                 <svg

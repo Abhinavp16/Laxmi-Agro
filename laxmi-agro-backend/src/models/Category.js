@@ -46,6 +46,10 @@ const categorySchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  showOnWebsite: {
+    type: Boolean,
+    default: true,
+  },
   productCount: {
     type: Number,
     default: 0,
@@ -58,6 +62,7 @@ categorySchema.index({ company: 1, name: 1 }, { unique: true, collation: { local
 categorySchema.index({ company: 1, slug: 1 }, { unique: true });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1, order: 1 });
+categorySchema.index({ showOnWebsite: 1 });
 
 categorySchema.pre('save', function (next) {
   if (this.isModified('name') || !this.slug) {

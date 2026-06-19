@@ -67,6 +67,7 @@ export default async function CategoryPage({ params }) {
                             product.shortDescription ||
                             product.description ||
                             `Explore ${product.name} with reliable performance for professional agricultural and industrial use.`;
+                        const brandName = product.brand === 'GENERAL PRODUCTS' ? '' : product.brand;
                         return (
                             <ScrollReveal key={index} delay={index * 80}>
                                 <div className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-gray-100 bg-white p-3 shadow-sm">
@@ -79,14 +80,31 @@ export default async function CategoryPage({ params }) {
                                     </div>
 
                                     <div className="flex flex-1 flex-col px-1 pb-1">
-                                        <h3 className="min-h-[3.25rem] text-base font-bold leading-tight text-text-primary line-clamp-2">
+                                        <h3 className="break-words text-[0.74rem] font-bold leading-[1.12] text-text-primary line-clamp-2 sm:min-h-[3.25rem] sm:text-base sm:leading-tight">
                                             {product.name}
                                         </h3>
-                                        <p className="mt-2 min-h-[4.5rem] text-sm leading-6 text-gray-500 line-clamp-3">
+                                        {(brandName || category.name) && (
+                                            <div className="mt-1 space-y-0.5 sm:mt-2 sm:space-y-1">
+                                                {brandName && (
+                                                    <div className="inline-flex max-w-full items-center rounded-full border border-brand-primary/15 bg-[#edf3e6] px-1.5 py-0.5 text-[7.5px] font-black uppercase tracking-[0.08em] text-brand-primary sm:px-2 sm:text-[9px] sm:tracking-[0.1em]">
+                                                        <span className="mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary" />
+                                                        <span className="truncate">{brandName}</span>
+                                                    </div>
+                                                )}
+                                                <p className="line-clamp-1 text-[8px] font-semibold leading-3 text-[#486352] sm:text-[10px] sm:leading-4">
+                                                    <span className="font-black uppercase tracking-[0.1em] text-[#17351d]/55">Category: </span>
+                                                    {category.name}
+                                                </p>
+                                            </div>
+                                        )}
+                                        <p className="mt-2 hidden min-h-[4.5rem] text-sm leading-6 text-gray-500 sm:line-clamp-3">
                                             {cardDescription}
                                         </p>
+                                        <p className="mt-2 text-[10px] font-black leading-tight text-brand-primary sm:text-sm">
+                                            MRP: ₹{Number(product.mrp || product.retailPrice || 0).toLocaleString('en-IN')}
+                                        </p>
 
-                                        <div className="mt-auto pt-4">
+                                        <div className="mt-auto hidden pt-4 sm:block">
                                             <Link
                                                 href={`/category/${slugifyCategoryName(category.name)}/${slugifyProductName(product)}`}
                                                 className="block w-full rounded-2xl border border-gray-200 bg-neutral-surface py-3 text-center text-sm font-bold text-text-secondary"

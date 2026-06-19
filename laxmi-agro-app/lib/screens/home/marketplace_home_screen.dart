@@ -47,6 +47,7 @@ class MarketplaceHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
+  static const String _internalGeneralProductsBrand = 'GENERAL PRODUCTS';
   static const Duration _guestInitialFreeUseDuration = Duration(minutes: 3);
   static const Duration _guestPromptRepeatDuration = Duration(hours: 24);
   late int _selectedNavIndex;
@@ -211,7 +212,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (!mounted) return;
 
     if (lastPromptAt != null) {
-      final repeatDelay = _guestPromptRepeatDuration - DateTime.now().difference(lastPromptAt);
+      final repeatDelay =
+          _guestPromptRepeatDuration - DateTime.now().difference(lastPromptAt);
       if (repeatDelay.isNegative || repeatDelay == Duration.zero) {
         _showGuestAuthPrompt();
       } else {
@@ -353,6 +355,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       : item['logo']?.toString() ?? '',
                   'slug': item['slug']?.toString() ?? '',
                 },
+              )
+              .where(
+                (brand) =>
+                    brand['name']?.toString().trim().toUpperCase() !=
+                    _internalGeneralProductsBrand,
               )
               .toList();
 
@@ -3476,9 +3483,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     return Dismissible(
                       key: Key(item.cartItemKey),
                       direction: DismissDirection.endToStart,
-                      onDismissed: (_) => _removeCartItemAndRefreshCoupon(
-                        item.productId,
-                      ),
+                      onDismissed: (_) =>
+                          _removeCartItemAndRefreshCoupon(item.productId),
                       background: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(

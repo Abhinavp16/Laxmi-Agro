@@ -8,6 +8,7 @@ import {
 } from '@/lib/featured-products';
 import { getApiBaseUrl } from '@/lib/api-base';
 import { normalizeWebsiteImageUrl } from '@/lib/media-url';
+import { getWebsiteHomeCatalog } from '@/lib/catalog-api';
 
 export const metadata = {
     title: 'Products - Laxmi Agro',
@@ -63,15 +64,15 @@ async function getWebsiteContent() {
         }
 
         const json = await response.json();
+        const liveCatalog = await getWebsiteHomeCatalog();
         return {
-            productCategories: (Array.isArray(json?.data?.productCategories) && json.data.productCategories.length > 0 ? json.data.productCategories : defaultProductCategories).map((category) => ({
-                ...category,
-                image: normalizeWebsiteImageUrl(category?.image),
-            })),
-            featuredProducts: (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0 ? json.data.featuredProducts : sharedDefaultFeaturedProducts).map((product, index) => normalizeFeaturedProduct({
-                ...product,
-                image: normalizeWebsiteImageUrl(product?.image),
-            }, index)),
+            productCategories: await getLiveProductCategories(defaultProductCategories),
+            featuredProducts: (liveCatalog.featuredProducts.length > 0
+                ? liveCatalog.featuredProducts
+                : (Array.isArray(json?.data?.featuredProducts) && json.data.featuredProducts.length > 0 ? json.data.featuredProducts : sharedDefaultFeaturedProducts).map((product) => ({
+                    ...product,
+                    image: normalizeWebsiteImageUrl(product?.image),
+                }))).map((product, index) => normalizeFeaturedProduct(product, index)),
             categoriesSection: json?.data?.categoriesSection ? { ...defaultCategoriesSection, ...json.data.categoriesSection } : defaultCategoriesSection,
             featuredSection: json?.data?.featuredSection ? { ...defaultFeaturedSection, ...json.data.featuredSection } : defaultFeaturedSection,
         };
@@ -85,6 +86,29 @@ async function getWebsiteContent() {
     }
 }
 
+async function getLiveProductCategories(fallbackCategories = defaultProductCategories) {
+    const liveCatalog = await getWebsiteHomeCatalog();
+    const liveCategories = [
+        ...liveCatalog.brands.map((brand) => ({
+            name: brand.name,
+            description: brand.description || 'Explore brand categories and available products.',
+            image: brand.image,
+            href: brand.href,
+            productCount: brand.productCount,
+            products: [],
+        })),
+        ...liveCatalog.generalCategories.map((category) => ({
+            name: category.name,
+            description: category.description || 'Explore available products in this category.',
+            image: category.image,
+            href: category.href,
+            productCount: category.productCount,
+            products: [],
+        })),
+    ];
+    return liveCategories.length > 0 ? liveCategories : fallbackCategories;
+}
+
 export default async function ProductsPage() {
     const { productCategories, featuredProducts, categoriesSection, featuredSection } = await getWebsiteContent();
 
@@ -96,7 +120,7 @@ export default async function ProductsPage() {
                 breadcrumbItems={['Products']}
             />
 
-            <section className="px-6 pt-4 sm:pt-10">
+            <section className="hidden px-6 pt-4 sm:block sm:pt-10">
                 <ScrollReveal className="mx-auto max-w-7xl">
                     <div className="relative overflow-hidden text-[#122516] [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
                         <div className="brand-marquee-track flex w-max items-center gap-10 sm:gap-14 lg:gap-18">
@@ -113,58 +137,64 @@ export default async function ProductsPage() {
                 </ScrollReveal>
             </section>
 
+            <section className="pb-14 pt-8 sm:py-24 bg-neutral-surface">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                    <ScrollReveal className="mb-7 flex flex-col items-center text-center sm:mb-16 md:items-start md:text-left">
+                        <div>
+                            <h3 className="mx-auto max-w-[15ch] text-center text-[2.15rem] font-primary font-bold leading-[1.05] tracking-[-0.024em] text-text-primary sm:max-w-[18ch] sm:text-4xl md:mx-0 md:text-left md:text-5xl">{featuredSection.title}</h3>
+                        </div>
+                    </ScrollReveal>
+
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+                        {featuredProducts.map((product, i) => (
+                            <ScrollReveal key={i} delay={i * 100} className={i >= 4 ? 'hidden sm:block' : ''}>
+                                <FeaturedProductCard product={product} />
+                            </ScrollReveal>
+                        ))}
+                    </div>
+                    <ScrollReveal className="mt-10 flex justify-center">
+                        <Link href="/products/all" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#0b3b1f]/15 bg-white px-7 text-sm font-bold text-brand-primary shadow-sm transition hover:-translate-y-0.5 hover:bg-[#062712] hover:text-white">
+                            View All Products
+                        </Link>
+                    </ScrollReveal>
+                </div>
+            </section>
+
             <section className="px-6 pb-14 pt-6 sm:py-24">
                 <div className="mx-auto max-w-7xl">
+                <ScrollReveal className="mb-4 text-center sm:hidden">
+                    <h3 className="text-lg font-bold tracking-[-0.02em] text-text-primary">Explore Our Vast Categories</h3>
+                </ScrollReveal>
                 <ScrollReveal className="mb-10 hidden text-center sm:mb-16 sm:block">
                     <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-brand-primary sm:mb-4 sm:text-sm sm:tracking-[0.3em]">{categoriesSection.eyebrow}</h2>
                     <h3 className="text-3xl font-primary font-bold leading-tight text-text-primary md:text-5xl">{categoriesSection.title}</h3>
                     <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-text-secondary sm:mt-6 sm:text-base">{categoriesSection.description}</p>
                 </ScrollReveal>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6 lg:gap-4">
                     {productCategories.map((cat, i) => (
                         <ScrollReveal key={i} delay={i * 80}>
-                            <div className="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/85 p-3 shadow-[0_20px_55px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(8,36,18,0.14)]">
-                                <div className="relative h-56 overflow-hidden rounded-[1.55rem] bg-[#d6e0c9]">
+                            <div className="group flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/85 p-2 shadow-[0_16px_40px_rgba(8,36,18,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(8,36,18,0.14)]">
+                                <div className="relative aspect-[4/3] overflow-hidden rounded-[1.2rem] bg-[#d6e0c9]">
                                     <img src={cat.image || categoryCardFallbackImage} className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105" alt={cat.name} />
                                     <div className="absolute inset-x-3 top-3 flex justify-end">
                                         <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#17351d] shadow-sm backdrop-blur-sm">
-                                            {Array.isArray(cat.products) ? `${cat.products.length} Items` : 'Category'}
+                                            {Number.isFinite(cat.productCount) && cat.productCount > 0 ? `${cat.productCount} Items` : (Array.isArray(cat.products) && cat.products.length > 0 ? `${cat.products.length} Items` : 'Category')}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex flex-grow flex-col px-3 py-5">
-                                    <h4 className="text-text-primary font-semibold text-[1.55rem] leading-tight tracking-[-0.018em]">{cat.name}</h4>
-                                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-text-secondary">{cat.description}</p>
-                                    <Link href={`/category/${slugifyCategoryName(cat.name)}`} className="mt-auto flex items-center justify-between border-t border-[#0b3b1f]/10 pt-5 text-sm font-semibold text-brand-primary">
+                                <div className="flex min-h-[100px] flex-grow flex-col px-1.5 py-3">
+                                    <h4 className="text-text-primary text-sm font-semibold leading-tight tracking-[-0.018em] sm:text-base">{cat.name}</h4>
+                                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-text-secondary">{cat.description}</p>
+                                    <Link href={cat.href || `/category/${slugifyCategoryName(cat.name)}`} className="mt-auto flex items-center justify-between border-t border-[#0b3b1f]/10 pt-2.5 text-[11px] font-semibold text-brand-primary">
                                         <span>{categoriesSection.buttonText || 'View Products'}</span>
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[#17351d] transition-colors group-hover:bg-[#17351d] group-hover:text-white">→</span>
+                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-[#17351d] transition-colors group-hover:bg-[#17351d] group-hover:text-white">→</span>
                                     </Link>
                                 </div>
                             </div>
                         </ScrollReveal>
                     ))}
                 </div>
-                </div>
-            </section>
-
-            <section className="py-16 sm:py-24 bg-neutral-surface">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6">
-                    <ScrollReveal className="mb-10 sm:mb-16 flex flex-col items-center gap-4 sm:gap-6 md:flex-row md:items-end md:justify-between">
-                        <div>
-                            <h2 className="mb-3 text-center text-xs sm:text-sm font-bold text-brand-primary uppercase tracking-[0.24em] sm:tracking-[0.3em] md:text-left">{featuredSection.eyebrow}</h2>
-                            <h3 className="max-w-[12ch] text-center text-[2rem] sm:text-4xl md:text-5xl font-primary font-bold text-text-primary leading-[1.08] md:text-left">{featuredSection.title}</h3>
-                        </div>
-                        <p className="max-w-sm text-center text-[15px] sm:text-base leading-7 sm:leading-relaxed text-text-secondary md:text-left">{featuredSection.sideText}</p>
-                    </ScrollReveal>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 justify-items-center">
-                        {featuredProducts.map((product, i) => (
-                            <ScrollReveal key={i} delay={i * 100}>
-                                <FeaturedProductCard product={product} />
-                            </ScrollReveal>
-                        ))}
-                    </div>
                 </div>
             </section>
 

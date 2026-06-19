@@ -48,7 +48,7 @@ export default async function ProductDetailPage({ params }) {
         );
     }
 
-    const displayPrice = formatPrice(product.retailPrice || product.wholesalePrice || product.mrp);
+    const displayPrice = product.mrp ? `MRP: ${formatPrice(product.mrp)}` : formatPrice(product.retailPrice || product.wholesalePrice);
     const highlights = getProductHighlights(product);
     const inquiryDetails = buildProductInquiryDetails(product);
     const productKey = product.productId || product.slug || product.name;
@@ -130,7 +130,7 @@ export default async function ProductDetailPage({ params }) {
                                     details={inquiryDetails}
                                     className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-6 py-4 text-center text-sm font-bold text-white shadow-[0_14px_30px_rgba(249,115,22,0.26)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.34)]"
                                 >
-                                    Inquire About the Product
+                                    Request Quote
                                 </VariantAwareInquiryButton>
                             </div>
                         </div>

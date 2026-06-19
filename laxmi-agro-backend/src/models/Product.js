@@ -265,6 +265,10 @@ const productSchema = new mongoose.Schema({
     enum: Object.values(PRODUCT_STATUS),
     default: PRODUCT_STATUS.ACTIVE,
   },
+  showOnWebsite: {
+    type: Boolean,
+    default: true,
+  },
   isFeatured: {
     type: Boolean,
     default: false,
@@ -322,6 +326,7 @@ productSchema.index({ category: 1, status: 1 });
 productSchema.index({ company: 1, category: 1, status: 1 });
 productSchema.index({ categoryRef: 1, status: 1 });
 productSchema.index({ status: 1, isFeatured: -1 });
+productSchema.index({ showOnWebsite: 1, status: 1 });
 productSchema.index({ retailPrice: 1 });
 productSchema.index({ wholesalePrice: 1 });
 productSchema.index({ stock: 1 });
