@@ -142,10 +142,10 @@ function SidebarNavContent({
           const link = (
             <Link
               href={item.href}
-              className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition-all ${getItemClasses(isNavItemActive(pathname, item))}`}
+              className={`flex items-center gap-3 rounded-2xl px-3 py-3 transition-all lg:gap-4 lg:px-4 ${getItemClasses(isNavItemActive(pathname, item))}`}
             >
-              <Icon className="h-6 w-6" />
-              <span className="text-sm font-semibold tracking-[0.18em]">{item.label}</span>
+              <Icon className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
+              <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">{item.label}</span>
             </Link>
           )
 
@@ -164,30 +164,30 @@ function SidebarNavContent({
       <div className="mt-auto flex flex-col gap-3 border-t border-[#dde3d0] pt-6 dark:border-[#263126]">
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex items-center gap-4 rounded-2xl px-4 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white"
+          className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4"
           type="button"
         >
-          {mounted && theme === "dark" ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
-          <span className="text-sm font-semibold tracking-[0.18em]">
+          {mounted && theme === "dark" ? <Sun className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" /> : <Moon className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />}
+          <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">
             {mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}
           </span>
         </button>
         {closeOnNavigate ? (
           <SheetClose asChild>
-            <Link href="/settings" className="flex items-center gap-4 rounded-2xl px-4 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white">
-              <Settings className="h-6 w-6" />
-              <span className="text-sm font-semibold tracking-[0.18em]">SETTINGS</span>
+            <Link href="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4">
+              <Settings className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
+              <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">SETTINGS</span>
             </Link>
           </SheetClose>
         ) : (
-          <Link href="/settings" className="flex items-center gap-4 rounded-2xl px-4 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white">
-            <Settings className="h-6 w-6" />
-            <span className="text-sm font-semibold tracking-[0.18em]">SETTINGS</span>
+          <Link href="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4">
+            <Settings className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
+            <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">SETTINGS</span>
           </Link>
         )}
-        <button onClick={handleLogout} className="flex items-center gap-4 rounded-2xl px-4 py-3 text-slate-500 transition-all hover:bg-red-50 hover:text-red-500 dark:text-slate-300 dark:hover:bg-red-500/12">
-          <LogOut className="h-6 w-6" />
-          <span className="text-sm font-semibold tracking-[0.18em]">LOGOUT</span>
+        <button onClick={handleLogout} className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-red-50 hover:text-red-500 dark:text-slate-300 dark:hover:bg-red-500/12 lg:gap-4 lg:px-4">
+          <LogOut className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
+          <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">LOGOUT</span>
         </button>
       </div>
     </>
