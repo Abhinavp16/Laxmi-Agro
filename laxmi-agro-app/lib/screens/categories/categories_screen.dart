@@ -107,7 +107,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       final brandId = widget.brandId?.trim();
       if ((brandId != null && brandId.isNotEmpty) ||
           (brandName != null && brandName.isNotEmpty)) {
-        final brandFilter = brandName?.isNotEmpty == true ? brandName! : brandId!;
+        final brandFilter = brandName?.isNotEmpty == true
+            ? brandName!
+            : brandId!;
         final products = <Map<String, dynamic>>[];
         var page = 1;
         var hasNext = true;
@@ -115,17 +117,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         while (hasNext) {
           final response = await _dio.get(
             '/products',
-            queryParameters: {
-              'brand': brandFilter,
-              'page': page,
-              'limit': 50,
-            },
+            queryParameters: {'brand': brandFilter, 'page': page, 'limit': 50},
           );
 
           if (response.statusCode != 200) break;
 
           final List<dynamic> items = response.data['data'] ?? [];
-          products.addAll(items.whereType<Map>().map(Map<String, dynamic>.from));
+          products.addAll(
+            items.whereType<Map>().map(Map<String, dynamic>.from),
+          );
           final pagination = response.data['pagination'];
           hasNext = pagination is Map && pagination['hasNext'] == true;
           page += 1;
@@ -158,19 +158,25 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           displayNameByKey.putIfAbsent(key, () => categoryName);
         }
 
-        final cats = countsByCategory.entries.map((entry) {
-          final name = displayNameByKey[entry.key] ?? '';
-          final metadata = categoryMetaByName[entry.key] ?? {};
-          return <String, dynamic>{
-            'id': metadata['id']?.toString() ?? '',
-            'name': name,
-            'nameHindi': metadata['nameHindi']?.toString() ?? '',
-            'slug': metadata['slug']?.toString() ?? name,
-            'image': metadata['image']?.toString() ?? '',
-            'count': entry.value,
-          };
-        }).where((c) => (c['name'] as String).isNotEmpty).toList()
-          ..sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
+        final cats =
+            countsByCategory.entries
+                .map((entry) {
+                  final name = displayNameByKey[entry.key] ?? '';
+                  final metadata = categoryMetaByName[entry.key] ?? {};
+                  return <String, dynamic>{
+                    'id': metadata['id']?.toString() ?? '',
+                    'name': name,
+                    'nameHindi': metadata['nameHindi']?.toString() ?? '',
+                    'slug': metadata['slug']?.toString() ?? name,
+                    'image': metadata['image']?.toString() ?? '',
+                    'count': entry.value,
+                  };
+                })
+                .where((c) => (c['name'] as String).isNotEmpty)
+                .toList()
+              ..sort(
+                (a, b) => a['name'].toString().compareTo(b['name'].toString()),
+              );
 
         setState(() {
           _categories = cats;
@@ -444,7 +450,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
       return nameHindi;
     }
-    return nameEnglish;
+    return _formatCategoryTitle(nameEnglish);
+  }
+
+  String _formatCategoryTitle(String value) {
+    final normalized = value.trim().replaceAll(RegExp(r'[-_]+'), ' ');
+    final acronyms = {'gi', 'pvc', 'hdpe', 'ss', 'ci', 'v'};
+
+    return normalized
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .map((word) {
+          final lower = word.toLowerCase();
+          if (acronyms.contains(lower)) return lower.toUpperCase();
+          return lower[0].toUpperCase() + lower.substring(1);
+        })
+        .join(' ');
   }
 
   @override
@@ -523,137 +544,102 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   Widget _buildHeader(String Function(String) t) {
     final brandName = widget.brandName?.trim() ?? '';
-    final hasBrand = brandName.isNotEmpty;
-    final title = hasBrand ? brandName.toUpperCase() : t('Categories');
-    final subtitle = hasBrand
-        ? 'Explore $brandName product groups'
-        : 'Explore product groups';
+    final title = brandName.isNotEmpty ? brandName : t('Categories');
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFEEF4FF), Color(0xFFFFFFFF)],
-          ),
-          border: Border.all(color: const Color(0xFFE5ECF8)),
-          boxShadow: [
-            BoxShadow(
-              color: primaryBlue.withOpacity(0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: primaryBlue.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      hasBrand ? 'Brand Catalogue' : 'Product Catalogue',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: primaryBlue,
-                      ),
-                    ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    height: 1.0,
+                    fontWeight: FontWeight.w900,
+                    color: textPrimary,
+                    letterSpacing: -0.6,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: hasBrand ? 27 : 30,
-                      height: 0.95,
-                      fontWeight: FontWeight.w900,
-                      color: textPrimary,
-                      letterSpacing: -0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap:
+                    widget.onSearchTap ??
+                    () => context.go('/home', extra: {'tab': 1}),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: surfaceWhite,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: borderLight),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
                       ),
-                      if (!_isLoadingCategories)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: surfaceWhite,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: borderLight),
-                          ),
-                          child: Text(
-                            '${_categories.length} categories',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: primaryBlue,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
-                ],
+                  child: const Icon(
+                    Icons.search_rounded,
+                    color: primaryBlue,
+                    size: 22,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap:
-                  widget.onSearchTap ?? () => context.go('/home', extra: {'tab': 1}),
-              child: Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: primaryBlue,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryBlue.withOpacity(0.28),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
+            ],
+          ),
+          const SizedBox(height: 15),
+          SizedBox(
+            height: 6,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    gradient: LinearGradient(
+                      colors: [
+                        borderLight.withValues(alpha: 0.0),
+                        borderLight,
+                        borderLight.withValues(alpha: 0.65),
+                        borderLight.withValues(alpha: 0.0),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                child: const Icon(
-                  Icons.search_rounded,
-                  color: Colors.white,
-                  size: 24,
+                Container(
+                  width: 118,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    gradient: LinearGradient(
+                      colors: [
+                        primaryBlue,
+                        const Color(0xFF4F7DFF),
+                        primaryBlue.withValues(alpha: 0.0),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryBlue.withValues(alpha: 0.18),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
