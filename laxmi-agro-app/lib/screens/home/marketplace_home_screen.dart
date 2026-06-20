@@ -395,14 +395,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchProducts() async {
     try {
       debugPrint('Fetching products...');
-      final response = await _dio.get('/products');
+      final responses = await Future.wait([
+        _dio.get('/products', queryParameters: {'limit': 50}),
+        _dio.get('/products', queryParameters: {'featured': true, 'limit': 50}),
+        _dio.get('/products', queryParameters: {'hot': true, 'limit': 50}),
+      ]);
+      final response = responses.first;
       debugPrint('Products response: ${response.statusCode}');
       if (response.statusCode == 200) {
-        final data = response.data;
-        final List<dynamic> items = data['data'] ?? data ?? [];
+        final items = responses.expand<dynamic>((response) {
+          final data = response.data;
+          return data['data'] ?? data ?? [];
+        }).toList();
         debugPrint('Found ${items.length} products');
         setState(() {
-          final fetched = items.map<Map<String, dynamic>>((item) {
+          final productsById = <String, Map<String, dynamic>>{};
+
+          for (final item in items) {
             final name = item['name']?.toString() ?? '';
             final cat = (item['category'] ?? item['categoryName'] ?? '')
                 .toString();
@@ -423,8 +432,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 apiImage.startsWith('https://');
             final image = isValidUrl ? apiImage : _fallbackImageFor(name, cat);
             debugPrint('Product: $name | apiImage: $apiImage | final: $image');
-            return <String, dynamic>{
-              'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+            final id = item['id']?.toString() ?? item['_id']?.toString() ?? '';
+            productsById[id] = <String, dynamic>{
+              'id': id,
               'name': name,
               'nameHindi': item['nameHindi']?.toString() ?? '',
               'category': cat,
@@ -444,7 +454,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'purchaseCountMax': item['purchaseCountMax'] ?? 0,
               'pendingPriceChange': item['pendingPriceChange'],
             };
-          }).toList();
+          }
+
+          final fetched = productsById.values.toList();
           // Use empty list if API returns nothing (shimmer/empty state will show)
           _products = fetched.isEmpty ? [] : fetched;
           _isLoadingProducts = false;

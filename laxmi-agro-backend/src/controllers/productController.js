@@ -47,6 +47,8 @@ const formatProductCard = (product, userRole, req) => {
   };
 };
 
+const isTrueQuery = (value) => value === true || value === 'true';
+
 exports.getProducts = async (req, res, next) => {
   try {
     const { category, brand, minPrice, maxPrice, inStock, featured, hot, sort } = req.query;
@@ -85,9 +87,9 @@ exports.getProducts = async (req, res, next) => {
     
     if (minPrice) query[priceField] = { ...query[priceField], $gte: Number(minPrice) };
     if (maxPrice) query[priceField] = { ...query[priceField], $lte: Number(maxPrice) };
-    if (inStock === 'true') query.stock = { $gt: 0 };
-    if (featured === 'true') query.isFeatured = true;
-    if (hot === 'true') query.isHot = true;
+    if (isTrueQuery(inStock)) query.stock = { $gt: 0 };
+    if (isTrueQuery(featured)) query.isFeatured = true;
+    if (isTrueQuery(hot)) query.isHot = true;
 
     applyCategoryAccessToProductQuery(query, req.user);
 
