@@ -4,10 +4,10 @@ import Footer from "@/components/Footer";
 import RouteMain from "@/components/RouteMain";
 
 export const metadata = {
-  title: "Laxmi Agro - Agriculture & Equipment Solutions",
+  title: "Laxmi Agro Enterprises",
   description:
-    "Agriculture and industrial equipment platform for machinery, irrigation, power tools, and farm supply operations.",
-  keywords: "laxmi agro, agriculture machinery, power tools, irrigation, wholesale, farming equipment, agri marketplace",
+    "Laxmi Agro Enterprises supplies pumps, pipes, cables, sprinklers, control panels, and allied agriculture products from Raipur.",
+  keywords: "Laxmi Agro Enterprises, agriculture supplies Raipur, submersible pumps, PVC column pipes, GI pipes, sprinkler sets, control panels",
   icons: {
     icon: "/favicon-rounded.png",
     shortcut: "/favicon-rounded.png",

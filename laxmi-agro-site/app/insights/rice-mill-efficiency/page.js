@@ -12,8 +12,8 @@ export default function RiceMillEfficiency() {
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="https://images.unsplash.com/photo-1586771107445-d3ca888129ff?q=80&w=2072&auto=format&fit=crop"
-                            alt="Rice Mill Efficiency"
+                            src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=2072&h=800&fit=crop&q=80"
+                            alt="Sprinkler and raingun irrigation setup"
                             className="w-full h-full object-cover"
                         />
                     </div>
@@ -21,49 +21,43 @@ export default function RiceMillEfficiency() {
                     <div className="p-8 md:p-12">
                         <div className="flex items-center gap-4 mb-6">
                             <span className="px-3 py-1 bg-brand-light text-brand-primary text-xs font-bold uppercase rounded-full">
-                                Rice Milling
+                                Irrigation Tips
                             </span>
                             <span className="text-sm text-gray-500">Dec 2025</span>
                         </div>
 
                         <h1 className="text-3xl md:text-5xl font-bold text-text-primary mb-8 leading-tight">
-                            Top 10 Tips for Maximizing Rice Mill Efficiency
+                            Sprinkler and Raingun Setup Tips for Reliable Field Coverage
                         </h1>
 
                         <div className="prose prose-lg text-gray-600 max-w-none space-y-6">
                             <p className="lead text-xl">
-                                Improving efficiency in rice milling is crucial for maximizing yield and profitability. Here are the top 10 expert tips to optimize your operations.
+                                Sprinkler sets and rainguns help distribute water across the field, but performance depends on pump capacity, pipe layout, nozzle choice, and operating pressure.
                             </p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">1. Regular Maintenance</h3>
-                            <p>Ensure all machinery is serviced regularly to prevent breakdowns and ensure consistent output quality.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">1. Match pump pressure with coverage</h3>
+                            <p>Before buying a sprinkler or raingun, confirm whether the pump can deliver enough pressure and discharge for the expected coverage area.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">2. Optimize Paddy Quality</h3>
-                            <p>The quality of input paddy directly affects milling efficiency. Proper drying and cleaning before milling are essential.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">2. Plan pipe layout properly</h3>
+                            <p>Long runs, sharp bends, and undersized pipes reduce pressure. A practical layout keeps water flow stable across the field.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">3. Upgrade to Modern Machinery</h3>
-                            <p>Investing in modern rice milling technology can significantly reduce broken grains and increase head rice recovery.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">3. Choose the right nozzle</h3>
+                            <p>Nozzle size affects throw distance, droplet size, and water volume. Select it according to crop type, soil condition, and available pump pressure.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">4. Monitor Moisture Content</h3>
-                            <p>Maintaining the correct moisture content (around 14%) is critical for milling quality and storage stability.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">4. Keep spacing consistent</h3>
+                            <p>Uneven spacing creates dry patches and over-watered zones. Mark sprinkler positions before installation for better field coverage.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">5. Efficient Rubber Rollers</h3>
-                            <p>Use high-quality rubber rollers and adjust them properly to minimize grain breakage during husking.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">5. Use reliable fittings</h3>
+                            <p>Couplers, clamps, bends, and connectors must handle field pressure. Weak fittings can leak or disconnect during operation.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">6. Proper Whitening Settings</h3>
-                            <p>Adjust the whitening stones and screens to remove bran effectively without excessive pressure that causes breakage.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">6. Maintain filters and joints</h3>
+                            <p>Clean filters and inspect joints regularly to avoid blockage, pressure drop, and uneven spray patterns.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">7. Effective Dust Aspiration</h3>
-                            <p>A good aspiration system keeps the mill clean and improves the quality of the final product by removing bran and dust.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">7. Get product guidance before purchase</h3>
+                            <p>Laxmi Agro Enterprises can help buyers compare sprinkler sets, rainguns, pipes, pumps, and accessories for practical field requirements.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">8. Staff Training</h3>
-                            <p>Well-trained operators can identify issues early and operate machinery at optimal settings.</p>
-
-                            <h3 className="text-xl font-bold text-text-primary mt-8">9. Quality Control Checks</h3>
-                            <p>Implement regular quality checks at different stages of the milling process to maintain consistency.</p>
-
-                            <h3 className="text-xl font-bold text-text-primary mt-8">10. Data-Driven Decisions</h3>
-                            <p>Track production metrics to identify bottlenecks and areas for improvement in your milling line.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">8. Keep spares ready</h3>
+                            <p>Keeping extra nozzles, washers, couplers, and clamps helps reduce downtime during peak irrigation periods.</p>
                         </div>
                     </div>
                 </article>

@@ -12,8 +12,8 @@ export default function ModernMachineryYields() {
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=2072&h=800&fit=crop&q=80"
-                            alt="Modern Machinery Yields"
+                            src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=2072&h=800&fit=crop&q=80"
+                            alt="Farm water supply pump selection"
                             className="w-full h-full object-cover"
                         />
                     </div>
@@ -21,37 +21,37 @@ export default function ModernMachineryYields() {
                     <div className="p-8 md:p-12">
                         <div className="flex items-center gap-4 mb-6">
                             <span className="px-3 py-1 bg-brand-light text-brand-primary text-xs font-bold uppercase rounded-full">
-                                Success Stories
+                                Pump Selection
                             </span>
                             <span className="text-sm text-gray-500">Feb 2026</span>
                         </div>
 
                         <h1 className="text-3xl md:text-5xl font-bold text-text-primary mb-8 leading-tight">
-                            How Farmers Achieved Record Yields with Modern Machinery
+                            How to Choose the Right Pump Set for Farm Water Supply
                         </h1>
 
                         <div className="prose prose-lg text-gray-600 max-w-none space-y-6">
                             <p className="lead text-xl">
-                                The agricultural landscape is undergoing a revolutionary transformation. Through the adoption of modern machinery, farmers are not just surviving but thriving, setting new records in crop yields.
+                                A reliable pump set is the heart of farm water supply. The right selection depends on bore depth, delivery distance, pipe size, power availability, and daily water requirement.
                             </p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">The Shift to Mechanization</h3>
-                            <p>Traditional farming methods, while time-honored, often struggled with efficiency and scale. The introduction of advanced tractors, automated harvesters, and precision seeders has changed the game.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Start with water source and depth</h3>
+                            <p>For borewell and open-well applications, buyers should first confirm water level, total head, discharge requirement, and whether the farm needs single-phase or three-phase supply.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Case Study: The Green Valley Cooperative</h3>
-                            <p>In the heart of the Midwest, the Green Valley Cooperative implemented a fleet of autonomous tractors. The result? A 40% increase in planting efficiency and a 25% reduction in fuel costs within the first season.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Match pump capacity with field demand</h3>
+                            <p>Oversized pumps can waste electricity and increase wear, while undersized pumps may not provide enough discharge. Laxmi Agro Enterprises helps buyers compare HP, stage, pipe size, and practical field usage.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Precision Planting</h3>
-                            <p>Modern seeders ensure optimal seed depth and spacing, which is critical for maximizing germination rates. By eliminating overcrowding and ensuring uniform growth, farmers are seeing healthier crops and higher yields.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Check accessories before installation</h3>
+                            <p>Column pipes, cable length, starter panel, protection switch, clamps, and jointing material should be selected along with the pump to avoid installation delays.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Harvesting Efficiency</h3>
-                            <p>New combine harvesters equipped with grain loss monitors allow operators to adjust settings on the fly, minimizing waste. This technology ensures that more of the crop makes it from the field to the silo.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Prefer dependable brands and spares</h3>
+                            <p>For farm operations, product availability, service support, and replacement parts are as important as initial price. Choose products with clear specifications and local support.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Reduced Soil Compaction</h3>
-                            <p>Advanced machinery with better tire technology and track systems spreads weight more evenly, reducing soil compaction. This promotes better root growth and water infiltration, leading to robust plant health.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Use proper protection</h3>
+                            <p>Control panels, relays, and starters protect pumps from voltage fluctuation and overload. This can reduce breakdowns and extend pump life.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Looking to the Future</h3>
-                            <p>As technology continues to evolve, the integration of AI and robotics promises even greater gains. Farmers who embrace these tools are positioning themselves for sustainable success in a demanding market.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Buying support from Raipur</h3>
+                            <p>Laxmi Agro Enterprises supplies pumps, cables, pipes, panels, and allied agriculture products for retailers, dealers, and field buyers across Raipur and nearby regions.</p>
                         </div>
                     </div>
                 </article>

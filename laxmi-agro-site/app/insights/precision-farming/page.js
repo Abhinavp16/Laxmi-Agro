@@ -12,8 +12,8 @@ export default function PrecisionFarming() {
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=2072&h=800&fit=crop&q=80"
-                            alt="Precision Farming Techniques"
+                            src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=2072&h=800&fit=crop&q=80"
+                            alt="Pipes cables and farm supply buying guide"
                             className="w-full h-full object-cover"
                         />
                     </div>
@@ -21,40 +21,37 @@ export default function PrecisionFarming() {
                     <div className="p-8 md:p-12">
                         <div className="flex items-center gap-4 mb-6">
                             <span className="px-3 py-1 bg-brand-light text-brand-primary text-xs font-bold uppercase rounded-full">
-                                Precision Farming
+                                Buying Guide
                             </span>
                             <span className="text-sm text-gray-500">Jan 2026</span>
                         </div>
 
                         <h1 className="text-3xl md:text-5xl font-bold text-text-primary mb-8 leading-tight">
-                            Enhancing Crop Productivity with Precision Farming Techniques
+                            PVC Column Pipes, GI Pipes, and Cables: What Buyers Should Check
                         </h1>
 
                         <div className="prose prose-lg text-gray-600 max-w-none space-y-6">
                             <p className="lead text-xl">
-                                Precision farming is more than just a buzzword; it's a critical shift in how we approach agriculture. By leveraging technology, we can optimize every aspect of the crop cycle.
+                                Pipes and cables directly affect pump performance, safety, and maintenance cost. A small mismatch in size or quality can create pressure loss, heating, leakage, or frequent service issues.
                             </p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">What is Precision Farming?</h3>
-                            <p>At its core, precision farming uses data and technology to ensure that crops and soil receive exactly what they need for optimum health and productivity, minimizing waste and maximizing yields.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">PVC column pipe selection</h3>
+                            <p>Check pipe diameter, pressure rating, wall thickness, thread quality, and compatibility with the pump. Good column pipes help maintain steady discharge and safer borewell operation.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">GPS and Auto-Steer Systems</h3>
-                            <p>GPS has revolutionized field work. With auto-steer systems, tractors can navigate fields with centimeter-level accuracy, reducing overlap, saving fuel, and lowering operator fatigue.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">GI pipes for tough field use</h3>
+                            <p>GI pipes are preferred where strength and durability matter. Buyers should verify gauge, finish, length, and usage conditions before selecting a pipe.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Variable Rate Technology (VRT)</h3>
-                            <p>VRT allows farmers to apply fertilizers, pesticides, and seeds at variable rates across a field based on specific needs. This means applying more where the soil is rich and less where it isn't, optimizing input costs.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Submersible cable safety</h3>
+                            <p>Use cable suited to motor load, depth, and moisture exposure. Proper cable selection reduces voltage drop and helps protect the pump motor.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Remote Sensing and Drones</h3>
-                            <p>Drones equipped with multispectral cameras can monitor crop health from the air. This early detection system allows for targeted interventions before pests or diseases can spread.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Jointing and installation material</h3>
+                            <p>Jointing solution, clamps, bends, and fittings should be chosen carefully. Poor fittings can lead to leakage, pressure loss, and extra maintenance.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Soil Moisture Sensors</h3>
-                            <p>Real-time data from soil sensors helps in precise irrigation scheduling. This not only conserves water but also prevents crop stress due to under or over-watering.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Buy as a complete system</h3>
+                            <p>When pumps, pipes, cables, and control panels are selected together, the overall setup becomes easier to install and maintain.</p>
 
-                            <h3 className="text-xl font-bold text-text-primary mt-8">Data Analytics for Better Decisions</h3>
-                            <p>The integration of farm management software allows for the analysis of historical and real-time data. This empowers farmers to make informed decisions about planting times, crop varieties, and harvest schedules.</p>
-
-                            <h3 className="text-xl font-bold text-text-primary mt-8">A Sustainable Future</h3>
-                            <p>Precision farming is key to sustainable agriculture. By using resources more efficiently, we reduce environmental impact while ensuring food security for a growing global population.</p>
+                            <h3 className="text-xl font-bold text-text-primary mt-8">Local catalogue support</h3>
+                            <p>Laxmi Agro Enterprises offers practical agriculture supply categories for dealers, retailers, and farmers looking for dependable products in one place.</p>
                         </div>
                     </div>
                 </article>

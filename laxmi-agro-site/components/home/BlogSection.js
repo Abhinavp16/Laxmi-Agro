@@ -3,24 +3,24 @@ import ScrollReveal from '@/components/ScrollReveal';
 
 const blogPosts = [
     {
-        title: 'How Farmers Achieved Record Yields with Modern Machinery',
-        category: 'Success Stories',
+        title: 'How to Choose the Right Pump Set for Farm Water Supply',
+        category: 'Pump Selection',
         date: 'Feb 2026',
-        image: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&h=300&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=400&h=300&fit=crop&q=80',
         link: '/insights/modern-machinery-yields'
     },
     {
-        title: 'Enhancing Crop Productivity with Precision Farming Techniques',
-        category: 'Precision Farming',
+        title: 'PVC Column Pipes, GI Pipes, and Cables: What Buyers Should Check',
+        category: 'Buying Guide',
         date: 'Jan 2026',
-        image: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=400&h=300&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400&h=300&fit=crop&q=80',
         link: '/insights/precision-farming'
     },
     {
-        title: 'Top 10 Tips for Maximizing Rice Mill Efficiency',
-        category: 'Rice Milling',
+        title: 'Sprinkler and Raingun Setup Tips for Reliable Field Coverage',
+        category: 'Irrigation Tips',
         date: 'Dec 2025',
-        image: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?q=80&w=2072&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=400&h=300&fit=crop&q=80',
         link: '/insights/rice-mill-efficiency'
     },
 ];
@@ -37,7 +37,7 @@ export default function BlogSection() {
                         </h3>
                     </div>
                     <p className="max-w-xl text-base leading-7 text-text-secondary lg:justify-self-end">
-                        Explore practical stories, buying guides, and field insights for modern agriculture supply decisions.
+                        Practical buying guides and field tips for pumps, pipes, cables, control panels, and irrigation systems.
                     </p>
                 </ScrollReveal>
 
