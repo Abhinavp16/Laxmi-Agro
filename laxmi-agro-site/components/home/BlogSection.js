@@ -6,21 +6,21 @@ const blogPosts = [
         title: 'How to Choose the Right Pump Set for Farm Water Supply',
         category: 'Pump Selection',
         date: 'Feb 2026',
-        image: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=400&h=300&fit=crop&q=80',
+        image: '/images/insights/pump-selection.svg',
         link: '/insights/modern-machinery-yields'
     },
     {
         title: 'PVC Column Pipes, GI Pipes, and Cables: What Buyers Should Check',
         category: 'Buying Guide',
         date: 'Jan 2026',
-        image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400&h=300&fit=crop&q=80',
+        image: '/images/insights/pipes-cables.svg',
         link: '/insights/precision-farming'
     },
     {
         title: 'Sprinkler and Raingun Setup Tips for Reliable Field Coverage',
         category: 'Irrigation Tips',
         date: 'Dec 2025',
-        image: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=400&h=300&fit=crop&q=80',
+        image: '/images/insights/sprinkler-setup.svg',
         link: '/insights/rice-mill-efficiency'
     },
 ];

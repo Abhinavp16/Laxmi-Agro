@@ -12,7 +12,7 @@ export default function RiceMillEfficiency() {
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=2072&h=800&fit=crop&q=80"
+                            src="/images/insights/sprinkler-setup.svg"
                             alt="Sprinkler and raingun irrigation setup"
                             className="w-full h-full object-cover"
                         />

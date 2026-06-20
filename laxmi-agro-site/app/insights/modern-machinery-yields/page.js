@@ -12,7 +12,7 @@ export default function ModernMachineryYields() {
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=2072&h=800&fit=crop&q=80"
+                            src="/images/insights/pump-selection.svg"
                             alt="Farm water supply pump selection"
                             className="w-full h-full object-cover"
                         />

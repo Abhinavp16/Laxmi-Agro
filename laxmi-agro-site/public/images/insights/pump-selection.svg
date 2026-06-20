@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" role="img" aria-labelledby="title desc">
+  <title id="title">Farm pump set water supply</title>
+  <desc id="desc">Illustration of an agricultural pump set moving water from a borewell to green fields.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#eaf5ff"/>
+      <stop offset="1" stop-color="#dfe8d3"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#4c8d3b"/>
+      <stop offset="1" stop-color="#0f4a2b"/>
+    </linearGradient>
+    <linearGradient id="pump" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2f4f5f"/>
+      <stop offset="1" stop-color="#102a38"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b2716" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect width="800" height="560" rx="42" fill="url(#sky)"/>
+  <circle cx="675" cy="105" r="58" fill="#ffd77a" opacity="0.9"/>
+  <path d="M0 302 C160 250 264 323 418 276 C560 232 665 256 800 222 L800 560 L0 560 Z" fill="url(#field)"/>
+  <path d="M52 378 C210 330 351 342 516 306 C621 284 708 285 800 262" fill="none" stroke="#9ed16c" stroke-width="12" opacity="0.48"/>
+  <path d="M60 425 C222 378 362 390 531 354 C637 331 720 333 800 309" fill="none" stroke="#b9dc7a" stroke-width="8" opacity="0.42"/>
+  <g filter="url(#shadow)">
+    <rect x="90" y="286" width="292" height="154" rx="28" fill="#f7f4e8"/>
+    <rect x="129" y="323" width="170" height="72" rx="18" fill="url(#pump)"/>
+    <circle cx="167" cy="361" r="24" fill="#e78b2d"/>
+    <circle cx="167" cy="361" r="10" fill="#fff4dc"/>
+    <rect x="282" y="342" width="64" height="34" rx="12" fill="#17351d"/>
+    <rect x="105" y="395" width="250" height="20" rx="10" fill="#273f2b"/>
+    <path d="M346 360 C430 360 440 294 514 294 C562 294 594 320 628 350" fill="none" stroke="#2f7fd1" stroke-width="18" stroke-linecap="round"/>
+    <path d="M508 294 C565 301 602 320 639 355" fill="none" stroke="#aee3ff" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+  </g>
+  <g opacity="0.9">
+    <path d="M558 372 C621 334 683 329 744 356" fill="none" stroke="#e8f7ff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M570 402 C636 363 700 358 762 386" fill="none" stroke="#e8f7ff" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+  </g>
+  <rect x="42" y="42" width="172" height="42" rx="21" fill="#ffffff" opacity="0.84"/>
+  <text x="68" y="70" fill="#123b1f" font-family="Arial, sans-serif" font-size="18" font-weight="700">Pump Selection</text>
+</svg>
