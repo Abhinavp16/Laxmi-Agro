@@ -120,8 +120,10 @@ function normalizeSelectedLabelIds(
 type UploadStatus = "idle" | "converting" | "uploading" | "done";
 
 interface ProductImage {
+  _id?: string;
   url: string;
   publicId: string;
+  blurHash?: string | null;
   isPrimary: boolean;
   order: number;
   originalSize?: number;
@@ -142,6 +144,19 @@ function resolvePreviewImageUrl(url: string) {
   }
 
   return buildApiUrl(`/${trimmed}`).replace("/api/v1", "");
+}
+
+function getImagePublicId(image: ProductImage) {
+  const publicId = String(image.publicId || "").trim();
+  if (publicId) return publicId;
+
+  const imageId = String(image._id || "").trim();
+  if (imageId) return imageId;
+
+  const url = String(image.url || "").trim();
+  if (url) return url;
+
+  return `image-${Date.now()}`;
 }
 
 const numericString = z
@@ -648,7 +663,7 @@ export default function AddProductPage() {
 
       const normalizedImages = images.map((image, index) => ({
         url: String(image.url || "").trim(),
-        publicId: String(image.publicId || "").trim(),
+        publicId: getImagePublicId(image),
         isPrimary: image.isPrimary === true,
         order: Number.isFinite(Number(image.order))
           ? Number(image.order)
@@ -740,7 +755,14 @@ export default function AddProductPage() {
           : "Failed to create product";
         try {
           const errorData = await response.json();
+          const validationDetails = errorData?.error?.details;
           errorMessage =
+            (Array.isArray(validationDetails) && validationDetails.length > 0
+              ? validationDetails
+                  .map((detail: any) => detail?.message || detail?.field)
+                  .filter(Boolean)
+                  .join(", ")
+              : "") ||
             errorData?.message ||
             errorData?.error?.message ||
             errorData?.errors?.[0]?.message ||
