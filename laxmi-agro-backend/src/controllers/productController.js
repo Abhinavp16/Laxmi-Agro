@@ -49,7 +49,7 @@ const formatProductCard = (product, userRole, req) => {
 
 exports.getProducts = async (req, res, next) => {
   try {
-    const { category, brand, minPrice, maxPrice, inStock, featured, sort } = req.query;
+    const { category, brand, minPrice, maxPrice, inStock, featured, hot, sort } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
     const userRole = req.user?.role || 'guest';
 
@@ -87,6 +87,7 @@ exports.getProducts = async (req, res, next) => {
     if (maxPrice) query[priceField] = { ...query[priceField], $lte: Number(maxPrice) };
     if (inStock === 'true') query.stock = { $gt: 0 };
     if (featured === 'true') query.isFeatured = true;
+    if (hot === 'true') query.isHot = true;
 
     applyCategoryAccessToProductQuery(query, req.user);
 
@@ -306,7 +307,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
     }, req.user);
 
     const products = await Product.find(query)
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax')
       .limit(10)
       .lean();
 

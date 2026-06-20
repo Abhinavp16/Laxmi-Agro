@@ -102,6 +102,7 @@ const productValidation = {
     maxPrice: Joi.number().min(0),
     inStock: Joi.boolean(),
     featured: Joi.boolean(),
+    hot: Joi.boolean(),
     sort: Joi.string().valid('price', '-price', 'name', '-name', 'createdAt', '-createdAt'),
   }),
 
