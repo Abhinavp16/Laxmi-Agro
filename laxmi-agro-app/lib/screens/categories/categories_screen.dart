@@ -326,30 +326,28 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
         setState(() {
-          _products = items
-              .map<Map<String, dynamic>>(
-                (item) => <String, dynamic>{
-                  'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
-                  'name': item['name']?.toString() ?? '',
-                  'nameHindi': item['nameHindi']?.toString() ?? '',
-                  'price': item['price'] ?? item['retailPrice'] ?? 0,
-                  'mrp': item['mrp'] ?? 0,
-                  'image': ApiConfig.normalizeMediaUrl(
-                    item['primaryImage']?.toString() ?? '',
-                  ),
-                  'inStock': item['inStock'] != false,
-                  'shortDescription':
-                      item['shortDescription']?.toString() ?? '',
-                  'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
-                  'reviewCount':
-                      item['ratingCount'] ??
-                      item['reviewCount'] ??
-                      item['reviews'] ??
-                      '',
-                  'pendingPriceChange': item['pendingPriceChange'],
-                },
-              )
-              .toList();
+          _products = items.map<Map<String, dynamic>>((item) {
+            final name = item['name']?.toString() ?? '';
+            return <String, dynamic>{
+              'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+              'name': name,
+              'nameHindi': item['nameHindi']?.toString() ?? '',
+              'price': item['price'] ?? item['retailPrice'] ?? 0,
+              'mrp': item['mrp'] ?? 0,
+              'image': ApiConfig.normalizeMediaUrl(
+                item['primaryImage']?.toString() ?? '',
+              ),
+              'inStock': item['inStock'] != false,
+              'shortDescription': item['shortDescription']?.toString() ?? '',
+              'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
+              'reviewCount':
+                  item['ratingCount'] ??
+                  item['reviewCount'] ??
+                  item['reviews'] ??
+                  '',
+              'pendingPriceChange': item['pendingPriceChange'],
+            };
+          }).toList()..sort(_compareProductsByPrice);
           _isLoadingProducts = false;
         });
       }
@@ -357,6 +355,25 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       debugPrint('Error fetching products: $e');
       setState(() => _isLoadingProducts = false);
     }
+  }
+
+  int _compareProductsByPrice(
+    Map<String, dynamic> first,
+    Map<String, dynamic> second,
+  ) {
+    final priceComparison = _numericValue(
+      first['price'],
+    ).compareTo(_numericValue(second['price']));
+    if (priceComparison != 0) return priceComparison;
+
+    return (first['name']?.toString() ?? '').toLowerCase().compareTo(
+      (second['name']?.toString() ?? '').toLowerCase(),
+    );
+  }
+
+  num _numericValue(dynamic value) {
+    if (value is num) return value;
+    return num.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   String _formatPrice(dynamic price) {
@@ -454,6 +471,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   String _formatCategoryTitle(String value) {
+    if (_isServiceCableCategory(value)) return 'Service Cable';
+
     final normalized = value.trim().replaceAll(RegExp(r'[-_]+'), ' ');
     final acronyms = {'gi', 'pvc', 'hdpe', 'ss', 'ci', 'v'};
 
@@ -466,6 +485,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           return lower[0].toUpperCase() + lower.substring(1);
         })
         .join(' ');
+  }
+
+  bool _isServiceCableCategory(String value) {
+    final normalized = value.trim().toLowerCase().replaceAll(
+      RegExp(r'[-_]+'),
+      ' ',
+    );
+    return normalized.contains('service cable');
   }
 
   @override

@@ -11,6 +11,7 @@
     "seed:local": "node src/scripts/seedLocalCatalog.js",
     "catalog:pdf": "node src/scripts/importPdfCatalog.js",
     "products:remove-variants": "node src/scripts/removeProductVariants.js",
+    "products:clean-names": "node src/scripts/cleanProductNames.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [
