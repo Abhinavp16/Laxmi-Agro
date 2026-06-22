@@ -42,7 +42,7 @@ const PUMP_CATEGORY_BY_BRAND = {
 const AQUA_GOLDEN_NAME_PREFIX_BY_OLD_CATEGORY = {
   'sub-v-3-13-feet': 'Golden Sub V-3 13 Feet',
   'sub-v-4-20-feet': 'Sub V-4 20 Feet',
-  'sub-v-6-30-feet': 'Mayur Pankh Sub V-6 30 Feet',
+  'sub-v-6-30-feet': 'Sub V-6 30 Feet',
 };
 
 const normalizeKey = (value = '') => String(value).trim().toLowerCase();
@@ -81,6 +81,10 @@ const cleanAquaGoldenName = (product, oldCategory) => {
   const prefix = AQUA_GOLDEN_NAME_PREFIX_BY_OLD_CATEGORY[oldCategory];
   if (!prefix) return name;
 
+  if (oldCategory === 'sub-v-6-30-feet') {
+    return normalizeSpaces(`${prefix} ${name.replace(/^MAYUR\s+PANKH\s+/i, '')}`);
+  }
+
   if (oldCategory === 'sub-v-3-13-feet') {
     const goldenMatch = name.match(/^GOLDEN\s+(.+)$/i);
     if (goldenMatch) return normalizeSpaces(`${prefix} ${goldenMatch[1]}`);
@@ -89,6 +93,9 @@ const cleanAquaGoldenName = (product, oldCategory) => {
   if (oldCategory === 'sub-v-4-20-feet') {
     const modelMatch = name.match(/^(AQUAGOLD|AQUA|MAYUR PANKH)\s+(.+)$/i);
     if (modelMatch) {
+      if (modelMatch[1].toUpperCase() === 'MAYUR PANKH') {
+        return normalizeSpaces(`${prefix} ${modelMatch[2]}`);
+      }
       return normalizeSpaces(`${formatAquaModel(modelMatch[1])} ${prefix} ${modelMatch[2]}`);
     }
   }
