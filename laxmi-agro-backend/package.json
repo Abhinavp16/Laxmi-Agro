@@ -12,6 +12,7 @@
     "catalog:pdf": "node src/scripts/importPdfCatalog.js",
     "products:remove-variants": "node src/scripts/removeProductVariants.js",
     "products:clean-names": "node src/scripts/cleanProductNames.js",
+    "products:split-pump-categories": "node src/scripts/splitPumpCategories.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [

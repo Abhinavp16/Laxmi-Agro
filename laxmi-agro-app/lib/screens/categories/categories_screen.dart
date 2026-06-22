@@ -473,7 +473,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   String _formatCategoryTitle(String value) {
     if (_isServiceCableCategory(value)) return 'Service Cable';
 
-    final normalized = value.trim().replaceAll(RegExp(r'[-_]+'), ' ');
+    final normalized = value
+        .trim()
+        .replaceAllMapped(
+          RegExp(r'\b([Vv])-(\d+)\b'),
+          (match) => '${match[1]}__DASH__${match[2]}',
+        )
+        .replaceAll(RegExp(r'[-_]+'), ' ')
+        .replaceAll('__DASH__', '-');
     final acronyms = {'gi', 'pvc', 'hdpe', 'ss', 'ci', 'v'};
 
     return normalized
