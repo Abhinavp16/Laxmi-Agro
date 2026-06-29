@@ -13,6 +13,7 @@
     "products:remove-variants": "node src/scripts/removeProductVariants.js",
     "products:clean-names": "node src/scripts/cleanProductNames.js",
     "products:split-pump-categories": "node src/scripts/splitPumpCategories.js",
+    "products:sync-shivnath-kq": "node src/scripts/syncShivnathKQCategories.js",
     "test": "node tests/inventory.test.js"
   },
   "keywords": [
