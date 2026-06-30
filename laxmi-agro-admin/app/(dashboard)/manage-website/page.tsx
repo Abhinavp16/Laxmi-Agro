@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { type ComponentType, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { apiFetch, buildApiUrl } from "@/lib/api"
 import { toast } from "sonner"
@@ -61,6 +61,8 @@ type WebsiteCatalogBrand = { _id: string; name: string; slug: string; showOnWebs
 type WebsiteCatalogCategory = { _id: string; name: string; slug: string; showOnWebsite?: boolean; isActive?: boolean; productCount?: number; company?: { _id: string; name: string; slug: string } }
 type WebsiteCatalogProduct = { _id: string; name: string; slug: string; sku?: string; showOnWebsite?: boolean; status?: string; stock?: number; company?: { _id: string; name: string; slug: string }; categoryRef?: { _id: string; name: string; slug: string } }
 type WebsiteCatalogType = "brand" | "category" | "product"
+type CatalogTreeCategory = WebsiteCatalogCategory & { products: WebsiteCatalogProduct[] }
+type CatalogTreeBrand = WebsiteCatalogBrand & { categories: CatalogTreeCategory[]; uncategorizedProducts: WebsiteCatalogProduct[] }
 
 const DEFAULT_HERO_CARD_IMAGES = ["/images/Banner/1.jpg", "/images/Banner/2.jpg", "/images/Banner/3.jpg", "/images/Banner/4.jpg", "/images/Banner/5.jpg"]
 const HERO_CARD_PAGE_LABELS = ["Home", "About Us", "Products", "Dealership", "Contact / Other Pages"]
@@ -224,7 +226,7 @@ const ICON_OPTIONS = [
     { value: "truck", label: "Shipping", Icon: Truck },
     { value: "service", label: "Service", Icon: Wrench },
 ] as const
-const iconMap = Object.fromEntries(ICON_OPTIONS.map((item) => [item.value, item.Icon])) as Record<string, (props: { className?: string }) => JSX.Element>
+const iconMap = Object.fromEntries(ICON_OPTIONS.map((item) => [item.value, item.Icon])) as Record<string, ComponentType<{ className?: string }>>
 const createEmptyLabel = (order = 0): WebsiteLabel => ({
     id: "",
     title: "",
@@ -283,12 +285,57 @@ export default function ManageWebsitePage() {
     const [catalogProducts, setCatalogProducts] = useState<WebsiteCatalogProduct[]>([])
     const [hiddenCatalogItems, setHiddenCatalogItems] = useState<Record<WebsiteCatalogType, string[]>>({ brand: [], category: [], product: [] })
     const [catalogSearch, setCatalogSearch] = useState<Record<WebsiteCatalogType, string>>({ brand: "", category: "", product: "" })
+    const [expandedCatalogBrands, setExpandedCatalogBrands] = useState<string[]>([])
+    const [expandedCatalogCategories, setExpandedCatalogCategories] = useState<string[]>([])
 
     const uploadUrl = useMemo(() => buildApiUrl("/upload/image?folder=website"), [])
     const websiteBaseUrl = useMemo(() => {
         const raw = process.env.NEXT_PUBLIC_WEBSITE_BASE_URL || "http://localhost:3000"
         return raw.replace(/\/+$/, "")
     }, [])
+    const catalogTree = useMemo<CatalogTreeBrand[]>(() => {
+        const brands = catalogBrands.filter((item) => item.name !== "GENERAL PRODUCTS")
+        return brands.map((brand) => {
+            const categories = catalogCategories
+                .filter((category) => category.company?._id === brand._id)
+                .map((category) => ({
+                    ...category,
+                    products: catalogProducts.filter((product) => product.company?._id === brand._id && product.categoryRef?._id === category._id),
+                }))
+            const categorizedProductIds = new Set(categories.flatMap((category) => category.products.map((product) => product._id)))
+            return {
+                ...brand,
+                categories,
+                uncategorizedProducts: catalogProducts.filter((product) => product.company?._id === brand._id && !categorizedProductIds.has(product._id)),
+            }
+        })
+    }, [catalogBrands, catalogCategories, catalogProducts])
+
+    const filteredCatalogTree = useMemo<CatalogTreeBrand[]>(() => {
+        const search = `${catalogSearch.brand} ${catalogSearch.category} ${catalogSearch.product}`.trim().toLowerCase()
+        if (!search) return catalogTree
+
+        return catalogTree
+            .map((brand) => {
+                const brandMatches = `${brand.name} ${brand.slug}`.toLowerCase().includes(search)
+                const categories = brand.categories
+                    .map((category) => {
+                        const categoryMatches = `${category.name} ${category.slug}`.toLowerCase().includes(search)
+                        const products = category.products.filter((product) => (
+                            categoryMatches
+                            || brandMatches
+                            || `${product.name} ${product.sku || ""} ${product.slug}`.toLowerCase().includes(search)
+                        ))
+                        return categoryMatches || brandMatches || products.length > 0 ? { ...category, products } : null
+                    })
+                    .filter(Boolean) as CatalogTreeCategory[]
+                const uncategorizedProducts = brand.uncategorizedProducts.filter((product) => (
+                    brandMatches || `${product.name} ${product.sku || ""} ${product.slug}`.toLowerCase().includes(search)
+                ))
+                return brandMatches || categories.length > 0 || uncategorizedProducts.length > 0 ? { ...brand, categories, uncategorizedProducts } : null
+            })
+            .filter(Boolean) as CatalogTreeBrand[]
+    }, [catalogTree, catalogSearch])
 
     function previewSrc(url: string) {
         if (!url) return ""
@@ -379,6 +426,55 @@ export default function ManageWebsitePage() {
         }
     }
 
+    function setCatalogHidden(type: WebsiteCatalogType, ids: string[], hidden: boolean, draft?: Record<WebsiteCatalogType, string[]>) {
+        const target = draft || hiddenCatalogItems
+        const current = new Set(target[type] || [])
+        ids.forEach((id) => {
+            if (hidden) current.add(id)
+            else current.delete(id)
+        })
+        target[type] = Array.from(current)
+        if (!draft) setHiddenCatalogItems({ ...target })
+    }
+
+    function isCatalogHidden(type: WebsiteCatalogType, id: string) {
+        return (hiddenCatalogItems[type] || []).includes(id)
+    }
+
+    function getBrandChildIds(brand: CatalogTreeBrand) {
+        return {
+            categoryIds: brand.categories.map((category) => category._id),
+            productIds: [
+                ...brand.categories.flatMap((category) => category.products.map((product) => product._id)),
+                ...brand.uncategorizedProducts.map((product) => product._id),
+            ],
+        }
+    }
+
+    function getBrandHiddenState(brand: CatalogTreeBrand): boolean | "indeterminate" {
+        const { categoryIds, productIds } = getBrandChildIds(brand)
+        const ids = [brand._id, ...categoryIds, ...productIds]
+        if (ids.length === 0) return isCatalogHidden("brand", brand._id)
+        const hiddenCount = ids.filter((id) => (
+            id === brand._id
+                ? isCatalogHidden("brand", id)
+                : categoryIds.includes(id)
+                    ? isCatalogHidden("category", id)
+                    : isCatalogHidden("product", id)
+        )).length
+        if (hiddenCount === 0) return false
+        if (hiddenCount === ids.length) return true
+        return "indeterminate"
+    }
+
+    function getCategoryHiddenState(category: CatalogTreeCategory): boolean | "indeterminate" {
+        const ids = [category._id, ...category.products.map((product) => product._id)]
+        const hiddenCount = ids.filter((id) => id === category._id ? isCatalogHidden("category", id) : isCatalogHidden("product", id)).length
+        if (hiddenCount === 0) return false
+        if (hiddenCount === ids.length) return true
+        return "indeterminate"
+    }
+
     function toggleCatalogHidden(type: WebsiteCatalogType, id: string) {
         setHiddenCatalogItems((prev) => {
             const current = prev[type] || []
@@ -387,26 +483,64 @@ export default function ManageWebsitePage() {
         })
     }
 
-    async function updateCatalogVisibility<T extends { _id: string; showOnWebsite?: boolean }>(type: WebsiteCatalogType, items: T[]) {
+    function toggleBrandVisibility(brand: CatalogTreeBrand) {
+        const nextHidden = getBrandHiddenState(brand) !== true
+        setHiddenCatalogItems((prev) => {
+            const next = { brand: [...prev.brand], category: [...prev.category], product: [...prev.product] }
+            const { categoryIds, productIds } = getBrandChildIds(brand)
+            setCatalogHidden("brand", [brand._id], nextHidden, next)
+            setCatalogHidden("category", categoryIds, nextHidden, next)
+            setCatalogHidden("product", productIds, nextHidden, next)
+            return next
+        })
+    }
+
+    function toggleCategoryVisibility(category: CatalogTreeCategory) {
+        const nextHidden = getCategoryHiddenState(category) !== true
+        setHiddenCatalogItems((prev) => {
+            const next = { brand: [...prev.brand], category: [...prev.category], product: [...prev.product] }
+            setCatalogHidden("category", [category._id], nextHidden, next)
+            setCatalogHidden("product", category.products.map((product) => product._id), nextHidden, next)
+            return next
+        })
+    }
+
+    function toggleCatalogBrandExpanded(id: string) {
+        setExpandedCatalogBrands((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
+    }
+
+    function toggleCatalogCategoryExpanded(id: string) {
+        setExpandedCatalogCategories((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
+    }
+
+    function getCatalogVisibilityChanges<T extends { _id: string; showOnWebsite?: boolean }>(type: WebsiteCatalogType, items: T[]) {
         const hiddenIds = hiddenCatalogItems[type] || []
         const idsToHide = items.filter((item) => item.showOnWebsite !== false && hiddenIds.includes(item._id)).map((item) => item._id)
         const idsToShow = items.filter((item) => item.showOnWebsite === false && !hiddenIds.includes(item._id)).map((item) => item._id)
+        return { idsToHide, idsToShow }
+    }
 
-        if (idsToHide.length === 0 && idsToShow.length === 0) {
+    async function updateCatalogVisibility() {
+        const changes = {
+            brand: getCatalogVisibilityChanges("brand", catalogBrands),
+            category: getCatalogVisibilityChanges("category", catalogCategories),
+            product: getCatalogVisibilityChanges("product", catalogProducts),
+        }
+        const requests = (Object.entries(changes) as Array<[WebsiteCatalogType, { idsToHide: string[]; idsToShow: string[] }]>).flatMap(([type, change]) => [
+            change.idsToHide.length > 0 ? { type, ids: change.idsToHide, showOnWebsite: false } : null,
+            change.idsToShow.length > 0 ? { type, ids: change.idsToShow, showOnWebsite: true } : null,
+        ].filter(Boolean) as Array<{ type: WebsiteCatalogType; ids: string[]; showOnWebsite: boolean }>)
+
+        if (requests.length === 0) {
             toast.info("No visibility changes to update")
             return
         }
         try {
             setIsSavingVisibility(true)
-            const requests = [
-                idsToHide.length > 0 ? { ids: idsToHide, showOnWebsite: false } : null,
-                idsToShow.length > 0 ? { ids: idsToShow, showOnWebsite: true } : null,
-            ].filter(Boolean) as Array<{ ids: string[]; showOnWebsite: boolean }>
-
             for (const request of requests) {
                 const res = await apiFetch("/admin/website-catalog/visibility", {
                     method: "PATCH",
-                    body: JSON.stringify({ type, ids: request.ids, showOnWebsite: request.showOnWebsite }),
+                    body: JSON.stringify({ type: request.type, ids: request.ids, showOnWebsite: request.showOnWebsite }),
                 })
                 const data = await res.json().catch(() => null)
                 if (!res.ok) throw new Error(data?.message || "Failed to update visibility")
@@ -894,55 +1028,121 @@ export default function ManageWebsitePage() {
             : <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">Visible</span>
     }
 
-    function renderCatalogList<T extends { _id: string; name: string; showOnWebsite?: boolean }>(
-        type: WebsiteCatalogType,
-        title: string,
-        description: string,
-        items: T[],
-        meta: (item: T) => string,
-    ) {
-        const hiddenIds = hiddenCatalogItems[type] || []
-        const search = catalogSearch[type].trim().toLowerCase()
-        const filteredItems = search
-            ? items.filter((item) => `${item.name} ${meta(item)}`.toLowerCase().includes(search))
-            : items
-        const hasChanges = items.some((item) => (item.showOnWebsite === false) !== hiddenIds.includes(item._id))
+    function renderVisibilityStateBadge(state: boolean | "indeterminate") {
+        if (state === "indeterminate") return <span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">Partial</span>
+        return state ? renderVisibilityBadge(false) : renderVisibilityBadge(true)
+    }
+
+    function hasCatalogVisibilityChanges() {
+        return [
+            ...catalogBrands.map((item) => ({ type: "brand" as WebsiteCatalogType, item })),
+            ...catalogCategories.map((item) => ({ type: "category" as WebsiteCatalogType, item })),
+            ...catalogProducts.map((item) => ({ type: "product" as WebsiteCatalogType, item })),
+        ].some(({ type, item }) => (item.showOnWebsite === false) !== (hiddenCatalogItems[type] || []).includes(item._id))
+    }
+
+    function renderProductVisibilityRow(product: WebsiteCatalogProduct) {
+        const hidden = isCatalogHidden("product", product._id)
+        return (
+            <label key={product._id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#d8dfca] bg-white p-3">
+                <Checkbox checked={hidden} onCheckedChange={() => toggleCatalogHidden("product", product._id)} />
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{product.name}</p>
+                    <p className="truncate text-xs text-slate-500">{product.sku || product.slug} • Stock {product.stock ?? 0}</p>
+                </div>
+                {renderVisibilityBadge(hidden ? false : true)}
+            </label>
+        )
+    }
+
+    function renderCatalogVisibilityTree() {
+        const hasChanges = hasCatalogVisibilityChanges()
+        const totalProducts = catalogTree.reduce((sum, brand) => sum + brand.categories.reduce((inner, category) => inner + category.products.length, 0) + brand.uncategorizedProducts.length, 0)
         return (
             <Card className="border-[#dde3d0] bg-white/92 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
                 <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                            <CardTitle className="text-slate-900">{title}</CardTitle>
-                            <CardDescription className="mt-1 text-slate-500">{description} Check items to hide them from the website.</CardDescription>
+                            <CardTitle className="text-slate-900">Catalog Tree</CardTitle>
+                            <CardDescription className="mt-1 text-slate-500">
+                                Check a brand to hide/show the brand, all its categories, and all products. Check a category to hide/show its products.
+                            </CardDescription>
+                            <p className="mt-2 text-xs text-slate-500">{catalogTree.length} brands • {catalogCategories.length} categories • {totalProducts} products loaded from MongoDB</p>
                         </div>
                         <div className="flex gap-2">
-                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || !hasChanges} onClick={() => updateCatalogVisibility(type, items)}>
-                                Update Visibility
+                            <Button type="button" variant="outline" size="sm" disabled={isSavingVisibility || !hasChanges} onClick={updateCatalogVisibility}>
+                                {isSavingVisibility ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Update Website Visibility
                             </Button>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                    <Input
-                        value={catalogSearch[type]}
-                        onChange={(e) => setCatalogSearch((prev) => ({ ...prev, [type]: e.target.value }))}
-                        placeholder={`Search ${title.toLowerCase()}...`}
-                        className="mb-3 border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400"
-                    />
-                    {items.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No items found.</div>
-                    ) : filteredItems.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No matching {title.toLowerCase()} found.</div>
-                    ) : filteredItems.map((item) => (
-                        <label key={item._id} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#d8dfca] bg-[#f8faf3] p-3">
-                            <Checkbox checked={hiddenIds.includes(item._id)} onCheckedChange={() => toggleCatalogHidden(type, item._id)} />
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
-                                <p className="truncate text-xs text-slate-500">{meta(item)}</p>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <Input value={catalogSearch.brand} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, brand: e.target.value }))} placeholder="Search brands..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
+                        <Input value={catalogSearch.category} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, category: e.target.value }))} placeholder="Search categories..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
+                        <Input value={catalogSearch.product} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, product: e.target.value }))} placeholder="Search products or SKU..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
+                    </div>
+                    {filteredCatalogTree.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No matching catalog items found.</div>
+                    ) : filteredCatalogTree.map((brand) => {
+                        const brandExpanded = expandedCatalogBrands.includes(brand._id) || Boolean(`${catalogSearch.brand}${catalogSearch.category}${catalogSearch.product}`.trim())
+                        const brandState = getBrandHiddenState(brand)
+                        const brandProductCount = brand.categories.reduce((sum, category) => sum + category.products.length, 0) + brand.uncategorizedProducts.length
+                        return (
+                            <div key={brand._id} className="overflow-hidden rounded-2xl border border-[#d8dfca] bg-[#f8faf3]">
+                                <div className="flex items-center gap-3 border-b border-[#d8dfca] bg-white p-4">
+                                    <Checkbox checked={brandState} onCheckedChange={() => toggleBrandVisibility(brand)} />
+                                    <button type="button" onClick={() => toggleCatalogBrandExpanded(brand._id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                                        {brandExpanded ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronRight className="h-4 w-4 text-slate-500" />}
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-900">{brand.name}</p>
+                                            <p className="truncate text-xs text-slate-500">{brand.categories.length} categories • {brandProductCount} products • {brand.slug}</p>
+                                        </div>
+                                    </button>
+                                    {renderVisibilityStateBadge(brandState)}
+                                </div>
+                                {brandExpanded ? (
+                                    <div className="space-y-3 p-3">
+                                        {brand.categories.length === 0 && brand.uncategorizedProducts.length === 0 ? (
+                                            <div className="rounded-xl border border-dashed border-[#d8dfca] bg-white p-3 text-sm text-slate-500">No categories or products found for this brand.</div>
+                                        ) : null}
+                                        {brand.categories.map((category) => {
+                                            const categoryExpanded = expandedCatalogCategories.includes(category._id) || Boolean(`${catalogSearch.category}${catalogSearch.product}`.trim())
+                                            const categoryState = getCategoryHiddenState(category)
+                                            return (
+                                                <div key={category._id} className="overflow-hidden rounded-xl border border-[#d8dfca] bg-white">
+                                                    <div className="flex items-center gap-3 bg-[#fbfcf7] p-3">
+                                                        <Checkbox checked={categoryState} onCheckedChange={() => toggleCategoryVisibility(category)} />
+                                                        <button type="button" onClick={() => toggleCatalogCategoryExpanded(category._id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                                                            {categoryExpanded ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronRight className="h-4 w-4 text-slate-500" />}
+                                                            <div className="min-w-0">
+                                                                <p className="truncate text-sm font-semibold text-slate-900">{category.name}</p>
+                                                                <p className="truncate text-xs text-slate-500">{category.products.length} products • {category.slug}</p>
+                                                            </div>
+                                                        </button>
+                                                        {renderVisibilityStateBadge(categoryState)}
+                                                    </div>
+                                                    {categoryExpanded ? (
+                                                        <div className="space-y-2 border-t border-[#d8dfca] bg-[#f8faf3] p-3">
+                                                            {category.products.length === 0 ? (
+                                                                <div className="rounded-xl border border-dashed border-[#d8dfca] bg-white p-3 text-sm text-slate-500">No products found in this category.</div>
+                                                            ) : category.products.map(renderProductVisibilityRow)}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            )
+                                        })}
+                                        {brand.uncategorizedProducts.length > 0 ? (
+                                            <div className="space-y-2 rounded-xl border border-[#d8dfca] bg-[#f8faf3] p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Products without category</p>
+                                                {brand.uncategorizedProducts.map(renderProductVisibilityRow)}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                             </div>
-                            {renderVisibilityBadge(hiddenIds.includes(item._id) ? false : true)}
-                        </label>
-                    ))}
+                        )
+                    })}
                 </CardContent>
             </Card>
         )
@@ -1242,29 +1442,7 @@ export default function ManageWebsitePage() {
                             <RefreshCcw className="mr-2 h-4 w-4" />Refresh
                         </Button>
                     </div>
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                        {renderCatalogList<WebsiteCatalogBrand>(
-                            "brand",
-                            "Brands",
-                            "Control which brands appear on the website.",
-                            catalogBrands.filter((item) => item.name !== "GENERAL PRODUCTS"),
-                            (item) => `${item.productCount || 0} products • ${item.slug}`,
-                        )}
-                        {renderCatalogList<WebsiteCatalogCategory>(
-                            "category",
-                            "Categories",
-                            "Control website category visibility per brand.",
-                            catalogCategories,
-                            (item) => `${item.company?.name || "No brand"} • ${item.productCount || 0} products`,
-                        )}
-                        {renderCatalogList<WebsiteCatalogProduct>(
-                            "product",
-                            "Products",
-                            "Control individual website product visibility.",
-                            catalogProducts,
-                            (item) => `${item.company?.name || "No brand"} • ${item.categoryRef?.name || item.sku || "No category"}`,
-                        )}
-                    </div>
+                    {renderCatalogVisibilityTree()}
                 </TabsContent>
 
                 <TabsContent value="categories" className="mt-4">

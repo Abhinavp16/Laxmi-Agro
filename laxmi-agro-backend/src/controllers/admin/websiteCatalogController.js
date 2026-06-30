@@ -62,7 +62,6 @@ exports.getProducts = async (req, res, next) => {
       .populate('categoryRef', 'name slug showOnWebsite')
       .select('name slug sku brand category company categoryRef status stock showOnWebsite createdAt')
       .sort({ createdAt: -1 })
-      .limit(500)
       .lean();
 
     res.json({ success: true, data: products });
