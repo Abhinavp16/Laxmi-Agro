@@ -284,7 +284,7 @@ export default function ManageWebsitePage() {
     const [catalogCategories, setCatalogCategories] = useState<WebsiteCatalogCategory[]>([])
     const [catalogProducts, setCatalogProducts] = useState<WebsiteCatalogProduct[]>([])
     const [hiddenCatalogItems, setHiddenCatalogItems] = useState<Record<WebsiteCatalogType, string[]>>({ brand: [], category: [], product: [] })
-    const [catalogSearch, setCatalogSearch] = useState<Record<WebsiteCatalogType, string>>({ brand: "", category: "", product: "" })
+    const [catalogSearch, setCatalogSearch] = useState("")
     const [expandedCatalogBrands, setExpandedCatalogBrands] = useState<string[]>([])
     const [expandedCatalogCategories, setExpandedCatalogCategories] = useState<string[]>([])
 
@@ -294,8 +294,7 @@ export default function ManageWebsitePage() {
         return raw.replace(/\/+$/, "")
     }, [])
     const catalogTree = useMemo<CatalogTreeBrand[]>(() => {
-        const brands = catalogBrands.filter((item) => item.name !== "GENERAL PRODUCTS")
-        return brands.map((brand) => {
+        return catalogBrands.map((brand) => {
             const categories = catalogCategories
                 .filter((category) => category.company?._id === brand._id)
                 .map((category) => ({
@@ -312,7 +311,7 @@ export default function ManageWebsitePage() {
     }, [catalogBrands, catalogCategories, catalogProducts])
 
     const filteredCatalogTree = useMemo<CatalogTreeBrand[]>(() => {
-        const search = `${catalogSearch.brand} ${catalogSearch.category} ${catalogSearch.product}`.trim().toLowerCase()
+        const search = catalogSearch.trim().toLowerCase()
         if (!search) return catalogTree
 
         return catalogTree
@@ -1077,15 +1076,16 @@ export default function ManageWebsitePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <Input value={catalogSearch.brand} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, brand: e.target.value }))} placeholder="Search brands..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
-                        <Input value={catalogSearch.category} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, category: e.target.value }))} placeholder="Search categories..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
-                        <Input value={catalogSearch.product} onChange={(e) => setCatalogSearch((prev) => ({ ...prev, product: e.target.value }))} placeholder="Search products or SKU..." className="border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400" />
-                    </div>
+                    <Input
+                        value={catalogSearch}
+                        onChange={(e) => setCatalogSearch(e.target.value)}
+                        placeholder="Search brand, category, product, or SKU..."
+                        className="max-w-2xl border-[#d8dfca] bg-white text-slate-900 placeholder:text-slate-400"
+                    />
                     {filteredCatalogTree.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-[#d8dfca] bg-[#f8faf3] p-4 text-sm text-slate-500">No matching catalog items found.</div>
                     ) : filteredCatalogTree.map((brand) => {
-                        const brandExpanded = expandedCatalogBrands.includes(brand._id) || Boolean(`${catalogSearch.brand}${catalogSearch.category}${catalogSearch.product}`.trim())
+                        const brandExpanded = expandedCatalogBrands.includes(brand._id) || Boolean(catalogSearch.trim())
                         const brandState = getBrandHiddenState(brand)
                         const brandProductCount = brand.categories.reduce((sum, category) => sum + category.products.length, 0) + brand.uncategorizedProducts.length
                         return (
@@ -1107,7 +1107,7 @@ export default function ManageWebsitePage() {
                                             <div className="rounded-xl border border-dashed border-[#d8dfca] bg-white p-3 text-sm text-slate-500">No categories or products found for this brand.</div>
                                         ) : null}
                                         {brand.categories.map((category) => {
-                                            const categoryExpanded = expandedCatalogCategories.includes(category._id) || Boolean(`${catalogSearch.category}${catalogSearch.product}`.trim())
+                                            const categoryExpanded = expandedCatalogCategories.includes(category._id) || Boolean(catalogSearch.trim())
                                             const categoryState = getCategoryHiddenState(category)
                                             return (
                                                 <div key={category._id} className="overflow-hidden rounded-xl border border-[#d8dfca] bg-white">
@@ -1156,12 +1156,12 @@ export default function ManageWebsitePage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hero" | "labels" | "categories" | "featured" | "catalog")} className="w-full">
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 border border-[#dde3d0] bg-white/90 p-1 sm:grid-cols-5">
-                    <TabsTrigger value="hero" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Hero Section</TabsTrigger>
-                    <TabsTrigger value="labels" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Labels</TabsTrigger>
-                    <TabsTrigger value="catalog" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Catalog Visibility</TabsTrigger>
-                    <TabsTrigger value="categories" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Category Section Text</TabsTrigger>
-                    <TabsTrigger value="featured" className="min-h-10 px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Featured Section Text</TabsTrigger>
+                <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-1 border border-[#dde3d0] bg-white/90 p-1">
+                    <TabsTrigger value="hero" className="min-h-10 flex-1 basis-[150px] whitespace-nowrap px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Hero Section</TabsTrigger>
+                    <TabsTrigger value="labels" className="min-h-10 flex-1 basis-[110px] whitespace-nowrap px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Labels</TabsTrigger>
+                    <TabsTrigger value="catalog" className="min-h-10 flex-1 basis-[170px] whitespace-nowrap px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Catalog Visibility</TabsTrigger>
+                    <TabsTrigger value="categories" className="min-h-10 flex-1 basis-[210px] whitespace-nowrap px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Category Section Text</TabsTrigger>
+                    <TabsTrigger value="featured" className="min-h-10 flex-1 basis-[210px] whitespace-nowrap px-3 text-center text-slate-500 data-[state=active]:bg-[#f3f6ea] data-[state=active]:text-slate-900">Featured Section Text</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="hero" className="mt-4">
