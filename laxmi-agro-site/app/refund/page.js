@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Refund & Return Policy - Laxmi Agro',
+    title: 'Refund & Return Policy - Laxmi Agro Enterprises',
     description: 'Refund and return policy for the Laxmi Agro platform.',
 };
 

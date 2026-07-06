@@ -34,7 +34,7 @@ class LaxmiAgroApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       scaffoldMessengerKey: scafoldMessengerKey,
-      title: 'Laxmi Agro',
+      title: 'Laxmi Agro Enterprises',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: appRouter,

@@ -7,7 +7,7 @@ export async function generateMetadata({ params }) {
     const resolvedParams = await params;
     const { brand } = await getBrandCategories(resolvedParams.brandSlug);
     return {
-        title: brand ? `${brand.name} - Laxmi Agro` : 'Brand - Laxmi Agro',
+        title: brand ? `${brand.name} - Laxmi Agro Enterprises` : 'Brand - Laxmi Agro Enterprises',
         description: brand ? `Browse ${brand.name} categories and products.` : 'Browse brand products.',
     };
 }

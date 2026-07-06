@@ -8,8 +8,8 @@ import './globals.css'
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Laxmi Agro Admin',
-  description: 'Laxmi Agro Admin Dashboard - Manage products, orders, and negotiations',
+  title: 'Laxmi Agro Enterprises Admin',
+  description: 'Laxmi Agro Enterprises Admin Dashboard - Manage products, orders, and negotiations',
   generator: 'v0.app',
   robots: {
     index: false,

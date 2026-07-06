@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Warranty Policy - Laxmi Agro',
+    title: 'Warranty Policy - Laxmi Agro Enterprises',
     description: 'Warranty policy for the Laxmi Agro platform.',
 };
 

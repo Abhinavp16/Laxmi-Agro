@@ -11,7 +11,7 @@ import { normalizeWebsiteImageUrl } from '@/lib/media-url';
 import { getWebsiteHomeCatalog } from '@/lib/catalog-api';
 
 export const metadata = {
-    title: 'Products - Laxmi Agro',
+    title: 'Products - Laxmi Agro Enterprises',
     description: 'Browse service wire, submersible cable, pipes, sprinkler sets, control panels, pump sets, and allied agriculture products from Laxmi Agro.',
 };
 

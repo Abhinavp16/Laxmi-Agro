@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Dealer Pricing Policy - Laxmi Agro',
+    title: 'Dealer Pricing Policy - Laxmi Agro Enterprises',
     description: 'Dealer pricing policy overview for the Laxmi Agro platform.',
 };
 

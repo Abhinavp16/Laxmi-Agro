@@ -16,7 +16,7 @@ export async function generateMetadata({ params }) {
     const category = findCategoryBySlug(categories, resolvedParams.slug);
 
     return {
-        title: category ? `${category.name} - Laxmi Agro` : 'Category Products - Laxmi Agro',
+        title: category ? `${category.name} - Laxmi Agro Enterprises` : 'Category Products - Laxmi Agro Enterprises',
         description: category ? category.description : 'Browse our products in this category.',
     };
 }

@@ -4,7 +4,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import { fallbackProductImage, getAllWebsiteProducts } from '@/lib/catalog-api';
 
 export const metadata = {
-    title: 'All Products - Laxmi Agro',
+    title: 'All Products - Laxmi Agro Enterprises',
     description: 'Search and browse all visible products from the Laxmi Agro live catalog.',
 };
 

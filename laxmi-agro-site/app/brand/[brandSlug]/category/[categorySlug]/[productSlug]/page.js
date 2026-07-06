@@ -12,7 +12,7 @@ export async function generateMetadata({ params }) {
     const resolvedParams = await params;
     const product = await getWebsiteProduct(resolvedParams.productSlug);
     return {
-        title: product ? `${product.name} - Laxmi Agro` : 'Product Details - Laxmi Agro',
+        title: product ? `${product.name} - Laxmi Agro Enterprises` : 'Product Details - Laxmi Agro Enterprises',
         description: product?.shortDescription || product?.description || 'View product details and send an inquiry.',
     };
 }

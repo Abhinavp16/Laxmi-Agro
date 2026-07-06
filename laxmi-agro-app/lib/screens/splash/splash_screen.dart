@@ -65,9 +65,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Laxmi Agro',
+              'Laxmi Agro Enterprises',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 32,
+                fontSize: 27,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
                 letterSpacing: -0.5,

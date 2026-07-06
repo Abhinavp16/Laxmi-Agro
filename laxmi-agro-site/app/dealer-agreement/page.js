@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Dealer & Distributor Agreement - Laxmi Agro',
+    title: 'Dealer & Distributor Agreement - Laxmi Agro Enterprises',
     description: 'Dealer and distributor agreement overview for the Laxmi Agro platform.',
 };
 

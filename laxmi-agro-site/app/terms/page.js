@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Terms of Service - Laxmi Agro',
+    title: 'Terms of Service - Laxmi Agro Enterprises',
     description: 'Terms of service for the Laxmi Agro platform.',
 };
 

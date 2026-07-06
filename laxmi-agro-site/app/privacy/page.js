@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata = {
-    title: 'Privacy Policy - Laxmi Agro',
+    title: 'Privacy Policy - Laxmi Agro Enterprises',
     description: 'Privacy policy for the Laxmi Agro platform.',
 };
 

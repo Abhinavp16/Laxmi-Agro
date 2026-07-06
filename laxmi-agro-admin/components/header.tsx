@@ -29,7 +29,7 @@ export function Header() {
     <header className="absolute left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[#dde3d0]/80 bg-[#fcfdf8]/78 p-6 backdrop-blur-[28px]">
       <div className="flex items-center gap-2 pl-4 text-xl font-bold tracking-tight text-slate-900">
         <Image src="/icon.svg" alt="Laxmi Agro logo" width={32} height={32} className="h-8 w-8 rounded-lg object-cover" />
-        Laxmi Agro <span className="text-emerald-600">Admin</span>
+        Laxmi Agro Enterprises <span className="text-emerald-600">Admin</span>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

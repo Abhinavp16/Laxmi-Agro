@@ -73,7 +73,7 @@ export default function LoginPage() {
           <div className="flex justify-center pb-2">
             <Image src="/icon.svg" alt="Laxmi Agro logo" width={56} height={56} className="h-14 w-14 rounded-xl object-cover" />
           </div>
-          <CardTitle className="text-center text-2xl font-bold text-slate-900">Laxmi Agro Admin</CardTitle>
+          <CardTitle className="text-center text-2xl font-bold text-slate-900">Laxmi Agro Enterprises Admin</CardTitle>
           <CardDescription className="text-center text-slate-500">
             Enter your credentials to access the dashboard
           </CardDescription>

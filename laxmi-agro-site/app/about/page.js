@@ -3,7 +3,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import { getWebsiteContent } from '@/lib/website-content';
 
 export const metadata = {
-    title: 'About Us - Laxmi Agro',
+    title: 'About Us - Laxmi Agro Enterprises',
     description: 'Learn about Laxmi Agro and Ashirvad Marketing, serving Raipur with agriculture, irrigation, cable, and pump supply products.',
 };
 
