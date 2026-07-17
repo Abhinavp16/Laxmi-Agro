@@ -38,6 +38,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _cartBounce;
   final PageController _imgCtrl = PageController();
+  final TextEditingController _quantityController = TextEditingController(
+    text: '1',
+  );
+  final FocusNode _quantityFocusNode = FocusNode();
   int _imgIndex = 0;
   bool _addedToCart = false;
   int _quantity = 1;
@@ -98,6 +102,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _quantityFocusNode.addListener(() {
+      if (!_quantityFocusNode.hasFocus) {
+        _commitQuantityInput(_product?['stock']);
+      }
+    });
     _fetchProduct();
     _fetchWhatsappNumber();
   }
@@ -106,8 +115,69 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   void dispose() {
     _cartBounce.dispose();
     _imgCtrl.dispose();
+    _quantityController.dispose();
+    _quantityFocusNode.dispose();
     _ytCtrl?.dispose();
     super.dispose();
+  }
+
+  int _stockLimit(dynamic stock) {
+    if (stock is num && stock > 0) return stock.toInt();
+    return 99;
+  }
+
+  void _setQuantity(int value, dynamic stock) {
+    final limit = _stockLimit(stock);
+    final next = value.clamp(1, limit).toInt();
+    setState(() => _quantity = next);
+    _quantityController.text = '$next';
+    _quantityController.selection = TextSelection.collapsed(
+      offset: _quantityController.text.length,
+    );
+  }
+
+  void _commitQuantityInput(dynamic stock) {
+    final parsed = int.tryParse(_quantityController.text.trim());
+    _setQuantity(parsed ?? 1, stock);
+  }
+
+  void _onQuantityTextChanged(String value, dynamic stock) {
+    if (value.isEmpty) return;
+    final parsed = int.tryParse(value);
+    if (parsed == null) return;
+
+    final limit = _stockLimit(stock);
+    if (parsed > limit) {
+      _setQuantity(limit, stock);
+      return;
+    }
+
+    setState(() => _quantity = parsed < 1 ? 1 : parsed);
+  }
+
+  String _quantityUnitLabel() {
+    final raw =
+        (_product?['priceUnit'] ?? _product?['unit'] ?? _product?['uom'])
+            ?.toString()
+            .trim() ??
+        '';
+    if (raw.isEmpty) return 'Piece';
+
+    final normalized = raw.toLowerCase().replaceAll('.', '');
+    if (normalized.contains('mtr') || normalized.contains('meter')) {
+      return 'Meter';
+    }
+    if (normalized.contains('packet') || normalized.contains('pack')) {
+      return 'Packet';
+    }
+    if (normalized.contains('piece') ||
+        normalized.contains('pcs') ||
+        normalized.contains('unit') ||
+        normalized.contains('nos')) {
+      return 'Piece';
+    }
+
+    return raw;
   }
 
   void _initYoutube() {
@@ -663,9 +733,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         '';
     final sku = _product!['sku']?.toString() ?? '';
     final price = _product!['price'] ?? _product!['retailPrice'];
-    final customerPrice =
-        _product!['retailPrice'] ??
-        _product!['price'];
+    final customerPrice = _product!['retailPrice'] ?? _product!['price'];
     final mrp = _product!['mrp'];
     final wsPrice = _product!['wholesalePrice'];
     final pendingPriceChange = (_product!)['pendingPriceChange'];
@@ -3170,6 +3238,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     dynamic minQty,
     String Function(String) t,
   ) {
+    final unitLabel = _quantityUnitLabel();
+
     return Positioned(
       left: 0,
       right: 0,
@@ -3203,8 +3273,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         color: _txt,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Container(
+                      height: 44,
                       decoration: BoxDecoration(
                         color: _bg,
                         borderRadius: BorderRadius.circular(12),
@@ -3212,30 +3283,60 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       ),
                       child: Row(
                         children: [
-                          _qtyBtn(Icons.remove, () {
-                            if (_quantity > 1) setState(() => _quantity--);
-                          }),
+                          _qtyBtn(
+                            Icons.remove,
+                            () => _setQuantity(_quantity - 1, stock),
+                          ),
                           Container(
-                            width: 40,
+                            width: 46,
                             alignment: Alignment.center,
-                            child: Text(
-                              '$_quantity',
+                            child: TextField(
+                              controller: _quantityController,
+                              focusNode: _quantityFocusNode,
+                              textAlign: TextAlign.center,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: _txt,
                               ),
+                              onChanged: (value) =>
+                                  _onQuantityTextChanged(value, stock),
+                              onSubmitted: (_) => _commitQuantityInput(stock),
+                              onTapOutside: (_) => _quantityFocusNode.unfocus(),
                             ),
                           ),
-                          _qtyBtn(Icons.add, () {
-                            final s = stock is int ? stock : 99;
-                            if (_quantity < s) setState(() => _quantity++);
-                          }),
+                          _qtyBtn(
+                            Icons.add,
+                            () => _setQuantity(_quantity + 1, stock),
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        unitLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _txtSec,
+                        ),
+                      ),
+                    ),
                     if (stock != null) ...[
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       _buildStockStatus(stock, t),
                     ],
                   ],
