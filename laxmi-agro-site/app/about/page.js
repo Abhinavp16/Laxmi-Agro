@@ -67,7 +67,7 @@ export default async function AboutPage() {
                                 alt="Laxmi Agro product"
                             />
                             <img
-                                src={productImages[1] || productImages[0] || '/images/Banner/3.jpg'}
+                                src="/images/about/about-card.png"
                                 className="h-72 w-full rounded-2xl object-cover object-center shadow-lg"
                                 alt="Laxmi Agro equipment"
                             />

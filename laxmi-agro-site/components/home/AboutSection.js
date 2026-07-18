@@ -1,11 +1,11 @@
 import ScrollReveal from '@/components/ScrollReveal';
 
 const fallbackProductImages = ['/images/products/brush cutter.webp', '/images/Banner/3.jpg'];
+const aboutCardImage = '/images/about/about-card.png';
 
 export default function AboutSection({ productImages = fallbackProductImages }) {
     const images = productImages.filter(Boolean).length > 0 ? productImages.filter(Boolean) : fallbackProductImages;
     const firstImage = images[0] || fallbackProductImages[0];
-    const secondImage = images[1] || images[0] || fallbackProductImages[1];
 
     return (
         <section id="about" className="overflow-hidden bg-[#dfe8d3] px-4 py-16 sm:px-6 sm:py-24 lg:px-7">
@@ -68,8 +68,8 @@ export default function AboutSection({ productImages = fallbackProductImages }) 
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Industry Rating</p>
                             </div>
                             <img
-                                src={secondImage}
-                                className="h-auto w-full rounded-[2rem] object-contain object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)] sm:h-[300px] sm:object-cover"
+                                src={aboutCardImage}
+                                className="h-auto w-full rounded-[2rem] object-cover object-center shadow-[0_24px_70px_rgba(8,36,18,0.12)] sm:h-[300px]"
                                 alt="Laxmi Agro equipment"
                             />
                             <div className="rounded-[1.6rem] border border-[#0b3b1f]/10 bg-[#edf3e6]/80 p-5 shadow-sm">

@@ -119,6 +119,27 @@ function normalizeSelectedLabelIds(
 
 type UploadStatus = "idle" | "converting" | "uploading" | "done";
 
+const PRICE_UNIT_OPTIONS = [
+  { value: "Piece", label: "Piece" },
+  { value: "Mtr", label: "Meter" },
+  { value: "Packet", label: "Packet" },
+  { value: "Roll", label: "Roll" },
+  { value: "Coil", label: "Coil" },
+  { value: "Kg", label: "Kg" },
+  { value: "Box", label: "Box" },
+  { value: "Set", label: "Set" },
+  { value: "Bundle", label: "Bundle" },
+];
+
+function isPresetPriceUnit(value?: string | null) {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
+  return PRICE_UNIT_OPTIONS.some(
+    (option) => option.value.toLowerCase() === normalizedValue,
+  );
+}
+
 interface ProductImage {
   _id?: string;
   url: string;
@@ -234,6 +255,7 @@ export default function AddProductPage() {
   const [imageUploadMode, setImageUploadMode] = useState<"url" | "file">("url");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [isCustomPriceUnit, setIsCustomPriceUnit] = useState(false);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -293,7 +315,10 @@ export default function AddProductPage() {
     initData();
   }, [editId, isEditMode]);
 
-  async function fetchProduct(id: string, loadedCategories: Category[] = categories) {
+  async function fetchProduct(
+    id: string,
+    loadedCategories: Category[] = categories,
+  ) {
     setIsLoadingProduct(true);
     try {
       const res = await apiFetch(`/admin/products/${id}`);
@@ -312,11 +337,15 @@ export default function AddProductPage() {
             : String(category.company || "");
         return (
           categoryCompanyId === productCompanyId &&
-          (category.slug === product.category || category.name === product.category)
+          (category.slug === product.category ||
+            category.name === product.category)
         );
       });
 
       // Set form values
+      setIsCustomPriceUnit(
+        Boolean(product.priceUnit && !isPresetPriceUnit(product.priceUnit)),
+      );
       form.reset({
         name: product.name || "",
         nameHindi: product.nameHindi || "",
@@ -324,7 +353,10 @@ export default function AddProductPage() {
         shortDescription: product.shortDescription || "",
         bulletPoints: [],
         category:
-          product.categoryRef || product.categoryId || matchedCategory?._id || "",
+          product.categoryRef ||
+          product.categoryId ||
+          matchedCategory?._id ||
+          "",
         tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
         sku: product.sku || "",
         mrp:
@@ -413,7 +445,9 @@ export default function AddProductPage() {
         const data = await response.json();
         const nextCompanies = Array.isArray(data.data) ? data.data : [];
         setCompanies(nextCompanies);
-        setNewCategoryCompanyId((current) => current || nextCompanies[0]?._id || "");
+        setNewCategoryCompanyId(
+          (current) => current || nextCompanies[0]?._id || "",
+        );
       }
     } catch (error) {
       console.error("Failed to fetch companies:", error);
@@ -637,7 +671,10 @@ export default function AddProductPage() {
     if (typeof category.company === "object" && category.company) {
       return category.company.name;
     }
-    return companies.find((company) => company._id === category.company)?.name || "Brand not set";
+    return (
+      companies.find((company) => company._id === category.company)?.name ||
+      "Brand not set"
+    );
   }
 
   async function onSubmit(values: z.infer<typeof productSchema>) {
@@ -974,10 +1011,14 @@ export default function AddProductPage() {
                                         onSelect={() => {
                                           field.onChange(category._id);
                                           const companyId =
-                                            typeof category.company === "object" && category.company
+                                            typeof category.company ===
+                                              "object" && category.company
                                               ? category.company._id
                                               : String(category.company || "");
-                                          form.setValue("company", companyId || "none");
+                                          form.setValue(
+                                            "company",
+                                            companyId || "none",
+                                          );
                                         }}
                                         className="flex items-center justify-between rounded-none px-3 py-2 text-white aria-selected:bg-[#1A1A1A]"
                                       >
@@ -986,7 +1027,8 @@ export default function AddProductPage() {
                                             {category.name}
                                           </p>
                                           <p className="truncate text-xs text-[#7d7d7d]">
-                                            {getCategoryCompanyName(category)} / {category.slug}
+                                            {getCategoryCompanyName(category)} /{" "}
+                                            {category.slug}
                                           </p>
                                         </div>
                                         <Check
@@ -1035,7 +1077,10 @@ export default function AddProductPage() {
                                       </SelectTrigger>
                                       <SelectContent className="bg-[#0D0D0D] border-[#333]">
                                         {companies.map((company) => (
-                                          <SelectItem key={company._id} value={company._id}>
+                                          <SelectItem
+                                            key={company._id}
+                                            value={company._id}
+                                          >
                                             {company.name}
                                           </SelectItem>
                                         ))}
@@ -1077,7 +1122,8 @@ export default function AddProductPage() {
                             </Dialog>
                           </div>
                           <FormDescription className="text-gray-500">
-                            Pick the brand-specific category. Brand is assigned from the selected category.
+                            Pick the brand-specific category. Brand is assigned
+                            from the selected category.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -1626,15 +1672,57 @@ export default function AddProductPage() {
                           <FormLabel className="text-white">
                             Price Unit
                           </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g. piece, meter, roll, coil"
-                              {...field}
-                              className="bg-[#0D0D0D] border-[#333] text-white"
-                            />
-                          </FormControl>
+                          <Select
+                            value={
+                              isCustomPriceUnit
+                                ? "__custom"
+                                : field.value || undefined
+                            }
+                            onValueChange={(value) => {
+                              if (value === "__custom") {
+                                setIsCustomPriceUnit(true);
+                                field.onChange("");
+                                return;
+                              }
+
+                              setIsCustomPriceUnit(false);
+                              field.onChange(value);
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-[#0D0D0D] border-[#333] text-white">
+                                <SelectValue placeholder="Select price unit" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-[#161616] border-[#333] text-white">
+                              {PRICE_UNIT_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="__custom">
+                                Add new unit
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {isCustomPriceUnit && (
+                            <FormControl>
+                              <Input
+                                placeholder="Enter new unit"
+                                value={field.value || ""}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                ref={field.ref}
+                                className="mt-3 bg-[#0D0D0D] border-[#333] text-white"
+                              />
+                            </FormControl>
+                          )}
                           <FormDescription className="text-gray-500">
-                            Unit used with the displayed price.
+                            Select the billing unit, or add a custom one.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
