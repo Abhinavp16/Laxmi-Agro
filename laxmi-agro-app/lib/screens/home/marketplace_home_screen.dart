@@ -500,10 +500,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           _categoryData = items
               .map<Map<String, dynamic>>((item) {
                 final name = item['name']?.toString() ?? '';
-                final metadata =
-                    categoryMetaByName[_normalizedCategoryKey(name)] ?? {};
+                final metadata = _categoryMetadataFor(categoryMetaByName, name);
                 return {
                   'name': name,
+                  'displayName': metadata['name']?.toString() ?? '',
+                  'queryName': name,
                   'nameHindi':
                       item['nameHindi']?.toString() ??
                       metadata['nameHindi']?.toString() ??
@@ -540,11 +541,45 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   String _normalizedCategoryKey(String value) => value.trim().toLowerCase();
 
+  Set<String> _categoryLookupKeys(String value) {
+    final spaced = value.trim().replaceAll(RegExp(r'[-_]+'), ' ');
+    final normalized = _normalizedCategoryKey(
+      spaced,
+    ).replaceAll(RegExp(r'\s+'), ' ');
+    final withoutDashWord = normalized
+        .replaceAll(RegExp(r'\bdash\b'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final withDashWord = normalized.replaceAllMapped(
+      RegExp(r'\bv\s+(\d+)\b'),
+      (match) => 'v dash ${match[1]}',
+    );
+
+    return {
+      _normalizedCategoryKey(value),
+      normalized,
+      withoutDashWord,
+      withDashWord,
+    }..removeWhere((key) => key.isEmpty);
+  }
+
+  Map<String, dynamic> _categoryMetadataFor(
+    Map<String, Map<String, dynamic>> metadataByKey,
+    String value,
+  ) {
+    for (final key in _categoryLookupKeys(value)) {
+      final metadata = metadataByKey[key];
+      if (metadata != null) return metadata;
+    }
+    return {};
+  }
+
   Map<String, Map<String, dynamic>> _categoryMetadataEntries(dynamic item) {
     if (item is! Map) return {};
 
     final slug = item['slug']?.toString() ?? '';
     final payload = {
+      'name': item['name']?.toString() ?? '',
       'slug': slug,
       'nameHindi': item['nameHindi']?.toString() ?? '',
       'image': _extractCategoryImageUrl(item),
@@ -554,12 +589,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     };
 
     final keys = <String>{
-      _normalizedCategoryKey(item['name']?.toString() ?? ''),
-      _normalizedCategoryKey(slug),
-      _normalizedCategoryKey(
-        (item['name']?.toString() ?? '').replaceAll(RegExp(r'[-_]+'), ' '),
-      ),
-      _normalizedCategoryKey(slug.replaceAll(RegExp(r'[-_]+'), ' ')),
+      ..._categoryLookupKeys(item['name']?.toString() ?? ''),
+      ..._categoryLookupKeys(slug),
     }..removeWhere((key) => key.isEmpty);
 
     return {for (final key in keys) key: payload};
@@ -1580,15 +1611,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return nameEnglish;
     }
 
-    if (nameEnglish.isNotEmpty) {
-      return nameEnglish
-          .split(' ')
-          .map((word) {
-            if (word.isEmpty) return word;
-            return word[0].toUpperCase() + word.substring(1).toLowerCase();
-          })
-          .join(' ');
-    }
     return nameEnglish;
   }
 
@@ -2311,18 +2333,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   String _getDisplayCategoryName(Map<String, dynamic> category) {
     final currentLang = ref.watch(localeProvider);
+    final displayName = category['displayName']?.toString() ?? '';
     final nameEnglish = category['name']?.toString() ?? '';
     final nameHindi = category['nameHindi']?.toString() ?? '';
 
     if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
       return nameHindi;
     }
+    if (displayName.isNotEmpty) return displayName;
     return _fmtCatName(nameEnglish);
   }
 
   String _getDisplayCategoryNameByKey(String categoryName) {
     final category = _categoryData.firstWhere(
-      (item) => (item['name']?.toString() ?? '') == categoryName,
+      (item) =>
+          (item['queryName']?.toString() ?? item['name']?.toString() ?? '') ==
+          categoryName,
       orElse: () => {'name': categoryName},
     );
     return _getDisplayCategoryName(category);

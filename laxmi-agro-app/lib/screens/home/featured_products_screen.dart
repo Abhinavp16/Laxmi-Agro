@@ -375,15 +375,7 @@ class _FeaturedProductsScreenState
                     SizedBox(
                       height: 52,
                       child: Text(
-                        (product['name'] ?? '')
-                            .toString()
-                            .split(' ')
-                            .map((word) {
-                              if (word.isEmpty) return word;
-                              return word[0].toUpperCase() +
-                                  word.substring(1).toLowerCase();
-                            })
-                            .join(' '),
+                        (product['name'] ?? '').toString(),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(

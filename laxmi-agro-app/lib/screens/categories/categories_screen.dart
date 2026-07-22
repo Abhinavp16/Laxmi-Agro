@@ -162,10 +162,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             countsByCategory.entries
                 .map((entry) {
                   final name = displayNameByKey[entry.key] ?? '';
-                  final metadata = categoryMetaByName[entry.key] ?? {};
+                  final metadata = _categoryMetadataFor(
+                    categoryMetaByName,
+                    entry.key,
+                  );
                   return <String, dynamic>{
                     'id': metadata['id']?.toString() ?? '',
                     'name': name,
+                    'displayName': metadata['name']?.toString() ?? '',
+                    'queryName': name,
                     'nameHindi': metadata['nameHindi']?.toString() ?? '',
                     'slug': metadata['slug']?.toString() ?? name,
                     'image': metadata['image']?.toString() ?? '',
@@ -214,11 +219,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         final cats = items
             .map<Map<String, dynamic>>((item) {
               final name = item['name']?.toString() ?? '';
-              final metadata =
-                  categoryMetaByName[_normalizedCategoryKey(name)] ?? {};
+              final metadata = _categoryMetadataFor(categoryMetaByName, name);
               return <String, dynamic>{
                 'id': metadata['id']?.toString() ?? '',
                 'name': name,
+                'displayName': metadata['name']?.toString() ?? '',
+                'queryName': name,
                 'nameHindi':
                     item['nameHindi']?.toString() ??
                     metadata['nameHindi']?.toString() ??
@@ -273,24 +279,54 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   String _normalizedCategoryKey(String value) => value.trim().toLowerCase();
 
+  Set<String> _categoryLookupKeys(String value) {
+    final spaced = value.trim().replaceAll(RegExp(r'[-_]+'), ' ');
+    final normalized = _normalizedCategoryKey(
+      spaced,
+    ).replaceAll(RegExp(r'\s+'), ' ');
+    final withoutDashWord = normalized
+        .replaceAll(RegExp(r'\bdash\b'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final withDashWord = normalized.replaceAllMapped(
+      RegExp(r'\bv\s+(\d+)\b'),
+      (match) => 'v dash ${match[1]}',
+    );
+
+    return {
+      _normalizedCategoryKey(value),
+      normalized,
+      withoutDashWord,
+      withDashWord,
+    }..removeWhere((key) => key.isEmpty);
+  }
+
+  Map<String, dynamic> _categoryMetadataFor(
+    Map<String, Map<String, dynamic>> metadataByKey,
+    String value,
+  ) {
+    for (final key in _categoryLookupKeys(value)) {
+      final metadata = metadataByKey[key];
+      if (metadata != null) return metadata;
+    }
+    return {};
+  }
+
   Map<String, Map<String, dynamic>> _categoryMetadataEntries(dynamic item) {
     if (item is! Map) return {};
 
     final slug = item['slug']?.toString() ?? '';
     final payload = {
       'id': item['_id']?.toString() ?? item['id']?.toString() ?? '',
+      'name': item['name']?.toString() ?? '',
       'slug': slug,
       'nameHindi': item['nameHindi']?.toString() ?? '',
       'image': _extractCategoryImageUrl(item),
     };
 
     final keys = <String>{
-      _normalizedCategoryKey(item['name']?.toString() ?? ''),
-      _normalizedCategoryKey(slug),
-      _normalizedCategoryKey(
-        (item['name']?.toString() ?? '').replaceAll(RegExp(r'[-_]+'), ' '),
-      ),
-      _normalizedCategoryKey(slug.replaceAll(RegExp(r'[-_]+'), ' ')),
+      ..._categoryLookupKeys(item['name']?.toString() ?? ''),
+      ..._categoryLookupKeys(slug),
     }..removeWhere((key) => key.isEmpty);
 
     return {for (final key in keys) key: payload};
@@ -311,8 +347,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     setState(() => _isLoadingProducts = true);
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
+      final queryName = category['queryName']?.toString().trim() ?? '';
       final categorySlug = category['slug']?.toString().trim() ?? '';
-      final categoryFilter = categoryName.isNotEmpty
+      final categoryFilter = queryName.isNotEmpty
+          ? queryName
+          : categoryName.isNotEmpty
           ? categoryName
           : categorySlug;
       final response = await _dio.get(
@@ -447,26 +486,19 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       name = nameEnglish;
     }
 
-    if (currentLang != 'Hindi' && name.isNotEmpty) {
-      return name
-          .split(' ')
-          .map((word) {
-            if (word.isEmpty) return word;
-            return word[0].toUpperCase() + word.substring(1).toLowerCase();
-          })
-          .join(' ');
-    }
     return name;
   }
 
   String _getDisplayCategoryName(Map<String, dynamic> category) {
     final currentLang = ref.watch(localeProvider);
+    final displayName = category['displayName']?.toString() ?? '';
     final nameEnglish = category['name']?.toString() ?? '';
     final nameHindi = category['nameHindi']?.toString() ?? '';
 
     if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
       return nameHindi;
     }
+    if (displayName.isNotEmpty) return displayName;
     return _formatCategoryTitle(nameEnglish);
   }
 
