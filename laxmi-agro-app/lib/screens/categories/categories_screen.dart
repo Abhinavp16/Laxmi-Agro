@@ -140,9 +140,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           if (metaResponse.statusCode == 200 &&
               metaResponse.data['success'] == true) {
             final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
-            categoryMetaByName.addAll({
-              for (final item in metaItems) ..._categoryMetadataEntries(item),
-            });
+            categoryMetaByName.addAll(_buildCategoryMetadataMap(metaItems));
           }
         } catch (e) {
           debugPrint('Error fetching category metadata: $e');
@@ -208,9 +206,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           if (metaResponse.statusCode == 200 &&
               metaResponse.data['success'] == true) {
             final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
-            categoryMetaByName = {
-              for (final item in metaItems) ..._categoryMetadataEntries(item),
-            };
+            categoryMetaByName = _buildCategoryMetadataMap(metaItems);
           }
         } catch (e) {
           debugPrint('Error fetching category metadata: $e');
@@ -312,6 +308,34 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return {};
   }
 
+  Map<String, Map<String, dynamic>> _buildCategoryMetadataMap(
+    List<dynamic> items,
+  ) {
+    final metadataByKey = <String, Map<String, dynamic>>{};
+
+    for (final item in items) {
+      final entries = _categoryMetadataEntries(item);
+      for (final entry in entries.entries) {
+        final current = metadataByKey[entry.key];
+        if (current == null ||
+            _categoryMetadataPriority(entry.value) >
+                _categoryMetadataPriority(current)) {
+          metadataByKey[entry.key] = entry.value;
+        }
+      }
+    }
+
+    return metadataByKey;
+  }
+
+  int _categoryMetadataPriority(Map<String, dynamic> metadata) {
+    final productCount =
+        int.tryParse(metadata['productCount']?.toString() ?? '') ?? 0;
+    final activeBonus = metadata['isActive'] == true ? 10 : 0;
+    final websiteBonus = metadata['showOnWebsite'] == true ? 5 : 0;
+    return (productCount * 100) + activeBonus + websiteBonus;
+  }
+
   Map<String, Map<String, dynamic>> _categoryMetadataEntries(dynamic item) {
     if (item is! Map) return {};
 
@@ -322,6 +346,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       'slug': slug,
       'nameHindi': item['nameHindi']?.toString() ?? '',
       'image': _extractCategoryImageUrl(item),
+      'isActive': item['isActive'] == true,
+      'showOnWebsite': item['showOnWebsite'] == true,
+      'productCount': item['productCount'] ?? 0,
     };
 
     final keys = <String>{
