@@ -24,6 +24,7 @@ import {
   UserGroupIcon,
   UserSearch01Icon,
 } from "@hugeicons/core-free-icons"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -66,7 +67,6 @@ const adminNavGroups: NavGroup[] = [
       { href: "/products", label: "PRODUCTS", icon: Package01Icon },
       { href: "/brands", label: "BRANDS", icon: Tag01Icon },
       { href: "/categories", label: "CATEGORIES", icon: Folder01Icon },
-      { href: "/manage-website?tab=labels", label: "LABELS", icon: TagsIcon, matches: ["/manage-website", "/labels"] },
       { href: "/price-changes", label: "PRICE CHANGES", icon: Clock01Icon },
     ],
   },
@@ -88,16 +88,25 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Website",
+    label: "App",
     items: [
       { href: "/banners", label: "BANNERS", icon: Image01Icon },
-      { href: "/manage-website", label: "MANAGE WEBSITE", icon: Globe02Icon },
+      { href: "/manage-website?tab=labels", label: "LABELS", icon: TagsIcon, matches: ["/labels"] },
       { href: "/reviews", label: "REVIEWS", icon: StarIcon },
     ],
   },
 ]
 
-export const adminPrimaryNavItems: NavItem[] = adminNavGroups.flatMap((group) => group.items)
+const manageWebsiteNavItem: NavItem = {
+  href: "/manage-website",
+  label: "MANAGE WEBSITE",
+  icon: Globe02Icon,
+}
+
+export const adminPrimaryNavItems: NavItem[] = [
+  ...adminNavGroups.flatMap((group) => group.items),
+  manageWebsiteNavItem,
+]
 
 function isNavItemActive(pathname: string, item: NavItem) {
   return item.matches?.includes(pathname) || pathname === item.href
@@ -159,7 +168,7 @@ function SidebarIcon({ icon, size = 20 }: { icon: HugeIcon; size?: number }) {
 function SidebarBrand() {
   return (
     <Link href="/" className="flex items-center gap-3 px-5 py-5 transition-colors hover:bg-slate-50">
-      <span className="grid h-9 w-9 place-items-center bg-blue-600 text-xs font-bold tracking-wide text-white">LA</span>
+      <Image src="/lae-logo.svg" alt="Laxmi Agro" width={36} height={36} className="h-9 w-9 object-contain" priority />
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold tracking-tight text-slate-900">Laxmi Agro</span>
         <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Admin Portal</span>
@@ -240,24 +249,29 @@ function SidebarNavContent({
       </nav>
 
       <div className="mt-auto border-t border-slate-200 pt-3">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:text-xs"
-          type="button"
-        >
-          <span className="flex shrink-0 items-center justify-center">
-            <SidebarIcon icon={mounted && theme === "dark" ? Sun01Icon : Moon01Icon} />
-          </span>
-          <span>{mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}</span>
-        </button>
-        {closeOnNavigate ? <SheetClose asChild>{settingsLink}</SheetClose> : settingsLink}
-        <button
-          onClick={handleLogout}
-          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 lg:text-xs"
-        >
-          <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={Logout01Icon} /></span>
-          <span>LOGOUT</span>
-        </button>
+        <nav className="pb-3" aria-label="Website management">
+          {renderLink(manageWebsiteNavItem)}
+        </nav>
+        <div className="border-t border-slate-200 pt-3">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:text-xs"
+            type="button"
+          >
+            <span className="flex shrink-0 items-center justify-center">
+              <SidebarIcon icon={mounted && theme === "dark" ? Sun01Icon : Moon01Icon} />
+            </span>
+            <span>{mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}</span>
+          </button>
+          {closeOnNavigate ? <SheetClose asChild>{settingsLink}</SheetClose> : settingsLink}
+          <button
+            onClick={handleLogout}
+            className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 lg:text-xs"
+          >
+            <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={Logout01Icon} /></span>
+            <span>LOGOUT</span>
+          </button>
+        </div>
       </div>
     </div>
   )

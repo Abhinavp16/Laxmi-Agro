@@ -557,8 +557,9 @@ export default function CategoriesPage() {
                             key={category._id}
                             role="link"
                             tabIndex={0}
-                            className={`cursor-pointer bg-[#161616] rounded-xl border p-4 hover:border-[#86efac] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac] ${
-                                category.isActive ? 'border-[#333]' : 'border-[#333] opacity-60'
+                            style={{ border: "none" }}
+                            className={`catalog-card-borderless cursor-pointer bg-[#161616] rounded-xl p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac] ${
+                                category.isActive ? '' : 'opacity-60'
                             }`}
                             onClick={() => router.push(`/categories/${category._id}/products`)}
                             onKeyDown={(event) => {

@@ -100,7 +100,10 @@ function ProductCard({
   const totalStock = getTotalStock(product);
 
   return (
-    <div className="flex h-full flex-col rounded-[28px] border border-[#dde3d0] bg-white/92 p-4 shadow-[0_24px_60px_rgba(60,80,40,0.08)] transition-colors hover:border-[#cfd8be]">
+    <div
+      className="catalog-card-borderless flex h-full flex-col rounded-[28px] bg-white/92 p-4"
+      style={{ border: "none", boxShadow: "none" }}
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f3f6ea]">
           <Package className="h-6 w-6 text-slate-500" />

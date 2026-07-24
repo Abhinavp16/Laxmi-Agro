@@ -151,6 +151,12 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Applies only to catalog card containers, overriding legacy theme border rules. */
+  .catalog-card-borderless {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
 }
 
 html:not(.dark),
