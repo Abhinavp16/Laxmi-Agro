@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Link, Package, Search, Languages } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Link, Package, Search, Languages } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -56,6 +57,7 @@ interface Company {
 type UploadStatus = 'idle' | 'converting' | 'uploading' | 'done'
 
 export default function CategoriesPage() {
+    const router = useRouter()
     const [categories, setCategories] = useState<Category[]>([])
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -472,7 +474,11 @@ export default function CategoriesPage() {
                         </TableHeader>
                         <TableBody>
                             {categories.map((category) => (
-                                <TableRow key={category._id} className="border-[#333]">
+                                <TableRow
+                                    key={category._id}
+                                    className="cursor-pointer border-[#333] transition-colors hover:bg-[#1A1A1A]"
+                                    onClick={() => router.push(`/categories/${category._id}/products`)}
+                                >
                                     <TableCell>
                                         {category.image?.url ? (
                                             <img 
@@ -519,7 +525,7 @@ export default function CategoriesPage() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
                                             <Button 
                                                 size="icon" 
                                                 variant="ghost" 
@@ -547,11 +553,20 @@ export default function CategoriesPage() {
                 /* Card View */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {categories.map((category) => (
-                        <div 
-                            key={category._id} 
-                            className={`bg-[#161616] rounded-xl border p-4 hover:border-[#444] transition-colors ${
+                        <div
+                            key={category._id}
+                            role="link"
+                            tabIndex={0}
+                            className={`cursor-pointer bg-[#161616] rounded-xl border p-4 hover:border-[#86efac] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac] ${
                                 category.isActive ? 'border-[#333]' : 'border-[#333] opacity-60'
                             }`}
+                            onClick={() => router.push(`/categories/${category._id}/products`)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault()
+                                    router.push(`/categories/${category._id}/products`)
+                                }
+                            }}
                         >
                             <div className="flex items-start justify-between mb-3">
                                 {category.image?.url ? (
@@ -565,7 +580,7 @@ export default function CategoriesPage() {
                                         <FolderTree className="h-7 w-7 text-gray-500" />
                                     </div>
                                 )}
-                                <div className="flex gap-1">
+                                <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
                                     <Button 
                                         size="icon" 
                                         variant="ghost" 

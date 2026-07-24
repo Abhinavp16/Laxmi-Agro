@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Product, StockLog, WebsiteSettings, Category } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
@@ -282,21 +283,60 @@ function buildPriceChangeRow({
 
 exports.getProducts = async (req, res, next) => {
   try {
-    const { status, category, search, sort } = req.query;
+    const { status, category, categoryId, search, sort } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
 
     const query = {};
+    const filters = [];
+
     if (status) {
       query.status = status;
     } else {
       query.status = { $ne: PRODUCT_STATUS.ARCHIVED };
     }
-    if (category) query.category = category;
+
+    if (categoryId) {
+      if (!mongoose.isValidObjectId(categoryId)) {
+        throw new BadRequestError('Invalid category ID', 'INVALID_CATEGORY_ID');
+      }
+
+      const selectedCategory = await Category.findById(categoryId)
+        .select('_id name slug company')
+        .lean();
+
+      if (!selectedCategory) {
+        throw new NotFoundError('Category not found', 'CATEGORY_NOT_FOUND');
+      }
+
+      const legacyCategoryValues = [selectedCategory.name, selectedCategory.slug]
+        .filter(Boolean);
+
+      // categoryRef is the authoritative relationship. The legacy fallback keeps
+      // categories with older products fully visible until their data is migrated.
+      filters.push({
+        $or: [
+          { categoryRef: selectedCategory._id },
+          {
+            company: selectedCategory.company,
+            category: { $in: legacyCategoryValues },
+          },
+        ],
+      });
+    } else if (category) {
+      query.category = category;
+    }
+
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } },
-      ];
+      filters.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { sku: { $regex: search, $options: 'i' } },
+        ],
+      });
+    }
+
+    if (filters.length > 0) {
+      query.$and = filters;
     }
 
     let sortOption = { createdAt: -1 };

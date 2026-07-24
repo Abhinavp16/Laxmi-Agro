@@ -23,7 +23,7 @@ import {
   ChevronDown,
   Tags,
   Check,
-} from "lucide-react";
+} from "@/components/hugeicons";
 import { useSearchParams } from "next/navigation";
 import NextLink from "next/link";
 
@@ -140,6 +140,12 @@ function isPresetPriceUnit(value?: string | null) {
   );
 }
 
+function getSafeReturnPath(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//")
+    ? value
+    : "/products";
+}
+
 interface ProductImage {
   _id?: string;
   url: string;
@@ -234,6 +240,8 @@ export default function AddProductPage() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const isEditMode = !!editId;
+  const requestedCategoryId = searchParams.get("categoryId");
+  const returnPath = getSafeReturnPath(searchParams.get("returnTo"));
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
@@ -256,6 +264,8 @@ export default function AddProductPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
   const [isCustomPriceUnit, setIsCustomPriceUnit] = useState(false);
+  const [lockedCategoryId, setLockedCategoryId] = useState<string | null>(null);
+  const isCategoryLocked = !isEditMode && lockedCategoryId !== null;
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -304,6 +314,27 @@ export default function AddProductPage() {
         fetchCompanies(),
         fetchCategories(),
       ]);
+
+      if (!isEditMode && requestedCategoryId) {
+        const selectedCategory = loadedCategories.find(
+          (category) => category._id === requestedCategoryId,
+        );
+
+        if (selectedCategory) {
+          const selectedCompanyId =
+            typeof selectedCategory.company === "object" && selectedCategory.company
+              ? selectedCategory.company._id
+              : String(selectedCategory.company || "");
+          form.setValue("category", selectedCategory._id);
+          form.setValue("company", selectedCompanyId || "");
+          setLockedCategoryId(selectedCategory._id);
+        } else {
+          setLockedCategoryId(null);
+          toast.error("The selected category is no longer available.");
+        }
+      } else {
+        setLockedCategoryId(null);
+      }
 
       // Fetch product if in edit mode
       if (isEditMode && editId) {
@@ -411,7 +442,7 @@ export default function AddProductPage() {
     } catch (error) {
       console.error("Fetch product error:", error);
       toast.error("Failed to load product");
-      router.push("/products");
+      router.push(returnPath);
     } finally {
       setIsLoadingProduct(false);
     }
@@ -814,7 +845,7 @@ export default function AddProductPage() {
           ? "Product updated successfully"
           : "Product created successfully",
       );
-      router.push("/products");
+      router.push(returnPath);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || "Something went wrong. Please try again.");
@@ -834,7 +865,7 @@ export default function AddProductPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <NextLink href="/products">
+        <NextLink href={returnPath}>
           <Button
             variant="ghost"
             size="icon"
@@ -853,7 +884,7 @@ export default function AddProductPage() {
             type="button"
             variant="ghost"
             className="text-gray-400 hover:text-white"
-            onClick={() => router.back()}
+            onClick={() => router.push(returnPath)}
           >
             Cancel
           </Button>
@@ -975,7 +1006,8 @@ export default function AddProductPage() {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    className="flex-1 justify-between border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"
+                                    disabled={isCategoryLocked}
+                                    className="flex-1 justify-between border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-70"
                                   >
                                     <span className="truncate">
                                       {field.value
@@ -1049,7 +1081,8 @@ export default function AddProductPage() {
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  className="border-[#333] bg-[#1A1A1A] text-white hover:bg-[#333]"
+                                  disabled={isCategoryLocked}
+                                  className="border-[#333] bg-[#1A1A1A] text-white hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
@@ -1122,8 +1155,9 @@ export default function AddProductPage() {
                             </Dialog>
                           </div>
                           <FormDescription className="text-gray-500">
-                            Pick the brand-specific category. Brand is assigned
-                            from the selected category.
+                            {isCategoryLocked
+                              ? "This category was selected from its product page and cannot be changed here."
+                              : "Pick the brand-specific category. Brand is assigned from the selected category."}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -2152,7 +2186,7 @@ export default function AddProductPage() {
                   type="button"
                   variant="outline"
                   className="flex-1 border-[#333] bg-[#1A1A1A] text-gray-300 hover:text-white hover:bg-[#333]"
-                  onClick={() => router.back()}
+                  onClick={() => router.push(returnPath)}
                 >
                   Cancel
                 </Button>
