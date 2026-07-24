@@ -75,7 +75,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Space Grotesk', sans-serif;
+  --font-sans: 'Outfit', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -351,4 +351,275 @@ html:not(.dark) [class*='data-[state=active]:bg-[#333]'][data-state='active'] {
 
 .dark [class*='ring-offset-white'] {
   --tw-ring-offset-color: #0d0d0d !important;
+}
+
+/* Keep sidebar navigation scrollable without exposing a native scrollbar. */
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Blue visual system: overrides legacy green surfaces without changing page behavior. */
+:root {
+  --background: oklch(0.975 0.008 250);
+  --foreground: oklch(0.24 0.02 255);
+  --card: oklch(0.995 0.002 250);
+  --card-foreground: oklch(0.22 0.02 255);
+  --popover: oklch(1 0.002 250);
+  --popover-foreground: oklch(0.22 0.02 255);
+  --primary: oklch(0.56 0.19 255);
+  --primary-foreground: oklch(0.99 0.002 250);
+  --secondary: oklch(0.94 0.015 250);
+  --secondary-foreground: oklch(0.32 0.02 255);
+  --muted: oklch(0.955 0.01 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --accent: oklch(0.93 0.04 250);
+  --accent-foreground: oklch(0.3 0.08 255);
+  --border: oklch(0.89 0.012 250);
+  --input: oklch(0.91 0.012 250);
+  --ring: oklch(0.68 0.16 255);
+  --sidebar: oklch(0.975 0.01 250);
+  --sidebar-foreground: oklch(0.25 0.02 255);
+  --sidebar-primary: oklch(0.56 0.19 255);
+  --sidebar-primary-foreground: oklch(0.99 0.002 250);
+  --sidebar-accent: oklch(0.93 0.04 250);
+  --sidebar-accent-foreground: oklch(0.3 0.08 255);
+  --sidebar-border: oklch(0.87 0.016 250);
+  --sidebar-ring: oklch(0.68 0.16 255);
+}
+
+.dark {
+  --background: oklch(0.16 0.025 255);
+  --foreground: oklch(0.985 0.004 250);
+  --card: oklch(0.19 0.025 255);
+  --card-foreground: oklch(0.985 0.004 250);
+  --popover: oklch(0.19 0.025 255);
+  --popover-foreground: oklch(0.985 0.004 250);
+  --primary: oklch(0.72 0.15 255);
+  --primary-foreground: oklch(0.2 0.03 255);
+  --secondary: oklch(0.26 0.03 255);
+  --secondary-foreground: oklch(0.985 0.004 250);
+  --muted: oklch(0.26 0.03 255);
+  --muted-foreground: oklch(0.74 0.02 255);
+  --accent: oklch(0.26 0.05 255);
+  --accent-foreground: oklch(0.985 0.004 250);
+  --border: oklch(0.31 0.03 255);
+  --input: oklch(0.29 0.03 255);
+  --ring: oklch(0.62 0.16 255);
+  --sidebar: oklch(0.18 0.03 255);
+  --sidebar-foreground: oklch(0.985 0.004 250);
+  --sidebar-primary: oklch(0.72 0.15 255);
+  --sidebar-primary-foreground: oklch(0.2 0.03 255);
+  --sidebar-accent: oklch(0.26 0.05 255);
+  --sidebar-accent-foreground: oklch(0.985 0.004 250);
+  --sidebar-border: oklch(0.31 0.03 255);
+  --sidebar-ring: oklch(0.62 0.16 255);
+}
+
+body {
+  background-image:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(191, 219, 254, 0.2), transparent 25%),
+    linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+}
+
+.dark body {
+  background-image:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.2), transparent 26%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 20%),
+    linear-gradient(180deg, #0b1220 0%, #111827 100%);
+}
+
+::selection {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+html:not(.dark),
+html:not(.dark) body,
+html:not(.dark) * {
+  scrollbar-color: #60a5fa #dbeafe;
+}
+
+html:not(.dark) *::-webkit-scrollbar-track,
+html:not(.dark) *::-webkit-scrollbar-corner {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb,
+html:not(.dark) *::-webkit-scrollbar-thumb:hover {
+  border-color: #dbeafe;
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+}
+
+html:not(.dark) *::-webkit-scrollbar-button,
+html:not(.dark) *::-webkit-scrollbar-button:hover {
+  border-color: #bfdbfe;
+  background-color: #eff6ff;
+}
+
+html:not(.dark) [class*='bg-[#86efac]'],
+html:not(.dark) [class*='bg-[#bbf7d0]'],
+html:not(.dark) [class*='bg-[#4ade80]'],
+html:not(.dark) [class*='bg-[#132117]'],
+html:not(.dark) [class*='bg-green-'],
+html:not(.dark) [class*='bg-emerald-'],
+html:not(.dark) [class*='bg-lime-'] {
+  background-color: #2563eb !important;
+}
+
+html:not(.dark) [class*='text-[#86efac]'],
+html:not(.dark) [class*='text-[#c9f6d8]'],
+html:not(.dark) [class*='text-green-'],
+html:not(.dark) [class*='text-emerald-'],
+html:not(.dark) [class*='text-lime-'] {
+  color: #2563eb !important;
+}
+
+html:not(.dark) [class*='border-[#86efac]'],
+html:not(.dark) [class*='border-[#2f4f39]'],
+html:not(.dark) [class*='border-green-'],
+html:not(.dark) [class*='border-emerald-'],
+html:not(.dark) [class*='border-lime-'],
+html:not(.dark) [class*='border-[#dde3d0]'],
+html:not(.dark) [class*='border-[#d8dfca]'],
+html:not(.dark) [class*='border-[#d7dfc6]'] {
+  border-color: #bfdbfe !important;
+}
+
+html:not(.dark) [class*='ring-[#86efac]'],
+html:not(.dark) [class*='ring-green-'],
+html:not(.dark) [class*='ring-emerald-'],
+html:not(.dark) [class*='focus-visible:ring-[#86efac]'] {
+  --tw-ring-color: rgba(37, 99, 235, 0.45) !important;
+}
+
+html:not(.dark) [class*='hover:bg-[#f3f6ea]']:hover,
+html:not(.dark) [class*='hover:bg-green-']:hover,
+html:not(.dark) [class*='hover:bg-emerald-']:hover,
+html:not(.dark) [class*='hover:bg-lime-']:hover,
+html:not(.dark) [class*='hover:bg-[#86efac]']:hover {
+  background-color: #dbeafe !important;
+}
+
+html:not(.dark) [class*='bg-[#f3f5ea]'],
+html:not(.dark) [class*='bg-[#f3f6ea]'],
+html:not(.dark) [class*='bg-[#f6f8ef]'],
+html:not(.dark) [class*='bg-[#f8faf3]'],
+html:not(.dark) [class*='bg-[#fcfdf8]'] {
+  background-color: #eff6ff !important;
+}
+
+html:not(.dark) [class*='from-green-'],
+html:not(.dark) [class*='from-emerald-'],
+html:not(.dark) [class*='from-[#86efac]'] {
+  --tw-gradient-from: #60a5fa var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(96 165 250 / 0) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class*='to-green-'],
+html:not(.dark) [class*='to-emerald-'],
+html:not(.dark) [class*='to-[#86efac]'] {
+  --tw-gradient-to: #2563eb var(--tw-gradient-to-position) !important;
+}
+
+.dark [class*='bg-green-'],
+.dark [class*='bg-emerald-'],
+.dark [class*='bg-lime-'],
+.dark [class*='bg-[#86efac]'] {
+  background-color: #1d4ed8 !important;
+}
+
+.dark [class*='text-green-'],
+.dark [class*='text-emerald-'],
+.dark [class*='text-lime-'],
+.dark [class*='text-[#86efac]'] {
+  color: #93c5fd !important;
+}
+
+.dark [class*='border-green-'],
+.dark [class*='border-emerald-'],
+.dark [class*='border-lime-'],
+.dark [class*='border-[#86efac]'] {
+  border-color: #3b82f6 !important;
+}
+
+/* Light-blue action contrast: legacy green actions and blue status controls keep readable navy text. */
+:root {
+  --primary: #bfdbfe;
+  --primary-foreground: #172554;
+  --sidebar-primary: #bfdbfe;
+  --sidebar-primary-foreground: #172554;
+}
+
+.dark {
+  --primary: #93c5fd;
+  --primary-foreground: #172554;
+  --sidebar-primary: #93c5fd;
+  --sidebar-primary-foreground: #172554;
+}
+
+html:not(.dark) [class*='bg-[#86efac]'],
+html:not(.dark) [class*='bg-[#bbf7d0]'],
+html:not(.dark) [class*='bg-[#4ade80]'],
+html:not(.dark) [class*='bg-green-'],
+html:not(.dark) [class*='bg-emerald-'],
+html:not(.dark) [class*='bg-lime-'] {
+  background-color: #bfdbfe !important;
+  color: #172554 !important;
+}
+
+html:not(.dark) button[class*='bg-blue-'],
+html:not(.dark) [role='button'][class*='bg-blue-'],
+html:not(.dark) [class*='status'][class*='bg-blue-'] {
+  background-color: #bfdbfe !important;
+  color: #172554 !important;
+}
+
+html:not(.dark) button[class*='bg-[#86efac]'] *,
+html:not(.dark) button[class*='bg-green-'] *,
+html:not(.dark) button[class*='bg-emerald-'] *,
+html:not(.dark) button[class*='bg-blue-'] *,
+html:not(.dark) [class*='status'][class*='bg-blue-'] * {
+  color: inherit !important;
+}
+
+html:not(.dark) button[class*='bg-[#86efac]']:hover,
+html:not(.dark) button[class*='bg-green-']:hover,
+html:not(.dark) button[class*='bg-emerald-']:hover,
+html:not(.dark) button[class*='bg-blue-']:hover {
+  background-color: #93c5fd !important;
+}
+
+/* Active status pills stay neutral and high-contrast across every page. */
+html:not(.dark) [data-slot='badge'][class*='bg-green-'][class*='text-green-'],
+html:not(.dark) [data-slot='badge'][class*='bg-emerald-'][class*='text-emerald-'] {
+  background-color: #111827 !important;
+  color: #ffffff !important;
+  border-color: #111827 !important;
+}
+
+html:not(.dark) [data-slot='badge'][class*='bg-green-'][class*='text-green-'] *,
+html:not(.dark) [data-slot='badge'][class*='bg-emerald-'][class*='text-emerald-'] * {
+  color: inherit !important;
+}
+
+/* Enforced neutral active-status pill. This deliberately overrides legacy light-mode bg-black remapping. */
+html:not(.dark) .active-status-pill,
+.dark .active-status-pill {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+html:not(.dark) .active-status-pill *,
+.dark .active-status-pill * {
+  color: inherit !important;
 }
