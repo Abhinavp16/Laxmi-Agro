@@ -50,10 +50,10 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-[#eff6ff] text-slate-900 md:h-screen md:overflow-hidden dark:bg-slate-950">
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-background text-foreground md:h-screen md:overflow-hidden">
       <main className="flex min-h-screen md:h-full">
         <Sidebar />
-        <div className="min-w-0 flex-1 overflow-y-auto md:no-scrollbar">
+        <div className="min-w-0 flex-1 overflow-y-auto no-scrollbar">
           <div className="flex min-h-full flex-col gap-4 p-4 sm:p-5 md:gap-6 md:p-6">
             {pathname !== "/login" ? <MobileAdminNav /> : null}
             <PageTransition routeKey={pathname}>{children}</PageTransition>

@@ -65,7 +65,7 @@ export function DashboardMetrics() {
 
   if (isLoading) {
     return (
-      <section className="flex min-h-48 items-center justify-center rounded-3xl bg-white p-6 shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
+      <section className="flex min-h-48 items-center justify-center rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </section>
     )
@@ -73,7 +73,7 @@ export function DashboardMetrics() {
 
   if (error) {
     return (
-      <section className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-3xl bg-white p-6 text-center shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
+      <section className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 text-center shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
         <p className="font-semibold text-slate-900">Dashboard metrics are unavailable</p>
         <p className="max-w-md text-sm text-slate-500">{error}</p>
         <button
@@ -125,7 +125,7 @@ export function DashboardMetrics() {
   ]
 
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-6">
+    <section className="dashboard-surface rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-6">
       <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0 xl:max-w-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
@@ -144,7 +144,7 @@ export function DashboardMetrics() {
 
         <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-3xl">
           {metricTiles.map(({ label, value, detail, Icon, valueClass, iconClass }) => (
-            <div key={label} className="min-w-0 rounded-2xl bg-slate-50/80 p-4">
+            <div key={label} className="dashboard-metric-tile min-w-0 rounded-2xl bg-slate-50/80 p-4">
               <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconClass}`}>
                 <Icon className="h-4 w-4" />
               </span>

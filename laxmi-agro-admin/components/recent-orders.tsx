@@ -82,7 +82,7 @@ export function RecentOrders() {
   }
 
   return (
-    <section className="flex min-h-[470px] flex-col rounded-3xl bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-6">
+    <section className="dashboard-surface flex min-h-[470px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_18px_45px_rgba(0,0,0,0.25)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Operations</p>
@@ -99,7 +99,7 @@ export function RecentOrders() {
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
         ) : error ? (
-          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl dashboard-subtle-surface bg-slate-50 px-6 text-center">
             <p className="font-semibold text-slate-900">Recent orders are unavailable</p>
             <p className="mt-2 max-w-sm text-sm text-slate-500">{error}</p>
             <button
@@ -111,7 +111,7 @@ export function RecentOrders() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl dashboard-subtle-surface bg-slate-50 px-6 text-center">
             <p className="font-semibold text-slate-900">No recent orders</p>
             <p className="mt-2 text-sm text-slate-500">New orders will appear here as they are placed.</p>
             <Link href="/orders" className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700">Open orders</Link>
@@ -122,7 +122,7 @@ export function RecentOrders() {
               {orders.map((order) => {
                 const payStatus = getPaymentStatus(order)
                 return (
-                  <div key={order._id} className="rounded-2xl bg-slate-50 p-4">
+                  <div key={order._id} className="rounded-2xl dashboard-subtle-surface bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm font-semibold text-slate-900">{order.orderNumber}</div>

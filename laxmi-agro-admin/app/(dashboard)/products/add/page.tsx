@@ -15,7 +15,6 @@ import {
   GripVertical,
   Crown,
   Upload,
-  Link,
   ArrowLeft,
   FolderPlus,
   Youtube,
@@ -258,9 +257,8 @@ export default function AddProductPage() {
   const [newCategoryCompanyId, setNewCategoryCompanyId] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [images, setImages] = useState<ProductImage[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [bulletPoints, setBulletPoints] = useState<string[]>([""]);
-  const [imageUploadMode, setImageUploadMode] = useState<"url" | "file">("url");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
   const [isCustomPriceUnit, setIsCustomPriceUnit] = useState(false);
@@ -516,22 +514,6 @@ export default function AddProductPage() {
   }
 
   // Image management functions
-  const addImage = () => {
-    if (!newImageUrl.trim()) {
-      toast.error("Please enter an image URL");
-      return;
-    }
-    const newImage: ProductImage = {
-      url: newImageUrl.trim(),
-      publicId: `img-${Date.now()}`,
-      isPrimary: images.length === 0, // First image is primary by default
-      order: images.length,
-    };
-    setImages([...images, newImage]);
-    setNewImageUrl("");
-    toast.success("Image added");
-  };
-
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -863,8 +845,8 @@ export default function AddProductPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
+    <div className="w-full max-w-none">
+      <div className="sticky top-0 z-30 -mx-4 -mt-4 mb-6 flex flex-wrap items-center gap-3 border-b border-blue-100 bg-[#eff6ff]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[#eff6ff]/85 sm:-mx-5 sm:-mt-5 sm:px-5 md:-mx-6 md:-mt-6 md:mb-8 md:px-6 dark:border-slate-800 dark:bg-slate-950/95">
         <NextLink href={returnPath}>
           <Button
             variant="ghost"
@@ -900,10 +882,16 @@ export default function AddProductPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <Card className="bg-[#161616] border-[#333]">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="product-editor-form space-y-8"
+        >
+          <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
+            <Card
+              className="product-editor-left-card overflow-hidden bg-[#161616] border-[#333]"
+              style={{ gap: 0, paddingBlock: 0 }}
+            >
+              <section className="product-editor-left-section">
                 <CardContent className="pt-6">
                   <FormField
                     control={form.control}
@@ -997,7 +985,7 @@ export default function AddProductPage() {
                       control={form.control}
                       name="category"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="product-floating-exempt">
                           <FormLabel className="text-white">Category</FormLabel>
                           <div className="flex gap-2">
                             <Popover>
@@ -1108,7 +1096,7 @@ export default function AddProductPage() {
                                       <SelectTrigger className="bg-[#0D0D0D] border-[#333] text-white">
                                         <SelectValue placeholder="Select brand" />
                                       </SelectTrigger>
-                                      <SelectContent className="bg-[#0D0D0D] border-[#333]">
+                                      <SelectContent className="product-editor-select-content border-blue-200! bg-white! text-slate-900! dark:border-[#333]! dark:bg-[#0D0D0D]! dark:text-white! bg-[#0D0D0D] border-[#333]">
                                         {companies.map((company) => (
                                           <SelectItem
                                             key={company._id}
@@ -1188,78 +1176,27 @@ export default function AddProductPage() {
                     />
                   </div>
                 </CardContent>
-              </Card>
+              </section>
 
               {/* Product Images Card */}
-              <Card className="bg-[#161616] border-[#333]">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-medium flex items-center gap-2">
+              <section className="product-editor-left-section product-editor-image-section border-t border-blue-100 dark:border-slate-700">
+                <CardContent className="p-4">
+                  <div className="mb-3">
+                    <h3 className="flex items-center gap-2 font-medium text-white">
                       <ImagePlus className="h-4 w-4" />
                       Product Images
                     </h3>
-                    {/* Toggle between URL and Upload */}
-                    <div className="flex bg-[#0D0D0D] rounded-lg p-1">
-                      <button
-                        type="button"
-                        onClick={() => setImageUploadMode("url")}
-                        className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                          imageUploadMode === "url"
-                            ? "is-active"
-                            : "text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        <Link className="h-3 w-3" />
-                        URL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setImageUploadMode("file")}
-                        className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                          imageUploadMode === "file"
-                            ? "is-active"
-                            : "text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        <Upload className="h-3 w-3" />
-                        Upload
-                      </button>
-                    </div>
                   </div>
 
-                  {/* URL Input Mode */}
-                  {imageUploadMode === "url" && (
-                    <div className="flex gap-2 mb-4">
-                      <Input
-                        placeholder="Enter image URL..."
-                        value={newImageUrl}
-                        onChange={(e) => setNewImageUrl(e.target.value)}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && (e.preventDefault(), addImage())
-                        }
-                        className="bg-[#0D0D0D] border-[#333] text-white flex-1"
-                      />
-                      <Button
-                        type="button"
-                        onClick={addImage}
-                        className="is-active hover:bg-[#86efac]/90"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* File Upload Mode */}
-                  {imageUploadMode === "file" && (
-                    <div className="mb-4">
-                      <label
+                  <div className="mb-3">
+                    <label
                         className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-lg transition-colors ${
                           isUploadingImage
                             ? "border-[#86efac]/50 bg-[#86efac]/5 cursor-wait"
                             : "border-[#333] bg-[#0D0D0D] hover:bg-[#1a1a1a] cursor-pointer"
-                        } ${isUploadingImage ? "h-28" : "h-24"}`}
+                        } ${isUploadingImage ? "h-24" : "h-20"}`}
                       >
-                        <div className="flex flex-col items-center justify-center py-4">
+                        <div className="flex flex-col items-center justify-center py-2">
                           {isUploadingImage ? (
                             <div className="flex flex-col items-center gap-2 w-full px-6">
                               {/* Step indicators */}
@@ -1361,23 +1298,25 @@ export default function AddProductPage() {
                           disabled={isUploadingImage}
                         />
                       </label>
-                    </div>
-                  )}
+                  </div>
 
                   {/* Images Grid */}
                   {images.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {images.map((img, index) => (
                         <div
                           key={index}
-                          className={`relative group rounded-lg overflow-hidden border-2 ${
+                          className={`relative h-24 w-24 group rounded-lg overflow-hidden border-2 ${
                             img.isPrimary ? "border-[#86efac]" : "border-[#333]"
                           }`}
                         >
                           <img
                             src={resolvePreviewImageUrl(img.url)}
                             alt={`Product ${index + 1}`}
-                            className="w-full aspect-square object-cover"
+                            className="h-full w-full cursor-zoom-in object-cover"
+                            onClick={() =>
+                              setPreviewImageUrl(resolvePreviewImageUrl(img.url))
+                            }
                             onError={(e) => {
                               (e.target as HTMLImageElement).src =
                                 "https://placehold.co/200x200/1a1a1a/666?text=Error";
@@ -1424,13 +1363,13 @@ export default function AddProductPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed border-[#333] rounded-lg p-8 text-center">
-                      <ImagePlus className="h-8 w-8 mx-auto text-gray-500 mb-2" />
+                    <div className="border-2 border-dashed border-[#333] rounded-lg p-4 text-center">
+                      <ImagePlus className="h-6 w-6 mx-auto text-gray-500 mb-2" />
                       <p className="text-gray-500 text-sm">
                         No images added yet
                       </p>
                       <p className="text-gray-600 text-xs mt-1">
-                        Add image URLs above
+                        Upload one or more product images above
                       </p>
                     </div>
                   )}
@@ -1439,12 +1378,12 @@ export default function AddProductPage() {
                     Featured" to change.
                   </p>
                 </CardContent>
-              </Card>
+              </section>
 
               {/* Bullet Points / Features Card */}
-              <Card className="bg-[#161616] border-[#333]">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
+              <section className="product-editor-left-section border-t border-blue-100 dark:border-slate-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
                     <h3 className="text-white font-medium">
                       Key Features / Bullet Points
                     </h3>
@@ -1484,16 +1423,16 @@ export default function AddProductPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-gray-500 text-xs mt-3">
+                  <p className="text-gray-500 text-xs mt-2">
                     Add key features that will be displayed as bullet points on
                     the product page.
                   </p>
                 </CardContent>
-              </Card>
+              </section>
 
               {/* YouTube Video URL */}
-              <Card className="bg-[#161616] border-[#333]">
-                <CardContent className="pt-6">
+              <section className="product-editor-left-section border-t border-blue-100 dark:border-slate-700">
+                <CardContent className="p-4">
                   <FormField
                     control={form.control}
                     name="videoUrl"
@@ -1520,11 +1459,11 @@ export default function AddProductPage() {
                     )}
                   />
                 </CardContent>
-              </Card>
+              </section>
 
               {/* Shipping & Return Terms */}
-              <Card className="bg-[#161616] border-[#333]">
-                <CardContent className="pt-6">
+              <section className="product-editor-left-section border-t border-blue-100 dark:border-slate-700">
+                <CardContent className="p-4">
                   <FormField
                     control={form.control}
                     name="shippingTerms"
@@ -1538,7 +1477,7 @@ export default function AddProductPage() {
                           <Textarea
                             placeholder="Enter shipping and return policy..."
                             {...field}
-                            className="bg-[#0D0D0D] border-[#333] text-white min-h-[120px]"
+                            className="bg-[#0D0D0D] border-[#333] text-white min-h-[96px]"
                           />
                         </FormControl>
                         <FormDescription className="text-gray-500">
@@ -1551,8 +1490,8 @@ export default function AddProductPage() {
                     )}
                   />
                 </CardContent>
-              </Card>
-            </div>
+              </section>
+            </Card>
 
             <div className="space-y-8">
               <Card className="bg-[#161616] border-[#333]">
@@ -1585,7 +1524,7 @@ export default function AddProductPage() {
                                 <SelectValue placeholder="Select price change mode" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-[#111111] border-[#333] text-white">
+                            <SelectContent className="product-editor-select-content border-blue-200! bg-white! text-slate-900! dark:border-[#333]! dark:bg-[#0D0D0D]! dark:text-white! bg-[#111111] border-[#333] text-white">
                               <SelectItem value="schedule_24h">
                                 Schedule after 24 hours
                               </SelectItem>
@@ -1728,7 +1667,7 @@ export default function AddProductPage() {
                                 <SelectValue placeholder="Select price unit" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-[#161616] border-[#333] text-white">
+                            <SelectContent className="product-editor-select-content border-blue-200! bg-white! text-slate-900! dark:border-[#333]! dark:bg-[#0D0D0D]! dark:text-white! bg-[#161616] border-[#333] text-white">
                               {PRICE_UNIT_OPTIONS.map((option) => (
                                 <SelectItem
                                   key={option.value}
@@ -1885,7 +1824,7 @@ export default function AddProductPage() {
                               <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-[#0D0D0D] border-[#333]">
+                          <SelectContent className="product-editor-select-content border-blue-200! bg-white! text-slate-900! dark:border-[#333]! dark:bg-[#0D0D0D]! dark:text-white! bg-[#0D0D0D] border-[#333]">
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="draft">Draft</SelectItem>
                             <SelectItem value="archived">Archived</SelectItem>
@@ -2031,7 +1970,7 @@ export default function AddProductPage() {
                       };
 
                       return (
-                        <FormItem>
+                        <FormItem className="product-floating-exempt">
                           <FormLabel className="text-white flex items-center gap-2">
                             <Tags className="h-4 w-4 text-[#86efac]" />
                             Product Labels
@@ -2116,7 +2055,7 @@ export default function AddProductPage() {
                               {selectedLabels.map((label) => (
                                 <span
                                   key={label.id}
-                                  className="rounded-full border border-[#2f4f39] bg-[#132117] px-2.5 py-1 text-xs font-medium text-[#86efac]"
+                                  className="product-label-pill rounded-full border border-blue-300! bg-blue-100! px-2.5 py-1 text-xs font-medium text-blue-950! dark:border-blue-600! dark:bg-blue-950! dark:text-blue-100!"
                                 >
                                   {label.title}
                                 </span>
@@ -2181,26 +2120,30 @@ export default function AddProductPage() {
                 </CardContent>
               </Card>
 
-              <div className="flex gap-4 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 border-[#333] bg-[#1A1A1A] text-gray-300 hover:text-white hover:bg-[#333]"
-                  onClick={() => router.push(returnPath)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1" disabled={isLoading}>
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {isEditMode ? "Update Product" : "Create Product"}
-                </Button>
-              </div>
             </div>
           </div>
         </form>
       </Form>
+
+      <Dialog
+        open={Boolean(previewImageUrl)}
+        onOpenChange={(open) => {
+          if (!open) setPreviewImageUrl("");
+        }}
+      >
+        <DialogContent className="max-w-4xl border-[#333] bg-[#161616] p-3">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Product image preview</DialogTitle>
+          </DialogHeader>
+          {previewImageUrl && (
+            <img
+              src={previewImageUrl}
+              alt="Enlarged product image"
+              className="max-h-[80vh] w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -76,14 +76,14 @@ export function PerformanceChart() {
   const yMax = Math.ceil((maxRevenue * 1.2) / 100) * 100 || 1000
 
   return (
-    <section className="flex min-h-[470px] flex-col rounded-3xl bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-6">
+    <section className="dashboard-surface flex min-h-[470px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_18px_45px_rgba(0,0,0,0.25)] sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Performance</p>
           <h2 className="mt-1 text-xl font-bold text-slate-900">Sales overview</h2>
         </div>
 
-        <div className="flex w-fit items-center rounded-xl bg-slate-100 p-1">
+        <div className="dashboard-period-selector flex w-fit items-center rounded-xl bg-slate-100 p-1">
           {periodMap.map((period) => (
             <button
               key={period.value}
@@ -105,7 +105,7 @@ export function PerformanceChart() {
         {isLoading ? (
           <ChartSkeleton className="h-full min-h-0" />
         ) : error ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+          <div className="flex h-full flex-col items-center justify-center rounded-2xl dashboard-subtle-surface bg-slate-50 px-6 text-center">
             <p className="font-semibold text-slate-900">Sales data is unavailable</p>
             <p className="mt-2 max-w-sm text-sm text-slate-500">{error}</p>
             <button
@@ -117,7 +117,7 @@ export function PerformanceChart() {
             </button>
           </div>
         ) : data.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+          <div className="flex h-full flex-col items-center justify-center rounded-2xl dashboard-subtle-surface bg-slate-50 px-6 text-center">
             <p className="font-semibold text-slate-900">No sales data for this period</p>
             <p className="mt-2 text-sm text-slate-500">Completed orders will appear here once sales activity is recorded.</p>
           </div>

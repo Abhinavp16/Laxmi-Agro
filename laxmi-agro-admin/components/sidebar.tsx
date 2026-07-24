@@ -157,8 +157,8 @@ function useAdminSidebarState() {
 
 function getItemClasses(isActive: boolean) {
   return isActive
-    ? "border-blue-500 bg-blue-50 text-blue-700"
-    : "border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+    ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/20 dark:text-blue-200"
+    : "border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
 }
 
 function SidebarIcon({ icon, size = 20 }: { icon: HugeIcon; size?: number }) {

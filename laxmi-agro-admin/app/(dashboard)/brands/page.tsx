@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2, Building2, Loader2, ImageIcon, LayoutGrid, List, Upload, Link, Search, Tag } from "@/components/hugeicons"
+import { Plus, Pencil, Trash2, Building2, Loader2, ImageIcon, LayoutGrid, List, Upload, Search, Tag } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -55,7 +55,7 @@ export default function BrandsPage() {
     const [description, setDescription] = useState("")
     const [logoUrl, setLogoUrl] = useState("")
     const [logoPublicId, setLogoPublicId] = useState("")
-    const [logoUploadMode, setLogoUploadMode] = useState<'url' | 'file'>('url')
+    const [previewImageUrl, setPreviewImageUrl] = useState("")
     const [isUploadingLogo, setIsUploadingLogo] = useState(false)
 
     useEffect(() => {
@@ -122,7 +122,6 @@ export default function BrandsPage() {
         setDescription("")
         setLogoUrl("")
         setLogoPublicId("")
-        setLogoUploadMode('url')
         setIsDialogOpen(true)
     }
 
@@ -132,7 +131,6 @@ export default function BrandsPage() {
         setDescription(company.description || "")
         setLogoUrl(company.logo?.url || "")
         setLogoPublicId(company.logo?.publicId || "")
-        setLogoUploadMode('url')
         setIsDialogOpen(true)
     }
 
@@ -452,98 +450,51 @@ export default function BrandsPage() {
                         </div>
                         
                         <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-white">
-                                    Brand Logo
-                                </label>
-                                <div className="flex bg-[#0D0D0D] rounded-lg p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setLogoUploadMode('url')}
-                                        className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                                            logoUploadMode === 'url' 
-                                                ? 'is-active'
-                                                : 'text-gray-400 hover:text-white'
-                                        }`}
-                                    >
-                                        <Link className="h-3 w-3" />
-                                        URL
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setLogoUploadMode('file')}
-                                        className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                                            logoUploadMode === 'file' 
-                                                ? 'is-active'
-                                                : 'text-gray-400 hover:text-white'
-                                        }`}
-                                    >
-                                        <Upload className="h-3 w-3" />
-                                        Upload
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            {logoUploadMode === 'url' ? (
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="https://example.com/logo.png"
-                                        value={logoUrl}
-                                        onChange={(e) => setLogoUrl(e.target.value)}
-                                        className="bg-[#0D0D0D] border-[#333] text-white flex-1"
+                            <label className="mb-2 block text-sm font-medium text-white">
+                                Brand Logo
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <label className="flex h-20 flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#333] bg-[#0D0D0D] transition-colors hover:bg-[#1a1a1a]">
+                                    <div className="flex flex-col items-center justify-center">
+                                        {isUploadingLogo ? (
+                                            <>
+                                                <Loader2 className="mb-1 h-5 w-5 animate-spin text-[#86efac]" />
+                                                <p className="text-xs text-gray-400">Uploading...</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="mb-1 h-5 w-5 text-gray-400" />
+                                                <p className="text-xs text-gray-400">
+                                                    <span className="text-[#86efac]">Click to upload</span>
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={handleLogoUpload}
+                                        disabled={isUploadingLogo}
                                     />
-                                    {logoUrl && (
-                                        <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] border border-[#333] overflow-hidden shrink-0">
-                                            <img 
-                                                src={logoUrl} 
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).style.display = 'none'
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex gap-3 items-center">
-                                    <label className="flex flex-col items-center justify-center flex-1 h-20 border-2 border-dashed border-[#333] rounded-lg cursor-pointer bg-[#0D0D0D] hover:bg-[#1a1a1a] transition-colors">
-                                        <div className="flex flex-col items-center justify-center">
-                                            {isUploadingLogo ? (
-                                                <>
-                                                    <Loader2 className="h-5 w-5 text-[#86efac] animate-spin mb-1" />
-                                                    <p className="text-xs text-gray-400">Uploading...</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Upload className="h-5 w-5 text-gray-400 mb-1" />
-                                                    <p className="text-xs text-gray-400">
-                                                        <span className="text-[#86efac]">Click to upload</span>
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/jpeg,image/png,image/gif,image/webp"
-                                            onChange={handleLogoUpload}
-                                            disabled={isUploadingLogo}
+                                </label>
+                                {logoUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImageUrl(logoUrl)}
+                                        className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#333] bg-[#0D0D0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac]"
+                                        aria-label="Enlarge brand logo"
+                                    >
+                                        <img
+                                            src={logoUrl}
+                                            alt="Brand logo preview"
+                                            className="h-full w-full cursor-zoom-in object-cover"
                                         />
-                                    </label>
-                                    {logoUrl && (
-                                        <div className="w-20 h-20 rounded-lg bg-[#0D0D0D] border border-[#333] overflow-hidden shrink-0">
-                                            <img 
-                                                src={logoUrl} 
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                                {logoUploadMode === 'url' ? 'Enter a direct link to the brand logo' : 'PNG, JPG, GIF, WebP (max 5MB)'}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                                PNG, JPG, GIF, WebP (max 5MB). Click the preview to enlarge it.
                             </p>
                         </div>
                         
@@ -578,6 +529,26 @@ export default function BrandsPage() {
                             {editingCompany ? "Update Brand" : "Create Brand"}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={Boolean(previewImageUrl)}
+                onOpenChange={(open) => {
+                    if (!open) setPreviewImageUrl("")
+                }}
+            >
+                <DialogContent className="max-w-4xl border-[#333] bg-[#161616] p-3">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Brand logo preview</DialogTitle>
+                    </DialogHeader>
+                    {previewImageUrl && (
+                        <img
+                            src={previewImageUrl}
+                            alt="Enlarged brand logo"
+                            className="max-h-[80vh] w-full object-contain"
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 

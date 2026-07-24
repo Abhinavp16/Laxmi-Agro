@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Link, Package, Search, Languages } from "@/components/hugeicons"
+import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -86,7 +86,7 @@ export default function CategoriesPage() {
     const [companyId, setCompanyId] = useState<string>("")
     const [order, setOrder] = useState("0")
     const [isActive, setIsActive] = useState(true)
-    const [imageUploadMode, setImageUploadMode] = useState<'url' | 'file'>('url')
+    const [previewImageUrl, setPreviewImageUrl] = useState("")
     const [isUploadingImage, setIsUploadingImage] = useState(false)
     const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
 
@@ -183,7 +183,6 @@ export default function CategoriesPage() {
         setCompanyId(companies[0]?._id || "")
         setOrder("0")
         setIsActive(true)
-        setImageUploadMode('url')
         setIsDialogOpen(true)
     }
 
@@ -198,7 +197,6 @@ export default function CategoriesPage() {
         setCompanyId(getCategoryCompanyId(category))
         setOrder(String(category.order || 0))
         setIsActive(category.isActive)
-        setImageUploadMode('url')
         setIsDialogOpen(true)
     }
 
@@ -632,7 +630,7 @@ export default function CategoriesPage() {
 
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="bg-[#161616] border-[#333] max-w-lg">
+                <DialogContent className="max-w-xl gap-3 overflow-y-hidden border-[#333] bg-[#161616] p-5">
                     <DialogHeader>
                         <DialogTitle className="text-white">
                             {editingCategory ? "Edit Category" : "Add New Category"}
@@ -645,8 +643,8 @@ export default function CategoriesPage() {
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
-                        <div>
+                    <div className="flex flex-wrap gap-y-3 py-3">
+                        <div className="order-1 w-1/2 pr-2">
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Brand *
                             </label>
@@ -673,7 +671,7 @@ export default function CategoriesPage() {
                             </p>
                         </div>
 
-                        <div>
+                        <div className="order-3 w-1/2 pr-2">
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Category Name *
                             </label>
@@ -685,7 +683,7 @@ export default function CategoriesPage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="order-4 w-1/2 pl-2">
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Category Name (Hindi)
                             </label>
@@ -698,132 +696,85 @@ export default function CategoriesPage() {
                         </div>
 
                         {/* Image Upload */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-white">
-                                    Category Image
-                                </label>
-                                <div className="flex bg-[#0D0D0D] rounded-lg p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setImageUploadMode('url')}
-                                        className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                                            imageUploadMode === 'url' 
-                                                ? 'is-active'
-                                                : 'text-gray-400 hover:text-white'
-                                        }`}
-                                    >
-                                        <Link className="h-3 w-3" />
-                                        URL
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setImageUploadMode('file')}
-                                        className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                                            imageUploadMode === 'file' 
-                                                ? 'is-active'
-                                                : 'text-gray-400 hover:text-white'
-                                        }`}
-                                    >
-                                        <Upload className="h-3 w-3" />
-                                        Upload
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            {imageUploadMode === 'url' ? (
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="https://example.com/image.png"
-                                        value={imageUrl}
-                                        onChange={(e) => setImageUrl(e.target.value)}
-                                        className="bg-[#0D0D0D] border-[#333] text-white flex-1"
-                                    />
-                                    {imageUrl && (
-                                        <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] border border-[#333] overflow-hidden shrink-0">
-                                            <img 
-                                                src={imageUrl} 
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).style.display = 'none'
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex gap-3 items-center">
-                                    <label className={`flex flex-col items-center justify-center flex-1 border-2 border-dashed rounded-lg transition-colors ${
-                                        isUploadingImage 
-                                            ? 'border-[#86efac]/50 bg-[#86efac]/5 cursor-wait h-24' 
-                                            : 'border-[#333] bg-[#0D0D0D] hover:bg-[#1a1a1a] cursor-pointer h-20'
-                                    }`}>
-                                        <div className="flex flex-col items-center justify-center py-3">
-                                            {isUploadingImage ? (
-                                                <div className="flex flex-col items-center gap-1.5 w-full px-4">
-                                                    <div className="flex items-center gap-1 text-[10px]">
-                                                        <span className={`px-1.5 py-0.5 rounded-full ${
-                                                            uploadStatus === 'converting' 
-                                                                ? 'bg-yellow-500/20 text-yellow-400' 
-                                                                : 'bg-green-500/20 text-green-400'
-                                                        }`}>
-                                                            {uploadStatus === 'converting' ? '⟳ Converting' : '✓ Converted'}
-                                                        </span>
-                                                        <span className="text-gray-600">→</span>
-                                                        <span className={`px-1.5 py-0.5 rounded-full ${
-                                                            uploadStatus === 'uploading' 
-                                                                ? 'bg-blue-500/20 text-blue-400' 
-                                                                : uploadStatus === 'done' 
-                                                                    ? 'bg-green-500/20 text-green-400' 
-                                                                    : 'bg-gray-500/20 text-gray-500'
-                                                        }`}>
-                                                            {uploadStatus === 'uploading' ? '⟳ Uploading' : uploadStatus === 'done' ? '✓ Done' : '○ Upload'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="w-full bg-[#333] rounded-full h-1">
-                                                        <div className={`h-1 rounded-full transition-all duration-500 ${
-                                                            uploadStatus === 'converting' ? 'w-1/3 bg-yellow-500' 
-                                                            : uploadStatus === 'uploading' ? 'w-2/3 bg-blue-500' 
-                                                            : 'w-full bg-green-500'
-                                                        }`} />
-                                                    </div>
+                        <div className="order-5 w-full">
+                            <label className="mb-2 block text-sm font-medium text-white">
+                                Category Image
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <label className={`flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                                    isUploadingImage
+                                        ? 'h-24 cursor-wait border-[#86efac]/50 bg-[#86efac]/5'
+                                        : 'h-20 cursor-pointer border-[#333] bg-[#0D0D0D] hover:bg-[#1a1a1a]'
+                                }`}>
+                                    <div className="flex flex-col items-center justify-center py-3">
+                                        {isUploadingImage ? (
+                                            <div className="flex w-full flex-col items-center gap-1.5 px-4">
+                                                <div className="flex items-center gap-1 text-[10px]">
+                                                    <span className={`rounded-full px-1.5 py-0.5 ${
+                                                        uploadStatus === 'converting'
+                                                            ? 'bg-yellow-500/20 text-yellow-400'
+                                                            : 'bg-green-500/20 text-green-400'
+                                                    }`}>
+                                                        {uploadStatus === 'converting' ? '⟳ Converting' : '✓ Converted'}
+                                                    </span>
+                                                    <span className="text-gray-600">→</span>
+                                                    <span className={`rounded-full px-1.5 py-0.5 ${
+                                                        uploadStatus === 'uploading'
+                                                            ? 'bg-blue-500/20 text-blue-400'
+                                                            : uploadStatus === 'done'
+                                                                ? 'bg-green-500/20 text-green-400'
+                                                                : 'bg-gray-500/20 text-gray-500'
+                                                    }`}>
+                                                        {uploadStatus === 'uploading' ? '⟳ Uploading' : uploadStatus === 'done' ? '✓ Done' : '○ Upload'}
+                                                    </span>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <Upload className="h-5 w-5 text-gray-400 mb-1" />
-                                                    <p className="text-xs text-gray-400">
-                                                        <span className="text-[#86efac]">Click to upload</span> — auto WebP
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/jpeg,image/png,image/gif,image/webp"
-                                            onChange={handleImageUpload}
-                                            disabled={isUploadingImage}
+                                                <div className="h-1 w-full rounded-full bg-[#333]">
+                                                    <div className={`h-1 rounded-full transition-all duration-500 ${
+                                                        uploadStatus === 'converting' ? 'w-1/3 bg-yellow-500'
+                                                        : uploadStatus === 'uploading' ? 'w-2/3 bg-blue-500'
+                                                        : 'w-full bg-green-500'
+                                                    }`} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload className="mb-1 h-5 w-5 text-gray-400" />
+                                                <p className="text-xs text-gray-400">
+                                                    <span className="text-[#86efac]">Click to upload</span> — auto WebP
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={handleImageUpload}
+                                        disabled={isUploadingImage}
+                                    />
+                                </label>
+                                {imageUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImageUrl(imageUrl)}
+                                        className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#333] bg-[#0D0D0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac]"
+                                        aria-label="Enlarge category image"
+                                    >
+                                        <img
+                                            src={imageUrl}
+                                            alt="Category image preview"
+                                            className="h-full w-full cursor-zoom-in object-cover"
                                         />
-                                    </label>
-                                    {imageUrl && (
-                                        <div className="w-20 h-20 rounded-lg bg-[#0D0D0D] border border-[#333] overflow-hidden shrink-0">
-                                            <img 
-                                                src={imageUrl} 
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                                {imageUploadMode === 'url' ? 'Enter a direct link to the category image' : 'PNG, JPG, GIF, WebP (max 5MB) — auto-converted to WebP'}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                                PNG, JPG, GIF, WebP (max 5MB) — auto-converted to WebP. Click the preview to enlarge it.
                             </p>
                         </div>
 
                         {/* Parent Category */}
-                        <div>
+                        <div className="order-2 w-1/2 pl-2">
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Parent Category
                             </label>
@@ -846,7 +797,7 @@ export default function CategoriesPage() {
                         </div>
 
                         {/* Description */}
-                        <div>
+                        <div className="order-6 w-full">
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Description
                             </label>
@@ -859,7 +810,7 @@ export default function CategoriesPage() {
                         </div>
 
                         {/* Order & Active */}
-                        <div className="flex gap-4">
+                        <div className="order-7 flex w-full gap-4">
                             <div className="flex-1">
                                 <label className="text-sm font-medium text-white mb-2 block">
                                     Display Order
@@ -907,6 +858,26 @@ export default function CategoriesPage() {
                             {editingCategory ? "Update Category" : "Create Category"}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={Boolean(previewImageUrl)}
+                onOpenChange={(open) => {
+                    if (!open) setPreviewImageUrl("")
+                }}
+            >
+                <DialogContent className="max-w-4xl border-[#333] bg-[#161616] p-3">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Category image preview</DialogTitle>
+                    </DialogHeader>
+                    {previewImageUrl && (
+                        <img
+                            src={previewImageUrl}
+                            alt="Enlarged category image"
+                            className="max-h-[80vh] w-full object-contain"
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 
