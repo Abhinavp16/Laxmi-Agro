@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Clock3, Loader2, RefreshCw, Search } from "lucide-react"
+import { Clock3, Loader2, RefreshCw, Search } from "@/components/hugeicons"
 import { useCallback, useEffect, useState } from "react"
 
 import {

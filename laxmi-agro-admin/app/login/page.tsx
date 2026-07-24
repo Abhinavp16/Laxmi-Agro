@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { apiFetch } from "@/lib/api"
 import Image from "next/image"
 import * as z from "zod"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "@/components/hugeicons"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"

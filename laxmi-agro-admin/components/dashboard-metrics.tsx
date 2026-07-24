@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Handshake, Loader2, ShoppingCart, Users, Wallet } from "lucide-react"
+import { Handshake, Loader2, ShoppingCart, Users, Wallet } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch } from "@/lib/api"
 

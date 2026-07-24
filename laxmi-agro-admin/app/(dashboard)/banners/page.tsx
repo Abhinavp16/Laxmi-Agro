@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { 
     Loader2, Save, Plus, Trash2, GripVertical, Image as ImageIcon, Upload, Search,
     ArrowRight
-} from "lucide-react"
+} from "@/components/hugeicons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import * as HugeIconsFree from "@hugeicons/core-free-icons"
 import { toast } from "sonner"

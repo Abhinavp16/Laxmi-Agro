@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, Settings2 } from "lucide-react"
+import { LogOut, Settings2 } from "@/components/hugeicons"
 import {
   DropdownMenu,
   DropdownMenuContent,

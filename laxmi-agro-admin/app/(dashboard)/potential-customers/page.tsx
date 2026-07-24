@@ -10,7 +10,7 @@ import {
     TableRow
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, UserSearch, Phone, Mail, Package, ChevronLeft, ChevronRight, Clock, TrendingUp, MessageCircle } from "lucide-react"
+import { Loader2, Eye, UserSearch, Phone, Mail, Package, ChevronLeft, ChevronRight, Clock, TrendingUp, MessageCircle } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch } from "@/lib/api"
 

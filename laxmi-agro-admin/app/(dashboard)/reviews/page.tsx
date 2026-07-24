@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Plus, Edit2, Trash2, Star, Eye, EyeOff } from "lucide-react"
+import { Loader2, Plus, Edit2, Trash2, Star, Eye, EyeOff } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { ReviewModal } from "@/components/reviews/review-modal"
 import { apiFetch } from "@/lib/api"

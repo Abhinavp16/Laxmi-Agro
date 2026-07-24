@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowUpRight, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { ArrowUpRight, CheckCircle2, Clock, Loader2 } from "@/components/hugeicons"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, ChevronsUpDown } from "@/components/hugeicons"
 import { Area, AreaChart, ResponsiveContainer } from "recharts"
 
 const data = [

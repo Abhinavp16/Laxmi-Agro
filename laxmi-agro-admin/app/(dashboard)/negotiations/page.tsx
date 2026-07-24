@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, MessageSquare, Check, X, Send, Search } from "lucide-react"
+import { Loader2, MessageSquare, Check, X, Send, Search } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Sheet,

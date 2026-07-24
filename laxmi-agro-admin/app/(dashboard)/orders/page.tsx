@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search, Trash2 } from "lucide-react"
+import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search, Trash2 } from "@/components/hugeicons"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import {
