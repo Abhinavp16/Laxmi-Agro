@@ -168,7 +168,9 @@ function SidebarIcon({ icon, size = 20 }: { icon: HugeIcon; size?: number }) {
 function SidebarBrand() {
   return (
     <Link href="/" className="flex items-center gap-3 px-5 py-5 transition-colors hover:bg-slate-50">
-      <Image src="/lae-logo.svg" alt="Laxmi Agro" width={36} height={36} className="h-9 w-9 object-contain" priority />
+      <span className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 shadow-sm dark:ring-[#334155]">
+        <Image src="/lae-logo.svg" alt="Laxmi Agro" width={36} height={36} className="h-full w-full object-cover" priority />
+      </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold tracking-tight text-slate-900">Laxmi Agro</span>
         <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Admin Portal</span>
