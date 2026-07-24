@@ -13,38 +13,66 @@ const {
 async function getProductCountMap(categories = [], user = null) {
   if (categories.length === 0) return new Map();
 
+  const categoryIds = categories.map((category) => category._id).filter(Boolean);
   const categoryNames = [...new Set(categories.flatMap((category) => [
     category.name,
     category.slug,
   ]).filter(Boolean))];
-
-  const match = applyCategoryAccessToProductQuery({
-    category: { $in: categoryNames },
-    status: { $ne: PRODUCT_STATUS.ARCHIVED },
-  }, user);
-
   const companyIds = categories
     .map((category) => category.company?._id || category.company)
     .filter(Boolean);
-  if (companyIds.length > 0) {
-    match.company = { $in: companyIds };
+  const categoryById = new Map(
+    categories.map((category) => [String(category._id), category]),
+  );
+  const countsByCategoryId = new Map(
+    categories.map((category) => [String(category._id), 0]),
+  );
+
+  const filters = [{ categoryRef: { $in: categoryIds } }];
+  if (categoryNames.length > 0 && companyIds.length > 0) {
+    // Keep showing products that have not yet been migrated to categoryRef.
+    filters.push({
+      company: { $in: companyIds },
+      category: { $in: categoryNames },
+    });
   }
 
-  const counts = await Product.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: { company: '$company', category: '$category' },
-        count: { $sum: 1 },
-      },
-    },
-  ]);
+  const match = applyCategoryAccessToProductQuery({
+    status: { $ne: PRODUCT_STATUS.ARCHIVED },
+    $or: filters,
+  }, user);
+  const products = await Product.find(match)
+    .select('categoryRef category company')
+    .lean();
 
-  const countsByKey = new Map();
-  counts.forEach((item) => {
-    countsByKey.set(`${String(item._id.company || '')}:${item._id.category}`, item.count);
+  products.forEach((product) => {
+    const referencedCategoryId = String(product.categoryRef || '');
+    if (categoryById.has(referencedCategoryId)) {
+      countsByCategoryId.set(
+        referencedCategoryId,
+        (countsByCategoryId.get(referencedCategoryId) || 0) + 1,
+      );
+      return;
+    }
+
+    const legacyCategory = categories.find((category) => {
+      const companyId = String(category.company?._id || category.company || '');
+      return (
+        companyId === String(product.company || '') &&
+        [category.name, category.slug].filter(Boolean).includes(product.category)
+      );
+    });
+
+    if (legacyCategory) {
+      const categoryId = String(legacyCategory._id);
+      countsByCategoryId.set(
+        categoryId,
+        (countsByCategoryId.get(categoryId) || 0) + 1,
+      );
+    }
   });
-  return countsByKey;
+
+  return countsByCategoryId;
 }
 
 async function resolveCompanyId(value) {
@@ -109,14 +137,11 @@ exports.getCategories = async (req, res, next) => {
     ]);
 
     const visibleCategories = filterCategoriesForUser(categories, req.user);
-    const countsByKey = await getProductCountMap(visibleCategories, req.user);
+    const countsByCategory = await getProductCountMap(visibleCategories, req.user);
     const categoriesWithCounts = visibleCategories.map((category) => ({
       ...category,
       image: normalizeImageObject(category.image, req),
-      productCount:
-        countsByKey.get(`${String(category.company?._id || category.company || '')}:${category.name}`) ??
-        countsByKey.get(`${String(category.company?._id || category.company || '')}:${category.slug}`) ??
-        0,
+      productCount: countsByCategory.get(String(category._id)) ?? 0,
     }));
 
     res.json({
@@ -148,9 +173,14 @@ exports.getCategory = async (req, res, next) => {
     const categoryData = category.toObject();
     categoryData.image = normalizeImageObject(categoryData.image, req);
     categoryData.productCount = await Product.countDocuments({
-      category: { $in: [category.name, category.slug].filter(Boolean) },
-      company: category.company,
       status: { $ne: PRODUCT_STATUS.ARCHIVED },
+      $or: [
+        { categoryRef: category._id },
+        {
+          category: { $in: [category.name, category.slug].filter(Boolean) },
+          company: category.company,
+        },
+      ],
     });
 
     res.json({
@@ -237,6 +267,9 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
 
+    const previousCategoryName = category.name;
+    const previousCategorySlug = category.slug;
+    const previousCompanyId = category.company;
     const nextCompanyId = company !== undefined
       ? await resolveCompanyId(company)
       : category.company;
@@ -297,6 +330,32 @@ exports.updateCategory = async (req, res, next) => {
       },
       { new: true, runValidators: true }
     ).populate('parent', 'name nameHindi slug').populate('company', 'name slug logo');
+
+    const canonicalCategoryValue = category.slug || category.name;
+    const legacyCategoryValues = [previousCategoryName, previousCategorySlug]
+      .filter(Boolean);
+    const productAssociationFilters = [{ categoryRef: category._id }];
+
+    if (legacyCategoryValues.length > 0) {
+      productAssociationFilters.push({
+        categoryRef: null,
+        company: previousCompanyId,
+        category: { $in: legacyCategoryValues },
+      });
+    }
+
+    // A category rename must never orphan products. Existing ID-linked products
+    // stay linked, while legacy name-linked products are upgraded to categoryRef.
+    await Product.updateMany(
+      { $or: productAssociationFilters },
+      {
+        $set: {
+          categoryRef: category._id,
+          category: canonicalCategoryValue,
+          company: category.company?._id || category.company,
+        },
+      },
+    );
 
     res.json({
       success: true,
