@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, Save, Building2, User, Upload, MessageCircle, MapPin, Settings2 } from "lucide-react"
+import { Loader2, Save, Building2, User, Upload, MessageCircle, MapPin, Settings2 } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch, buildApiUrl, getUser } from "@/lib/api"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
+import { FormSkeleton } from "@/components/ui/skeleton"
 
 const settingsSchema = z.object({
     businessName: z.string().optional(),
@@ -215,11 +216,7 @@ export default function SettingsPage() {
     }
 
     if (isLoading) {
-        return (
-            <div className="flex justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
-            </div>
-        )
+        return <FormSkeleton />
     }
 
     return (

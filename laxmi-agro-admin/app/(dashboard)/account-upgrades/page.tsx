@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Eye, CheckCircle2, XCircle, History, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, Eye, CheckCircle2, XCircle, History, ChevronDown, ChevronUp } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Dialog,
@@ -22,6 +22,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
+import { TableSkeleton } from "@/components/ui/skeleton"
 
 interface Customer {
     _id: string
@@ -227,9 +228,7 @@ export default function AccountUpgradesPage() {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="flex justify-center p-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
-                        </div>
+                        <TableSkeleton rows={5} columns={5} />
                     ) : pending.length === 0 ? (
                         <div className="text-center text-gray-500 py-10 text-sm italic">No pending upgrade applications currently</div>
                     ) : (

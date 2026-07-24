@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, TrendingUp, ShoppingCart, IndianRupee, Activity, Users, Eye, Package, Flame, AlertTriangle, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { Loader2, TrendingUp, ShoppingCart, IndianRupee, Activity, Users, Eye, Package, Flame, AlertTriangle, BarChart3, ArrowUpRight, ArrowDownRight } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch } from "@/lib/api"
+import { ChartSkeleton, DashboardPageSkeleton } from "@/components/ui/skeleton"
 import {
     AreaChart,
     Area,
@@ -56,7 +57,7 @@ interface DemandData {
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7f7f'];
-const BAR_COLORS = { views: '#3b82f6', orders: '#22c55e', revenue: '#f59e0b', demand: '#ef4444' };
+const BAR_COLORS = { views: '#3b82f6', orders: '#2563eb', revenue: '#f59e0b', demand: '#ef4444' };
 
 export default function AnalyticsPage() {
     const [salesData, setSalesData] = useState<SalesData | null>(null)
@@ -111,11 +112,7 @@ export default function AnalyticsPage() {
     useEffect(() => { fetchDemandInsights() }, [fetchDemandInsights])
 
     if (isLoading && !salesData && isProductLoading && productData.length === 0) {
-        return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-            </div>
-        )
+        return <DashboardPageSkeleton />
     }
 
     const topViewed = [...productData].sort((a, b) => b.views - a.views).slice(0, 10)
@@ -160,12 +157,12 @@ export default function AnalyticsPage() {
                         <Card className="bg-[#161616] border-[#333]">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium text-gray-400">Total Revenue</CardTitle>
-                                <IndianRupee className="h-4 w-4 text-green-500" />
+                                <IndianRupee className="h-4 w-4 text-blue-500" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-white">₹{salesData?.summary.totalRevenue.toLocaleString()}</div>
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                    <TrendingUp className="w-3 h-3 text-green-500" />
+                                    <TrendingUp className="w-3 h-3 text-blue-500" />
                                     +20.1% from last period
                                 </p>
                             </CardContent>
@@ -219,15 +216,15 @@ export default function AnalyticsPage() {
                                         <AreaChart data={salesData?.timeline}>
                                             <defs>
                                                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                             <XAxis dataKey="date" stroke="#666" tickFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} tickLine={false} axisLine={false} />
                                             <YAxis stroke="#666" tickFormatter={(v) => `₹${v / 1000}k`} tickLine={false} axisLine={false} />
                                             <Tooltip contentStyle={{ backgroundColor: '#1F1F1F', border: '1px solid #333', borderRadius: '8px' }} labelStyle={{ color: '#aaa' }} />
-                                            <Area type="monotone" dataKey="revenue" stroke="#22c55e" fillOpacity={1} fill="url(#colorRevenue)" />
+                                            <Area type="monotone" dataKey="revenue" stroke="#2563eb" fillOpacity={1} fill="url(#colorRevenue)" />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -260,9 +257,7 @@ export default function AnalyticsPage() {
                 {/* ─── PRODUCT ANALYTICS TAB ─── */}
                 <TabsContent value="products" className="flex flex-col gap-6 mt-6">
                     {isProductLoading ? (
-                        <div className="flex h-[30vh] items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                        </div>
+                        <ChartSkeleton className="h-[30vh] min-h-0" />
                     ) : (
                         <>
                             {/* Product Summary Cards */}
@@ -282,7 +277,7 @@ export default function AnalyticsPage() {
                                 <Card className="bg-[#161616] border-[#333]">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-sm font-medium text-gray-400">Total Product Orders</CardTitle>
-                                        <ShoppingCart className="h-4 w-4 text-green-500" />
+                                        <ShoppingCart className="h-4 w-4 text-blue-500" />
                                     </CardHeader>
                                     <CardContent>
                                         <div className="text-2xl font-bold text-white">
@@ -392,7 +387,7 @@ export default function AnalyticsPage() {
                                 <Card className="bg-[#161616] border-[#333]">
                                     <CardHeader className="pb-3">
                                         <CardTitle className="text-white flex items-center gap-2 text-base">
-                                            <ShoppingCart className="h-4 w-4 text-green-500" /> Top Bought
+                                            <ShoppingCart className="h-4 w-4 text-blue-500" /> Top Bought
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-0">
@@ -410,7 +405,7 @@ export default function AnalyticsPage() {
                                                         <p className="text-xs text-gray-500">₹{product.revenue.toLocaleString()} rev</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-sm font-semibold text-green-400">{product.orders}</p>
+                                                        <p className="text-sm font-semibold text-blue-400">{product.orders}</p>
                                                         <p className="text-xs text-gray-500">orders</p>
                                                     </div>
                                                 </div>
@@ -475,7 +470,7 @@ export default function AnalyticsPage() {
                                                 <Legend iconType="circle" />
                                                 <Bar dataKey="views" fill="#3b82f6" name="Views" radius={[4, 4, 0, 0]} barSize={18} />
                                                 <Bar dataKey="cartAdds" fill="#f59e0b" name="Cart Adds" radius={[4, 4, 0, 0]} barSize={18} />
-                                                <Bar dataKey="orders" fill="#22c55e" name="Orders" radius={[4, 4, 0, 0]} barSize={18} />
+                                                <Bar dataKey="orders" fill="#2563eb" name="Orders" radius={[4, 4, 0, 0]} barSize={18} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -488,9 +483,7 @@ export default function AnalyticsPage() {
                 {/* ─── DEMAND INSIGHTS TAB ─── */}
                 <TabsContent value="demand" className="flex flex-col gap-6 mt-6">
                     {!demandData ? (
-                        <div className="flex h-[30vh] items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                        </div>
+                        <ChartSkeleton className="h-[30vh] min-h-0" />
                     ) : (
                         <>
                             {/* Trending Products */}
@@ -520,7 +513,7 @@ export default function AnalyticsPage() {
                                                             <span className="text-xs text-blue-400 flex items-center gap-1">
                                                                 <Eye className="w-3 h-3" /> {product.views} views
                                                             </span>
-                                                            <span className={`text-xs flex items-center gap-1 ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            <span className={`text-xs flex items-center gap-1 ${product.stock > 0 ? 'text-blue-400' : 'text-red-400'}`}>
                                                                 <Package className="w-3 h-3" /> {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                                                             </span>
                                                         </div>

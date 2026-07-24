@@ -5,9 +5,10 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ExternalLink, Loader2, MapPinned, Package, Phone, Search } from "lucide-react"
+import { ArrowLeft, ExternalLink, Loader2, MapPinned, Package, Phone, Search } from "@/components/hugeicons"
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
+import { MapSkeleton, TableSkeleton } from "@/components/ui/skeleton"
 
 type WholesalerLocation = {
   id: string
@@ -247,8 +248,9 @@ export default function WholesalerMapPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_360px]">
+          <MapSkeleton />
+          <TableSkeleton rows={5} columns={1} />
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_360px]">
@@ -375,9 +377,7 @@ export default function WholesalerMapPage() {
                     </Link>
 
                     {isLoadingOrders ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-[#86efac]" />
-                      </div>
+                      <TableSkeleton rows={3} columns={2} />
                     ) : ordersError ? (
                       <div className="rounded-lg border border-[#4a2d2d] bg-[#201414] p-3 text-sm text-red-300">
                         {ordersError}

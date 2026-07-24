@@ -13,7 +13,7 @@ import {
   Star,
   Languages,
   Search,
-} from "lucide-react";
+} from "@/components/hugeicons";
 import { useEffect, useState, useCallback } from "react";
 import {
   Table,
@@ -157,7 +157,7 @@ function ProductCard({
         <Badge
           className={
             product.status === "active"
-              ? "text-xs bg-green-500/10 text-green-600"
+              ? "active-status-pill text-xs bg-black text-white"
               : "text-xs bg-slate-500/10 text-slate-500"
           }
         >
@@ -609,7 +609,7 @@ export default function ProductsPage() {
                         <Badge
                           className={
                             product.status === "active"
-                              ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                              ? "active-status-pill bg-black text-white hover:bg-slate-800"
                               : "bg-slate-500/10 text-slate-500 hover:bg-slate-500/20"
                           }
                         >

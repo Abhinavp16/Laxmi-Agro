@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { ChartSkeleton } from "@/components/ui/skeleton"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { apiFetch } from "@/lib/api"
 
@@ -95,9 +95,7 @@ export function PerformanceChart() {
 
       <div className="h-[400px] w-full">
         {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-[#86efac]" />
-          </div>
+          <ChartSkeleton className="min-h-0" />
         ) : data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No sales data for this period
@@ -107,8 +105,8 @@ export function PerformanceChart() {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#86efac" stopOpacity={0.32} />
-                  <stop offset="95%" stopColor="#86efac" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.32} />
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e4e9db" vertical={false} />
@@ -146,7 +144,7 @@ export function PerformanceChart() {
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#22c55e"
+                stroke="#2563eb"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorRevenue)"
