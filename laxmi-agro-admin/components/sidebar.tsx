@@ -1,34 +1,35 @@
 "use client"
 
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  BadgeCheck,
-  BarChart3,
-  Building2,
-  FolderTree,
-  Globe,
-  Image,
-  LayoutDashboard,
-  LogOut,
-  MapPinned,
-  Menu,
-  MessageSquareMore,
-  Moon,
-  Package,
-  Clock3,
-  Settings,
-  ShoppingCart,
-  Star,
-  Sun,
-  UserPlus,
-  UserSearch,
-  Users,
-} from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+  AddTeamIcon,
+  ChartHistogramIcon,
+  Clock01Icon,
+  DashboardSquare01Icon,
+  DeliveryTruck01Icon,
+  Folder01Icon,
+  Globe02Icon,
+  Image01Icon,
+  Logout01Icon,
+  MapsGlobal01Icon,
+  Menu01Icon,
+  Message01Icon,
+  Moon01Icon,
+  Package01Icon,
+  Settings01Icon,
+  StarIcon,
+  Sun01Icon,
+  Tag01Icon,
+  TagsIcon,
+  UserGroupIcon,
+  UserSearch01Icon,
+} from "@hugeicons/core-free-icons"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -40,31 +41,63 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 
+type HugeIcon = typeof DashboardSquare01Icon
+
 type NavItem = {
   href: string
   label: string
-  icon: LucideIcon
+  icon: HugeIcon
   matches?: string[]
 }
 
-export const adminPrimaryNavItems: NavItem[] = [
-  { href: "/", label: "DASHBOARD", icon: LayoutDashboard },
-  { href: "/products", label: "PRODUCTS", icon: Package },
-  { href: "/price-changes", label: "PRICE CHANGES", icon: Clock3 },
-  { href: "/brands", label: "BRANDS", icon: Building2 },
-  { href: "/categories", label: "CATEGORIES", icon: FolderTree },
-  { href: "/manage-website?tab=labels", label: "LABELS", icon: BadgeCheck, matches: ["/manage-website", "/labels"] },
-  { href: "/orders", label: "ORDERS", icon: ShoppingCart },
-  { href: "/negotiations", label: "NEGOTIATIONS", icon: MessageSquareMore },
-  { href: "/customers", label: "CUSTOMERS", icon: Users },
-  { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: UserPlus },
-  { href: "/wholesaler-map", label: "WHOLESALER MAP", icon: MapPinned },
-  { href: "/analytics", label: "ANALYTICS", icon: BarChart3 },
-  { href: "/potential-customers", label: "LEADS", icon: UserSearch },
-  { href: "/banners", label: "BANNERS", icon: Image },
-  { href: "/manage-website", label: "MANAGE WEBSITE", icon: Globe },
-  { href: "/reviews", label: "REVIEWS", icon: Star },
+type NavGroup = {
+  label: string
+  items: NavItem[]
+}
+
+const adminNavGroups: NavGroup[] = [
+  {
+    label: "Workspace",
+    items: [{ href: "/", label: "DASHBOARD", icon: DashboardSquare01Icon }],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { href: "/products", label: "PRODUCTS", icon: Package01Icon },
+      { href: "/brands", label: "BRANDS", icon: Tag01Icon },
+      { href: "/categories", label: "CATEGORIES", icon: Folder01Icon },
+      { href: "/manage-website?tab=labels", label: "LABELS", icon: TagsIcon, matches: ["/manage-website", "/labels"] },
+      { href: "/price-changes", label: "PRICE CHANGES", icon: Clock01Icon },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
+      { href: "/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
+      { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
+      { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: AddTeamIcon },
+      { href: "/wholesaler-map", label: "WHOLESALER MAP", icon: MapsGlobal01Icon },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { href: "/analytics", label: "ANALYTICS", icon: ChartHistogramIcon },
+      { href: "/potential-customers", label: "LEADS", icon: UserSearch01Icon },
+    ],
+  },
+  {
+    label: "Website",
+    items: [
+      { href: "/banners", label: "BANNERS", icon: Image01Icon },
+      { href: "/manage-website", label: "MANAGE WEBSITE", icon: Globe02Icon },
+      { href: "/reviews", label: "REVIEWS", icon: StarIcon },
+    ],
+  },
 ]
+
+export const adminPrimaryNavItems: NavItem[] = adminNavGroups.flatMap((group) => group.items)
 
 function isNavItemActive(pathname: string, item: NavItem) {
   return item.matches?.includes(pathname) || pathname === item.href
@@ -115,8 +148,24 @@ function useAdminSidebarState() {
 
 function getItemClasses(isActive: boolean) {
   return isActive
-    ? "bg-white text-emerald-700 shadow-sm shadow-emerald-100"
-    : "text-slate-500 hover:bg-white/80 hover:text-slate-900"
+    ? "border-blue-500 bg-blue-50 text-blue-700"
+    : "border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+}
+
+function SidebarIcon({ icon, size = 20 }: { icon: HugeIcon; size?: number }) {
+  return <HugeiconsIcon icon={icon} size={size} strokeWidth={1.8} color="currentColor" />
+}
+
+function SidebarBrand() {
+  return (
+    <Link href="/" className="flex items-center gap-3 px-5 py-5 transition-colors hover:bg-slate-50">
+      <span className="grid h-9 w-9 place-items-center bg-blue-600 text-xs font-bold tracking-wide text-white">LA</span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-bold tracking-tight text-slate-900">Laxmi Agro</span>
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Admin Portal</span>
+      </span>
+    </Link>
+  )
 }
 
 function SidebarNavContent({
@@ -134,76 +183,94 @@ function SidebarNavContent({
   handleLogout: () => void
   closeOnNavigate?: boolean
 }) {
-  const content = (
-    <>
-      <nav className="flex flex-col gap-3">
-        {adminPrimaryNavItems.map((item) => {
-          const Icon = item.icon
-          const link = (
-            <Link
-              href={item.href}
-              className={`flex items-center gap-3 rounded-2xl px-3 py-3 transition-all lg:gap-4 lg:px-4 ${getItemClasses(isNavItemActive(pathname, item))}`}
-            >
-              <Icon className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
-              <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">{item.label}</span>
-            </Link>
-          )
+  const renderLink = (item: NavItem) => {
+    const link = (
+      <Link
+        href={item.href}
+        className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 py-2 text-[11px] font-semibold tracking-[0.12em] transition-colors lg:text-xs ${getItemClasses(isNavItemActive(pathname, item))}`}
+      >
+        <span className="flex shrink-0 items-center justify-center">
+          <SidebarIcon icon={item.icon} />
+        </span>
+        <span className="min-w-0 break-words">{item.label}</span>
+      </Link>
+    )
 
-          if (!closeOnNavigate) {
-            return <div key={item.href}>{link}</div>
-          }
-
-          return (
-            <SheetClose asChild key={item.href}>
-              {link}
-            </SheetClose>
-          )
-        })}
-      </nav>
-
-      <div className="mt-auto flex flex-col gap-3 border-t border-[#dde3d0] pt-6 dark:border-[#263126]">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4"
-          type="button"
+    if (!closeOnNavigate) {
+      return (
+        <motion.div
+          key={item.href}
+          whileHover={{ x: 3 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: "spring", stiffness: 420, damping: 28 }}
         >
-          {mounted && theme === "dark" ? <Sun className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" /> : <Moon className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />}
-          <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">
-            {mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}
-          </span>
-        </button>
-        {closeOnNavigate ? (
-          <SheetClose asChild>
-            <Link href="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4">
-              <Settings className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
-              <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">SETTINGS</span>
-            </Link>
-          </SheetClose>
-        ) : (
-          <Link href="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white lg:gap-4 lg:px-4">
-            <Settings className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
-            <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">SETTINGS</span>
-          </Link>
-        )}
-        <button onClick={handleLogout} className="flex items-center gap-3 rounded-2xl px-3 py-3 text-slate-500 transition-all hover:bg-red-50 hover:text-red-500 dark:text-slate-300 dark:hover:bg-red-500/12 lg:gap-4 lg:px-4">
-          <LogOut className="h-5 w-5 shrink-0 lg:h-6 lg:w-6" />
-          <span className="min-w-0 break-words text-xs font-semibold tracking-[0.16em] lg:text-sm lg:tracking-[0.18em]">LOGOUT</span>
-        </button>
-      </div>
-    </>
+          {link}
+        </motion.div>
+      )
+    }
+
+    return (
+      <SheetClose asChild key={item.href}>
+        {link}
+      </SheetClose>
+    )
+  }
+
+  const settingsLink = (
+    <Link
+      href="/settings"
+      className="flex min-h-10 items-center gap-3 border-l-2 border-transparent px-3 py-2 text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:text-xs"
+    >
+      <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={Settings01Icon} /></span>
+      <span>SETTINGS</span>
+    </Link>
   )
 
-  return content
+  return (
+    <div className="flex min-h-full flex-col">
+      <nav className="flex flex-col gap-6" aria-label="Admin navigation">
+        {adminNavGroups.map((group) => (
+          <section key={group.label} aria-labelledby={`sidebar-group-${group.label.toLowerCase()}`}>
+            <p id={`sidebar-group-${group.label.toLowerCase()}`} className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              {group.label}
+            </p>
+            <div className="flex flex-col gap-0.5">{group.items.map(renderLink)}</div>
+          </section>
+        ))}
+      </nav>
+
+      <div className="mt-auto border-t border-slate-200 pt-3">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:text-xs"
+          type="button"
+        >
+          <span className="flex shrink-0 items-center justify-center">
+            <SidebarIcon icon={mounted && theme === "dark" ? Sun01Icon : Moon01Icon} />
+          </span>
+          <span>{mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}</span>
+        </button>
+        {closeOnNavigate ? <SheetClose asChild>{settingsLink}</SheetClose> : settingsLink}
+        <button
+          onClick={handleLogout}
+          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 lg:text-xs"
+        >
+          <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={Logout01Icon} /></span>
+          <span>LOGOUT</span>
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export function MobileAdminNav() {
   const { mounted, pageTitle, pathname, theme, setTheme, handleLogout } = useAdminSidebarState()
 
   return (
-    <div className="md:hidden">
-      <div className="flex items-center justify-between gap-3 rounded-[24px] border border-[#dde3d0] bg-white/90 px-4 py-3 shadow-[0_20px_45px_rgba(60,80,40,0.08)] backdrop-blur">
+    <div className="-mx-4 -mt-4 border-b border-slate-200 bg-white sm:-mx-5 sm:-mt-5 md:hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Admin Panel</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">Laxmi Agro</div>
           <h1 className="truncate text-lg font-bold text-slate-900">{pageTitle}</h1>
         </div>
 
@@ -213,30 +280,27 @@ export function MobileAdminNav() {
               type="button"
               variant="outline"
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-2xl border-[#d8dfca] bg-[#f6f8ef] text-slate-700 hover:bg-white"
+              className="h-10 w-10 shrink-0 rounded-md border-slate-200 bg-white text-slate-700 shadow-none hover:bg-slate-50"
             >
-              <Menu className="h-5 w-5" />
+              <SidebarIcon icon={Menu01Icon} size={20} />
               <span className="sr-only">Open navigation</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[88vw] border-r border-[#dde3d0] bg-[#f3f5ea] p-0 text-slate-900 sm:max-w-sm">
-            <SheetHeader className="border-b border-[#dde3d0] px-5 py-5 text-left">
-              <SheetTitle className="text-lg text-slate-900">Admin Navigation</SheetTitle>
-              <SheetDescription className="text-slate-500">
-                Browse dashboard sections, settings, theme, and account actions.
-              </SheetDescription>
+          <SheetContent side="left" className="w-[88vw] border-r border-slate-200 bg-white p-0 text-slate-900 sm:max-w-sm">
+            <SheetHeader className="border-b border-slate-200 p-0 text-left">
+              <SidebarBrand />
+              <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
+              <SheetDescription className="sr-only">Browse dashboard sections, settings, theme, and account actions.</SheetDescription>
             </SheetHeader>
-            <div className="flex h-full flex-col overflow-y-auto px-4 py-5">
-              <div className="flex-1 rounded-[28px] border border-[#dde3d0] bg-white/35 p-5 shadow-[0_24px_60px_rgba(60,80,40,0.08)]">
-                <SidebarNavContent
-                  pathname={pathname}
-                  mounted={mounted}
-                  theme={theme}
-                  setTheme={setTheme}
-                  handleLogout={handleLogout}
-                  closeOnNavigate
-                />
-              </div>
+            <div className="h-[calc(100dvh-77px)] overflow-y-auto no-scrollbar px-3 py-5">
+              <SidebarNavContent
+                pathname={pathname}
+                mounted={mounted}
+                theme={theme}
+                setTheme={setTheme}
+                handleLogout={handleLogout}
+                closeOnNavigate
+              />
             </div>
           </SheetContent>
         </Sheet>
@@ -249,8 +313,11 @@ export function Sidebar() {
   const { mounted, pathname, theme, setTheme, handleLogout } = useAdminSidebarState()
 
   return (
-    <aside className="hidden h-screen md:flex md:w-56 lg:w-72 md:flex-col md:self-stretch md:overflow-hidden border-r border-[#dde3d0] bg-[#f3f5ea]/95 px-4 py-6 backdrop-blur dark:border-[#263126] dark:bg-[#111612]/95">
-      <div className="flex-1 overflow-y-auto rounded-[28px] border border-[#dde3d0] bg-white/35 p-5 shadow-[0_24px_60px_rgba(60,80,40,0.08)] dark:border-[#263126] dark:bg-black/10 dark:shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+    <aside className="hidden h-screen shrink-0 md:flex md:w-60 lg:w-64 md:flex-col md:self-stretch md:overflow-hidden border-r border-slate-200 bg-white text-slate-900">
+      <div className="border-b border-slate-200">
+        <SidebarBrand />
+      </div>
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-5">
         <SidebarNavContent
           pathname={pathname}
           mounted={mounted}
