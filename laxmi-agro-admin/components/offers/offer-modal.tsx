@@ -295,7 +295,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, targetGroup }: O
                         <Button type="button" variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white hover:bg-[#333]">
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading} className="bg-[#86efac] text-black hover:bg-[#86efac]/90 px-8">
+                        <Button type="submit" disabled={loading} className="is-active hover:bg-[#86efac]/90 px-8">
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {offer ? "Update Offer" : "Create Offer"}
                         </Button>

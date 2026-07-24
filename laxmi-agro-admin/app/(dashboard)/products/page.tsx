@@ -120,7 +120,7 @@ function ProductCard({
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-blue-400 hover:bg-blue-400/10 hover:text-blue-300"
+              className="h-7 w-7 text-blue-400 hover:text-blue-300"
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>

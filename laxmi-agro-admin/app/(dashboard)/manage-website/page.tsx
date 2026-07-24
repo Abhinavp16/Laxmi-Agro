@@ -1334,7 +1334,7 @@ export default function ManageWebsitePage() {
                                                         key={option.value}
                                                         type="button"
                                                         onClick={() => setDraftLabel((prev) => ({ ...prev, icon: option.value }))}
-                                                        className={`min-h-[132px] rounded-[24px] border px-4 py-5 text-center transition-colors ${isSelected ? "border-[#86efac] bg-[#eef8f0] text-slate-900" : "border-[#dde3d0] bg-white text-slate-500 hover:border-[#bfd1ad] hover:text-slate-900"}`}
+                                                        className={`min-h-[132px] rounded-[24px] border px-4 py-5 text-center transition-colors ${isSelected ? "is-active" : "border-[#dde3d0] bg-white text-slate-500 hover:border-[#bfd1ad] hover:text-slate-900"}`}
                                                     >
                                                         <SelectedIcon className={`mx-auto mb-4 h-11 w-11 ${isSelected ? "text-[#5aaa73]" : "text-slate-400"}`} />
                                                         <div className="text-sm font-medium leading-snug">{option.label}</div>
@@ -1359,7 +1359,7 @@ export default function ManageWebsitePage() {
                                     <Button
                                         type="button"
                                         onClick={() => { void saveDraftLabel() }}
-                                        className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                                        className="is-active hover:bg-[#86efac]/90"
                                         disabled={isSavingLabels}
                                     >
                                         {isSavingLabels && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1407,7 +1407,7 @@ export default function ManageWebsitePage() {
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-7 w-7 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                                                                className="h-7 w-7 text-blue-400 hover:text-blue-300"
                                                                 onClick={() => startEditLabel(index)}
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />

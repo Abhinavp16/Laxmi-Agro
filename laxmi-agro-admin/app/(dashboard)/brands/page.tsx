@@ -245,20 +245,20 @@ export default function BrandsPage() {
                     <div className="flex items-center bg-[#161616] rounded-lg p-1 border border-[#333]">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'is-active' : 'text-gray-400 hover:text-white'}`}
                         >
                             <List className="h-4 w-4" />
                         </button>
                         <button
                             onClick={() => setViewMode('card')}
-                            className={`p-2 rounded-md transition-colors ${viewMode === 'card' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`p-2 rounded-md transition-colors ${viewMode === 'card' ? 'is-active' : 'text-gray-400 hover:text-white'}`}
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </button>
                     </div>
                     <Button 
                         onClick={openCreateDialog}
-                        className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                        className="is-active hover:bg-[#86efac]/90"
                     >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Brand
@@ -354,7 +354,7 @@ export default function BrandsPage() {
                                             <Button 
                                                 size="icon" 
                                                 variant="ghost" 
-                                                className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                                className="h-8 w-8 text-blue-400 hover:text-blue-300"
                                                 onClick={() => openEditDialog(company)}
                                             >
                                                 <Pencil className="h-4 w-4" />
@@ -398,7 +398,7 @@ export default function BrandsPage() {
                                     <Button 
                                         size="icon" 
                                         variant="ghost" 
-                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                        className="h-8 w-8 text-blue-400 hover:text-blue-300"
                                         onClick={() => openEditDialog(company)}
                                     >
                                         <Pencil className="h-4 w-4" />
@@ -462,7 +462,7 @@ export default function BrandsPage() {
                                         onClick={() => setLogoUploadMode('url')}
                                         className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                                             logoUploadMode === 'url' 
-                                                ? 'bg-[#86efac] text-black' 
+                                                ? 'is-active'
                                                 : 'text-gray-400 hover:text-white'
                                         }`}
                                     >
@@ -474,7 +474,7 @@ export default function BrandsPage() {
                                         onClick={() => setLogoUploadMode('file')}
                                         className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                                             logoUploadMode === 'file' 
-                                                ? 'bg-[#86efac] text-black' 
+                                                ? 'is-active'
                                                 : 'text-gray-400 hover:text-white'
                                         }`}
                                     >
@@ -572,7 +572,7 @@ export default function BrandsPage() {
                         <Button
                             onClick={handleSubmit}
                             disabled={isSubmitting}
-                            className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                            className="is-active hover:bg-[#86efac]/90"
                         >
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingCompany ? "Update Brand" : "Create Brand"}

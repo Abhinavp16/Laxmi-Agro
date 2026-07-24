@@ -390,13 +390,13 @@ export default function CategoriesPage() {
                     <div className="flex items-center rounded-lg border border-[#333] bg-[#161616] p-1">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`rounded-md p-2 transition-colors ${viewMode === 'list' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`rounded-md p-2 transition-colors ${viewMode === 'list' ? 'is-active' : 'text-gray-400 hover:text-white'}`}
                         >
                             <List className="h-4 w-4" />
                         </button>
                         <button
                             onClick={() => setViewMode('card')}
-                            className={`rounded-md p-2 transition-colors ${viewMode === 'card' ? 'bg-[#86efac] text-black' : 'text-gray-400 hover:text-white'}`}
+                            className={`rounded-md p-2 transition-colors ${viewMode === 'card' ? 'is-active' : 'text-gray-400 hover:text-white'}`}
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </button>
@@ -529,7 +529,7 @@ export default function CategoriesPage() {
                                             <Button 
                                                 size="icon" 
                                                 variant="ghost" 
-                                                className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                                className="h-8 w-8 text-blue-400 hover:text-blue-300"
                                                 onClick={() => openEditDialog(category)}
                                             >
                                                 <Pencil className="h-4 w-4" />
@@ -585,7 +585,7 @@ export default function CategoriesPage() {
                                     <Button 
                                         size="icon" 
                                         variant="ghost" 
-                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                        className="h-8 w-8 text-blue-400 hover:text-blue-300"
                                         onClick={() => openEditDialog(category)}
                                     >
                                         <Pencil className="h-4 w-4" />
@@ -709,7 +709,7 @@ export default function CategoriesPage() {
                                         onClick={() => setImageUploadMode('url')}
                                         className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                                             imageUploadMode === 'url' 
-                                                ? 'bg-[#86efac] text-black' 
+                                                ? 'is-active'
                                                 : 'text-gray-400 hover:text-white'
                                         }`}
                                     >
@@ -721,7 +721,7 @@ export default function CategoriesPage() {
                                         onClick={() => setImageUploadMode('file')}
                                         className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                                             imageUploadMode === 'file' 
-                                                ? 'bg-[#86efac] text-black' 
+                                                ? 'is-active'
                                                 : 'text-gray-400 hover:text-white'
                                         }`}
                                     >
@@ -901,7 +901,7 @@ export default function CategoriesPage() {
                         <Button
                             onClick={handleSubmit}
                             disabled={isSubmitting}
-                            className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                            className="is-active hover:bg-[#86efac]/90"
                         >
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingCategory ? "Update Category" : "Create Category"}

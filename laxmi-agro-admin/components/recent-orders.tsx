@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ArrowUpRight, CheckCircle2, Clock, Loader2 } from "@/components/hugeicons"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
@@ -18,33 +18,36 @@ interface Order {
 export function RecentOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const fetchedRef = useRef(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchOrders = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const res = await apiFetch("/admin/orders?limit=6")
+      const contentType = res.headers.get("content-type") || ""
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Unexpected API response (${res.status})`)
+      }
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed to load recent orders (${res.status})`)
+      }
+
+      setOrders(Array.isArray(json.data) ? json.data.slice(0, 6) : [])
+    } catch (error: unknown) {
+      setOrders([])
+      setError(error instanceof Error ? error.message : "Failed to load recent orders")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (fetchedRef.current) return
-    fetchedRef.current = true
-
-    async function fetchOrders() {
-      try {
-        const res = await apiFetch("/admin/orders?limit=6")
-        const contentType = res.headers.get("content-type") || ""
-        if (!contentType.includes("application/json")) {
-          return
-        }
-
-        const json = await res.json()
-        if (res.ok) {
-          setOrders((json.data || []).slice(0, 6))
-        }
-      } catch {
-        // keep empty
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchOrders()
-  }, [])
+    void fetchOrders()
+  }, [fetchOrders])
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
@@ -79,111 +82,105 @@ export function RecentOrders() {
   }
 
   return (
-    <div className="rounded-[28px] border border-[#dde3d0] bg-white/92 p-4 shadow-[0_24px_60px_rgba(60,80,40,0.08)] sm:p-6">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-xl font-bold text-slate-900">Recent Orders</h3>
-        <Link href="/orders" className="flex items-center gap-1 text-sm text-emerald-600 hover:underline">
-          View All <ArrowUpRight className="h-4 w-4" />
+    <section className="flex min-h-[470px] flex-col rounded-3xl bg-white p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Operations</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">Recent orders</h2>
+        </div>
+        <Link href="/orders" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
+          View all <ArrowUpRight className="h-4 w-4" />
         </Link>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-[#86efac]" />
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="py-10 text-center text-sm text-slate-500">No orders yet</div>
-      ) : (
-        <>
-          <div className="space-y-3 md:hidden">
-            {orders.map((order) => {
-              const payStatus = getPaymentStatus(order)
-              return (
-                <div key={order._id} className="rounded-2xl border border-[#edf0e2] bg-[#f8faf3] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">{order.orderNumber}</div>
-                      <div className="mt-1 text-xs text-slate-500">{formatDate(order.createdAt)}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-slate-900">Rs. {order.total.toLocaleString("en-IN")}</div>
-                      <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(order.status)}`}>
-                        {formatStatus(order.status)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-sm text-slate-700">{order.customerSnapshot?.name || "-"}</div>
-                  <div className="mt-3 flex items-center justify-between text-xs">
-                    {payStatus === "verified" ? (
-                      <div className="flex items-center gap-1 text-emerald-600">
-                        <CheckCircle2 className="h-4 w-4" /> Verified
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-amber-600">
-                        <Clock className="h-4 w-4" /> {formatStatus(payStatus)}
-                      </div>
-                    )}
-                    <Link href="/orders" className="font-medium text-emerald-600 hover:underline">
-                      Manage
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
+      <div className="mt-6 flex-1">
+        {isLoading ? (
+          <div className="flex h-full min-h-72 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
-
-          <table className="hidden w-full md:table">
-            <thead>
-              <tr className="border-b border-[#edf0e2] text-sm text-slate-500">
-                <th className="pb-4 pl-2 text-left font-medium">Order ID</th>
-                <th className="pb-4 text-left font-medium">Customer</th>
-                <th className="pb-4 text-left font-medium">Date</th>
-                <th className="pb-4 text-right font-medium">Amount</th>
-                <th className="pb-4 text-center font-medium">Status</th>
-                <th className="pb-4 pr-2 text-center font-medium">Payment</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
+        ) : error ? (
+          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+            <p className="font-semibold text-slate-900">Recent orders are unavailable</p>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">{error}</p>
+            <button
+              type="button"
+              onClick={() => void fetchOrders()}
+              className="mt-4 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              Try again
+            </button>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-2xl bg-slate-50 px-6 text-center">
+            <p className="font-semibold text-slate-900">No recent orders</p>
+            <p className="mt-2 text-sm text-slate-500">New orders will appear here as they are placed.</p>
+            <Link href="/orders" className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700">Open orders</Link>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 md:hidden">
               {orders.map((order) => {
                 const payStatus = getPaymentStatus(order)
                 return (
-                  <tr
-                    key={order._id}
-                    className="group border-b border-[#edf0e2] transition-colors last:border-0 hover:bg-[#f8faf3]"
-                  >
-                    <td className="py-4 pl-2 font-medium text-slate-900">{order.orderNumber}</td>
-                    <td className="py-4 text-slate-700">{order.customerSnapshot?.name || "-"}</td>
-                    <td className="py-4 text-slate-500">{formatDate(order.createdAt)}</td>
-                    <td className="py-4 text-right font-bold text-slate-900">
-                      Rs. {order.total.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-4">
-                      <div className="flex justify-center">
-                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(order.status)}`}>
+                  <div key={order._id} className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{order.orderNumber}</div>
+                        <div className="mt-1 text-xs text-slate-500">{formatDate(order.createdAt)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-slate-900">Rs. {order.total.toLocaleString("en-IN")}</div>
+                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(order.status)}`}>
                           {formatStatus(order.status)}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-4 pr-2">
-                      <div className="flex items-center justify-center gap-2">
-                        {payStatus === "verified" ? (
-                          <div className="flex items-center gap-1 text-emerald-600">
-                            <CheckCircle2 className="h-4 w-4" /> Verified
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-amber-600">
-                            <Clock className="h-4 w-4" /> {formatStatus(payStatus)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="mt-3 text-sm text-slate-700">{order.customerSnapshot?.name || "-"}</div>
+                    <div className="mt-3 flex items-center justify-between text-xs">
+                      {payStatus === "verified" ? (
+                        <div className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Verified</div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-amber-600"><Clock className="h-4 w-4" /> {formatStatus(payStatus)}</div>
+                      )}
+                      <Link href="/orders" className="font-medium text-blue-600 hover:text-blue-700">Manage</Link>
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
-        </>
-      )}
-    </div>
+            </div>
+
+            <div className="hidden h-full overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs text-slate-500">
+                    <th className="pb-3 text-left font-medium">Order</th>
+                    <th className="pb-3 text-left font-medium">Customer</th>
+                    <th className="pb-3 text-right font-medium">Amount</th>
+                    <th className="pb-3 text-right font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order._id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-4">
+                        <p className="font-semibold text-slate-900">{order.orderNumber}</p>
+                        <p className="mt-1 text-xs text-slate-500">{formatDate(order.createdAt)}</p>
+                      </td>
+                      <td className="py-4 text-slate-700">{order.customerSnapshot?.name || "-"}</td>
+                      <td className="py-4 text-right font-semibold text-slate-900">Rs. {order.total.toLocaleString("en-IN")}</td>
+                      <td className="py-4 text-right">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusStyle(order.status)}`}>
+                          {formatStatus(order.status)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   )
 }

@@ -1205,7 +1205,7 @@ export default function AddProductPage() {
                         onClick={() => setImageUploadMode("url")}
                         className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                           imageUploadMode === "url"
-                            ? "bg-[#86efac] text-black"
+                            ? "is-active"
                             : "text-gray-400 hover:text-white"
                         }`}
                       >
@@ -1217,7 +1217,7 @@ export default function AddProductPage() {
                         onClick={() => setImageUploadMode("file")}
                         className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
                           imageUploadMode === "file"
-                            ? "bg-[#86efac] text-black"
+                            ? "is-active"
                             : "text-gray-400 hover:text-white"
                         }`}
                       >
@@ -1242,7 +1242,7 @@ export default function AddProductPage() {
                       <Button
                         type="button"
                         onClick={addImage}
-                        className="bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                        className="is-active hover:bg-[#86efac]/90"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -1385,7 +1385,7 @@ export default function AddProductPage() {
                           />
                           {/* Featured Badge */}
                           {img.isPrimary && (
-                            <div className="absolute top-1 left-1 bg-[#86efac] text-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <div className="absolute top-1 left-1 is-active text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
                               <Crown className="h-3 w-3" />
                               Featured
                             </div>
