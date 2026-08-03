@@ -4,7 +4,8 @@ import { MobileAdminNav, Sidebar } from "@/components/sidebar"
 import { PageTransition } from "@/components/motion/page-transition"
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { apiFetch, logout } from "@/lib/api"
+import { apiFetch, isSessionExpired, logout } from "@/lib/api"
+import { toast } from "sonner"
 
 export default function DashboardLayout({
   children,
@@ -20,6 +21,13 @@ export default function DashboardLayout({
       const token = localStorage.getItem("accessToken")
       if (!token) {
         router.push("/login")
+        return
+      }
+
+      // 4-hour session lifetime check
+      if (isSessionExpired()) {
+        toast.info("Session expired after 4 hours. Please sign in again.")
+        logout()
         return
       }
 
@@ -43,6 +51,16 @@ export default function DashboardLayout({
     }
 
     verifyAuth()
+
+    // Periodically enforce the 4-hour session limit mid-session
+    const sessionCheck = setInterval(() => {
+      if (isSessionExpired()) {
+        toast.info("Session expired after 4 hours. Please sign in again.")
+        logout()
+      }
+    }, 60 * 1000)
+
+    return () => clearInterval(sessionCheck)
   }, [router])
 
   if (!isAuthorized) {

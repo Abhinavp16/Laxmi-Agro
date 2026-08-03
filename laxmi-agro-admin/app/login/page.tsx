@@ -1,66 +1,51 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
 import Image from "next/image"
-import * as z from "zod"
-import { Eye, EyeOff, Loader2 } from "@/components/hugeicons"
+import { Loader2, Mail } from "@/components/hugeicons"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-})
+const RESEND_COOLDOWN_SECONDS = 30
 
 export default function LoginPage() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
 
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown((prev) => prev - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
-  async function onSubmit(values: z.infer<typeof loginSchema>) {
+  async function requestMagicLink(isResend = false) {
     setIsLoading(true)
     try {
-      const res = await apiFetch("/auth/login", {
+      const res = await apiFetch("/auth/magic-link/request", {
         method: "POST",
         skipAuth: true,
-        body: JSON.stringify(values),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.message || "Login failed")
+        throw new Error(data.message || "Failed to send magic link")
       }
 
-      if (data.data.user.role !== "admin") {
-        throw new Error("Access denied. Admin only.")
+      setSent(true)
+      setCooldown(RESEND_COOLDOWN_SECONDS)
+      if (!isResend) {
+        toast.success("Magic link sent! Check your inbox.")
+      } else {
+        toast.success("A new magic link has been sent.")
       }
-
-      localStorage.setItem("accessToken", data.data.accessToken)
-      localStorage.setItem("refreshToken", data.data.refreshToken)
-      localStorage.setItem("user", JSON.stringify(data.data.user))
-
-      toast.success("Welcome back!")
-      router.push("/")
     } catch (error: any) {
       console.error(error)
-      toast.error(error.message || "Invalid credentials")
+      toast.error(error.message || "Failed to send magic link")
     } finally {
       setIsLoading(false)
     }
@@ -75,59 +60,47 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-center text-2xl font-bold text-slate-900">Laxmi Agro Enterprises Admin</CardTitle>
           <CardDescription className="text-center text-slate-500">
-            Enter your credentials to access the dashboard
+            {sent
+              ? "Your sign-in link is on its way"
+              : "Get a one-time sign-in link in your email. No password needed."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-slate-800">Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="admin@laxmiagro.com" {...field} className="border-[#d8dfca] bg-[#f9fbf4] text-slate-900" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-slate-800">Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter password"
-                          {...field}
-                          className="border-[#d8dfca] bg-[#f9fbf4] pr-10 text-slate-900"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 transition-colors hover:text-slate-700"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full bg-[#86efac] text-black hover:bg-[#74e39c]" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
+          {!sent ? (
+            <Button
+              type="button"
+              onClick={() => requestMagicLink()}
+              className="w-full bg-[#86efac] text-black hover:bg-[#74e39c]"
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+              Send Magic Link
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-[#d8dfca] bg-[#f9fbf4] p-4 text-sm text-slate-600">
+                A one-time sign-in link has been sent to the admin emails. It is valid for 5 minutes and works only once.
+              </div>
+              <Button
+                type="button"
+                onClick={() => window.open("https://mail.google.com", "_blank", "noopener")}
+                className="w-full bg-[#86efac] text-black hover:bg-[#74e39c]"
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Open Gmail
               </Button>
-            </form>
-          </Form>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestMagicLink(true)}
+                className="w-full border-[#d8dfca] text-slate-700"
+                disabled={isLoading || cooldown > 0}
+              >
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {cooldown > 0 ? `Resend link in ${cooldown}s` : "Resend link"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
