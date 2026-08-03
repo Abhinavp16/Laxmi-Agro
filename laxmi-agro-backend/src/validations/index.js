@@ -32,6 +32,10 @@ const authValidation = {
     password: Joi.string().required(),
   }),
 
+  magicLinkVerify: Joi.object({
+    token: Joi.string().required(),
+  }),
+
   loginPhone: Joi.object({
     phone: Joi.string().required().min(10).max(15),
     password: Joi.string().required(),
