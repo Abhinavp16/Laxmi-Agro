@@ -6,6 +6,9 @@
 **/.vercel
 **/playwright-report
 **/test-results
+# Temporary verification screenshots
+step*.png
+laxmi-agro-admin/tests/*.png
 .local
 .local-*.log
 .local-*.err.log

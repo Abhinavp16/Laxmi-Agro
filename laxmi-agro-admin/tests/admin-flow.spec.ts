@@ -1,32 +1,23 @@
 import { test, expect } from '@playwright/test';
+import { BASE_URL, loginAsAdmin } from './helpers/auth';
 
 test.describe('Admin Panel Flow', () => {
-    test.beforeEach(async ({ page }) => {
-        // Go to login page
-        await page.goto('http://localhost:3000/login');
-    });
 
-    test('should login with admin credentials', async ({ page }) => {
-        // Fill login form
-        await page.fill('input[name="email"]', 'admin@laxmiagro.com');
-        await page.fill('input[name="password"]', 'Admin@123');
-        
-        // Click sign in
-        await page.click('button[type="submit"]');
-        
-        // Wait for navigation to dashboard
-        await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
-        
-        // Verify we're on dashboard
-        await expect(page).toHaveURL('http://localhost:3000/');
+    test('should request a magic link from the login page', async ({ page }) => {
+        await page.goto(`${BASE_URL}/login`);
+        await page.getByRole('button', { name: 'Send Magic Link' }).click();
+
+        // Check-inbox state appears
+        await expect(page.getByText(/sign-in link has been sent/i)).toBeVisible({ timeout: 10000 });
+
+        // Verify we can land on the dashboard with the seeded session
+        await loginAsAdmin(page);
+        await expect(page).toHaveURL(`${BASE_URL}/`);
     });
 
     test('should navigate to products page', async ({ page }) => {
         // Login first
-        await page.fill('input[name="email"]', 'admin@laxmiagro.com');
-        await page.fill('input[name="password"]', 'Admin@123');
-        await page.click('button[type="submit"]');
-        await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
+        await loginAsAdmin(page);
         
         // Navigate to products
         await page.click('text=Products');
@@ -38,10 +29,7 @@ test.describe('Admin Panel Flow', () => {
 
     test('should open add product page', async ({ page }) => {
         // Login first
-        await page.fill('input[name="email"]', 'admin@laxmiagro.com');
-        await page.fill('input[name="password"]', 'Admin@123');
-        await page.click('button[type="submit"]');
-        await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
+        await loginAsAdmin(page);
         
         // Navigate to products
         await page.click('text=Products');
@@ -57,13 +45,10 @@ test.describe('Admin Panel Flow', () => {
 
     test('should create a new product', async ({ page }) => {
         // Login first
-        await page.fill('input[name="email"]', 'admin@laxmiagro.com');
-        await page.fill('input[name="password"]', 'Admin@123');
-        await page.click('button[type="submit"]');
-        await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
+        await loginAsAdmin(page);
         
         // Navigate to add product
-        await page.goto('http://localhost:3000/products/add');
+        await page.goto(`${BASE_URL}/products/add`);
         await page.waitForLoadState('networkidle');
         
         // Fill product form
@@ -103,10 +88,7 @@ test.describe('Admin Panel Flow', () => {
 
     test('should logout when token expires', async ({ page }) => {
         // Login first
-        await page.fill('input[name="email"]', 'admin@laxmiagro.com');
-        await page.fill('input[name="password"]', 'Admin@123');
-        await page.click('button[type="submit"]');
-        await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
+        await loginAsAdmin(page);
         
         // Clear access token to simulate expiry
         await page.evaluate(() => {
@@ -117,6 +99,22 @@ test.describe('Admin Panel Flow', () => {
         await page.reload();
         
         // Should redirect to login
+        await page.waitForURL('**/login', { timeout: 10000 });
+        await expect(page).toHaveURL(/\/login$/);
+    });
+
+    test('should logout when the 4-hour session expires', async ({ page }) => {
+        // Login first
+        await loginAsAdmin(page);
+        
+        // Simulate a session older than 4 hours
+        await page.evaluate(() => {
+            localStorage.setItem('loginAt', String(Date.now() - 4 * 60 * 60 * 1000 - 1000));
+        });
+        
+        // Refresh page - the dashboard guard should force logout
+        await page.reload();
+        
         await page.waitForURL('**/login', { timeout: 10000 });
         await expect(page).toHaveURL(/\/login$/);
     });

@@ -1,58 +1,40 @@
 import { test, expect } from '@playwright/test';
+import { BASE_URL, loginAsAdmin } from './helpers/auth';
 
-const BASE_URL = 'http://localhost:3000';
 const API_URL = 'http://localhost:5000';
 
-// Test credentials
-const ADMIN_EMAIL = 'admin@laxmiagro.com';
-const ADMIN_PASSWORD = 'Admin@123';
+/**
+ * Signs the test session in via the magic link flow.
+ * The raw token is emailed and never stored (only its hash), so automated
+ * E2E sign-in seeds the resulting JWT session directly instead.
+ */
+async function loginWithMagicLink(page: any) {
+  await loginAsAdmin(page);
+}
 
 test.describe('Admin Panel E2E Tests', () => {
-  
+
   test.describe('Authentication', () => {
-    
+
     test('should show login page', async ({ page }) => {
       await page.goto(`${BASE_URL}/login`);
-      await expect(page.getByText('Laxmi Agro Admin')).toBeVisible();
-      await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
-      await expect(page.getByRole('textbox', { name: 'Password' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+      await expect(page.getByText('Laxmi Agro Enterprises Admin')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Send Magic Link' })).toBeVisible();
     });
 
-    test('should show error for invalid credentials', async ({ page }) => {
+    test('should show check-inbox state after requesting a magic link', async ({ page }) => {
       await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill('wrong@email.com');
-      await page.getByRole('textbox', { name: 'Password' }).fill('wrongpassword');
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      
-      // Wait for error toast or message
-      await expect(page.getByText(/invalid|error|failed/i)).toBeVisible({ timeout: 5000 });
+      await page.getByRole('button', { name: 'Send Magic Link' }).click();
+
+      await expect(page.getByText(/sign-in link has been sent/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Open Gmail' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /resend link/i })).toBeVisible();
     });
 
-    test('should login successfully with valid credentials', async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      
-      // Should redirect to dashboard
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
-      await expect(page.getByText('Total Revenue')).toBeVisible();
-    });
-
-    test('should logout successfully', async ({ page }) => {
-      // Login first
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
-      
-      // Click logout
-      await page.getByRole('button', { name: 'LOGOUT' }).click();
-      
-      // Should redirect to login
-      await expect(page).toHaveURL(`${BASE_URL}/login`);
+    test('should show error card for an invalid magic link token', async ({ page }) => {
+      await page.goto(`${BASE_URL}/login/verify?token=not-a-real-token`);
+      await expect(page.getByText(/invalid or has expired/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Request a new link' })).toBeVisible();
     });
   });
 
@@ -60,11 +42,7 @@ test.describe('Admin Panel E2E Tests', () => {
     
     test.beforeEach(async ({ page }) => {
       // Login before each dashboard test
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
     });
 
     test('should display dashboard metrics', async ({ page }) => {
@@ -88,11 +66,7 @@ test.describe('Admin Panel E2E Tests', () => {
   test.describe('Navigation', () => {
     
     test.beforeEach(async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
     });
 
     test('should navigate to Products page', async ({ page }) => {
@@ -135,11 +109,7 @@ test.describe('Admin Panel E2E Tests', () => {
   test.describe('Products Management', () => {
     
     test.beforeEach(async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
       await page.getByRole('link', { name: 'PRODUCTS' }).click();
     });
 
@@ -168,11 +138,7 @@ test.describe('Admin Panel E2E Tests', () => {
   test.describe('Orders Management', () => {
     
     test.beforeEach(async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
       await page.getByRole('link', { name: 'ORDERS' }).click();
     });
 
@@ -201,11 +167,7 @@ test.describe('Admin Panel E2E Tests', () => {
   test.describe('Negotiations Management', () => {
     
     test.beforeEach(async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
       await page.getByRole('link', { name: 'NEGOTIATIONS' }).click();
     });
 
@@ -232,11 +194,7 @@ test.describe('Admin Panel E2E Tests', () => {
   test.describe('Settings Page', () => {
     
     test.beforeEach(async ({ page }) => {
-      await page.goto(`${BASE_URL}/login`);
-      await page.getByRole('textbox', { name: 'Email' }).fill(ADMIN_EMAIL);
-      await page.getByRole('textbox', { name: 'Password' }).fill(ADMIN_PASSWORD);
-      await page.getByRole('button', { name: 'Sign In' }).click();
-      await expect(page).toHaveURL(BASE_URL + '/', { timeout: 10000 });
+      await loginWithMagicLink(page);
       await page.getByRole('link', { name: 'SETTINGS' }).click();
     });
 
