@@ -18,6 +18,7 @@ const AffiliateCode = require('./AffiliateCode');
 const AffiliateCommission = require('./AffiliateCommission');
 const Review = require('./Review');
 const WebsiteSettings = require('./WebsiteSettings');
+const MagicLinkToken = require('./MagicLinkToken');
 
 module.exports = {
   User,
@@ -40,4 +41,5 @@ module.exports = {
   AffiliateCommission,
   Review,
   WebsiteSettings,
+  MagicLinkToken,
 };
