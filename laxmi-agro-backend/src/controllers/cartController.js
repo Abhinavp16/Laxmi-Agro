@@ -40,6 +40,8 @@ const formatCartItem = (item, product, userRole) => {
       id: product._id,
       name: product.name,
       nameHindi: product.nameHindi,
+      brand: product.brand || product.company?.name || '',
+      category: product.categoryRef?.name || product.category || '',
       slug: product.slug,
       price: pricing.price,
       retailPrice: pricing.retailPrice,
@@ -61,7 +63,9 @@ const formatCartItem = (item, product, userRole) => {
 const populateCartItems = async (cart, userRole = 'guest') => {
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
   const products = await Product.find({ _id: { $in: productIds } })
-    .select('name nameHindi slug retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
+    .select('name nameHindi brand category categoryRef company slug retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
+    .populate('company', 'name')
+    .populate('categoryRef', 'name nameHindi slug')
     .lean();
 
   const productMap = buildProductMap(products);

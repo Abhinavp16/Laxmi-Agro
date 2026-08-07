@@ -10,6 +10,8 @@ class CartItem {
   final String name;
   final String? image;
   final String? nameHindi;
+  final String? brand;
+  final String? category;
   final double price;
   final double? mrp;
   final int quantity;
@@ -22,6 +24,8 @@ class CartItem {
     required this.name,
     this.image,
     this.nameHindi,
+    this.brand,
+    this.category,
     required this.price,
     this.mrp,
     required this.quantity,
@@ -41,6 +45,8 @@ class CartItem {
       name: name,
       image: image,
       nameHindi: nameHindi,
+      brand: brand,
+      category: category,
       price: price,
       mrp: mrp,
       quantity: quantity ?? this.quantity,
@@ -137,6 +143,8 @@ class CartNotifier extends StateNotifier<CartState> {
         cartItemKey: item['cartItemKey']?.toString() ?? '$productId:default',
         name: product['name']?.toString() ?? '',
         nameHindi: product['nameHindi']?.toString(),
+        brand: product['brand']?.toString(),
+        category: product['category']?.toString(),
         image: product['image']?.toString(),
         price: (item['currentPrice'] ?? product['price'] ?? 0).toDouble(),
         quantity: item['quantity'] ?? 1,
@@ -149,6 +157,8 @@ class CartNotifier extends StateNotifier<CartState> {
     required String productId,
     required String name,
     String? nameHindi,
+    String? brand,
+    String? category,
     String? image,
     required double price,
     double? mrp,
@@ -174,6 +184,8 @@ class CartNotifier extends StateNotifier<CartState> {
           cartItemKey: itemKey,
           name: name,
           nameHindi: nameHindi,
+          brand: brand,
+          category: category,
           image: image,
           price: price,
           mrp: mrp,
@@ -201,7 +213,11 @@ class CartNotifier extends StateNotifier<CartState> {
     return true;
   }
 
-  Future<String?> updateQuantity(String productId, int quantity, {String? variantId}) async {
+  Future<String?> updateQuantity(
+    String productId,
+    int quantity, {
+    String? variantId,
+  }) async {
     final itemKey = '$productId:default';
     if (quantity < 1) {
       // Cancel any pending debounce and remove item
@@ -234,9 +250,12 @@ class CartNotifier extends StateNotifier<CartState> {
 
     // Debounce the API call - wait 500ms before sending to backend
     // This prevents race conditions from rapid clicks
-    _quantityDebounceTimers[itemKey] = Timer(const Duration(milliseconds: 500), () async {
-      await _syncQuantityToBackend(productId, quantity);
-    });
+    _quantityDebounceTimers[itemKey] = Timer(
+      const Duration(milliseconds: 500),
+      () async {
+        await _syncQuantityToBackend(productId, quantity);
+      },
+    );
 
     return null;
   }

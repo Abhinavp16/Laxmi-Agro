@@ -3648,6 +3648,40 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       height: 1.2,
                                     ),
                                   ),
+                                  if ((item.brand?.trim().isNotEmpty ??
+                                          false) ||
+                                      (item.category?.trim().isNotEmpty ??
+                                          false)) ...[
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 2,
+                                      children: [
+                                        if (item.brand?.trim().isNotEmpty ??
+                                            false)
+                                          Text(
+                                            '${t('Brand')}: ${item.brand!.trim()}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        if (item.category?.trim().isNotEmpty ??
+                                            false)
+                                          Text(
+                                            '${t('Category')}: ${item.category!.trim()}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -6518,6 +6552,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 productId: product['id'].toString(),
                                 name: product['name'] ?? '',
                                 nameHindi: product['nameHindi']?.toString(),
+                                brand: product['brand']?.toString(),
+                                category: product['category']?.toString(),
                                 price: (product['price'] as num).toDouble(),
                                 mrp: hasOriginalPrice
                                     ? (product['originalPrice'] as num)
