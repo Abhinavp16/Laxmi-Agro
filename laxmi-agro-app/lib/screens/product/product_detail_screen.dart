@@ -126,9 +126,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return 99;
   }
 
+  int _minimumQuantity([Map<String, dynamic>? product]) {
+    if (ref.read(authProvider).user?.isWholesaler != true) return 1;
+    final configured =
+        product?['minWholesaleQuantity'] ?? _product?['minWholesaleQuantity'];
+    final quantity = configured is num
+        ? configured.toInt()
+        : int.tryParse(configured?.toString() ?? '');
+    return quantity != null && quantity > 0 ? quantity : 1;
+  }
+
   void _setQuantity(int value, dynamic stock) {
-    final limit = _stockLimit(stock);
-    final next = value.clamp(1, limit).toInt();
+    final minimum = _minimumQuantity();
+    final limit = math.max(minimum, _stockLimit(stock));
+    final next = value.clamp(minimum, limit).toInt();
     setState(() => _quantity = next);
     _quantityController.text = '$next';
     _quantityController.selection = TextSelection.collapsed(
@@ -138,7 +149,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   void _commitQuantityInput(dynamic stock) {
     final parsed = int.tryParse(_quantityController.text.trim());
-    _setQuantity(parsed ?? 1, stock);
+    _setQuantity(parsed ?? _minimumQuantity(), stock);
   }
 
   void _onQuantityTextChanged(String value, dynamic stock) {
@@ -146,13 +157,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final parsed = int.tryParse(value);
     if (parsed == null) return;
 
-    final limit = _stockLimit(stock);
+    final minimum = _minimumQuantity();
+    final limit = math.max(minimum, _stockLimit(stock));
     if (parsed > limit) {
       _setQuantity(limit, stock);
       return;
     }
 
-    setState(() => _quantity = parsed < 1 ? 1 : parsed);
+    setState(() => _quantity = parsed < minimum ? minimum : parsed);
   }
 
   String _quantityUnitLabel() {
@@ -235,6 +247,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         setState(() {
           _product = productData;
           _selectedVariantId = _resolveInitialVariantId(productData);
+          _quantity = _minimumQuantity(productData);
+          _quantityController.text = '$_quantity';
+          _quantityController.selection = TextSelection.collapsed(
+            offset: _quantityController.text.length,
+          );
           _isLoading = false;
         });
         _trackView();
@@ -3239,6 +3256,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     String Function(String) t,
   ) {
     final unitLabel = _quantityUnitLabel();
+    final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
+    final minimumQuantity = minQty is num
+        ? minQty.toInt()
+        : int.tryParse(minQty?.toString() ?? '') ?? 1;
 
     return Positioned(
       left: 0,
@@ -3260,6 +3281,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isWholesaler && inStock)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '${t('Minimum wholesale quantity')}: $minimumQuantity',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _txtSec,
+                  ),
+                ),
+              ),
             if (inStock)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -3361,6 +3394,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                   mrp: (mrp is int)
                                       ? mrp.toDouble()
                                       : (mrp as num?)?.toDouble(),
+                                  minWholesaleQuantity: minQty is num
+                                      ? minQty.toInt()
+                                      : int.tryParse(
+                                              minQty?.toString() ?? '',
+                                            ) ??
+                                            1,
                                   quantity: _quantity,
                                   stock: stock is int ? stock : 99,
                                 );

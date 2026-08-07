@@ -3558,6 +3558,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
+                    final minimumQuantity = _isWholesaler
+                        ? item.minWholesaleQuantity
+                        : 1;
+                    final isAtMinimum = item.quantity <= minimumQuantity;
                     return Dismissible(
                       key: Key(item.cartItemKey),
                       direction: DismissDirection.endToStart,
@@ -3682,6 +3686,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       ],
                                     ),
                                   ],
+                                  if (_isWholesaler) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${t('Min. wholesale quantity')}: ${item.minWholesaleQuantity}',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -3720,11 +3735,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         GestureDetector(
-                                          onTap: () =>
-                                              _updateCartQtyAndRefreshCoupon(
-                                                item.productId,
-                                                item.quantity - 1,
-                                              ),
+                                          onTap: isAtMinimum
+                                              ? null
+                                              : () =>
+                                                    _updateCartQtyAndRefreshCoupon(
+                                                      item.productId,
+                                                      item.quantity - 1,
+                                                    ),
                                           child: Container(
                                             width: 32,
                                             height: 32,
@@ -3740,9 +3757,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                             child: Icon(
                                               Icons.remove,
                                               size: 16,
-                                              color: item.quantity > 1
-                                                  ? textPrimary
-                                                  : textMuted,
+                                              color: isAtMinimum
+                                                  ? textMuted
+                                                  : textPrimary,
                                             ),
                                           ),
                                         ),
@@ -3762,7 +3779,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           onTap: () =>
                                               _updateCartQtyAndRefreshCoupon(
                                                 item.productId,
-                                                item.quantity + 1,
+                                                item.quantity < minimumQuantity
+                                                    ? minimumQuantity
+                                                    : item.quantity + 1,
                                               ),
                                           child: Container(
                                             width: 32,
@@ -6546,6 +6565,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       GestureDetector(
                         onTap: () {
+                          final configuredMinimum =
+                              product['minWholesaleQuantity'];
+                          final minimumWholesaleQuantity =
+                              configuredMinimum is num
+                              ? configuredMinimum.toInt()
+                              : int.tryParse(
+                                      configuredMinimum?.toString() ?? '',
+                                    ) ??
+                                    1;
+                          final quantity = _isWholesaler
+                              ? math.max(minimumWholesaleQuantity, 1)
+                              : 1;
                           ref
                               .read(cartProvider.notifier)
                               .addItem(
@@ -6554,13 +6585,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 nameHindi: product['nameHindi']?.toString(),
                                 brand: product['brand']?.toString(),
                                 category: product['category']?.toString(),
+                                minWholesaleQuantity: minimumWholesaleQuantity,
                                 price: (product['price'] as num).toDouble(),
                                 mrp: hasOriginalPrice
                                     ? (product['originalPrice'] as num)
                                           .toDouble()
                                     : null,
                                 image: product['image']?.toString(),
-                                quantity: 1,
+                                quantity: quantity,
                               );
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -7182,7 +7214,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       }
       // If it's a stock issue from the server, refresh cart to show updated stock
       final code = map?['code']?.toString() ?? errorMap?['code']?.toString();
-      if (code == 'INSUFFICIENT_STOCK') {
+      if (code == 'INSUFFICIENT_STOCK' ||
+          code == 'MIN_WHOLESALE_QUANTITY_NOT_MET') {
         ref.read(cartProvider.notifier).fetchCart();
         ref.read(cartProvider.notifier).validateStock();
       }

@@ -23,6 +23,23 @@ const buildProductMap = (products = []) => products.reduce((acc, product) => {
   return acc;
 }, {});
 
+const getMinimumWholesaleQuantity = (product) => {
+  const value = Number(product?.minWholesaleQuantity);
+  return Number.isInteger(value) && value > 0 ? value : 1;
+};
+
+const isWholesaler = (userRole) => userRole === 'wholesaler';
+
+const assertMinimumWholesaleQuantity = (product, userRole, quantity) => {
+  const minimumQuantity = getMinimumWholesaleQuantity(product);
+  if (isWholesaler(userRole) && quantity < minimumQuantity) {
+    throw new BadRequestError(
+      `Minimum wholesale quantity for ${product.name} is ${minimumQuantity}`,
+      'MIN_WHOLESALE_QUANTITY_NOT_MET'
+    );
+  }
+};
+
 const formatCartItem = (item, product, userRole) => {
   const resolved = getVariantById(product, null);
   if (!resolved) return null;
@@ -47,6 +64,7 @@ const formatCartItem = (item, product, userRole) => {
       retailPrice: pricing.retailPrice,
       wholesalePrice: pricing.wholesalePrice,
       stock: product.stock,
+      minWholesaleQuantity: getMinimumWholesaleQuantity(product),
       image: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
       priceUnit: product.priceUnit || '',
       packing: product.packing || '',
@@ -69,12 +87,29 @@ const populateCartItems = async (cart, userRole = 'guest') => {
     .lean();
 
   const productMap = buildProductMap(products);
+  let cartUpdated = false;
 
   const items = cart.items.map((item) => {
     const product = productMap[item.productId.toString()];
     if (!product) return null;
+
+    const minimumQuantity = getMinimumWholesaleQuantity(product);
+    if (
+      isWholesaler(userRole) &&
+      item.quantity < minimumQuantity &&
+      product.stock >= minimumQuantity
+    ) {
+      item.quantity = minimumQuantity;
+      cartUpdated = true;
+    }
+
     return formatCartItem(item, product, userRole);
   }).filter(Boolean);
+
+  if (cartUpdated) {
+    cart.markModified('items');
+    await cart.save();
+  }
 
   const subtotal = items.reduce((sum, item) => sum + item.itemTotal, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -112,19 +147,30 @@ exports.addItem = async (req, res, next) => {
     }
 
     const resolved = resolveVariantForCart(product, null);
-    if (resolved.variant.stock < quantity) {
-      throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
+    const requestedQuantity = Number(quantity);
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+      throw new BadRequestError('Quantity must be at least 1', 'INVALID_QUANTITY');
     }
-
-    const pricing = getPriceForUser(product, userRole, resolved.variant);
-    const variantSnapshot = buildVariantSnapshot(product, resolved.variant);
 
     let cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) {
       cart = new Cart({ userId: req.user._id, items: [] });
     }
 
-    cart.addItem(productId, null, quantity, pricing.price, variantSnapshot);
+    const existingItem = cart.items.find(
+      (item) => item.productId.toString() === productId.toString()
+    );
+    const nextQuantity = (existingItem?.quantity || 0) + requestedQuantity;
+
+    assertMinimumWholesaleQuantity(product, userRole, nextQuantity);
+    if (resolved.variant.stock < nextQuantity) {
+      throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
+    }
+
+    const pricing = getPriceForUser(product, userRole, resolved.variant);
+    const variantSnapshot = buildVariantSnapshot(product, resolved.variant);
+
+    cart.addItem(productId, null, requestedQuantity, pricing.price, variantSnapshot);
     await cart.save();
 
     const data = await populateCartItems(cart, userRole);
@@ -151,7 +197,13 @@ exports.updateItemQuantity = async (req, res, next) => {
     }
 
     const resolved = resolveVariantForCart(product, variantId);
-    if (resolved.variant.stock < quantity) {
+    const requestedQuantity = Number(quantity);
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+      throw new BadRequestError('Quantity must be at least 1', 'INVALID_QUANTITY');
+    }
+
+    assertMinimumWholesaleQuantity(product, userRole, requestedQuantity);
+    if (resolved.variant.stock < requestedQuantity) {
       throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
     }
 
@@ -160,7 +212,7 @@ exports.updateItemQuantity = async (req, res, next) => {
       throw new NotFoundError('Cart not found', 'CART_NOT_FOUND');
     }
 
-    cart.updateItemQuantity(productId, resolved.variantId, quantity);
+    cart.updateItemQuantity(productId, resolved.variantId, requestedQuantity);
     await cart.save();
 
     const data = await populateCartItems(cart, userRole);
@@ -206,9 +258,10 @@ exports.validateCart = async (req, res, next) => {
       return res.json({ success: true, data: { valid: true, issues: [] } });
     }
 
+    const userRole = req.user?.role || 'guest';
     const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
     const products = await Product.find({ _id: { $in: productIds } })
-      .select('name stock retailPrice status')
+      .select('name stock retailPrice status minWholesaleQuantity')
       .lean();
 
     const productMap = buildProductMap(products);
@@ -261,6 +314,22 @@ exports.validateCart = async (req, res, next) => {
       }
 
       const variantName = getVariantDisplayName(product, resolved.variant);
+      const minimumQuantity = getMinimumWholesaleQuantity(product);
+      if (isWholesaler(userRole) && item.quantity < minimumQuantity) {
+        issues.push({
+          productId: item.productId.toString(),
+          variantId: itemVariantId,
+          cartItemKey: buildCartItemKey(item.productId.toString(), itemVariantId),
+          name: variantName,
+          type: 'minimum_wholesale_quantity',
+          message: `Minimum wholesale quantity for ${variantName} is ${minimumQuantity}`,
+          availableStock: resolved.variant.stock,
+          requestedQty: item.quantity,
+          minimumWholesaleQuantity: minimumQuantity,
+        });
+        continue;
+      }
+
       if (resolved.variant.stock === 0) {
         issues.push({
           productId: item.productId.toString(),

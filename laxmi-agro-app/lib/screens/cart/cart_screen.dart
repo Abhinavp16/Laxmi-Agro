@@ -194,7 +194,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       }
       final code = map?['code']?.toString() ?? errorMap?['code']?.toString();
       // If stock issue from server, refresh cart to show updated stock
-      if (code == 'INSUFFICIENT_STOCK') {
+      if (code == 'INSUFFICIENT_STOCK' ||
+          code == 'MIN_WHOLESALE_QUANTITY_NOT_MET') {
         await ref.read(cartProvider.notifier).fetchCart();
         await ref.read(cartProvider.notifier).validateStock();
       }
@@ -983,6 +984,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final hasIssue = item.hasStockIssue;
     final isOutOfStock = item.stock == 0;
     final bool atStockLimit = item.stock > 0 && item.quantity >= item.stock;
+    final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
+    final minimumQuantity = isWholesaler ? item.minWholesaleQuantity : 1;
+    final isAtMinimum = item.quantity <= minimumQuantity;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -1081,12 +1085,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     child: Row(
                       children: [
                         InkWell(
-                          onTap: () => ref
-                              .read(cartProvider.notifier)
-                              .updateQuantity(
-                                item.productId,
-                                item.quantity - 1,
-                              ),
+                          onTap: isAtMinimum
+                              ? null
+                              : () => ref
+                                    .read(cartProvider.notifier)
+                                    .updateQuantity(
+                                      item.productId,
+                                      item.quantity - 1,
+                                    ),
                           child: Container(
                             width: 32,
                             height: 32,
@@ -1096,6 +1102,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: isAtMinimum
+                                    ? AppColors.gray300
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ),
@@ -1140,7 +1149,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       .read(cartProvider.notifier)
                                       .updateQuantity(
                                         item.productId,
-                                        item.quantity + 1,
+                                        item.quantity < minimumQuantity
+                                            ? minimumQuantity
+                                            : item.quantity + 1,
                                       );
                                   if (err != null && mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1248,10 +1259,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           onTap: () {
                             ref
                                 .read(cartProvider.notifier)
-                                .updateQuantity(
-                                  item.productId,
-                                  item.stock,
-                                );
+                                .updateQuantity(item.productId, item.stock);
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(

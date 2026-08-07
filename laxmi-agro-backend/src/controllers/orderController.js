@@ -384,6 +384,11 @@ const buildProductMap = (products = []) => products.reduce((acc, product) => {
   return acc;
 }, {});
 
+const getMinimumWholesaleQuantity = (product) => {
+  const value = Number(product?.minWholesaleQuantity);
+  return Number.isInteger(value) && value > 0 ? value : 1;
+};
+
 const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
   const orderItems = [];
   const stockIssues = [];
@@ -411,6 +416,26 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
         cartItemKey: cartItemKey(item.productId.toString(), normalizedVariantId),
         name: product.name,
         message: 'Selected product is no longer available',
+      });
+      continue;
+    }
+
+    const minimumQuantity = getMinimumWholesaleQuantity(product);
+    if (
+      userRole === USER_ROLES.WHOLESALER &&
+      item.quantity < minimumQuantity
+    ) {
+      const itemName = getVariantDisplayName(product, resolved.variant);
+      stockIssues.push({
+        productId: item.productId.toString(),
+        variantId: resolved.variantId,
+        cartItemKey: cartItemKey(item.productId.toString(), resolved.variantId),
+        name: itemName,
+        type: 'minimum_wholesale_quantity',
+        minimumWholesaleQuantity: minimumQuantity,
+        availableStock: resolved.variant.stock,
+        requestedQty: item.quantity,
+        message: `Minimum wholesale quantity for ${itemName} is ${minimumQuantity}`,
       });
       continue;
     }
@@ -604,10 +629,15 @@ exports.createOrderFromCart = async (req, res, next) => {
 
     if (stockIssues.length > 0) {
       const msg = stockIssues.map((issue) => issue.message).join('; ');
+      const code = stockIssues.some(
+        (issue) => issue.type === 'minimum_wholesale_quantity'
+      )
+        ? 'MIN_WHOLESALE_QUANTITY_NOT_MET'
+        : 'INSUFFICIENT_STOCK';
       return res.status(400).json({
         success: false,
         message: msg,
-        code: 'INSUFFICIENT_STOCK',
+        code,
         data: { issues: stockIssues },
       });
     }
@@ -741,6 +771,14 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
 
     if (resolved.variant.stock < negotiation.requestedQuantity) {
       throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
+    }
+
+    const minimumQuantity = getMinimumWholesaleQuantity(product);
+    if (negotiation.requestedQuantity < minimumQuantity) {
+      throw new BadRequestError(
+        `Minimum wholesale quantity for ${product.name} is ${minimumQuantity}`,
+        'MIN_WHOLESALE_QUANTITY_NOT_MET'
+      );
     }
 
     const subtotal = negotiation.finalTotalPrice;

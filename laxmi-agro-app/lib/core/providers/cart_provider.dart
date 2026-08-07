@@ -12,6 +12,7 @@ class CartItem {
   final String? nameHindi;
   final String? brand;
   final String? category;
+  final int minWholesaleQuantity;
   final double price;
   final double? mrp;
   final int quantity;
@@ -26,6 +27,7 @@ class CartItem {
     this.nameHindi,
     this.brand,
     this.category,
+    this.minWholesaleQuantity = 1,
     required this.price,
     this.mrp,
     required this.quantity,
@@ -47,6 +49,7 @@ class CartItem {
       nameHindi: nameHindi,
       brand: brand,
       category: category,
+      minWholesaleQuantity: minWholesaleQuantity,
       price: price,
       mrp: mrp,
       quantity: quantity ?? this.quantity,
@@ -117,6 +120,13 @@ class CartNotifier extends StateNotifier<CartState> {
     return _dio;
   }
 
+  int _positiveInt(dynamic value) {
+    final parsed = value is num
+        ? value.toInt()
+        : int.tryParse(value?.toString() ?? '');
+    return parsed != null && parsed > 0 ? parsed : 1;
+  }
+
   Future<void> fetchCart() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -145,6 +155,7 @@ class CartNotifier extends StateNotifier<CartState> {
         nameHindi: product['nameHindi']?.toString(),
         brand: product['brand']?.toString(),
         category: product['category']?.toString(),
+        minWholesaleQuantity: _positiveInt(product['minWholesaleQuantity']),
         image: product['image']?.toString(),
         price: (item['currentPrice'] ?? product['price'] ?? 0).toDouble(),
         quantity: item['quantity'] ?? 1,
@@ -159,6 +170,7 @@ class CartNotifier extends StateNotifier<CartState> {
     String? nameHindi,
     String? brand,
     String? category,
+    int minWholesaleQuantity = 1,
     String? image,
     required double price,
     double? mrp,
@@ -186,6 +198,7 @@ class CartNotifier extends StateNotifier<CartState> {
           nameHindi: nameHindi,
           brand: brand,
           category: category,
+          minWholesaleQuantity: _positiveInt(minWholesaleQuantity),
           image: image,
           price: price,
           mrp: mrp,
