@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
+import '../../widgets/state_city_pincode_fields.dart';
 
 class BuyNowScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -864,30 +865,10 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     TextInputType.text,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildAddressField(
-                          'City',
-                          cityController,
-                          TextInputType.text,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildAddressField(
-                          'State',
-                          stateController,
-                          TextInputType.text,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildAddressField(
-                    'Pincode',
-                    pinController,
-                    TextInputType.number,
+                  StateCityPincodeFields(
+                    stateController: stateController,
+                    cityController: cityController,
+                    pincodeController: pinController,
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
@@ -939,22 +920,28 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     stateController.dispose();
     pinController.dispose();
 
-    // Then update state after the frame has settled to avoid widget tree issues
-    if (result != null && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _name = result['fullName'] ?? '';
-            _phone = result['phone'] ?? '';
-            _addressLine1 = result['addressLine1'] ?? '';
-            _city = result['city'] ?? '';
-            _state = result['state'] ?? '';
-            _pincode = result['pincode'] ?? '';
-            _fullAddress = '$_addressLine1, $_city, $_state - $_pincode';
-            _selectedAddressId = 'manual';
-          });
-        }
-      });
+    if (result != null) {
+      final existingIndex = _savedAddresses.indexWhere(
+        (address) => address.id == _selectedAddressId,
+      );
+      final existing = existingIndex >= 0
+          ? _savedAddresses[existingIndex]
+          : null;
+      final savedAddress = ShippingAddress(
+        id: existing?.id ?? ShippingAddress.generateId(),
+        slot: existing?.slot ?? ShippingAddressService.slotPrimary,
+        fullName: result['fullName'] ?? '',
+        phone: result['phone'] ?? '',
+        addressLine1: result['addressLine1'] ?? '',
+        city: result['city'] ?? '',
+        state: result['state'] ?? '',
+        pincode: result['pincode'] ?? '',
+      );
+      await ShippingAddressService.upsertAddress(savedAddress);
+      await ShippingAddressService.setSelectedAddressId(savedAddress.id);
+      await _loadSavedAddresses();
+      if (!mounted) return;
+      _selectAddress(savedAddress);
     }
   }
 
@@ -1227,10 +1214,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
         '/orders',
         data: {
           'items': [
-            {
-              'productId': widget.productId,
-              'quantity': widget.quantity,
-            },
+            {'productId': widget.productId, 'quantity': widget.quantity},
           ],
           'shippingAddress': address,
           if (_appliedCouponCode != null && _appliedCouponCode!.isNotEmpty)

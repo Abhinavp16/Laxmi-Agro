@@ -9,7 +9,9 @@ import 'package:dio/dio.dart';
 
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
+import '../../widgets/state_city_pincode_fields.dart';
 
 class NegotiationDetailScreen extends ConsumerStatefulWidget {
   final String negotiationId;
@@ -263,20 +265,26 @@ class _NegotiationDetailScreenState
   }
 
   Future<Map<String, String>?> _showAddressDialog() async {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final addr1Ctrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final stateCtrl = TextEditingController();
-    final pinCtrl = TextEditingController();
+    final savedAddress = await ShippingAddressService.getSelectedAddress();
+    if (!mounted) return null;
+    final auth = ref.read(authProvider);
+    final nameCtrl = TextEditingController(
+      text: savedAddress?.fullName ?? auth.user?.name ?? '',
+    );
+    final phoneCtrl = TextEditingController(
+      text: savedAddress?.phone ?? auth.user?.phone ?? '',
+    );
+    final addr1Ctrl = TextEditingController(
+      text: savedAddress?.addressLine1 ?? '',
+    );
+    final cityCtrl = TextEditingController(text: savedAddress?.city ?? '');
+    final stateCtrl = TextEditingController(text: savedAddress?.state ?? '');
+    final pinCtrl = TextEditingController(text: savedAddress?.pincode ?? '');
     final couponCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    final auth = ref.read(authProvider);
-    nameCtrl.text = auth.user?.name ?? '';
-    phoneCtrl.text = auth.user?.phone ?? '';
-
-    final result = await showModalBottomSheet<Map<String, String>>(
+    Map<String, String>?
+    result = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -326,18 +334,10 @@ class _NegotiationDetailScreenState
                   const SizedBox(height: 12),
                   _addrField('Address Line 1', addr1Ctrl),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _addrField('City', cityCtrl)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _addrField('State', stateCtrl)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _addrField(
-                    'Pincode',
-                    pinCtrl,
-                    keyboard: TextInputType.number,
+                  StateCityPincodeFields(
+                    stateController: stateCtrl,
+                    cityController: cityCtrl,
+                    pincodeController: pinCtrl,
                   ),
                   if (!kHideOfferCouponUi) ...[
                     const SizedBox(height: 12),
@@ -388,6 +388,25 @@ class _NegotiationDetailScreenState
         ),
       ),
     );
+
+    if (result != null) {
+      final address = ShippingAddress(
+        id: savedAddress?.id ?? ShippingAddress.generateId(),
+        slot: savedAddress?.slot ?? ShippingAddressService.slotPrimary,
+        fullName: result['fullName'] ?? '',
+        phone: result['phone'] ?? '',
+        addressLine1: result['addressLine1'] ?? '',
+        city: result['city'] ?? '',
+        state: result['state'] ?? '',
+        pincode: result['pincode'] ?? '',
+      );
+      await ShippingAddressService.upsertAddress(address);
+      await ShippingAddressService.setSelectedAddressId(address.id);
+      result = {
+        ...address.toOrderPayload(),
+        'couponCode': result['couponCode'] ?? '',
+      };
+    }
 
     nameCtrl.dispose();
     phoneCtrl.dispose();

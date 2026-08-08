@@ -20,6 +20,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/transliteration_service.dart';
 import '../categories/categories_screen.dart';
@@ -6984,18 +6985,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     const SizedBox(height: 12),
                     _addrField(t('Address Line 1'), addr1C),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: _addrField(t('City'), cityC)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _addrField(t('State'), stateC)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _addrField(
-                      t('Pincode'),
-                      pinC,
-                      keyboard: TextInputType.number,
+                    StateCityPincodeFields(
+                      stateController: stateC,
+                      cityController: cityC,
+                      pincodeController: pinC,
                     ),
                     const SizedBox(height: 20),
                     SizedBox(

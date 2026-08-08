@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/shipping_address_service.dart';
+import '../../widgets/state_city_pincode_fields.dart';
 
 class AddressesScreen extends StatefulWidget {
   const AddressesScreen({super.key});
@@ -93,15 +94,11 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 const SizedBox(height: 10),
                 _field(addrC, 'Address Line 1'),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _field(cityC, 'City')),
-                    const SizedBox(width: 10),
-                    Expanded(child: _field(stateC, 'State')),
-                  ],
+                StateCityPincodeFields(
+                  stateController: stateC,
+                  cityController: cityC,
+                  pincodeController: pinC,
                 ),
-                const SizedBox(height: 10),
-                _field(pinC, 'Pincode', keyboard: TextInputType.number),
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
@@ -198,7 +195,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
                     if (isDefault) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(20),
@@ -239,7 +239,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
               const SizedBox(height: 10),
               OutlinedButton(
                 onPressed: isDefault ? null : () => _setDefault(address),
-                child: Text(isDefault ? 'Default for delivery' : 'Set as default'),
+                child: Text(
+                  isDefault ? 'Default for delivery' : 'Set as default',
+                ),
               ),
             ],
           ],
@@ -269,7 +271,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, color: Colors.white),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

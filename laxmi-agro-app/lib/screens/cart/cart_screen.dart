@@ -10,7 +10,9 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
+import '../../widgets/state_city_pincode_fields.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -341,154 +343,156 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Future<Map<String, String>?> _showAddressDialog() async {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final addr1Ctrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final stateCtrl = TextEditingController();
-    final pinCtrl = TextEditingController();
+    final savedAddress = await ShippingAddressService.getSelectedAddress();
+    if (!mounted) return null;
+    final auth = ref.read(authProvider);
+    final nameCtrl = TextEditingController(
+      text: savedAddress?.fullName ?? auth.user?.name ?? '',
+    );
+    final phoneCtrl = TextEditingController(
+      text: savedAddress?.phone ?? auth.user?.phone ?? '',
+    );
+    final addr1Ctrl = TextEditingController(
+      text: savedAddress?.addressLine1 ?? '',
+    );
+    final cityCtrl = TextEditingController(text: savedAddress?.city ?? '');
+    final stateCtrl = TextEditingController(text: savedAddress?.state ?? '');
+    final pinCtrl = TextEditingController(text: savedAddress?.pincode ?? '');
     final formKey = GlobalKey<FormState>();
 
-    // Pre-fill from auth state
-    final auth = ref.read(authProvider);
-    nameCtrl.text = auth.user?.name ?? '';
-    phoneCtrl.text = auth.user?.phone ?? '';
-
-    final result = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.gray300,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    ref
-                        .read(localeProvider.notifier)
-                        .translate('Shipping Address'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _field(
-                    ref.read(localeProvider.notifier).translate('Full Name'),
-                    nameCtrl,
-                    ref,
-                  ),
-                  const SizedBox(height: 12),
-                  _field(
-                    ref.read(localeProvider.notifier).translate('Phone'),
-                    phoneCtrl,
-                    ref,
-                    keyboard: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-                  _field(
-                    ref
-                        .read(localeProvider.notifier)
-                        .translate('Address Line 1'),
-                    addr1Ctrl,
-                    ref,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+    Map<String, String>? result =
+        await showModalBottomSheet<Map<String, String>>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => Container(
+            margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: _field(
-                          ref.read(localeProvider.notifier).translate('City'),
-                          cityCtrl,
-                          ref,
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.gray300,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _field(
-                          ref.read(localeProvider.notifier).translate('State'),
-                          stateCtrl,
-                          ref,
+                      Text(
+                        ref
+                            .read(localeProvider.notifier)
+                            .translate('Shipping Address'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _field(
+                        ref
+                            .read(localeProvider.notifier)
+                            .translate('Full Name'),
+                        nameCtrl,
+                        ref,
+                      ),
+                      const SizedBox(height: 12),
+                      _field(
+                        ref.read(localeProvider.notifier).translate('Phone'),
+                        phoneCtrl,
+                        ref,
+                        keyboard: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      _field(
+                        ref
+                            .read(localeProvider.notifier)
+                            .translate('Address Line 1'),
+                        addr1Ctrl,
+                        ref,
+                      ),
+                      const SizedBox(height: 12),
+                      StateCityPincodeFields(
+                        stateController: stateCtrl,
+                        cityController: cityCtrl,
+                        pincodeController: pinCtrl,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              Navigator.of(ctx).pop({
+                                'fullName': nameCtrl.text.trim(),
+                                'phone': phoneCtrl.text.trim(),
+                                'addressLine1': addr1Ctrl.text.trim(),
+                                'city': cityCtrl.text.trim(),
+                                'state': stateCtrl.text.trim(),
+                                'pincode': pinCtrl.text.trim(),
+                              });
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            ref
+                                .read(localeProvider.notifier)
+                                .translate('Confirm & Pay'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _field(
-                    ref.read(localeProvider.notifier).translate('Pincode'),
-                    pinCtrl,
-                    ref,
-                    keyboard: TextInputType.number,
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (formKey.currentState!.validate()) {
-                          Navigator.of(ctx).pop({
-                            'fullName': nameCtrl.text.trim(),
-                            'phone': phoneCtrl.text.trim(),
-                            'addressLine1': addr1Ctrl.text.trim(),
-                            'city': cityCtrl.text.trim(),
-                            'state': stateCtrl.text.trim(),
-                            'pincode': pinCtrl.text.trim(),
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        ref
-                            .read(localeProvider.notifier)
-                            .translate('Confirm & Pay'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
+
+    if (result != null) {
+      final address = ShippingAddress(
+        id: savedAddress?.id ?? ShippingAddress.generateId(),
+        slot: savedAddress?.slot ?? ShippingAddressService.slotPrimary,
+        fullName: result['fullName'] ?? '',
+        phone: result['phone'] ?? '',
+        addressLine1: result['addressLine1'] ?? '',
+        city: result['city'] ?? '',
+        state: result['state'] ?? '',
+        pincode: result['pincode'] ?? '',
+      );
+      await ShippingAddressService.upsertAddress(address);
+      await ShippingAddressService.setSelectedAddressId(address.id);
+      result = address.toOrderPayload();
+    }
 
     nameCtrl.dispose();
     phoneCtrl.dispose();
