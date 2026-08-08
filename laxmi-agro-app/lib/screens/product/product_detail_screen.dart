@@ -754,7 +754,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final mrp = _product!['mrp'];
     final wsPrice = _product!['wholesalePrice'];
     final pendingPriceChange = (_product!)['pendingPriceChange'];
-    final minWsQty = _product!['minWholesaleQuantity'] ?? 5;
+    final minWsQty = _minimumQuantity(_product);
     final stock = _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
     final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
@@ -2795,6 +2795,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                             final pPrice = (price is num)
                                                 ? price.toDouble()
                                                 : 0.0;
+                                            final minimumWholesaleQuantity =
+                                                _minimumQuantity(item);
                                             _trackEvent(
                                               'related_add_to_cart_$pid',
                                             );
@@ -2803,9 +2805,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                 .addItem(
                                                   productId: pid,
                                                   name: displayName,
+                                                  nameHindi: item['nameHindi']
+                                                      ?.toString(),
+                                                  brand: item['brand']
+                                                      ?.toString(),
+                                                  category: item['category']
+                                                      ?.toString(),
+                                                  minWholesaleQuantity:
+                                                      minimumWholesaleQuantity,
                                                   price: pPrice,
-                                                  image: img,
-                                                  quantity: 1,
+                                                  image: img?.toString(),
+                                                  quantity:
+                                                      minimumWholesaleQuantity,
+                                                  stock: stock is num
+                                                      ? stock.toInt()
+                                                      : 99,
                                                 );
                                             ScaffoldMessenger.of(
                                               context,

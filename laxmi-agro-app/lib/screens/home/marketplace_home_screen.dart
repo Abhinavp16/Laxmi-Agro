@@ -452,6 +452,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
               'purchaseCountMin': item['purchaseCountMin'] ?? 0,
               'purchaseCountMax': item['purchaseCountMax'] ?? 0,
+              'minWholesaleQuantity': item['minWholesaleQuantity'],
               'pendingPriceChange': item['pendingPriceChange'],
             };
           }
