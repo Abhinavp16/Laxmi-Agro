@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Product, StockLog, WebsiteSettings, Category, Settings } = require('../../models');
+const { Product, StockLog, WebsiteSettings, Category, Settings, PriceChangeAudit } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
 const { deleteImage } = require('../../config/cloudinary');
@@ -298,19 +298,65 @@ exports.getPriceSnapshot = async (req, res, next) => {
       Settings.getSettings(),
     ]);
 
+    const productIds = products.map((product) => product._id);
+    const immediateAudits = productIds.length === 0
+      ? []
+      : await PriceChangeAudit.find({
+        product: { $in: productIds },
+        scheduleType: 'immediate',
+        status: 'applied',
+      })
+        .select('product previousRetailPrice newRetailPrice previousWholesalePrice newWholesalePrice effectiveAt appliedAt createdAt')
+        .sort({ product: 1, appliedAt: -1, createdAt: -1 })
+        .lean();
+    const latestImmediateAuditByProduct = new Map();
+    for (const audit of immediateAudits) {
+      const productId = String(audit.product);
+      if (!latestImmediateAuditByProduct.has(productId)) {
+        latestImmediateAuditByProduct.set(productId, audit);
+      }
+    }
+
     const snapshotProducts = products
-      .map((product) => ({
-        name: String(product.name || '').trim(),
-        sku: String(product.sku || '').trim(),
-        category: String(product.categoryRef?.name || product.category || 'Uncategorized').trim() || 'Uncategorized',
-        retailPrice: product.retailPrice,
-        wholesalePrice: product.wholesalePrice,
-        pendingRetailPrice: product.pendingRetailPrice ?? null,
-        pendingWholesalePrice: product.pendingWholesalePrice ?? null,
-        scheduleType: product.pendingPriceChangeAudit?.scheduleType || '',
-        effectiveAt: product.priceChangeEffectiveAt || null,
-        companyName: product.company?.name || product.categoryRef?.company?.name || '',
-      }))
+      .map((product) => {
+        const hasScheduledChange = product.pendingRetailPrice !== null
+          && product.pendingRetailPrice !== undefined
+          || product.pendingWholesalePrice !== null
+          && product.pendingWholesalePrice !== undefined;
+        const immediateAudit = hasScheduledChange
+          ? null
+          : latestImmediateAuditByProduct.get(String(product._id));
+        const hasImmediateRetailChange = immediateAudit?.newRetailPrice !== null
+          && immediateAudit?.newRetailPrice !== undefined;
+        const hasImmediateWholesaleChange = immediateAudit?.newWholesalePrice !== null
+          && immediateAudit?.newWholesalePrice !== undefined;
+
+        return {
+          name: String(product.name || '').trim(),
+          sku: String(product.sku || '').trim(),
+          category: String(product.categoryRef?.name || product.category || 'Uncategorized').trim() || 'Uncategorized',
+          retailPrice: hasImmediateRetailChange
+            ? immediateAudit.previousRetailPrice
+            : product.retailPrice,
+          wholesalePrice: hasImmediateWholesaleChange
+            ? immediateAudit.previousWholesalePrice
+            : product.wholesalePrice,
+          pendingRetailPrice: hasScheduledChange
+            ? product.pendingRetailPrice ?? null
+            : hasImmediateRetailChange ? immediateAudit.newRetailPrice : null,
+          pendingWholesalePrice: hasScheduledChange
+            ? product.pendingWholesalePrice ?? null
+            : hasImmediateWholesaleChange ? immediateAudit.newWholesalePrice : null,
+          scheduleType: hasScheduledChange
+            ? product.pendingPriceChangeAudit?.scheduleType || ''
+            : immediateAudit?.scheduleType || '',
+          effectiveAt: hasScheduledChange
+            ? product.priceChangeEffectiveAt || null
+            : immediateAudit?.appliedAt || immediateAudit?.effectiveAt || null,
+          changeStatus: immediateAudit ? 'Applied immediately' : '',
+          companyName: product.company?.name || product.categoryRef?.company?.name || '',
+        };
+      })
       .sort((left, right) => {
         const companyComparison = left.companyName.localeCompare(right.companyName, 'en', { sensitivity: 'base' });
         if (companyComparison) return companyComparison;

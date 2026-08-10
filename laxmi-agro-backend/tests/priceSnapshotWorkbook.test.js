@@ -23,6 +23,18 @@ async function run() {
         effectiveAt: '2026-08-11T10:30:00.000Z',
       },
       {
+        category: 'Pumps',
+        name: 'Immediate Pump',
+        sku: 'PUMP-002',
+        retailPrice: 21200,
+        wholesalePrice: 21200,
+        pendingRetailPrice: 23700,
+        pendingWholesalePrice: null,
+        scheduleType: 'immediate',
+        effectiveAt: '2026-08-10T10:30:00.000Z',
+        changeStatus: 'Applied immediately',
+      },
+      {
         category: 'Valves',
         name: 'Beta Valve',
         sku: 'VALVE-001',
@@ -53,10 +65,16 @@ async function run() {
   assert.strictEqual(sheet.getCell('I7').value, 'After 24 hours');
   assert.strictEqual(sheet.getCell('K7').value, 'Pending');
   assert.strictEqual(sheet.getCell('E7').numFmt, CURRENCY_FORMAT);
-  assert.strictEqual(sheet.getCell('A8').value, 'Valves');
-  assert.strictEqual(sheet.getCell('K9').value, 'No pending change');
-  assert.strictEqual(sheet.getCell('G9').value, null);
-  assert.strictEqual(sheet.getCell('H9').value, null);
+  assert.strictEqual(sheet.getCell('C8').value, 'Immediate Pump');
+  assert.strictEqual(sheet.getCell('E8').value, 21200);
+  assert.strictEqual(sheet.getCell('G8').value, 23700);
+  assert.strictEqual(sheet.getCell('H8').value, null, 'an unchanged immediate tier must stay blank');
+  assert.strictEqual(sheet.getCell('I8').value, 'Immediately');
+  assert.strictEqual(sheet.getCell('K8').value, 'Applied immediately');
+  assert.strictEqual(sheet.getCell('A9').value, 'Valves');
+  assert.strictEqual(sheet.getCell('K10').value, 'No pending change');
+  assert.strictEqual(sheet.getCell('G10').value, null);
+  assert.strictEqual(sheet.getCell('H10').value, null);
 
   console.log('✓ price snapshot workbook formatting and pending-price behavior verified');
 }

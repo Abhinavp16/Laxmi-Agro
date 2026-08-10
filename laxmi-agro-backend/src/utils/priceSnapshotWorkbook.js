@@ -159,7 +159,7 @@ const createPriceSnapshotWorkbookBuffer = async ({
         product.pendingWholesalePrice ?? null,
         hasPendingChange ? formatScheduleType(product.scheduleType) : '',
         hasPendingChange ? formatIstDateTime(product.effectiveAt) : '',
-        hasPendingChange ? 'Pending' : 'No pending change',
+        hasPendingChange ? product.changeStatus || 'Pending' : 'No pending change',
       ];
 
       setRowBorders(row, serialNumber % 2 === 0 ? 'FFF8FAFC' : 'FFFFFFFF');

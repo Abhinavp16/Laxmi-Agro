@@ -128,6 +128,8 @@ export default function PriceManagementPage() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
   const [isProductsLoading, setIsProductsLoading] = useState(false)
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [historyPage, setHistoryPage] = useState(1)
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [page, setPage] = useState(1)
   const [totalProducts, setTotalProducts] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -214,15 +216,19 @@ export default function PriceManagementPage() {
     }
   }, [selectedCategoryId])
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (nextPage = 1, append = false) => {
     setIsHistoryLoading(true)
     try {
-      const response = await apiFetch("/admin/price-change-history?page=1&limit=10")
+      const response = await apiFetch(`/admin/price-change-history?page=${nextPage}&limit=5`)
       const data = await response.json()
       if (!response.ok) throw new Error(data?.message || "Failed to load price history")
-      setAudits(Array.isArray(data?.data) ? data.data : [])
+      const nextAudits = Array.isArray(data?.data) ? data.data : []
+      setAudits((current) => (append ? [...current, ...nextAudits] : nextAudits))
+      setHistoryPage(Number(data?.pagination?.page || nextPage))
+      setHasMoreHistory(Boolean(data?.pagination?.hasNext))
     } catch (error: any) {
       toast.error(error?.message || "Failed to load price history")
+      if (!append) setAudits([])
     } finally {
       setIsHistoryLoading(false)
     }
@@ -387,7 +393,8 @@ export default function PriceManagementPage() {
 
       <section className="overflow-hidden rounded-xl border border-[#333] bg-[#161616]">
         <div className="flex items-center justify-between border-b border-[#333] px-5 py-4"><div><h2 className="flex items-center gap-2 text-lg font-semibold text-white"><History className="h-5 w-5 text-[#86efac]" /> Price Change History</h2><p className="mt-1 text-sm text-gray-400">Latest scheduled, applied, and replaced product price changes.</p></div><Button type="button" onClick={() => void fetchHistory()} variant="outline" disabled={isHistoryLoading} className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]">Refresh</Button></div>
-        <div className="overflow-x-auto"><Table className="min-w-[940px]"><TableHeader><TableRow className="border-[#333] hover:bg-transparent"><TableHead className="text-gray-400">Product</TableHead><TableHead className="text-gray-400">Customer</TableHead><TableHead className="text-gray-400">Wholesale</TableHead><TableHead className="text-gray-400">Timing</TableHead><TableHead className="text-gray-400">Status</TableHead><TableHead className="text-gray-400">Effective (IST)</TableHead><TableHead className="text-gray-400">By</TableHead></TableRow></TableHeader><TableBody>{isHistoryLoading ? <TableRow className="border-[#333]"><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-[#86efac]" /></TableCell></TableRow> : audits.length === 0 ? <TableRow className="border-[#333]"><TableCell colSpan={7} className="h-24 text-center text-gray-500">No price changes recorded yet.</TableCell></TableRow> : audits.map((audit) => <TableRow key={audit.id} className="border-[#333]"><TableCell><p className="font-medium text-white">{audit.productName}</p><p className="text-xs text-gray-500">{audit.productSku || "—"}</p></TableCell><TableCell className="text-gray-300">{formatPrice(audit.oldRetailPrice)} → {formatPrice(audit.newRetailPrice)}</TableCell><TableCell className="text-gray-300">{formatPrice(audit.oldWholesalePrice)} → {formatPrice(audit.newWholesalePrice)}</TableCell><TableCell className="text-gray-300">{audit.scheduleType === "schedule_24h" ? "24 hours" : audit.scheduleType === "schedule_48h" ? "48 hours" : audit.scheduleType === "custom" ? "Custom" : "Immediate"}</TableCell><TableCell><Badge className={audit.status === "applied" ? "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/15" : audit.status === "superseded" ? "bg-gray-500/15 text-gray-300 hover:bg-gray-500/15" : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/15"}>{audit.status}</Badge></TableCell><TableCell className="text-gray-300">{formatIst(audit.effectiveAt)}</TableCell><TableCell className="text-gray-400">{audit.performedBy}</TableCell></TableRow>)}</TableBody></Table></div>
+        <div className="overflow-x-auto"><Table className="min-w-[940px]"><TableHeader><TableRow className="border-[#333] hover:bg-transparent"><TableHead className="text-gray-400">Product</TableHead><TableHead className="text-gray-400">Customer</TableHead><TableHead className="text-gray-400">Wholesale</TableHead><TableHead className="text-gray-400">Timing</TableHead><TableHead className="text-gray-400">Status</TableHead><TableHead className="text-gray-400">Effective (IST)</TableHead><TableHead className="text-gray-400">By</TableHead></TableRow></TableHeader><TableBody>{isHistoryLoading && audits.length === 0 ? <TableRow className="border-[#333]"><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-[#86efac]" /></TableCell></TableRow> : audits.length === 0 ? <TableRow className="border-[#333]"><TableCell colSpan={7} className="h-24 text-center text-gray-500">No price changes recorded yet.</TableCell></TableRow> : audits.map((audit) => <TableRow key={audit.id} className="border-[#333]"><TableCell><p className="font-medium text-white">{audit.productName}</p><p className="text-xs text-gray-500">{audit.productSku || "—"}</p></TableCell><TableCell className="text-gray-300">{formatPrice(audit.oldRetailPrice)} → {formatPrice(audit.newRetailPrice)}</TableCell><TableCell className="text-gray-300">{formatPrice(audit.oldWholesalePrice)} → {formatPrice(audit.newWholesalePrice)}</TableCell><TableCell className="text-gray-300">{audit.scheduleType === "schedule_24h" ? "24 hours" : audit.scheduleType === "schedule_48h" ? "48 hours" : audit.scheduleType === "custom" ? "Custom" : "Immediate"}</TableCell><TableCell><Badge className={audit.status === "applied" ? "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/15" : audit.status === "superseded" ? "bg-gray-500/15 text-gray-300 hover:bg-gray-500/15" : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/15"}>{audit.status}</Badge></TableCell><TableCell className="text-gray-300">{formatIst(audit.effectiveAt)}</TableCell><TableCell className="text-gray-400">{audit.performedBy}</TableCell></TableRow>)}</TableBody></Table></div>
+        {hasMoreHistory ? <div className="flex justify-center border-t border-[#333] px-5 py-4"><Button type="button" onClick={() => void fetchHistory(historyPage + 1, true)} variant="outline" disabled={isHistoryLoading} className="border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]">{isHistoryLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Load more changes</Button></div> : null}
       </section>
     </div>
   )
