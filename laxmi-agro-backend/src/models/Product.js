@@ -183,6 +183,11 @@ const productSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  pendingPriceChangeAudit: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PriceChangeAudit',
+    default: null,
+  },
 
   // Bulk/Wholesale settings
   minWholesaleQuantity: {

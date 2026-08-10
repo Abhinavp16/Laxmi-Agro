@@ -36,6 +36,7 @@ router.use(adminOnly);
 // Products
 router.get('/products', adminProductController.getProducts);
 router.get('/price-changes', adminProductController.getPriceChanges);
+router.get('/price-change-history', adminProductController.getPriceChangeHistory);
 router.post(
   '/products',
   optionalUpload(uploadProductImages.array('images', 10)),
@@ -43,6 +44,7 @@ router.post(
   adminProductController.createProduct
 );
 router.get('/products/:id', adminProductController.getProductById);
+router.put('/products/:id/price-change', validate(adminValidation.priceChange), adminProductController.changeProductPrice);
 router.put(
   '/products/:id',
   optionalUpload(uploadProductImages.array('images', 10)),

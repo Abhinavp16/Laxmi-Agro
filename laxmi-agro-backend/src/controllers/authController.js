@@ -13,6 +13,20 @@ const DEFAULT_ADMIN_EMAILS = 'abhinavpandey12201@gmail.com,mayurkhatwani5@gmail.
 
 const hashMagicToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
+function getMagicLinkPanelUrl() {
+  const configuredUrl = String(process.env.ADMIN_PANEL_URL || process.env.FRONTEND_URL || '').trim();
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/+$/, '');
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ADMIN_PANEL_URL must be set to the hosted Admin Panel URL in production');
+  }
+
+  return 'http://localhost:3001';
+}
+
 const generateTokens = async (userId, deviceInfo) => {
   const accessToken = jwt.sign(
     { userId },
@@ -581,7 +595,7 @@ exports.requestMagicLink = async (req, res, next) => {
       .filter(Boolean);
 
     const expiryMinutes = Number(process.env.MAGIC_LINK_EXPIRY_MINUTES) || 5;
-    const panelUrl = (process.env.ADMIN_PANEL_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const panelUrl = getMagicLinkPanelUrl();
 
     for (const email of adminEmails) {
       const user = await User.findOne({ email, role: USER_ROLES.ADMIN, isActive: true });

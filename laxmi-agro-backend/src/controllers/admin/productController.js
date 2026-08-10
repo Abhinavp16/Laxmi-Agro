@@ -469,10 +469,13 @@ exports.updateProduct = async (req, res, next) => {
     const previousCompany = product.company;
     const updateData = await applyCategoryBrand(prepareProductData(req.body), product);
     const priceChangeMode = req.body.priceChangeMode || PRICE_CHANGE_MODE_SCHEDULED;
-    const scheduledAt = new Date();
-    const effectiveAt = new Date(scheduledAt.getTime() + PRICE_CHANGE_DELAY_MS);
+    const requestedRetailPrice = updateData.retailPrice;
+    const requestedWholesalePrice = updateData.wholesalePrice;
+    const hasRetailChange = requestedRetailPrice !== undefined && Number(requestedRetailPrice) !== Number(product.retailPrice);
+    const hasWholesaleChange = requestedWholesalePrice !== undefined && Number(requestedWholesalePrice) !== Number(product.wholesalePrice);
     delete updateData.priceChangeMode;
-    const scheduledNotifications = [];
+    delete updateData.retailPrice;
+    delete updateData.wholesalePrice;
 
     if (updateData.name && updateData.name !== product.name) {
       updateData.slug = slugify(updateData.name, { lower: true, strict: true });
@@ -493,15 +496,23 @@ exports.updateProduct = async (req, res, next) => {
       updateData.labelIds = await normalizeProductLabelIds(updateData.labelIds);
     }
 
-    updateData.variants = [];
-    scheduledNotifications.push(
-      ...syncScheduledBasePrices(product, updateData, priceChangeMode, scheduledAt, effectiveAt)
-    );
+    let priceChangeResult = null;
+    if (hasRetailChange || hasWholesaleChange) {
+      const { applyProductPriceChange } = require('../../services/productPriceChangeService');
+      priceChangeResult = await applyProductPriceChange({
+        product,
+        performedBy: req.user,
+        retailPrice: hasRetailChange ? requestedRetailPrice : undefined,
+        wholesalePrice: hasWholesaleChange ? requestedWholesalePrice : undefined,
+        mode: priceChangeMode,
+      });
+    }
 
+    updateData.variants = [];
     Object.assign(product, updateData);
     await product.save();
 
-    if (priceChangeMode === PRICE_CHANGE_MODE_SCHEDULED && scheduledNotifications.length > 0) {
+    if (priceChangeResult?.isScheduled) {
       await registerPriceChangeCampaign();
     }
 
@@ -789,6 +800,109 @@ exports.generateMissingHindiNames = async (req, res, next) => {
         failed: failedProducts.length,
         failedProducts: failedProducts.slice(0, 20),
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+/**
+ * Apply or schedule customer and wholesale price updates for a single product.
+ * This focused endpoint is used by the Price Management table so it does not
+ * require submitting the complete product editor payload.
+ */
+exports.changeProductPrice = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+
+    const { applyProductPriceChange } = require('../../services/productPriceChangeService');
+    const { registerPriceChangeCampaign } = require('../../services/productPriceSchedulerService');
+    const result = await applyProductPriceChange({
+      product,
+      performedBy: req.user,
+      retailPrice: req.body.retailPrice,
+      wholesalePrice: req.body.wholesalePrice,
+      mode: req.body.priceChangeMode,
+      customEffectiveAt: req.body.effectiveAt,
+    });
+
+    if (result.isScheduled) {
+      await registerPriceChangeCampaign();
+    }
+
+    res.json({
+      success: true,
+      message: result.isScheduled ? 'Price change scheduled successfully' : 'Price updated successfully',
+      data: {
+        product: result.product.toObject(),
+        audit: result.audit.toObject(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Return permanent, admin-facing price-change audit history. Pending rows stay
+ * available from /price-changes; this endpoint is intentionally history-only.
+ */
+exports.getPriceChangeHistory = async (req, res, next) => {
+  try {
+    const { PriceChangeAudit } = require('../../models');
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const search = String(req.query.search || '').trim();
+    const status = String(req.query.status || '').trim();
+    const query = {};
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (search) {
+      query.$or = [
+        { productName: { $regex: search, $options: 'i' } },
+        { productSku: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const [audits, total] = await Promise.all([
+      PriceChangeAudit.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('performedBy', 'name email')
+        .lean(),
+      PriceChangeAudit.countDocuments(query),
+    ]);
+
+    const rows = audits.map((audit) => ({
+      id: String(audit._id),
+      productId: String(audit.product),
+      productName: audit.productName,
+      productSku: audit.productSku,
+      category: audit.category,
+      oldRetailPrice: audit.previousRetailPrice,
+      newRetailPrice: audit.newRetailPrice,
+      oldWholesalePrice: audit.previousWholesalePrice,
+      newWholesalePrice: audit.newWholesalePrice,
+      scheduleType: audit.scheduleType,
+      status: audit.status,
+      scheduledAt: audit.scheduledAt,
+      effectiveAt: audit.effectiveAt,
+      appliedAt: audit.appliedAt,
+      supersededAt: audit.supersededAt,
+      performedBy: audit.performedBy?.name || audit.performedByName || 'Admin',
+    }));
+
+    res.json({
+      success: true,
+      ...formatPaginationResponse(rows, total, page, limit),
     });
   } catch (error) {
     next(error);

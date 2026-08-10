@@ -1,4 +1,4 @@
-const { Product, User, DeviceToken, Notification, PriceChangeCampaign } = require('../models');
+const { Product, User, DeviceToken, Notification, PriceChangeCampaign, PriceChangeAudit } = require('../models');
 const logger = require('../utils/logger');
 const { USER_ROLES, NOTIFICATION_TYPES, PRODUCT_STATUS } = require('../utils/constants');
 const notificationService = require('./notificationService');
@@ -43,6 +43,7 @@ function clearPendingFields(target) {
   target.pendingWholesalePrice = null;
   target.priceChangeScheduledAt = null;
   target.priceChangeEffectiveAt = null;
+  target.pendingPriceChangeAudit = null;
 }
 
 async function fetchScheduledProducts() {
@@ -94,6 +95,31 @@ function pickRepresentativeProductIds(products = []) {
   return [...new Set([...topSelling, ...remaining])];
 }
 
+function formatCampaignEffectiveAt(effectiveAt) {
+  const date = new Date(effectiveAt);
+  if (Number.isNaN(date.getTime())) {
+    return 'the scheduled date';
+  }
+
+  return date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function getCampaignNotificationBody(stage, campaign) {
+  if (stage.key === NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED) {
+    return `New prices will apply on ${formatCampaignEffectiveAt(campaign.effectiveAt)} IST.`;
+  }
+
+  return stage.body;
+}
+
 async function broadcastCampaignNotification(stage, campaign) {
   const appUsers = await User.find({
     role: { $in: [USER_ROLES.BUYER, USER_ROLES.WHOLESALER] },
@@ -112,7 +138,7 @@ async function broadcastCampaignNotification(stage, campaign) {
   const fcmTokens = [...new Set(tokens.map((token) => token.fcmToken).filter(Boolean))];
   const notification = {
     title: stage.title,
-    body: stage.body,
+    body: getCampaignNotificationBody(stage, campaign),
   };
   const data = {
     type: stage.key,
@@ -260,6 +286,7 @@ async function processDuePriceChanges() {
 
   for (const product of dueProducts) {
     let didChange = false;
+    const pendingAuditId = product.pendingPriceChangeAudit;
 
     if (product.priceChangeEffectiveAt && product.priceChangeEffectiveAt <= now) {
       const nextRetail = product.pendingRetailPrice;
@@ -281,6 +308,13 @@ async function processDuePriceChanges() {
     }
 
     await product.save();
+
+    if (pendingAuditId) {
+      await PriceChangeAudit.updateOne(
+        { _id: pendingAuditId, status: 'scheduled' },
+        { $set: { status: 'applied', appliedAt: now } }
+      );
+    }
   }
 }
 

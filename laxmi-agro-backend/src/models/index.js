@@ -13,6 +13,7 @@ const StockLog = require('./StockLog');
 const DeviceToken = require('./DeviceToken');
 const Notification = require('./Notification');
 const PriceChangeCampaign = require('./PriceChangeCampaign');
+const PriceChangeAudit = require('./PriceChangeAudit');
 const Offer = require('./Offer');
 const AffiliateCode = require('./AffiliateCode');
 const AffiliateCommission = require('./AffiliateCommission');
@@ -36,6 +37,7 @@ module.exports = {
   DeviceToken,
   Notification,
   PriceChangeCampaign,
+  PriceChangeAudit,
   Offer,
   AffiliateCode,
   AffiliateCommission,
