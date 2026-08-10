@@ -115,8 +115,8 @@ class _StateCityPincodeFieldsState extends State<StateCityPincodeFields> {
     'Puducherry': {'Puducherry': '605001'},
   };
 
-  late String? _selectedState;
-  late String? _selectedCity;
+  String? _selectedState;
+  String? _selectedCity;
 
   @override
   void initState() {
