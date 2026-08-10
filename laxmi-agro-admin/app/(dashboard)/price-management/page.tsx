@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Clock3, FolderTree, History, Loader2, Package, Search } from "@/components/hugeicons"
+import { Clock3, Download, FolderTree, History, Loader2, Package, Search } from "@/components/hugeicons"
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -131,11 +131,40 @@ export default function PriceManagementPage() {
   const [page, setPage] = useState(1)
   const [totalProducts, setTotalProducts] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category._id === selectedCategoryId) || null,
     [categories, selectedCategoryId],
   )
+
+  const exportPriceSnapshot = async () => {
+    setIsExporting(true)
+    try {
+      const response = await apiFetch("/admin/products/price-snapshot.xlsx")
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.message || "Failed to export price snapshot")
+      }
+
+      const blob = await response.blob()
+      const contentDisposition = response.headers.get("Content-Disposition") || ""
+      const fileNameMatch = /filename=\"?([^\";]+)\"?/i.exec(contentDisposition)
+      const link = document.createElement("a")
+      const downloadUrl = window.URL.createObjectURL(blob)
+      link.href = downloadUrl
+      link.download = fileNameMatch?.[1] || "product-price-snapshot.xlsx"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+      toast.success("Price snapshot downloaded")
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to export price snapshot")
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const filteredCategories = useMemo(() => {
     const query = categorySearch.trim().toLowerCase()
@@ -294,11 +323,17 @@ export default function PriceManagementPage() {
           <h1 className="text-2xl font-bold text-white sm:text-3xl">Price Management</h1>
           <p className="mt-1 text-sm text-gray-400">Choose a category, then schedule each product price change independently.</p>
         </div>
-        {selectedCategory ? (
-          <Button type="button" onClick={clearCategory} variant="outline" className="border-[#333] bg-[#161616] text-white hover:bg-[#1A1A1A]">
-            <FolderTree className="mr-2 h-4 w-4" /> All Categories
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={() => void exportPriceSnapshot()} disabled={isExporting} className="bg-[#86efac] text-black hover:bg-[#86efac]/90">
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            {isExporting ? "Preparing Excel..." : "Export Excel"}
           </Button>
-        ) : null}
+          {selectedCategory ? (
+            <Button type="button" onClick={clearCategory} variant="outline" className="border-[#333] bg-[#161616] text-white hover:bg-[#1A1A1A]">
+              <FolderTree className="mr-2 h-4 w-4" /> All Categories
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {!selectedCategoryId ? (

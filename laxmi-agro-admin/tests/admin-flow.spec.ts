@@ -86,6 +86,19 @@ test.describe('Admin Panel Flow', () => {
         await expect(page).toHaveURL(/\/products$/);
     });
 
+    test('should download complete product price snapshot', async ({ page }) => {
+        await loginAsAdmin(page);
+        await page.goto(`${BASE_URL}/price-management`);
+
+        const exportButton = page.getByRole('button', { name: 'Export Excel' });
+        await expect(exportButton).toBeVisible();
+
+        const downloadPromise = page.waitForEvent('download');
+        await exportButton.click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toMatch(/^product-price-snapshot-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    });
+
     test('should logout when token expires', async ({ page }) => {
         // Login first
         await loginAsAdmin(page);

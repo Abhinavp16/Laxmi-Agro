@@ -34,6 +34,7 @@ router.use(protect);
 router.use(adminOnly);
 
 // Products
+router.get('/products/price-snapshot.xlsx', adminProductController.getPriceSnapshot);
 router.get('/products', adminProductController.getProducts);
 router.get('/price-changes', adminProductController.getPriceChanges);
 router.get('/price-change-history', adminProductController.getPriceChangeHistory);

@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
-const { Product, StockLog, WebsiteSettings, Category } = require('../../models');
+const { Product, StockLog, WebsiteSettings, Category, Settings } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
 const { deleteImage } = require('../../config/cloudinary');
 const { saveBuffer } = require('../../config/storage');
 const { transliterateToHindi } = require('../../services/hindiTransliterationService');
 const { PRODUCT_STATUS } = require('../../utils/constants');
+const { createPriceSnapshotWorkbookBuffer } = require('../../utils/priceSnapshotWorkbook');
 const { updateProductCount } = require('../categoryController');
 const { v4: uuidv4 } = require('uuid');
 const sharp = require('sharp');
@@ -280,6 +281,66 @@ function buildPriceChangeRow({
     searchText,
   };
 }
+
+exports.getPriceSnapshot = async (req, res, next) => {
+  try {
+    const [products, settings] = await Promise.all([
+      Product.find({ status: { $ne: PRODUCT_STATUS.ARCHIVED } })
+        .select('name sku category categoryRef company retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt pendingPriceChangeAudit')
+        .populate({
+          path: 'categoryRef',
+          select: 'name company',
+          populate: { path: 'company', select: 'name' },
+        })
+        .populate('company', 'name')
+        .populate('pendingPriceChangeAudit', 'scheduleType')
+        .lean(),
+      Settings.getSettings(),
+    ]);
+
+    const snapshotProducts = products
+      .map((product) => ({
+        name: String(product.name || '').trim(),
+        sku: String(product.sku || '').trim(),
+        category: String(product.categoryRef?.name || product.category || 'Uncategorized').trim() || 'Uncategorized',
+        retailPrice: product.retailPrice,
+        wholesalePrice: product.wholesalePrice,
+        pendingRetailPrice: product.pendingRetailPrice ?? null,
+        pendingWholesalePrice: product.pendingWholesalePrice ?? null,
+        scheduleType: product.pendingPriceChangeAudit?.scheduleType || '',
+        effectiveAt: product.priceChangeEffectiveAt || null,
+        companyName: product.company?.name || product.categoryRef?.company?.name || '',
+      }))
+      .sort((left, right) => {
+        const companyComparison = left.companyName.localeCompare(right.companyName, 'en', { sensitivity: 'base' });
+        if (companyComparison) return companyComparison;
+        const categoryComparison = left.category.localeCompare(right.category, 'en', { sensitivity: 'base' });
+        if (categoryComparison) return categoryComparison;
+        const productComparison = left.name.localeCompare(right.name, 'en', { sensitivity: 'base' });
+        if (productComparison) return productComparison;
+        return left.sku.localeCompare(right.sku, 'en', { sensitivity: 'base' });
+      });
+
+    const companyName = settings?.businessName
+      || snapshotProducts.find((product) => product.companyName)?.companyName
+      || 'Laxmi Agro';
+    const exportedAt = new Date();
+    const buffer = await createPriceSnapshotWorkbookBuffer({
+      companyName,
+      exportedAt,
+      products: snapshotProducts,
+    });
+    const fileDate = exportedAt.toISOString().slice(0, 10);
+    const fileName = `product-price-snapshot-${fileDate}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    next(error);
+  }
+};
 
 exports.getProducts = async (req, res, next) => {
   try {
