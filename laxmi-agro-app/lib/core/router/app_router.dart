@@ -48,6 +48,8 @@ import '../../screens/profile/addresses_screen.dart';
 import '../../screens/profile/payment_methods_screen.dart';
 import '../../screens/profile/about_laxmi_agro_screen.dart';
 import '../../screens/profile/legal_policy_screen.dart';
+import '../../screens/profile/account_privacy_screen.dart';
+import '../../screens/onboarding/permissions_onboarding_screen.dart';
 import '../../screens/referral/referral_screen.dart';
 import '../config/feature_flags.dart';
 
@@ -56,6 +58,10 @@ final appRouter = GoRouter(
   debugLogDiagnostics: true,
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+    GoRoute(
+      path: '/permissions-onboarding',
+      builder: (context, state) => const PermissionsOnboardingScreen(),
+    ),
     GoRoute(
       path: '/login',
       pageBuilder: (context, state) => CustomTransitionPage(
@@ -306,6 +312,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/payment-methods',
       builder: (context, state) => const PaymentMethodsScreen(),
+    ),
+    GoRoute(
+      path: '/account-privacy',
+      builder: (context, state) => const AccountPrivacyScreen(),
     ),
     GoRoute(
       path: '/about',

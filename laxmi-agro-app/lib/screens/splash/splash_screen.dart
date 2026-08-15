@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/storage_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -36,7 +37,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     
     debugPrint('[Splash] Auth check done: isAuthenticated=${authState.isAuthenticated}, user=${authState.user?.name}');
     
-    context.go('/home');
+    final isFirstLaunch = await StorageService.isFirstLaunch();
+    if (!mounted) return;
+
+    context.go(isFirstLaunch ? '/permissions-onboarding' : '/home');
   }
 
   @override

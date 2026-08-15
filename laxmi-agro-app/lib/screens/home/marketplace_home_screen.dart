@@ -4695,6 +4695,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       },
       {
         'type': 'setting',
+        'icon': Icons.privacy_tip_outlined,
+        'color': const Color(0xFF0F766E),
+        'title': t('Account & Privacy'),
+        'subtitle': null,
+        'onTap': () => context.push(isGuest ? '/login' : '/account-privacy'),
+      },
+      {
+        'type': 'setting',
         'icon': HugeIcons.strokeRoundedInformationCircle,
         'color': const Color(0xFF4338CA),
         'title': t('About'),

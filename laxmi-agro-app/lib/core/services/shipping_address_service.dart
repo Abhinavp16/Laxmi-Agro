@@ -103,7 +103,9 @@ class ShippingAddressService {
     return [...primary, ...secondary];
   }
 
-  static List<ShippingAddress> _normalizeSlots(List<ShippingAddress> addresses) {
+  static List<ShippingAddress> _normalizeSlots(
+    List<ShippingAddress> addresses,
+  ) {
     final normalized = <ShippingAddress>[];
     ShippingAddress? primary;
     ShippingAddress? secondary;
@@ -222,5 +224,13 @@ class ShippingAddressService {
     if (selectedId == id) {
       await setSelectedAddressId(updated.isNotEmpty ? updated.first.id : null);
     }
+  }
+
+  static Future<void> clearLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.remove(_addressesKey),
+      prefs.remove(_selectedAddressIdKey),
+    ]);
   }
 }

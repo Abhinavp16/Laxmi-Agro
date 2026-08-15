@@ -44,7 +44,9 @@ class RedeemedCouponService {
     return 'redeemed_coupons_$safe';
   }
 
-  static Future<List<RedeemedCoupon>> getCoupons({required String userKey}) async {
+  static Future<List<RedeemedCoupon>> getCoupons({
+    required String userKey,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _keyForUser(userKey);
     var raw = prefs.getString(key);
@@ -102,5 +104,13 @@ class RedeemedCouponService {
       _keyForUser(userKey),
       jsonEncode(coupons.map((c) => c.toJson()).toList()),
     );
+  }
+
+  static Future<void> clearLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where(
+      (key) => key == _legacyKey || key.startsWith('${_legacyKey}_'),
+    );
+    await Future.wait(keys.map(prefs.remove));
   }
 }

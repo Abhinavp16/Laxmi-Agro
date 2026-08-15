@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../models/user_model.dart';
-import '../services/storage_service.dart';
 import '../services/api_client.dart';
+import '../services/redeemed_coupon_service.dart';
+import '../services/shipping_address_service.dart';
+import '../services/storage_service.dart';
 
 // Auth State
 class AuthState {
@@ -54,14 +56,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (token != null && userData != null) {
-        final user = UserModel.fromJson(userData);
-        state = state.copyWith(
-          user: user,
-          isAuthenticated: true,
-          isLoading: false,
-        );
-        // Sync with server in background to get latest role/info
-        fetchCurrentUser();
+        final cachedUser = UserModel.fromJson(userData);
+        state = state.copyWith(user: cachedUser, isAuthenticated: false);
+        final validation = await fetchCurrentUser();
+        if (validation == false) return;
+
+        state = state.copyWith(isAuthenticated: true, isLoading: false);
       } else {
         state = state.copyWith(isLoading: false, isAuthenticated: false);
       }
@@ -303,10 +303,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (phone != null) data['phone'] = phone;
       if (address != null) data['address'] = address;
 
-      final response = await _apiClient.put(
-        '/auth/profile',
-        data: data,
-      );
+      final response = await _apiClient.put('/auth/profile', data: data);
 
       if (response.data['success'] == true) {
         final user = UserModel.fromJson(response.data['data']);
@@ -370,6 +367,113 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<Map<String, dynamic>?> getAccountDeletionRequest() async {
+    state = state.copyWith(error: null);
+    try {
+      final response = await _apiClient.get('/auth/account-deletion-request');
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return data is Map<String, dynamic>
+            ? data
+            : data is Map
+            ? Map<String, dynamic>.from(data)
+            : null;
+      }
+      state = state.copyWith(
+        error:
+            response.data['message']?.toString() ??
+            'Unable to load your deletion request.',
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        error:
+            e.response?.data?['message']?.toString() ??
+            'Unable to load your deletion request. Please try again.',
+      );
+    } catch (_) {
+      state = state.copyWith(
+        error: 'Unable to load your deletion request. Please try again.',
+      );
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> requestAccountDeletion() async {
+    state = state.copyWith(error: null);
+    try {
+      final response = await _apiClient.post('/auth/account-deletion-request');
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return data is Map<String, dynamic>
+            ? data
+            : data is Map
+            ? Map<String, dynamic>.from(data)
+            : null;
+      }
+      state = state.copyWith(
+        error:
+            response.data['message']?.toString() ??
+            'Unable to submit your deletion request.',
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        error:
+            e.response?.data?['message']?.toString() ??
+            'Unable to submit your deletion request. Please try again.',
+      );
+    } catch (_) {
+      state = state.copyWith(
+        error: 'Unable to submit your deletion request. Please try again.',
+      );
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> cancelAccountDeletionRequest() async {
+    state = state.copyWith(error: null);
+    try {
+      final response = await _apiClient.post(
+        '/auth/account-deletion-request/cancel',
+      );
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return data is Map<String, dynamic>
+            ? data
+            : data is Map
+            ? Map<String, dynamic>.from(data)
+            : null;
+      }
+      state = state.copyWith(
+        error:
+            response.data['message']?.toString() ??
+            'Unable to cancel your deletion request.',
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        error:
+            e.response?.data?['message']?.toString() ??
+            'Unable to cancel your deletion request. Please try again.',
+      );
+    } catch (_) {
+      state = state.copyWith(
+        error: 'Unable to cancel your deletion request. Please try again.',
+      );
+    }
+    return null;
+  }
+
+  Future<void> _clearLocalSession() async {
+    try {
+      await StorageService.clearAll();
+    } finally {
+      await Future.wait([
+        ShippingAddressService.clearLocalData(),
+        RedeemedCouponService.clearLocalData(),
+      ]);
+      state = AuthState();
+    }
+  }
+
   Future<void> logout() async {
     try {
       final refreshToken = await StorageService.getRefreshToken();
@@ -381,8 +485,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (_) {}
 
-    await StorageService.clearAll();
-    state = AuthState();
+    await _clearLocalSession();
   }
 
   void updateUser(UserModel user) {
@@ -390,17 +493,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
     StorageService.saveUserData(user.toJson());
   }
 
-  Future<void> fetchCurrentUser() async {
+  Future<bool?> fetchCurrentUser() async {
     try {
       final response = await _apiClient.get('/auth/me');
       if (response.data['success'] == true) {
-        final user = UserModel.fromJson(response.data['data']['user'] ?? response.data['data']);
+        final user = UserModel.fromJson(
+          response.data['data']['user'] ?? response.data['data'],
+        );
         state = state.copyWith(user: user);
-        await StorageService.saveUserData(response.data['data']['user'] ?? response.data['data']);
+        await StorageService.saveUserData(
+          response.data['data']['user'] ?? response.data['data'],
+        );
+        return true;
       }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await _clearLocalSession();
+        return false;
+      }
+      debugPrint('[Auth] fetchCurrentUser error: ${e.message}');
+      return null;
     } catch (e) {
-      debugPrint('[Auth] fetchCurrentUser error: \$e');
+      debugPrint('[Auth] fetchCurrentUser error: $e');
+      return null;
     }
+    return null;
   }
 
   void clearError() {

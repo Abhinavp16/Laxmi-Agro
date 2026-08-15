@@ -34,7 +34,7 @@ class NotificationService {
 
   NotificationService(this._ref);
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool requestPermission = false}) async {
     if (Firebase.apps.isEmpty) {
       debugPrint('[FCM] Firebase not configured, skipping notifications');
       return;
@@ -44,13 +44,14 @@ class NotificationService {
     await LocalNotificationService.instance.ensureInitialized();
     await LiveActivityService.instance.ensureInitialized();
 
-    // Request permission (Android 13+ requires explicit permission)
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    final settings = requestPermission
+        ? await messaging.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false,
+          )
+        : await messaging.getNotificationSettings();
 
     debugPrint('[FCM] Permission status: ${settings.authorizationStatus}');
     await messaging.setForegroundNotificationPresentationOptions(

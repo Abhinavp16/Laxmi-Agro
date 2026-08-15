@@ -40,7 +40,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We use your location to let you place your shop accurately on the wholesaler application map.</string>
+	<string>We use your location while you use the app to help you place your shop accurately on the wholesaler map. You can select a location manually instead.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We use photos you choose to upload profile images, business verification documents, and payment screenshots.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

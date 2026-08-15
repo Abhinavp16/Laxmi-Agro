@@ -1,7 +1,7 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   static const _accessTokenKey = 'access_token';
@@ -9,88 +9,51 @@ class StorageService {
   static const _userDataKey = 'user_data';
   static const _isFirstLaunchKey = 'is_first_launch';
   static const _guestTrialStartedAtKey = 'guest_trial_started_at_ms';
-  static const _guestAuthPromptLastShownAtKey = 'guest_auth_prompt_last_shown_at_ms';
+  static const _guestAuthPromptLastShownAtKey =
+      'guest_auth_prompt_last_shown_at_ms';
 
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
-  static Future<void> _saveTokenFallback(String key, String value) async {
+  static Future<void> _removeLegacyTokenKeys() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, value);
-  }
-
-  static Future<String?> _readTokenFallback(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key);
-  }
-
-  static Future<void> _removeTokenFallback(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(key);
+    await Future.wait([
+      prefs.remove(_accessTokenKey),
+      prefs.remove(_refreshTokenKey),
+    ]);
   }
 
   // Token Management
+  // Access and refresh tokens are intentionally kept only in platform secure
+  // storage. Older SharedPreferences token copies are removed on save/clear.
   static Future<void> saveTokens(
     String accessToken,
     String refreshToken,
   ) async {
-    try {
-      await _secureStorage.write(key: _accessTokenKey, value: accessToken);
-      await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
-    } on MissingPluginException {
-      // Fall back to shared preferences if secure storage is not ready yet.
-    } on PlatformException {
-      // Fall back to shared preferences if secure storage is unavailable.
-    }
-
-    await _saveTokenFallback(_accessTokenKey, accessToken);
-    await _saveTokenFallback(_refreshTokenKey, refreshToken);
+    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
+    await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    await _removeLegacyTokenKeys();
   }
 
-  static Future<String?> getAccessToken() async {
-    try {
-      final token = await _secureStorage.read(key: _accessTokenKey);
-      if (token != null && token.isNotEmpty) {
-        return token;
-      }
-    } on MissingPluginException {
-      // Fall back to shared preferences if secure storage plugin is unavailable.
-    } on PlatformException {
-      // Fall back to shared preferences if secure storage plugin errors.
-    }
-
-    return _readTokenFallback(_accessTokenKey);
+  static Future<String?> getAccessToken() {
+    return _secureStorage.read(key: _accessTokenKey);
   }
 
-  static Future<String?> getRefreshToken() async {
-    try {
-      final token = await _secureStorage.read(key: _refreshTokenKey);
-      if (token != null && token.isNotEmpty) {
-        return token;
-      }
-    } on MissingPluginException {
-      // Fall back to shared preferences if secure storage plugin is unavailable.
-    } on PlatformException {
-      // Fall back to shared preferences if secure storage plugin errors.
-    }
-
-    return _readTokenFallback(_refreshTokenKey);
+  static Future<String?> getRefreshToken() {
+    return _secureStorage.read(key: _refreshTokenKey);
   }
 
   static Future<void> clearTokens() async {
     try {
-      await _secureStorage.delete(key: _accessTokenKey);
-      await _secureStorage.delete(key: _refreshTokenKey);
-    } on MissingPluginException {
-      // Fall back to shared preferences if secure storage plugin is unavailable.
-    } on PlatformException {
-      // Fall back to shared preferences if secure storage plugin errors.
+      await Future.wait([
+        _secureStorage.delete(key: _accessTokenKey),
+        _secureStorage.delete(key: _refreshTokenKey),
+      ]);
+    } finally {
+      await _removeLegacyTokenKeys();
     }
-
-    await _removeTokenFallback(_accessTokenKey);
-    await _removeTokenFallback(_refreshTokenKey);
   }
 
   // User Data Management
@@ -146,12 +109,18 @@ class StorageService {
 
   static Future<void> setGuestAuthPromptLastShownAt(DateTime value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_guestAuthPromptLastShownAtKey, value.millisecondsSinceEpoch);
+    await prefs.setInt(
+      _guestAuthPromptLastShownAtKey,
+      value.millisecondsSinceEpoch,
+    );
   }
 
   // Clear All
   static Future<void> clearAll() async {
-    await clearTokens();
-    await clearUserData();
+    try {
+      await clearTokens();
+    } finally {
+      await clearUserData();
+    }
   }
 }
