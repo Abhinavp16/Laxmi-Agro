@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
@@ -21,11 +20,8 @@ class PaymentScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
-  // Payment options
-  bool _razorpayEnabled = false;
   bool _bankTransferEnabled = true;
-  String _razorpayKeyId = '';
-  
+
   // Bank details
   String _bankName = '';
   String _accountNumber = '';
@@ -33,37 +29,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   String _accountHolderName = '';
   String _upiId = '';
   String _upiDisplayName = '';
-  
+
   // Order details
   double _orderTotal = 0;
   String _orderNumber = '';
-  
-  // UI state
-  String _selectedMethod = 'bank'; // 'bank' or 'razorpay'
+
   String? _existingScreenshot;
   File? _selectedImage;
   bool _isLoading = true;
   bool _isUploading = false;
-  bool _isProcessingRazorpay = false;
   String? _error;
-  
-  // Razorpay
-  late Razorpay _razorpay;
 
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
     _loadData();
-  }
-
-  @override
-  void dispose() {
-    _razorpay.clear();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -81,10 +61,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
       if (!mounted) return;
       setState(() {
-        // Payment options
-        _razorpayEnabled = paymentOptions['razorpayEnabled'] ?? false;
         _bankTransferEnabled = paymentOptions['bankTransferEnabled'] ?? true;
-        _razorpayKeyId = paymentOptions['razorpayKeyId'] ?? '';
         
         // Bank details
         final bankDetails = paymentOptions['bankDetails'];
@@ -101,10 +78,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         _orderTotal = (order['total'] ?? 0).toDouble();
         _orderNumber = order['orderNumber'] ?? '';
         _existingScreenshot = payment['screenshotUrl'];
-        
-        // Default to bank transfer only (razorpay disabled)
-        _selectedMethod = 'bank';
-        
         _isLoading = false;
       });
     } on DioException catch (e) {
@@ -116,119 +89,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() { _error = 'Something went wrong'; _isLoading = false; });
-    }
-  }
-
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    setState(() => _isProcessingRazorpay = true);
-    try {
-      final api = ref.read(apiClientProvider);
-      await api.post('/razorpay/verify', data: {
-        'razorpay_order_id': response.orderId,
-        'razorpay_payment_id': response.paymentId,
-        'razorpay_signature': response.signature,
-        'orderId': widget.orderId,
-      });
-
-      if (!mounted) return;
-      setState(() => _isProcessingRazorpay = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.check_circle, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: Text('Payment successful!',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600))),
-        ]),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ));
-
-      if (mounted) context.go('/order-success/${widget.orderId}');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessingRazorpay = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Payment verification failed. Please contact support.',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ));
-    }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    setState(() => _isProcessingRazorpay = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Payment failed: ${response.message ?? 'Unknown error'}',
-        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-      backgroundColor: AppColors.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    ));
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('External wallet selected: ${response.walletName}',
-        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-      backgroundColor: AppColors.info,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    ));
-  }
-
-  Future<void> _initiateRazorpayPayment() async {
-    setState(() => _isProcessingRazorpay = true);
-    try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.post('/razorpay/create-order', data: {
-        'orderId': widget.orderId,
-      });
-
-      final data = response.data['data'];
-      final auth = ref.read(authProvider);
-
-      final contact = data['prefill']?['contact'] ?? auth.user?.phone ?? '';
-      final formattedContact = contact.isNotEmpty && !contact.startsWith('+')
-          ? '+91$contact'
-          : contact;
-
-      var options = {
-        'key': data['razorpayKeyId'],
-        'amount': data['amount'],
-        'currency': data['currency'],
-        'name': 'Laxmi Agro',
-        'description': 'Order #${data['orderNumber']}',
-        'order_id': data['razorpayOrderId'],
-        'prefill': {
-          'name': auth.user?.name ?? '',
-          'email': auth.user?.email ?? '',
-          'contact': formattedContact,
-        },
-        'theme': {
-          'color': '#2563EB',
-        },
-      };
-
-      _razorpay.open(options);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessingRazorpay = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to initiate payment. Please try again.',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ));
     }
   }
 
@@ -380,7 +240,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8)),
               child: Text('Order $_orderNumber', style: GoogleFonts.plusJakartaSans(
                 fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
@@ -391,7 +251,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)]),
+              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)]),
               borderRadius: BorderRadius.circular(16)),
             child: Column(children: [
               Text('Order Total', style: GoogleFonts.plusJakartaSans(
@@ -403,81 +263,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Payment Method Tabs
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.gray100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(children: [
-              // [COMMENTED OUT RAZORPAY] if (_razorpayEnabled)
-              //   Expanded(child: _buildTabButton('razorpay', 'Pay via UPI', Icons.flash_on_rounded)),
-              // if (_razorpayEnabled && _bankTransferEnabled)
-              //   const SizedBox(width: 4),
-              if (_bankTransferEnabled)
-                Expanded(child: _buildTabButton('bank', 'Bank Transfer', Icons.account_balance_rounded)),
-            ]),
-          ),
-          const SizedBox(height: 20),
-
-          // [COMMENTED OUT RAZORPAY SECTION]
-          // // Razorpay Section
-          // if (_selectedMethod == 'razorpay' && _razorpayEnabled) ...[
-          //   Container(
-          //     padding: const EdgeInsets.all(24),
-          //     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-          //       border: Border.all(color: AppColors.border),
-          //       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]),
-          //     child: Column(children: [
-          //       Container(
-          //         padding: const EdgeInsets.all(16),
-          //         decoration: BoxDecoration(
-          //           color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
-          //         child: Icon(Icons.flash_on_rounded, size: 40, color: AppColors.primary)),
-          //       const SizedBox(height: 16),
-          //       Text('Quick & Secure Payment', style: GoogleFonts.plusJakartaSans(
-          //         fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          //       const SizedBox(height: 8),
-          //       Text('Pay instantly using UPI, Cards, or Net Banking via Razorpay',
-          //         textAlign: TextAlign.center,
-          //         style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.textSecondary)),
-          //       const SizedBox(height: 24),
-          //       SizedBox(width: double.infinity, height: 56,
-          //         child: ElevatedButton(
-          //           onPressed: _isProcessingRazorpay ? null : _initiateRazorpayPayment,
-          //           style: ElevatedButton.styleFrom(
-          //             backgroundColor: AppColors.primary,
-          //             foregroundColor: Colors.white, elevation: 4,
-          //             shadowColor: AppColors.primary.withOpacity(0.3),
-          //             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          //           child: _isProcessingRazorpay
-          //             ? const SizedBox(width: 24, height: 24,
-          //                 child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-          //             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          //                 const Icon(Icons.lock_rounded, size: 20),
-          //                 const SizedBox(width: 8),
-          //                 Text('Pay ₹${_formatPrice(_orderTotal)}',
-          //                   style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700)),
-          //               ]))),
-          //       const SizedBox(height: 12),
-          //       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          //         Icon(Icons.verified_user_rounded, size: 14, color: AppColors.success),
-          //         const SizedBox(width: 4),
-          //         Text('Secured by Razorpay', style: GoogleFonts.plusJakartaSans(
-          //           fontSize: 12, color: AppColors.textSecondary)),
-          //       ]),
-          //     ]),
-          //   ),
-          // ],
-
-          // Bank Transfer Section
-          if (_selectedMethod == 'bank' && _bankTransferEnabled) ...[
+          if (_bankTransferEnabled) ...[
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)]),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Bank Transfer Details', style: GoogleFonts.plusJakartaSans(
                   fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -514,10 +305,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 width: double.infinity,
                 constraints: const BoxConstraints(minHeight: 160),
                 decoration: BoxDecoration(
-                  color: _selectedImage != null ? Colors.white : AppColors.primary.withOpacity(0.05),
+                  color: _selectedImage != null ? Colors.white : AppColors.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _selectedImage != null ? AppColors.success : AppColors.primary.withOpacity(0.3))),
+                    color: _selectedImage != null ? AppColors.success : AppColors.primary.withValues(alpha: 0.3))),
                 child: _existingScreenshot != null
                   ? Padding(padding: const EdgeInsets.all(24),
                       child: Column(children: [
@@ -545,7 +336,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                         child: Column(children: [
                           Container(padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                              color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
                             child: Icon(Icons.cloud_upload_outlined, size: 28, color: AppColors.primary)),
                           const SizedBox(height: 12),
                           Text('Tap to Select Screenshot', style: GoogleFonts.plusJakartaSans(
@@ -564,7 +355,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: canSubmitBank ? AppColors.primary : AppColors.gray300,
                   foregroundColor: Colors.white, elevation: canSubmitBank ? 4 : 0,
-                  shadowColor: AppColors.primary.withOpacity(0.3),
+                  shadowColor: AppColors.primary.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 child: _isUploading
                   ? const SizedBox(width: 24, height: 24,
@@ -578,31 +369,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ],
           
           const SizedBox(height: 24),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String method, String title, IconData icon) {
-    final isSelected = _selectedMethod == method;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedMethod = method),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected ? [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
-          ] : null,
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: isSelected ? AppColors.primary : AppColors.textSecondary),
-          const SizedBox(width: 8),
-          Text(title, style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary)),
         ]),
       ),
     );
