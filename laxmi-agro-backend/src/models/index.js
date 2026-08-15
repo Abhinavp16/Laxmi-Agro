@@ -20,6 +20,7 @@ const AffiliateCommission = require('./AffiliateCommission');
 const Review = require('./Review');
 const WebsiteSettings = require('./WebsiteSettings');
 const MagicLinkToken = require('./MagicLinkToken');
+const AccountDeletionRequest = require('./AccountDeletionRequest');
 
 module.exports = {
   User,
@@ -44,4 +45,5 @@ module.exports = {
   Review,
   WebsiteSettings,
   MagicLinkToken,
+  AccountDeletionRequest,
 };

@@ -27,6 +27,7 @@ const adminCustomerController = require('../controllers/admin/customerController
 const adminOfferController = require('../controllers/admin/offerController');
 const adminAffiliateController = require('../controllers/admin/affiliateCodeController');
 const adminReviewController = require('../controllers/admin/reviewController');
+const adminAccountDeletionController = require('../controllers/admin/accountDeletionController');
 
 const { adminValidation } = require('../validations');
 
@@ -85,6 +86,11 @@ router.put('/customers/:id/upgrade', adminCustomerController.upgradeCustomer);
 router.put('/customers/:id/category-access', validate(adminValidation.updateWholesalerCategoryAccess), adminCustomerController.updateWholesalerCategoryAccess);
 router.get('/wholesaler-locations', adminCustomerController.getWholesalerLocations);
 router.post('/customers/notifications', validate(adminValidation.sendNotification), adminCustomerController.sendNotification);
+
+// Account deletion requests
+router.get('/account-deletion-requests', adminAccountDeletionController.getRequests);
+router.put('/account-deletion-requests/:id', validate(adminValidation.updateAccountDeletionRequest), adminAccountDeletionController.updateRequestStatus);
+router.post('/account-deletion-requests/:id/complete', validate(adminValidation.completeAccountDeletionRequest), adminAccountDeletionController.completeRequest);
 
 // Analytics
 router.get('/analytics/dashboard', adminAnalyticsController.getDashboardStats);

@@ -94,6 +94,13 @@ const authValidation = {
     shopLocationLng: Joi.number().required().min(-180).max(180),
     shopLocationLabel: Joi.string().allow('', null).max(300),
   }),
+
+  requestAccountDeletion: Joi.object({}),
+
+  publicAccountDeletionRequest: Joi.object({
+    email: Joi.string().email().allow('', null),
+    phone: Joi.string().trim().min(10).max(30).allow('', null),
+  }).or('email', 'phone'),
 };
 
 const productValidation = {
@@ -520,6 +527,16 @@ const adminValidation = {
     userIds: Joi.array().items(Joi.string().required()).min(1).required(),
     title: Joi.string().required().max(100),
     body: Joi.string().required().max(500),
+  }),
+
+  updateAccountDeletionRequest: Joi.object({
+    status: Joi.string().valid('in_review', 'rejected').required(),
+    identityVerified: Joi.boolean().default(false),
+    staffNote: Joi.string().trim().max(1000).allow('', null),
+  }),
+
+  completeAccountDeletionRequest: Joi.object({
+    staffNote: Joi.string().trim().max(1000).allow('', null),
   }),
 };
 

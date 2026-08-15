@@ -21,6 +21,9 @@ const uploadRoutes = require('./uploadRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const razorpayRoutes = require('./razorpayRoutes');
 const websiteCatalogController = require('../controllers/websiteCatalogController');
+const accountDeletionController = require('../controllers/accountDeletionController');
+const validate = require('../middlewares/validate');
+const { authValidation } = require('../validations');
 
 const normalizeNumber = (value) => {
   const num = Number(value);
@@ -428,6 +431,8 @@ router.get('/website/catalog/categories/general', websiteCatalogController.getGe
 router.get('/website/catalog/categories/:categorySlug/products', websiteCatalogController.getGeneralCategoryProducts);
 router.get('/website/catalog/products', websiteCatalogController.getProducts);
 router.get('/website/catalog/products/:productSlug', websiteCatalogController.getProduct);
+
+router.post('/account-deletion-request', validate(authValidation.publicAccountDeletionRequest), accountDeletionController.requestDeletionFromWebsite);
 
 router.use('/auth', authRoutes);
 router.use('/products', productRoutes);

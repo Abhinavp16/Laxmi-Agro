@@ -120,9 +120,33 @@ async function deleteFile(publicId) {
   }
 }
 
+async function deleteDirectory(publicIdPrefix) {
+  if (!publicIdPrefix) return false;
+
+  const relativePath = sanitizeSegment(publicIdPrefix);
+  if (!relativePath) return false;
+
+  if (getStorageDriver() === FIREBASE_STORAGE_DRIVER) {
+    const bucket = getStorage();
+    if (!bucket) return false;
+    await bucket.deleteFiles({ prefix: `${relativePath}/` });
+    return true;
+  }
+
+  const absolutePath = path.join(getUploadsRoot(), relativePath);
+  try {
+    await fs.rm(absolutePath, { recursive: true, force: true });
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 module.exports = {
   saveBuffer,
   deleteFile,
+  deleteDirectory,
   getStorageDriver,
   getUploadsRoot,
 };

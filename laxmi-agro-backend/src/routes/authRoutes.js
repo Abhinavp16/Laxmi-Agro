@@ -24,6 +24,9 @@ router.put('/profile', protect, validate(authValidation.updateProfile), authCont
 router.post('/profile/avatar', protect, uploadAvatar.single('avatar'), authController.uploadProfileAvatar);
 router.post('/fcm-token', protect, validate(authValidation.fcmToken), authController.registerFcmToken);
 router.post('/convert-to-wholesaler', protect, uploadProductImages.array('proofImages', 3), validate(authValidation.convertWholesaler), authController.convertToWholesaler);
+router.get('/account-deletion-request', protect, authController.getMyRequest);
+router.post('/account-deletion-request', protect, validate(authValidation.requestAccountDeletion), authController.requestMyAccountDeletion);
+router.post('/account-deletion-request/cancel', protect, authController.cancelMyAccountDeletion);
 
 module.exports = router;
 
