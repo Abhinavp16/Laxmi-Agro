@@ -29,7 +29,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
@@ -76,6 +76,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
+      { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },
       { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: AddTeamIcon },
       { href: "/wholesaler-map", label: "WHOLESALER MAP", icon: MapsGlobal01Icon },
     ],
@@ -125,15 +126,13 @@ export function getAdminPageTitle(pathname: string) {
   return activeItem ? formatPageTitle(activeItem.label) : "Admin Panel"
 }
 
+const subscribe = () => () => {}
+
 function useAdminSidebarState() {
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false)
 
   const pageTitle = useMemo(() => getAdminPageTitle(pathname), [pathname])
 
