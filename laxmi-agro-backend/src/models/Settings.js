@@ -99,19 +99,6 @@ const settingsSchema = new mongoose.Schema({
     },
   },
 
-  // Razorpay Payment Gateway
-  razorpayKeyId: {
-    type: String,
-    default: '',
-  },
-  razorpayKeySecret: {
-    type: String,
-    default: '',
-  },
-  razorpayEnabled: {
-    type: Boolean,
-    default: false,
-  },
 
   // Bank Transfer Details
   bankName: String,

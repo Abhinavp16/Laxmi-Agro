@@ -19,7 +19,6 @@ const companyRoutes = require('./companyRoutes');
 const categoryRoutes = require('./categoryRoutes');
 const uploadRoutes = require('./uploadRoutes');
 const notificationRoutes = require('./notificationRoutes');
-const razorpayRoutes = require('./razorpayRoutes');
 const websiteCatalogController = require('../controllers/websiteCatalogController');
 const accountDeletionController = require('../controllers/accountDeletionController');
 const validate = require('../middlewares/validate');
@@ -257,7 +256,6 @@ router.get('/health', async (req, res) => {
     firebase,
     config: {
       jwtConfigured: Boolean(process.env.JWT_SECRET),
-      razorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
       mongodbUriConfigured: Boolean(process.env.MONGODB_URI),
       fileStorageDriver: getStorageDriver(),
     },
@@ -445,7 +443,6 @@ router.use('/companies', companyRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/razorpay', razorpayRoutes);
 
 // Public endpoint for active offers (no auth required)
 router.get('/offers', async (req, res, next) => {
@@ -482,17 +479,10 @@ router.get('/settings/payment-options', async (req, res, next) => {
     const { Settings } = require('../models');
     const settings = await Settings.getSettings();
 
-    // Razorpay is enabled if env vars are set OR DB setting is true
-    const hasEnvRazorpay = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
-    const razorpayEnabled = hasEnvRazorpay || settings.razorpayEnabled || false;
-    const razorpayKeyId = process.env.RAZORPAY_KEY_ID || settings.razorpayKeyId || '';
-
     res.json({
       success: true,
       data: {
         checkoutMode: settings.checkout?.mode || 'whatsapp',
-        razorpayEnabled: (settings.checkout?.mode || 'whatsapp') === 'payment' ? razorpayEnabled : false,
-        razorpayKeyId: razorpayEnabled ? razorpayKeyId : null,
         bankTransferEnabled: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false,
         bankDetails: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false ? {
           bankName: settings.bankName || '',

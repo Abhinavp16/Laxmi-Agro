@@ -37,9 +37,6 @@ exports.updateSettings = async (req, res, next) => {
       'promoBanners',
       'socialLinks',
       'checkout',
-      'razorpayKeyId',
-      'razorpayKeySecret',
-      'razorpayEnabled',
       'bankName',
       'bankAccountNumber',
       'bankIfscCode',
@@ -52,9 +49,6 @@ exports.updateSettings = async (req, res, next) => {
         settings[field] = req.body[field];
       }
     }
-
-    console.log('[Settings Update] razorpayEnabled:', req.body.razorpayEnabled, '| bankTransferEnabled:', req.body.bankTransferEnabled);
-    console.log('[Settings Update] razorpayKeyId present:', !!req.body.razorpayKeyId);
 
     await settings.save();
 
