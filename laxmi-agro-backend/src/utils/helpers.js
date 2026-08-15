@@ -56,6 +56,10 @@ const sanitizeUser = (user) => {
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.passwordHash;
   delete userObj.__v;
+  if (userObj.businessInfo) {
+    delete userObj.businessInfo.proofImageKeys;
+    delete userObj.businessInfo.proofImages;
+  }
   return userObj;
 };
 

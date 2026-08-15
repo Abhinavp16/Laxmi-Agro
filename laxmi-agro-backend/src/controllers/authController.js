@@ -537,28 +537,38 @@ exports.convertToWholesaler = async (req, res, next) => {
     } = req.body;
     const user = req.user;
 
-    let proofImageUrls = [];
+    let proofImageKeys = [];
     if (req.files && req.files.length > 0) {
-      proofImageUrls = await Promise.all(
+      proofImageKeys = await Promise.all(
         req.files.map(async (file) => {
           const webpBuffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
           const saved = await saveBuffer({
             buffer: webpBuffer,
-            folder: `proofs/${user._id}`,
+            folder: `private/proofs/${user._id}`,
             filename: `${uuidv4()}.webp`,
             contentType: 'image/webp',
+            metadata: {
+              originalName: file.originalname,
+              uploadedBy: user._id.toString(),
+              uploadedAt: new Date().toISOString(),
+              mediaPurpose: 'business-proof',
+            },
+            visibility: 'private',
           });
-          return saved.url;
+          return saved.publicId;
         })
       );
     }
 
-    // Update user business info (Admin verifies before role update)
+    const existingBusinessInfo = user.businessInfo?.toObject?.() || user.businessInfo || {};
+
+    // Admin verifies before role update. New proof submissions are private and replace
+    // prior proof references, matching the previous re-application behavior.
     user.businessInfo = {
-      ...user.businessInfo,
+      ...existingBusinessInfo,
       businessName,
       gstNumber,
-      businessAddress, // We might need to add this to the model
+      businessAddress,
       contactPerson,
       shopLocation: {
         lat: Number(shopLocationLat),
@@ -568,7 +578,12 @@ exports.convertToWholesaler = async (req, res, next) => {
       },
       status: 'pending',
       verified: false,
-      proofImages: proofImageUrls.length > 0 ? proofImageUrls : (user.businessInfo?.proofImages || []),
+      proofImageKeys: proofImageKeys.length > 0
+        ? proofImageKeys
+        : (existingBusinessInfo.proofImageKeys || []),
+      proofImages: proofImageKeys.length > 0
+        ? []
+        : (existingBusinessInfo.proofImages || []),
     };
 
     // Also update phone/name if changed? Usually contact person is just name

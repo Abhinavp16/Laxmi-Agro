@@ -71,6 +71,9 @@ const userSchema = new mongoose.Schema({
     verified: { type: Boolean, default: false },
     verifiedAt: { type: Date, default: null },
     excludedCategories: [{ type: String, trim: true }],
+    // Private Firebase object keys. These are never returned to mobile clients.
+    proofImageKeys: [{ type: String }],
+    // Legacy public URLs retained only until the reviewed migration completes.
     proofImages: [{ type: String }],
   },
 
@@ -125,6 +128,9 @@ userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
   delete obj.__v;
+  if (obj.businessInfo) {
+    delete obj.businessInfo.proofImageKeys;
+  }
   return obj;
 };
 

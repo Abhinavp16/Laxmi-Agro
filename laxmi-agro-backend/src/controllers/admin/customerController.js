@@ -1,4 +1,5 @@
 const { User, Order, Negotiation, DeviceToken, Notification } = require('../../models');
+const { getSignedReadUrl } = require('../../config/storage');
 const notificationService = require('../../services/notificationService');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
@@ -7,6 +8,33 @@ const normalizeExcludedCategories = (values = []) => {
   if (!Array.isArray(values)) return [];
   return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
 };
+
+async function serializeCustomerForAdmin(customer) {
+  const value = customer?.toObject ? customer.toObject() : { ...customer };
+  const businessInfo = value.businessInfo ? { ...value.businessInfo } : null;
+
+  if (!businessInfo) return value;
+
+  const privateProofKeys = Array.isArray(businessInfo.proofImageKeys)
+    ? businessInfo.proofImageKeys.filter(Boolean)
+    : [];
+  const legacyProofUrls = Array.isArray(businessInfo.proofImages)
+    ? businessInfo.proofImages.filter(Boolean)
+    : [];
+
+  const signedPrivateProofUrls = await Promise.all(
+    privateProofKeys.map((key) => getSignedReadUrl(key))
+  );
+
+  value.businessInfo = {
+    ...businessInfo,
+    // Legacy public URLs are included only until their matching records migrate.
+    proofImages: [...signedPrivateProofUrls.filter(Boolean), ...legacyProofUrls],
+  };
+  delete value.businessInfo.proofImageKeys;
+
+  return value;
+}
 
 exports.getCustomers = async (req, res, next) => {
   try {
@@ -33,10 +61,11 @@ exports.getCustomers = async (req, res, next) => {
         .lean(),
       User.countDocuments(query),
     ]);
+    const serializedCustomers = await Promise.all(customers.map(serializeCustomerForAdmin));
 
     res.json({
       success: true,
-      ...formatPaginationResponse(customers, total, page, limit),
+      ...formatPaginationResponse(serializedCustomers, total, page, limit),
     });
   } catch (error) {
     next(error);
@@ -51,7 +80,7 @@ exports.getCustomerById = async (req, res, next) => {
       throw new NotFoundError('Customer not found', 'CUSTOMER_NOT_FOUND');
     }
 
-    const [orderStats, negotiationStats] = await Promise.all([
+    const [orderStats, negotiationStats, serializedCustomer] = await Promise.all([
       Order.aggregate([
         { $match: { userId: customer._id } },
         {
@@ -71,6 +100,7 @@ exports.getCustomerById = async (req, res, next) => {
           },
         },
       ]),
+      serializeCustomerForAdmin(customer),
     ]);
 
     const recentOrders = await Order.find({ userId: customer._id })
@@ -81,7 +111,7 @@ exports.getCustomerById = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        ...customer,
+        ...serializedCustomer,
         stats: {
           orders: orderStats[0] || { totalOrders: 0, totalSpent: 0 },
           negotiations: negotiationStats.reduce((acc, n) => {

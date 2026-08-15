@@ -4,6 +4,8 @@ const { getStorage } = require('./firebase');
 
 const LOCAL_STORAGE_DRIVER = 'local';
 const FIREBASE_STORAGE_DRIVER = 'firebase';
+const PUBLIC_VISIBILITY = 'public';
+const PRIVATE_VISIBILITY = 'private';
 
 function getStorageDriver() {
   const configured = (process.env.FILE_STORAGE_DRIVER || 'auto').trim().toLowerCase();
@@ -42,22 +44,52 @@ function getPublicBaseUrl() {
   return `http://localhost:${process.env.PORT || 5000}`;
 }
 
+function normalizeVisibility(visibility) {
+  if (visibility === PUBLIC_VISIBILITY || visibility === PRIVATE_VISIBILITY) {
+    return visibility;
+  }
+
+  throw new Error(`Unsupported storage visibility: ${visibility}`);
+}
+
+function resolveSignedReadTtl(expiresSeconds) {
+  const configuredDefault = Number(process.env.PRIVATE_MEDIA_SIGNED_URL_TTL_SECONDS || 900);
+  const requested = Number(expiresSeconds ?? configuredDefault);
+
+  if (!Number.isFinite(requested) || requested <= 0) {
+    throw new Error('Signed media URL expiry must be a positive number of seconds.');
+  }
+
+  // Limit accidental long-lived document links even if an endpoint passes a bad value.
+  return Math.min(Math.floor(requested), 24 * 60 * 60);
+}
+
 async function saveBuffer({
   buffer,
   folder = 'uploads',
   filename,
   contentType = 'application/octet-stream',
   metadata = {},
+  visibility = PUBLIC_VISIBILITY,
 }) {
   const driver = getStorageDriver();
+  const normalizedVisibility = normalizeVisibility(visibility);
   const normalizedFolder = sanitizeSegment(folder);
   const normalizedFilename = sanitizeSegment(filename);
   const relativePath = sanitizeSegment(
     normalizedFolder ? `${normalizedFolder}/${normalizedFilename}` : normalizedFilename
   );
 
+  if (!relativePath) {
+    throw new Error('A storage filename is required.');
+  }
+
   if (driver === FIREBASE_STORAGE_DRIVER) {
     const bucket = getStorage();
+    if (!bucket) {
+      throw new Error('Firebase Storage is not initialized.');
+    }
+
     const fileUpload = bucket.file(relativePath);
 
     await new Promise((resolve, reject) => {
@@ -72,13 +104,22 @@ async function saveBuffer({
       stream.end(buffer);
     });
 
-    await fileUpload.makePublic();
+    if (normalizedVisibility === PUBLIC_VISIBILITY) {
+      await fileUpload.makePublic();
+    }
 
     return {
       driver,
+      visibility: normalizedVisibility,
       publicId: relativePath,
-      url: `https://storage.googleapis.com/${bucket.name}/${relativePath}`,
+      url: normalizedVisibility === PUBLIC_VISIBILITY
+        ? `https://storage.googleapis.com/${bucket.name}/${relativePath}`
+        : null,
     };
+  }
+
+  if (normalizedVisibility === PRIVATE_VISIBILITY) {
+    throw new Error('Private media uploads require an active Firebase Storage configuration.');
   }
 
   const uploadsRoot = getUploadsRoot();
@@ -88,9 +129,37 @@ async function saveBuffer({
 
   return {
     driver,
+    visibility: normalizedVisibility,
     publicId: relativePath,
     url: `${getPublicBaseUrl()}/uploads/${relativePath.replace(/\\/g, '/')}`,
   };
+}
+
+async function getSignedReadUrl(publicId, expiresSeconds) {
+  const relativePath = sanitizeSegment(publicId);
+  if (!relativePath) return null;
+
+  if (getStorageDriver() !== FIREBASE_STORAGE_DRIVER) {
+    throw new Error('Private media reads require an active Firebase Storage configuration.');
+  }
+
+  const bucket = getStorage();
+  if (!bucket) {
+    throw new Error('Firebase Storage is not initialized.');
+  }
+
+  const file = bucket.file(relativePath);
+  const [exists] = await file.exists();
+  if (!exists) return null;
+
+  const expiresAt = Date.now() + (resolveSignedReadTtl(expiresSeconds) * 1000);
+  const [url] = await file.getSignedUrl({
+    action: 'read',
+    expires: expiresAt,
+    version: 'v4',
+  });
+
+  return url;
 }
 
 async function deleteFile(publicId) {
@@ -145,6 +214,7 @@ async function deleteDirectory(publicIdPrefix) {
 
 module.exports = {
   saveBuffer,
+  getSignedReadUrl,
   deleteFile,
   deleteDirectory,
   getStorageDriver,
