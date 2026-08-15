@@ -40,7 +40,11 @@ export default function TermsPage() {
                             <p>Platform content, layouts, and business materials remain the property of the operating business or its licensors unless otherwise stated.</p>
                         </div>
                         <div>
-                            <h2 className="text-3xl font-bold text-text-primary mb-4">6. Contact and Legal</h2>
+                            <h2 className="text-3xl font-bold text-text-primary mb-4">6. Account Deletion</h2>
+                            <p>Account holders can request account deletion in the app or at <a className="font-semibold text-[#1b7a3b] underline" href="/delete-account">laxmiagroenterprises.com/delete-account</a>. The request is verified and processed under the Privacy Policy and applicable legal record-retention obligations.</p>
+                        </div>
+                        <div>
+                            <h2 className="text-3xl font-bold text-text-primary mb-4">7. Contact and Legal</h2>
                             <p>Business contact: Ashirvad Marketing, C/O Laxmi Agro Enterprises, Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.). Email: ashirvadmarketing62@gmail.com. Phones: +91 9179110159, +91 8770974845.</p>
                         </div>
                     </div>

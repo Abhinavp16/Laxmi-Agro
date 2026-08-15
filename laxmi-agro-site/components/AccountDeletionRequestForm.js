@@ -1,0 +1,100 @@
+'use client';
+
+import { useState } from 'react';
+import { getApiBaseUrl } from '@/lib/api-base';
+
+const initialForm = { email: '', phone: '' };
+
+export default function AccountDeletionRequestForm() {
+    const [form, setForm] = useState(initialForm);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    function updateField(event) {
+        const { name, value } = event.target;
+        setForm((current) => ({ ...current, [name]: value }));
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        setError('');
+        setSuccessMessage('');
+
+        const email = form.email.trim();
+        const phone = form.phone.trim();
+        if (!email && !phone) {
+            setError('Enter the email address or phone number used for your Laxmi Agro account.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const response = await fetch(`${getApiBaseUrl()}/account-deletion-request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, phone }),
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok || payload.success !== true) {
+                setError(payload.message || 'We could not submit your request. Please try again or contact support.');
+                return;
+            }
+
+            setSuccessMessage(payload.message || 'If we can match an active Laxmi Agro account, we will contact the account holder to verify the request and complete it within 30 days.');
+            setForm(initialForm);
+        } catch (_) {
+            setError('We could not submit your request. Check your connection and try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" noValidate>
+            <div>
+                <h2 className="text-2xl font-bold text-text-primary">Submit your request</h2>
+                <p className="mt-2 text-sm">Provide at least one account identifier. We do not confirm whether a matching account exists.</p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <label htmlFor="deletion-email" className="mb-2 block text-sm font-semibold text-text-primary">Account email</label>
+                    <input
+                        id="deletion-email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        value={form.email}
+                        onChange={updateField}
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="deletion-phone" className="mb-2 block text-sm font-semibold text-text-primary">Account phone number</label>
+                    <input
+                        id="deletion-phone"
+                        name="phone"
+                        type="tel"
+                        autoComplete="tel"
+                        value={form.phone}
+                        onChange={updateField}
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
+                    />
+                </div>
+            </div>
+
+            {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}
+            {successMessage && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{successMessage}</p>}
+
+            <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-full bg-[#1b7a3b] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#14642f] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+                {isSubmitting ? 'Submitting request…' : 'Submit deletion request'}
+            </button>
+        </form>
+    );
+}

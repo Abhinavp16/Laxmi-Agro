@@ -3,6 +3,7 @@ import Link from 'next/link';
 const policyLinks = [
     { name: 'Terms', href: '/terms' },
     { name: 'Privacy', href: '/privacy' },
+    { name: 'Delete Account', href: '/delete-account' },
     { name: 'Shipping', href: '/shipping' },
     { name: 'Refund', href: '/refund' },
     { name: 'Warranty', href: '/warranty' },
