@@ -2,7 +2,11 @@ import { Loader2Icon } from "@/components/hugeicons"
 
 import { cn } from '@/lib/utils'
 
-function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
+type SpinnerProps = Omit<React.ComponentProps<'svg'>, 'strokeWidth'> & {
+  strokeWidth?: number
+}
+
+function Spinner({ className, ...props }: SpinnerProps) {
   return (
     <Loader2Icon
       role="status"

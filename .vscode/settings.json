@@ -1,0 +1,28 @@
+{
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/.next": true,
+    "**/build": true,
+    "**/ios/Flutter/ephemeral": true,
+    "**/node_modules": true
+  },
+  "search.exclude": {
+    "**/.dart_tool": true,
+    "**/.next": true,
+    "**/build": true,
+    "**/ios/Flutter/ephemeral": true,
+    "**/node_modules": true
+  },
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/.next/**": true,
+    "**/build/**": true,
+    "**/ios/Flutter/ephemeral/**": true,
+    "**/node_modules/**": true
+  },
+  "dart.analysisExcludedFolders": [
+    "laxmi-agro-app/build",
+    "laxmi-agro-app/.dart_tool",
+    "laxmi-agro-app/ios/Flutter/ephemeral"
+  ]
+}

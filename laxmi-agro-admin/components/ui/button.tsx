@@ -38,11 +38,17 @@ const buttonVariants = cva(
   },
 )
 
+type MotionCompatibleButtonProps = Omit<
+  React.ComponentProps<'button'>,
+  'onAnimationEnd' | 'onAnimationIteration' | 'onAnimationStart' | 'onDrag' | 'onDragEnd' | 'onDragStart'
+>
+
 function Button({
   className,
   variant,
   size,
   asChild = false,
+  onDrag,
   ...props
 }: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
@@ -51,7 +57,7 @@ function Button({
   const classNames = cn(buttonVariants({ variant, size, className }))
 
   if (asChild) {
-    return <Slot data-slot="button" className={classNames} {...props} />
+    return <Slot data-slot="button" className={classNames} onDrag={onDrag} {...props} />
   }
 
   return (
@@ -61,7 +67,7 @@ function Button({
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-      {...props}
+      {...(props as MotionCompatibleButtonProps)}
     />
   )
 }

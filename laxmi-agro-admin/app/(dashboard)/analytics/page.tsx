@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, TrendingUp, ShoppingCart, IndianRupee, Activity, Users, Eye, Package, Flame, AlertTriangle, BarChart3, ArrowUpRight, ArrowDownRight } from "@/components/hugeicons"
+import { Loader2, TrendingUp, ShoppingCart, IndianRupee, Activity, Users, Eye, Package, Flame, AlertTriangle, ArrowUpRight, ArrowDownRight } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch } from "@/lib/api"
 import { ChartSkeleton, DashboardPageSkeleton } from "@/components/ui/skeleton"
