@@ -217,6 +217,13 @@ exports.acceptOffer = async (req, res, next) => {
       throw new BadRequestError('Cannot accept in current status', 'INVALID_NEGOTIATION_STATUS');
     }
 
+    if (negotiation.currentOfferBy !== 'admin') {
+      throw new BadRequestError('Waiting for an admin counter offer', 'WAITING_FOR_ADMIN');
+    }
+    if (negotiation.expiresAt <= new Date()) {
+      throw new BadRequestError('Negotiation has expired', 'NEGOTIATION_EXPIRED');
+    }
+
     negotiation.history.push({
       action: NEGOTIATION_ACTIONS.ACCEPTED,
       by: 'wholesaler',

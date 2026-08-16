@@ -20,6 +20,15 @@ const historyEntrySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  actorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  actorRole: {
+    type: String,
+    default: null,
+  },
 }, { _id: false });
 
 const negotiationSchema = new mongoose.Schema({

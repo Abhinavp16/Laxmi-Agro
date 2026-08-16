@@ -4,6 +4,7 @@ const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { PAYMENT_STATUS, ORDER_STATUS } = require('../../utils/constants');
 const notificationService = require('../../services/notificationService');
 const { creditAffiliateCommissionForOrder } = require('../../services/affiliateCommissionService');
+const { recordAudit } = require('../../services/auditService');
 
 exports.getPayments = async (req, res, next) => {
   try {
@@ -40,13 +41,16 @@ exports.verifyPayment = async (req, res, next) => {
       throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
     }
 
-    if (payment.status !== PAYMENT_STATUS.PENDING) {
+    if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.HELD].includes(payment.status)) {
       throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
     }
 
     payment.status = PAYMENT_STATUS.VERIFIED;
     payment.verifiedBy = req.user._id;
     payment.verifiedAt = new Date();
+    payment.holdReason = null;
+    payment.heldBy = null;
+    payment.heldAt = null;
     await payment.save();
 
     const order = await Order.findById(payment.orderId);
@@ -112,6 +116,14 @@ exports.verifyPayment = async (req, res, next) => {
       console.error('Failed to send payment verified notification:', notifErr.message);
     }
 
+    await recordAudit({
+      actorId: req.user._id,
+      action: 'payment.approved',
+      entityType: 'payment',
+      entityId: payment._id,
+      metadata: { orderId: String(payment.orderId) },
+    });
+
     res.json({
       success: true,
       message: 'Payment verified and order confirmed',
@@ -134,7 +146,7 @@ exports.rejectPayment = async (req, res, next) => {
       throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
     }
 
-    if (payment.status !== PAYMENT_STATUS.PENDING) {
+    if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.HELD].includes(payment.status)) {
       throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
     }
 
@@ -142,6 +154,9 @@ exports.rejectPayment = async (req, res, next) => {
     payment.rejectionReason = reason;
     payment.verifiedBy = req.user._id;
     payment.verifiedAt = new Date();
+    payment.holdReason = null;
+    payment.heldBy = null;
+    payment.heldAt = null;
     await payment.save();
 
     const order = await Order.findById(payment.orderId);

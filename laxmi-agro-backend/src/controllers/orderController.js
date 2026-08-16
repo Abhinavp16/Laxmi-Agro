@@ -753,6 +753,7 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
       wholesalerId: req.user._id,
       status: NEGOTIATION_STATUS.ACCEPTED,
       orderId: null,
+      expiresAt: { $gt: new Date() },
     });
 
     if (!negotiation) {

@@ -37,9 +37,14 @@ exports.uploadScreenshot = async (req, res, next) => {
       throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
     }
 
-    const payment = await Payment.findOne({ orderId });
+    let payment = await Payment.findOne({ orderId });
     if (!payment) {
-      throw new NotFoundError('Payment record not found', 'PAYMENT_NOT_FOUND');
+      payment = await Payment.create({
+        orderId: order._id,
+        userId: order.userId,
+        amount: order.total,
+        status: PAYMENT_STATUS.PENDING,
+      });
     }
 
     if (payment.screenshotUrl) {

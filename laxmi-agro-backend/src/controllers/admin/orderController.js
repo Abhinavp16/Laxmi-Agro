@@ -3,6 +3,7 @@ const { Order, Payment, Product, StockLog } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
+const { recordAudit } = require('../../services/auditService');
 
 exports.getOrders = async (req, res, next) => {
   try {
@@ -38,7 +39,7 @@ exports.getOrders = async (req, res, next) => {
     const orderIds = orders.map((order) => order._id);
     const payments = orderIds.length > 0
       ? await Payment.find({ orderId: { $in: orderIds } })
-          .select('_id orderId status amount method upiId screenshotUrl rejectionReason')
+          .select('_id orderId status amount method upiId screenshotUrl rejectionReason holdReason heldAt')
           .lean()
       : [];
     const paymentsByOrderId = new Map(
@@ -248,6 +249,14 @@ exports.markPaymentCompleted = async (req, res, next) => {
     );
     await order.save();
 
+    await recordAudit({
+      actorId: req.user._id,
+      action: 'payment.marked_complete_in_office',
+      entityType: 'order',
+      entityId: order._id,
+      metadata: { paymentId: String(payment._id) },
+    });
+
     res.json({
       success: true,
       message: 'Payment marked completed',
@@ -271,8 +280,8 @@ exports.shipOrder = async (req, res, next) => {
       throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
     }
 
-    if (![ORDER_STATUS.PAYMENT_VERIFIED, ORDER_STATUS.PROCESSING].includes(order.status)) {
-      throw new BadRequestError('Order cannot be shipped in current status', 'INVALID_ORDER_STATUS');
+    if (order.status !== ORDER_STATUS.PROCESSING) {
+      throw new BadRequestError('Only processing orders can be shipped', 'INVALID_ORDER_STATUS');
     }
 
     order.trackingNumber = trackingNumber;
@@ -281,6 +290,14 @@ exports.shipOrder = async (req, res, next) => {
     order.addStatusHistory(ORDER_STATUS.SHIPPED, `Shipped via ${courierName}. Tracking: ${trackingNumber}`, req.user._id);
 
     await order.save();
+
+    await recordAudit({
+      actorId: req.user._id,
+      action: 'order.shipped',
+      entityType: 'order',
+      entityId: order._id,
+      metadata: { courierName, trackingNumber },
+    });
 
     // TODO: Send notification to customer
 

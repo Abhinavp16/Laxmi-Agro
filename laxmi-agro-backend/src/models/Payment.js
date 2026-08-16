@@ -66,6 +66,20 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  holdReason: {
+    type: String,
+    default: null,
+    maxlength: 500,
+  },
+  heldBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  heldAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 });

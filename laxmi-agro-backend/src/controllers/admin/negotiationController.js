@@ -1,4 +1,4 @@
-const { Negotiation, User } = require('../../models');
+const { Negotiation, User, Settings } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../../utils/constants');
@@ -186,6 +186,11 @@ exports.counterNegotiation = async (req, res, next) => {
 
     if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
       throw new BadRequestError('Cannot counter in current status', 'INVALID_NEGOTIATION_STATUS');
+    }
+
+    if (negotiation.expiresAt <= new Date()) {
+      const settings = await Settings.getSettings();
+      negotiation.expiresAt = new Date(Date.now() + settings.negotiationExpiryDays * 24 * 60 * 60 * 1000);
     }
 
     const totalPrice = negotiation.requestedQuantity * pricePerUnit;
