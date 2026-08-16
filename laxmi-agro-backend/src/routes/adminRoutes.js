@@ -28,11 +28,24 @@ const adminOfferController = require('../controllers/admin/offerController');
 const adminAffiliateController = require('../controllers/admin/affiliateCodeController');
 const adminReviewController = require('../controllers/admin/reviewController');
 const adminAccountDeletionController = require('../controllers/admin/accountDeletionController');
+const adminStaffController = require('../controllers/admin/staffController');
+const negotiationLimitController = require('../controllers/admin/negotiationLimitController');
 
 const { adminValidation } = require('../validations');
 
 router.use(protect);
 router.use(adminOnly);
+
+// Staff accounts
+router.get('/staff', adminStaffController.getStaff);
+router.post('/staff', validate(adminValidation.createStaff), adminStaffController.createStaff);
+router.put('/staff/:id/password', validate(adminValidation.resetStaffPassword), adminStaffController.resetStaffPassword);
+router.put('/staff/:id/status', validate(adminValidation.updateStaffStatus), adminStaffController.updateStaffStatus);
+
+// Negotiation settings for staff authority
+router.get('/negotiation-limits', negotiationLimitController.getLimits);
+router.put('/negotiation-limits/:productId', validate(adminValidation.setStaffNegotiationLimit), negotiationLimitController.setLimit);
+router.delete('/negotiation-limits/:productId', negotiationLimitController.removeLimit);
 
 // Products
 router.get('/products/price-snapshot.xlsx', adminProductController.getPriceSnapshot);

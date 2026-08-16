@@ -35,6 +35,18 @@ const settingsSchema = new mongoose.Schema({
     type: Number,
     default: 7,
   },
+  staffNegotiationMinPrices: [{
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
+    minPrice: {
+      type: Number,
+      min: 0,
+      required: true,
+    },
+  }],
   lowStockThreshold: {
     type: Number,
     default: 5,
