@@ -75,6 +75,8 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
+      { href: "/negotiation-settings", label: "NEGOTIATION SETTINGS", icon: Settings01Icon },
+      { href: "/staff-management", label: "STAFF", icon: UserGroupIcon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
       { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },
       { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: AddTeamIcon },
@@ -164,7 +166,7 @@ function SidebarIcon({ icon, size = 20 }: { icon: HugeIcon; size?: number }) {
   return <HugeiconsIcon icon={icon} size={size} strokeWidth={1.8} color="currentColor" />
 }
 
-function SidebarBrand() {
+function SidebarBrand({ portalLabel = "Admin Portal" }: { portalLabel?: string }) {
   return (
     <Link href="/" className="flex items-center gap-3 px-5 py-5 transition-colors hover:bg-slate-50">
       <span className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-slate-200 shadow-sm dark:ring-[#334155]">
@@ -172,7 +174,7 @@ function SidebarBrand() {
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold tracking-tight text-slate-900">Laxmi Agro</span>
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Admin Portal</span>
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{portalLabel}</span>
       </span>
     </Link>
   )
@@ -341,6 +343,151 @@ export function Sidebar() {
           handleLogout={handleLogout}
         />
       </div>
+    </aside>
+  )
+}
+
+
+const staffNavGroups: NavGroup[] = [
+  {
+    label: "Workspace",
+    items: [
+      { href: "/staff/products", label: "PRODUCTS", icon: Package01Icon },
+      { href: "/staff/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
+      { href: "/staff/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
+    ],
+  },
+]
+
+const staffPrimaryNavItems = staffNavGroups.flatMap((group) => group.items)
+
+function getStaffPageTitle(pathname: string) {
+  const activeItem = staffPrimaryNavItems.find((item) => isNavItemActive(pathname, item))
+  return activeItem ? formatPageTitle(activeItem.label) : "Staff Workspace"
+}
+
+function useStaffSidebarState() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const { theme, setTheme } = useTheme()
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false)
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken")
+    localStorage.removeItem("refreshToken")
+    localStorage.removeItem("user")
+    localStorage.removeItem("loginAt")
+    localStorage.removeItem("sessionExpiresAt")
+    toast.success("Logged out successfully")
+    router.push("/login")
+  }
+
+  return {
+    mounted,
+    pageTitle: getStaffPageTitle(pathname),
+    pathname,
+    theme,
+    setTheme,
+    handleLogout,
+  }
+}
+
+function StaffSidebarNavContent({
+  pathname,
+  mounted,
+  theme,
+  setTheme,
+  handleLogout,
+  closeOnNavigate = false,
+}: {
+  pathname: string
+  mounted: boolean
+  theme: string | undefined
+  setTheme: (theme: string) => void
+  handleLogout: () => void
+  closeOnNavigate?: boolean
+}) {
+  const renderLink = (item: NavItem) => {
+    const link = (
+      <Link
+        href={item.href}
+        className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 py-2 text-[11px] font-semibold tracking-[0.12em] transition-colors lg:text-xs ${getItemClasses(isNavItemActive(pathname, item))}`}
+      >
+        <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={item.icon} /></span>
+        <span className="min-w-0 break-words">{item.label}</span>
+      </Link>
+    )
+
+    if (!closeOnNavigate) {
+      return <motion.div key={item.href} whileHover={{ x: 3 }} whileTap={{ scale: 0.985 }} transition={{ type: "spring", stiffness: 420, damping: 28 }}>{link}</motion.div>
+    }
+
+    return <SheetClose asChild key={item.href}>{link}</SheetClose>
+  }
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <nav className="flex flex-col gap-6" aria-label="Staff navigation">
+        {staffNavGroups.map((group) => (
+          <section key={group.label} aria-labelledby={`staff-sidebar-group-${group.label.toLowerCase()}`}>
+            <p id={`staff-sidebar-group-${group.label.toLowerCase()}`} className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
+            <div className="flex flex-col gap-0.5">{group.items.map(renderLink)}</div>
+          </section>
+        ))}
+      </nav>
+
+      <div className="mt-auto border-t border-slate-200 pt-3">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:text-xs"
+          type="button"
+        >
+          <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={mounted && theme === "dark" ? Sun01Icon : Moon01Icon} /></span>
+          <span>{mounted && theme === "dark" ? "LIGHT THEME" : "DARK THEME"}</span>
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex min-h-10 w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-left text-[11px] font-semibold tracking-[0.12em] text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 lg:text-xs"
+          type="button"
+        >
+          <span className="flex shrink-0 items-center justify-center"><SidebarIcon icon={Logout01Icon} /></span>
+          <span>LOGOUT</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function MobileStaffNav() {
+  const { mounted, pageTitle, pathname, theme, setTheme, handleLogout } = useStaffSidebarState()
+
+  return (
+    <div className="-mx-4 -mt-4 border-b border-slate-200 bg-white sm:-mx-5 sm:-mt-5 md:hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+        <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">Laxmi Agro</div><h1 className="truncate text-lg font-bold text-slate-900">{pageTitle}</h1></div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-md border-slate-200 bg-white text-slate-700 shadow-none hover:bg-slate-50">
+              <SidebarIcon icon={Menu01Icon} size={20} /><span className="sr-only">Open navigation</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[88vw] border-r border-slate-200 bg-white p-0 text-slate-900 sm:max-w-sm">
+            <SheetHeader className="border-b border-slate-200 p-0 text-left"><SidebarBrand portalLabel="Staff Portal" /><SheetTitle className="sr-only">Staff Navigation</SheetTitle><SheetDescription className="sr-only">Browse your permitted work areas and account actions.</SheetDescription></SheetHeader>
+            <div className="h-[calc(100dvh-77px)] overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} closeOnNavigate /></div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </div>
+  )
+}
+
+export function StaffSidebar() {
+  const { mounted, pathname, theme, setTheme, handleLogout } = useStaffSidebarState()
+
+  return (
+    <aside className="hidden h-screen shrink-0 md:flex md:w-60 lg:w-64 md:flex-col md:self-stretch md:overflow-hidden border-r border-slate-200 bg-white text-slate-900">
+      <div className="border-b border-slate-200"><SidebarBrand portalLabel="Staff Portal" /></div>
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} /></div>
     </aside>
   )
 }
