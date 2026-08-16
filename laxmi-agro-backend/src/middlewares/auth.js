@@ -16,6 +16,10 @@ const protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (decoded.sessionExpiresAt && new Date(decoded.sessionExpiresAt) <= new Date()) {
+      throw new UnauthorizedError('Session expired', 'SESSION_EXPIRED');
+    }
+
     const user = await User.findById(decoded.userId).select('-passwordHash');
 
     if (!user) {
@@ -76,6 +80,8 @@ const authorize = (...roles) => {
 };
 
 const adminOnly = authorize('admin');
+const staffOnly = authorize('staff');
+const staffOrAdmin = authorize('staff', 'admin');
 const wholesalerOnly = authorize('wholesaler', 'admin');
 const buyerOrWholesaler = authorize('buyer', 'wholesaler', 'admin');
 
@@ -84,6 +90,8 @@ module.exports = {
   optionalAuth,
   authorize,
   adminOnly,
+  staffOnly,
+  staffOrAdmin,
   wholesalerOnly,
   buyerOrWholesaler,
 };

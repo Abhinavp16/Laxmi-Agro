@@ -2,6 +2,7 @@ module.exports = {
   USER_ROLES: {
     BUYER: 'buyer',
     WHOLESALER: 'wholesaler',
+    STAFF: 'staff',
     ADMIN: 'admin',
   },
 
@@ -49,6 +50,7 @@ module.exports = {
 
   PAYMENT_STATUS: {
     PENDING: 'pending',
+    HELD: 'held',
     VERIFIED: 'verified',
     REJECTED: 'rejected',
   },

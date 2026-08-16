@@ -114,6 +114,12 @@ export const SESSION_MAX_MS = 4 * 60 * 60 * 1000
 
 export function isSessionExpired(): boolean {
   if (typeof window === 'undefined') return false
+  const user = getUser()
+  if (user?.role === 'staff') {
+    const sessionExpiresAt = localStorage.getItem('sessionExpiresAt')
+    return !sessionExpiresAt || new Date(sessionExpiresAt).getTime() <= Date.now()
+  }
+
   const loginAt = localStorage.getItem('loginAt')
   if (!loginAt) return false // legacy sessions without loginAt are left to token expiry
   return Date.now() - Number(loginAt) > SESSION_MAX_MS
@@ -130,5 +136,6 @@ export function logout() {
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')
   localStorage.removeItem('loginAt')
+  localStorage.removeItem('sessionExpiresAt')
   window.location.href = '/login'
 }

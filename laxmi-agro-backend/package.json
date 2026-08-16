@@ -18,6 +18,7 @@
     "media:audit-private": "node src/scripts/auditPrivateMediaMigration.js",
     "media:migrate-private": "node src/scripts/migratePrivateMedia.js",
     "media:rollback-private": "PRIVATE_MEDIA_MIGRATION_MODE=rollback node src/scripts/migratePrivateMedia.js",
+    "staff:clear-password-change-flags": "node scripts/clearStaffPasswordChangeFlags.js",
     "test": "node tests/inventory.test.js",
     "test:price-snapshot": "node tests/priceSnapshotWorkbook.test.js"
   },

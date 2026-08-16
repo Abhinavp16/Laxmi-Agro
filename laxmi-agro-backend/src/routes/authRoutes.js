@@ -12,6 +12,7 @@ router.post('/register/wholesaler', validate(authValidation.registerWholesaler),
 router.post('/register-phone', validate(authValidation.registerPhone), authController.registerWithPhone);
 router.post('/register-phone/wholesaler', validate(authValidation.registerPhoneWholesaler), authController.registerWholesalerWithPhone);
 router.post('/login', validate(authValidation.login), authController.login);
+router.post('/staff/login', validate(authValidation.staffLogin), authController.staffLogin);
 router.post('/magic-link/request', authController.requestMagicLink);
 router.post('/magic-link/verify', validate(authValidation.magicLinkVerify), authController.verifyMagicLink);
 router.post('/login-phone', validate(authValidation.loginPhone), authController.loginWithPhone);

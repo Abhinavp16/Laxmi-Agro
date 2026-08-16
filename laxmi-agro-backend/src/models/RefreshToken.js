@@ -16,6 +16,10 @@ const refreshTokenSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  sessionExpiresAt: {
+    type: Date,
+    default: null,
+  },
   isRevoked: {
     type: Boolean,
     default: false,

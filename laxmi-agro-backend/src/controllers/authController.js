@@ -8,8 +8,10 @@ const { sendMagicLinkEmail } = require('../services/emailService');
 const { UnauthorizedError, ConflictError, BadRequestError, ForbiddenError } = require('../utils/errors');
 const { USER_ROLES, AUTH_PROVIDERS } = require('../utils/constants');
 const { sanitizeUser } = require('../utils/helpers');
+const { recordAudit } = require('../services/auditService');
 
 const DEFAULT_ADMIN_EMAILS = 'abhinavpandey12201@gmail.com,mayurkhatwani5@gmail.com';
+const STAFF_SESSION_MS = 6 * 60 * 60 * 1000;
 
 const hashMagicToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
@@ -27,30 +29,44 @@ function getMagicLinkPanelUrl() {
   return 'http://localhost:3001';
 }
 
-const generateTokens = async (userId, deviceInfo) => {
+const generateTokens = async (userId, deviceInfo, sessionExpiresAt = null) => {
+  const sessionExpiry = sessionExpiresAt ? new Date(sessionExpiresAt) : null;
+  const tokenPayload = {
+    userId,
+    ...(sessionExpiry ? { sessionExpiresAt: sessionExpiry.toISOString() } : {}),
+  };
+
   const accessToken = jwt.sign(
-    { userId },
+    tokenPayload,
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m' }
   );
 
   const refreshToken = jwt.sign(
-    { userId, type: 'refresh' },
+    { ...tokenPayload, type: 'refresh' },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRY || '7d' }
+    {
+      expiresIn: sessionExpiry
+        ? Math.max(1, Math.floor((sessionExpiry.getTime() - Date.now()) / 1000))
+        : (process.env.JWT_REFRESH_EXPIRY || '7d'),
+    }
   );
 
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
+  const expiresAt = sessionExpiry || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   await RefreshToken.create({
     userId,
     token: refreshToken,
     deviceInfo,
     expiresAt,
+    sessionExpiresAt: sessionExpiry,
   });
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+    ...(sessionExpiry ? { sessionExpiresAt: sessionExpiry.toISOString() } : {}),
+  };
 };
 
 exports.register = async (req, res, next) => {
@@ -137,6 +153,10 @@ exports.login = async (req, res, next) => {
       throw new UnauthorizedError('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     }
 
+    if (user.role === USER_ROLES.STAFF) {
+      throw new UnauthorizedError('Please use staff login', 'AUTH_ROLE_MISMATCH');
+    }
+
     if (user.authProvider !== AUTH_PROVIDERS.EMAIL) {
       throw new BadRequestError(`Please login with ${user.authProvider}`, 'AUTH_WRONG_PROVIDER');
     }
@@ -154,6 +174,46 @@ exports.login = async (req, res, next) => {
     await user.save();
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
+
+    res.json({
+      success: true,
+      data: {
+        user: sanitizeUser(user),
+        ...tokens,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.staffLogin = async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username: username.toLowerCase() }).select('+passwordHash');
+
+    if (!user || user.role !== USER_ROLES.STAFF || user.authProvider !== AUTH_PROVIDERS.EMAIL) {
+      throw new UnauthorizedError('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      throw new UnauthorizedError('Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
+    }
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is deactivated', 'ACCOUNT_DEACTIVATED');
+    }
+
+    const sessionExpiresAt = new Date(Date.now() + STAFF_SESSION_MS);
+    user.lastLoginAt = new Date();
+    await user.save();
+    await recordAudit({
+      actorId: user._id,
+      action: 'staff.logged_in',
+      entityType: 'user',
+      entityId: user._id,
+    });
+    const tokens = await generateTokens(user._id, req.headers['user-agent'], sessionExpiresAt);
 
     res.json({
       success: true,
@@ -393,10 +453,16 @@ exports.refreshToken = async (req, res, next) => {
       throw new UnauthorizedError('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
     }
 
+    if (storedToken.expiresAt <= new Date() || (storedToken.sessionExpiresAt && storedToken.sessionExpiresAt <= new Date())) {
+      storedToken.isRevoked = true;
+      await storedToken.save();
+      throw new UnauthorizedError('Session expired', 'SESSION_EXPIRED');
+    }
+
     storedToken.isRevoked = true;
     await storedToken.save();
 
-    const tokens = await generateTokens(decoded.userId, req.headers['user-agent']);
+    const tokens = await generateTokens(decoded.userId, req.headers['user-agent'], storedToken.sessionExpiresAt);
 
     res.json({
       success: true,

@@ -21,6 +21,7 @@ const Review = require('./Review');
 const WebsiteSettings = require('./WebsiteSettings');
 const MagicLinkToken = require('./MagicLinkToken');
 const AccountDeletionRequest = require('./AccountDeletionRequest');
+const AuditLog = require('./AuditLog');
 
 module.exports = {
   User,
@@ -46,4 +47,5 @@ module.exports = {
   WebsiteSettings,
   MagicLinkToken,
   AccountDeletionRequest,
+  AuditLog,
 };

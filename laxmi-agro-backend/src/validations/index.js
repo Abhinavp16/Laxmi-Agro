@@ -32,6 +32,11 @@ const authValidation = {
     password: Joi.string().required(),
   }),
 
+  staffLogin: Joi.object({
+    username: Joi.string().trim().lowercase().pattern(/^[a-z0-9._-]{3,32}$/).required(),
+    password: Joi.string().required(),
+  }),
+
   magicLinkVerify: Joi.object({
     token: Joi.string().required(),
   }),
@@ -316,6 +321,28 @@ const adminValidation = {
   counterNegotiation: Joi.object({
     pricePerUnit: Joi.number().min(0).required(),
     message: Joi.string().max(500).allow('', null),
+  }),
+
+  holdPayment: Joi.object({
+    reason: Joi.string().trim().max(500).required(),
+  }),
+
+  setStaffNegotiationLimit: Joi.object({
+    minPrice: Joi.number().min(0).required(),
+  }),
+
+  createStaff: Joi.object({
+    name: Joi.string().trim().max(100).required(),
+    username: Joi.string().trim().lowercase().pattern(/^[a-z0-9._-]{3,32}$/).required(),
+    password: Joi.string().min(8).required(),
+  }),
+
+  resetStaffPassword: Joi.object({
+    password: Joi.string().min(8).required(),
+  }),
+
+  updateStaffStatus: Joi.object({
+    isActive: Joi.boolean().required(),
   }),
 
   rejectNegotiation: Joi.object({

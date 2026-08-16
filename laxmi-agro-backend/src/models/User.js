@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: Object.values(AUTH_PROVIDERS),
     required: true,
+    default: AUTH_PROVIDERS.EMAIL,
   },
   googleId: {
     type: String,
@@ -44,6 +45,18 @@ const userSchema = new mongoose.Schema({
   passwordHash: {
     type: String,
     select: false,
+  },
+  username: {
+    type: String,
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+    match: [/^[a-z0-9._-]{3,32}$/, 'Username must be 3-32 characters using letters, numbers, dot, underscore, or hyphen'],
+  },
+  mustChangePassword: {
+    type: Boolean,
+    default: false,
   },
 
   role: {
