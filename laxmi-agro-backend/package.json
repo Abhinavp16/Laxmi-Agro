@@ -20,6 +20,7 @@
     "media:rollback-private": "PRIVATE_MEDIA_MIGRATION_MODE=rollback node src/scripts/migratePrivateMedia.js",
     "staff:clear-password-change-flags": "node scripts/clearStaffPasswordChangeFlags.js",
     "test": "node tests/inventory.test.js",
+    "test:auth-phone": "node tests/authPhoneValidation.test.js",
     "test:price-snapshot": "node tests/priceSnapshotWorkbook.test.js"
   },
   "keywords": [

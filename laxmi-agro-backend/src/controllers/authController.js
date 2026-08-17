@@ -73,9 +73,12 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, phone, marketingConsent } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
     if (existingUser) {
-      throw new ConflictError('Email already registered', 'USER_ALREADY_EXISTS');
+      throw new ConflictError(
+        existingUser.phone === phone ? 'Phone number already registered' : 'Email already registered',
+        'USER_ALREADY_EXISTS'
+      );
     }
 
     const user = await User.create({
@@ -93,7 +96,7 @@ exports.register = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful. Please verify your phone.',
+      message: 'Registration successful.',
       data: {
         user: sanitizeUser(user),
         ...tokens,
@@ -108,9 +111,12 @@ exports.registerWholesaler = async (req, res, next) => {
   try {
     const { name, email, password, phone, businessName, gstNumber, marketingConsent } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
     if (existingUser) {
-      throw new ConflictError('Email already registered', 'USER_ALREADY_EXISTS');
+      throw new ConflictError(
+        existingUser.phone === phone ? 'Phone number already registered' : 'Email already registered',
+        'USER_ALREADY_EXISTS'
+      );
     }
 
     const user = await User.create({

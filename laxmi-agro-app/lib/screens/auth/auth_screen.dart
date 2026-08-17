@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_fonts.dart';
+import '../../core/utils/phone_validation.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -132,11 +133,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Future<void> _handleSubmit() async {
-    final phone = _phoneController.text.trim();
+    final phone = _isLogin ? _phoneController.text.trim() : _phoneController.text;
     final password = _passwordController.text;
 
-    if (phone.isEmpty || phone.length < 10) {
-      _showError('Please enter a valid phone number');
+    final phoneError = _isLogin
+        ? (phone.isEmpty || phone.length < 10
+              ? 'Please enter a valid phone number'
+              : null)
+        : PhoneValidation.registrationError(phone);
+    if (phoneError != null) {
+      _showError(phoneError);
       return;
     }
     if (password.isEmpty || password.length < 6) {
@@ -410,7 +416,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             icon: HugeIcons.strokeRoundedCall,
             keyboardType: TextInputType.phone,
             prefix: '+91 ',
-            maxLength: 10,
+            maxLength: _isLogin ? null : 10,
+            inputFormatters: _isLogin
+                ? null
+                : [FilteringTextInputFormatter.digitsOnly],
           ),
           const SizedBox(height: 16),
 
@@ -495,6 +504,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? prefix,
     int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
     bool required = true,
   }) {
     return Column(
@@ -529,6 +539,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             keyboardType: keyboardType,
             textCapitalization: textCapitalization,
             maxLength: maxLength,
+            inputFormatters: inputFormatters,
             style: AppFonts.bodyLarge(color: _textDark),
             decoration: InputDecoration(
               hintText: hint,

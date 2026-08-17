@@ -1,4 +1,17 @@
 const Joi = require('joi');
+const { isRegistrationPhoneValid } = require('../utils/phoneValidation');
+
+const registrationPhoneRule = Joi.string()
+  .pattern(/^[6-9]\d{9}$/)
+  .custom((value, helpers) => (
+    isRegistrationPhoneValid(value)
+      ? value
+      : helpers.error('string.registrationPhone')
+  ))
+  .messages({
+    'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.',
+    'string.registrationPhone': 'Phone number cannot use repeated or sequential digits.',
+  });
 
 const discountRuleSchema = Joi.object({
   minPurchaseAmount: Joi.number().min(0).required(),
@@ -12,7 +25,7 @@ const authValidation = {
     name: Joi.string().required().max(100),
     email: Joi.string().email().required(),
     password: Joi.string().min(8).required(),
-    phone: Joi.string().required(),
+    phone: registrationPhoneRule.required(),
     role: Joi.string().valid('buyer').default('buyer'),
     marketingConsent: Joi.boolean().default(false),
   }),
@@ -21,7 +34,7 @@ const authValidation = {
     name: Joi.string().required().max(100),
     email: Joi.string().email().required(),
     password: Joi.string().min(8).required(),
-    phone: Joi.string().required(),
+    phone: registrationPhoneRule.required(),
     businessName: Joi.string().required().max(200),
     gstNumber: Joi.string().allow('', null),
     marketingConsent: Joi.boolean().default(false),
@@ -49,13 +62,13 @@ const authValidation = {
 
   registerPhone: Joi.object({
     name: Joi.string().required().max(100),
-    phone: Joi.string().required().min(10).max(15),
+    phone: registrationPhoneRule.required(),
     password: Joi.string().min(6).required(),
   }),
 
   registerPhoneWholesaler: Joi.object({
     name: Joi.string().required().max(100),
-    phone: Joi.string().required().min(10).max(15),
+    phone: registrationPhoneRule.required(),
     password: Joi.string().min(6).required(),
     businessName: Joi.string().allow('', null).max(200),
   }),

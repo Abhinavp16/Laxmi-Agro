@@ -20,7 +20,9 @@ const errorHandler = (err, req, res, next) => {
   // Mongoose duplicate key
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
-    error = new AppError(`${field} already exists`, 409, 'DUPLICATE_FIELD');
+    error = field === 'phone'
+      ? new AppError('Phone number already registered', 409, 'USER_ALREADY_EXISTS')
+      : new AppError(`${field} already exists`, 409, 'DUPLICATE_FIELD');
   }
 
   // Mongoose validation error
