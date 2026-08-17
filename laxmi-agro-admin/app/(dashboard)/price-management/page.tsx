@@ -40,6 +40,7 @@ type Product = {
   sku?: string
   retailPrice: number
   wholesalePrice: number
+  stock: number
   pendingRetailPrice?: number | null
   pendingWholesalePrice?: number | null
   priceChangeScheduledAt?: string | null
@@ -124,7 +125,9 @@ export default function PriceManagementPage() {
   const [appliedProductSearch, setAppliedProductSearch] = useState("")
   const [audits, setAudits] = useState<PriceChangeAudit[]>([])
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({})
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({})
   const [savingProductId, setSavingProductId] = useState<string | null>(null)
+  const [savingStockProductId, setSavingStockProductId] = useState<string | null>(null)
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
   const [isProductsLoading, setIsProductsLoading] = useState(false)
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
@@ -243,9 +246,11 @@ export default function PriceManagementPage() {
     if (!selectedCategoryId) {
       setProducts([])
       setDrafts({})
+      setStockDrafts({})
       return
     }
     setDrafts({})
+    setStockDrafts({})
     void fetchProducts(1, false, "")
   }, [fetchProducts, selectedCategoryId])
 
@@ -254,6 +259,47 @@ export default function PriceManagementPage() {
       ...current,
       [productId]: { ...(current[productId] || DEFAULT_DRAFT), ...patch },
     }))
+  }
+
+  const updateStockDraft = (productId: string, quantity: string) => {
+    setStockDrafts((current) => ({ ...current, [productId]: quantity }))
+  }
+
+  const addStock = async (product: Product) => {
+    const quantityText = (stockDrafts[product._id] || "").trim()
+    const quantity = Number(quantityText)
+
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+      toast.error("Enter a positive whole number of units to add")
+      return
+    }
+
+    if (!window.confirm(`Add ${quantity} unit${quantity === 1 ? "" : "s"} to ${product.name}?`)) {
+      return
+    }
+
+    setSavingStockProductId(product._id)
+    try {
+      const response = await apiFetch(`/admin/products/${product._id}/stock`, {
+        method: "PUT",
+        body: JSON.stringify({ adjustment: `+${quantity}` }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.message || "Failed to add stock")
+
+      const newStock = Number(data?.data?.newStock)
+      if (!Number.isFinite(newStock)) throw new Error("The stock update response was invalid")
+
+      setProducts((current) => current.map((currentProduct) => (
+        currentProduct._id === product._id ? { ...currentProduct, stock: newStock } : currentProduct
+      )))
+      setStockDrafts((current) => ({ ...current, [product._id]: "" }))
+      toast.success(data?.message || "Stock added successfully")
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to add stock")
+    } finally {
+      setSavingStockProductId(null)
+    }
   }
 
   const selectCategory = (categoryId: string) => {
@@ -376,13 +422,14 @@ export default function PriceManagementPage() {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-[#333] bg-[#161616]">
-            <Table className="min-w-[1480px] border-separate border-spacing-0 border-2 border-slate-300">
-              <TableHeader className="[&_th]:border-b [&_th]:border-r [&_th]:border-slate-300"><TableRow className="border-slate-300 hover:bg-transparent"><TableHead className="w-14 whitespace-normal leading-tight text-gray-400">S.No.</TableHead><TableHead className="min-w-52 whitespace-normal leading-tight text-gray-400">Product</TableHead><TableHead className="min-w-36 whitespace-normal leading-tight text-gray-400">Current Customer Price</TableHead><TableHead className="min-w-40 whitespace-normal leading-tight text-gray-400">Current Wholesaler Price</TableHead><TableHead className="min-w-40 whitespace-normal leading-tight text-gray-400">New Customer Price</TableHead><TableHead className="min-w-40 whitespace-normal leading-tight text-gray-400">New Wholesaler Price</TableHead><TableHead className="min-w-48 whitespace-normal leading-tight text-gray-400">Schedule</TableHead><TableHead className="min-w-56 whitespace-normal leading-tight text-gray-400">Pending Change</TableHead><TableHead className="min-w-28 whitespace-normal text-right leading-tight text-gray-400">Action</TableHead></TableRow></TableHeader>
+            <Table className="min-w-[1260px] border-separate border-spacing-0 border-2 border-slate-300">
+              <TableHeader className="[&_th]:border-b [&_th]:border-r [&_th]:border-slate-300"><TableRow className="border-slate-300 hover:bg-transparent"><TableHead className="min-w-56 whitespace-normal leading-tight text-gray-400">Product</TableHead><TableHead className="min-w-32 whitespace-normal leading-tight text-gray-400">Customer Price</TableHead><TableHead className="min-w-32 whitespace-normal leading-tight text-gray-400">Wholesale Price</TableHead><TableHead className="min-w-40 whitespace-normal leading-tight text-gray-400">New Customer Price</TableHead><TableHead className="min-w-40 whitespace-normal leading-tight text-gray-400">New Wholesale Price</TableHead><TableHead className="min-w-44 whitespace-normal leading-tight text-gray-400">Schedule</TableHead><TableHead className="min-w-44 whitespace-normal leading-tight text-gray-400">Stock</TableHead><TableHead className="min-w-48 whitespace-normal leading-tight text-gray-400">Pending Change & Action</TableHead></TableRow></TableHeader>
               <TableBody className="[&_td]:border-b [&_td]:border-r [&_td]:border-slate-300">
-                {isProductsLoading ? <TableRow className="border-[#333]"><TableCell colSpan={9} className="h-48 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-[#86efac]" /></TableCell></TableRow> : products.length === 0 ? <TableRow className="border-[#333]"><TableCell colSpan={9} className="h-48 text-center text-gray-400">No products found in this category.</TableCell></TableRow> : products.map((product, index) => {
+                {isProductsLoading ? <TableRow className="border-[#333]"><TableCell colSpan={8} className="h-48 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-[#86efac]" /></TableCell></TableRow> : products.length === 0 ? <TableRow className="border-[#333]"><TableCell colSpan={8} className="h-48 text-center text-gray-400">No products found in this category.</TableCell></TableRow> : products.map((product) => {
                   const draft = drafts[product._id] || DEFAULT_DRAFT
+                  const stockDraft = stockDrafts[product._id] || ""
                   const hasPending = product.priceChangeEffectiveAt && (product.pendingRetailPrice !== null || product.pendingWholesalePrice !== null)
-                  return <TableRow key={product._id} className="border-[#333] hover:bg-[#1A1A1A]/70"><TableCell className="text-gray-400">{(page - 1) * 20 + index + 1}</TableCell><TableCell><div className="font-medium text-white">{product.name}</div><div className="mt-0.5 text-xs text-gray-500">{product.sku || "No SKU"}</div></TableCell><TableCell className="font-medium text-white">{formatPrice(product.retailPrice)}</TableCell><TableCell className="font-medium text-white">{formatPrice(product.wholesalePrice)}</TableCell><TableCell><Input type="number" min="0" step="0.01" value={draft.retailPrice} onChange={(event) => updateDraft(product._id, { retailPrice: event.target.value })} placeholder="Optional" className="border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-600" /></TableCell><TableCell><Input type="number" min="0" step="0.01" value={draft.wholesalePrice} onChange={(event) => updateDraft(product._id, { wholesalePrice: event.target.value })} placeholder="Optional" className="border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-600" /></TableCell><TableCell><div className="space-y-2"><Select value={draft.priceChangeMode} onValueChange={(value) => updateDraft(product._id, { priceChangeMode: value as RowDraft["priceChangeMode"] })}><SelectTrigger className="border-[#333] bg-[#0D0D0D] text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="immediate">Immediately</SelectItem><SelectItem value="schedule_24h">After 24 hours</SelectItem><SelectItem value="schedule_48h">After 48 hours</SelectItem><SelectItem value="custom">Custom date (8:00 AM IST)</SelectItem></SelectContent></Select>{draft.priceChangeMode === "custom" ? <Input type="date" value={draft.customEffectiveAt} onChange={(event) => updateDraft(product._id, { customEffectiveAt: event.target.value })} className="border-[#333] bg-[#0D0D0D] text-white" aria-label={`Custom date at 8:00 AM IST for ${product.name}`} /> : null}</div></TableCell><TableCell>{hasPending ? <div className="space-y-1 text-xs"><Badge className="bg-amber-500/15 text-amber-300 hover:bg-amber-500/15">Pending</Badge>{product.pendingRetailPrice !== null && product.pendingRetailPrice !== undefined ? <p className="text-gray-300">Customer: {formatPrice(product.pendingRetailPrice)}</p> : null}{product.pendingWholesalePrice !== null && product.pendingWholesalePrice !== undefined ? <p className="text-gray-300">Wholesale: {formatPrice(product.pendingWholesalePrice)}</p> : null}<p className="text-gray-500">{formatIst(product.priceChangeEffectiveAt)}</p></div> : <span className="text-xs text-gray-500">No pending change</span>}</TableCell><TableCell className="text-right"><Button type="button" onClick={() => void schedulePriceChange(product)} disabled={savingProductId === product._id} className="bg-[#86efac] text-black hover:bg-[#86efac]/90">{savingProductId === product._id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}Save</Button></TableCell></TableRow>
+                  return <TableRow key={product._id} className="border-[#333] hover:bg-[#1A1A1A]/70"><TableCell><div className="font-medium text-white">{product.name}</div><div className="mt-0.5 text-xs text-gray-500">{product.sku || "No SKU"}</div></TableCell><TableCell className="font-medium text-white">{formatPrice(product.retailPrice)}</TableCell><TableCell className="font-medium text-white">{formatPrice(product.wholesalePrice)}</TableCell><TableCell><Input type="number" min="0" step="0.01" value={draft.retailPrice} onChange={(event) => updateDraft(product._id, { retailPrice: event.target.value })} placeholder="Enter customer price" aria-label={`New customer price for ${product.name}`} className="border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-600" /></TableCell><TableCell><Input type="number" min="0" step="0.01" value={draft.wholesalePrice} onChange={(event) => updateDraft(product._id, { wholesalePrice: event.target.value })} placeholder="Enter wholesale price" aria-label={`New wholesale price for ${product.name}`} className="border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-600" /></TableCell><TableCell><div className="space-y-2"><Select value={draft.priceChangeMode} onValueChange={(value) => updateDraft(product._id, { priceChangeMode: value as RowDraft["priceChangeMode"] })}><SelectTrigger className="border-[#333] bg-[#0D0D0D] text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="immediate">Immediately</SelectItem><SelectItem value="schedule_24h">After 24 hours</SelectItem><SelectItem value="schedule_48h">After 48 hours</SelectItem><SelectItem value="custom">Custom date (8:00 AM IST)</SelectItem></SelectContent></Select>{draft.priceChangeMode === "custom" ? <Input type="date" value={draft.customEffectiveAt} onChange={(event) => updateDraft(product._id, { customEffectiveAt: event.target.value })} className="border-[#333] bg-[#0D0D0D] text-white" aria-label={`Custom date at 8:00 AM IST for ${product.name}`} /> : null}</div></TableCell><TableCell><div className="space-y-2"><p className="text-sm font-medium text-white">{Number(product.stock || 0).toLocaleString("en-IN")} units</p><div className="flex gap-1"><Input type="number" min="1" step="1" inputMode="numeric" value={stockDraft} onChange={(event) => updateStockDraft(product._id, event.target.value)} placeholder="Qty to add" aria-label={`Add stock for ${product.name}`} className="min-w-0 border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-600" /><Button type="button" onClick={() => void addStock(product)} disabled={savingStockProductId === product._id} className="shrink-0 bg-[#86efac] px-3 text-black hover:bg-[#86efac]/90">{savingStockProductId === product._id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}</Button></div></div></TableCell><TableCell><div className="space-y-3">{hasPending ? <div className="space-y-1 text-xs"><Badge className="bg-amber-500/15 text-amber-300 hover:bg-amber-500/15">Pending</Badge>{product.pendingRetailPrice !== null && product.pendingRetailPrice !== undefined ? <p className="text-gray-300">Customer: {formatPrice(product.pendingRetailPrice)}</p> : null}{product.pendingWholesalePrice !== null && product.pendingWholesalePrice !== undefined ? <p className="text-gray-300">Wholesale: {formatPrice(product.pendingWholesalePrice)}</p> : null}<p className="text-gray-500">{formatIst(product.priceChangeEffectiveAt)}</p></div> : <span className="text-xs text-gray-500">No pending change</span>}<Button type="button" onClick={() => void schedulePriceChange(product)} disabled={savingProductId === product._id} className="w-full bg-[#86efac] text-black hover:bg-[#86efac]/90">{savingProductId === product._id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}Save price</Button></div></TableCell></TableRow>
                 })}
               </TableBody>
             </Table>
