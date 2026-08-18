@@ -29,7 +29,7 @@ export default function DeleteAccountPage() {
                         <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
                             <h2 className="text-2xl font-bold text-text-primary">What happens after completion</h2>
                             <p>Account access is revoked. Profile details, saved addresses, uploaded account media, carts, device tokens, notification history, and negotiations are deleted or anonymized.</p>
-                            <p>Orders and payment records may be retained in restricted records when required for tax, payment, fraud-prevention, dispute, warranty, or other legal obligations. Backup copies are scheduled to expire within 90 days after deletion is completed.</p>
+                            <p>Orders and payment records may be retained in restricted records when required for tax, payment, fraud-prevention, dispute, warranty, or other legal obligations. Backup handling follows our applicable operational and legal retention requirements.</p>
                             <p>For questions about this process, email <a className="font-semibold text-[#1b7a3b] underline" href="mailto:ashirvadmarketing62@gmail.com">ashirvadmarketing62@gmail.com</a>.</p>
                         </div>
                     </div>

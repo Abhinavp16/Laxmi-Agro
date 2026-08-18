@@ -12,7 +12,6 @@ const { deleteDirectory } = require('../config/storage');
 const { BadRequestError, ConflictError, NotFoundError } = require('../utils/errors');
 
 const REQUEST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-const BACKUP_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
 const ACTIVE_STATUSES = ['pending', 'in_review'];
 
 const dateAfter = (milliseconds) => new Date(Date.now() + milliseconds);
@@ -72,7 +71,6 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
   const userId = user._id;
   const originalEmail = user.email;
   const completedAt = new Date();
-  const backupExpiryAt = new Date(completedAt.getTime() + BACKUP_EXPIRY_MS);
   const anonymizedIdentifier = String(userId);
 
   // Delete data that is not needed for financial, tax, fraud, or security records.
@@ -84,7 +82,7 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
     RefreshToken.updateMany({ userId }, { isRevoked: true }),
     originalEmail ? MagicLinkToken.deleteMany({ email: originalEmail }) : Promise.resolve(),
     deleteDirectory(`avatars/${anonymizedIdentifier}`),
-    deleteDirectory(`proofs/${anonymizedIdentifier}`),
+    deleteDirectory(`private/proofs/${anonymizedIdentifier}`),
   ]);
 
   // Orders and payments are intentionally retained as restricted financial records.
@@ -100,6 +98,10 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
   user.phoneVerified = false;
   user.marketingConsent = false;
   user.consentTimestamp = null;
+  user.termsAcceptedAt = null;
+  user.termsVersion = null;
+  user.privacyPolicyAcceptedAt = null;
+  user.privacyPolicyVersion = null;
   user.businessInfo = {
     businessName: null,
     gstNumber: null,
@@ -122,7 +124,6 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
 
   request.status = 'completed';
   request.completedAt = completedAt;
-  request.backupExpiryAt = backupExpiryAt;
   request.processedBy = adminUserId;
   request.staffNote = staffNote || null;
   request.events.push({
@@ -137,7 +138,6 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
 
 module.exports = {
   ACTIVE_STATUSES,
-  BACKUP_EXPIRY_MS,
   createRequestForUser,
   completeRequest,
   findActiveRequest,

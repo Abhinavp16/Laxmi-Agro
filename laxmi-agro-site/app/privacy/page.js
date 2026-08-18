@@ -37,7 +37,7 @@ export default function PrivacyPage() {
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-text-primary mb-4">5. Account Deletion and Retention</h2>
-                            <p>You can request deletion of your Laxmi Agro account in the app or at <a className="font-semibold text-[#1b7a3b] underline" href="/delete-account">laxmiagroenterprises.com/delete-account</a>. After staff verifies the request, we target completion within 30 days. Direct account data is deleted or anonymized, while restricted financial, tax, payment, fraud-prevention, dispute, warranty, and other legally required records may be retained for the applicable retention period. Backup copies are scheduled to expire within 90 days after deletion is completed.</p>
+                            <p>You can request deletion of your Laxmi Agro account in the app or at <a className="font-semibold text-[#1b7a3b] underline" href="/delete-account">laxmiagroenterprises.com/delete-account</a>. After staff verifies the request, we target completion within 30 days. Direct account data is deleted or anonymized, while restricted financial, tax, payment, fraud-prevention, dispute, warranty, and other legally required records may be retained for the applicable retention period. Backup handling follows our applicable operational and legal retention requirements.</p>
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-text-primary mb-4">6. Contact</h2>

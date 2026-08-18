@@ -19,7 +19,6 @@ type DeletionRequest = {
   requestedAt: string
   dueAt: string
   completedAt?: string | null
-  backupExpiryAt?: string | null
   staffNote?: string | null
   identityVerification?: {
     verifiedAt?: string | null
@@ -155,7 +154,7 @@ export default function AccountDeletionRequestsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Account Deletion Requests</h1>
           <p className="mt-1 text-sm text-gray-400">
-            Process verified account-deletion requests within 30 days. Completion revokes access and records the 90-day backup-expiry date.
+            Process verified account-deletion requests within 30 days. Completion revokes access and removes or anonymizes direct account data.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -205,7 +204,6 @@ export default function AccountDeletionRequestsPage() {
                     </div>
                     <div className="text-left md:text-right">
                       <p className={`text-xs font-semibold ${isOverdue ? "text-red-300" : "text-gray-300"}`}>{isOverdue ? "Overdue" : "Due"}: {formatDate(request.dueAt)}</p>
-                      {request.backupExpiryAt ? <p className="mt-1 text-xs text-gray-500">Backup expiry: {formatDate(request.backupExpiryAt)}</p> : null}
                     </div>
                     <Badge variant="outline" className={statusClass[request.status]}>{statusLabel[request.status]}</Badge>
                   </button>

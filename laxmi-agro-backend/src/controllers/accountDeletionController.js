@@ -9,7 +9,6 @@ const serializeRequest = (request) => ({
   requestedAt: request.requestedAt,
   dueAt: request.dueAt,
   completedAt: request.completedAt,
-  backupExpiryAt: request.backupExpiryAt,
   staffNote: request.status === 'rejected' ? request.staffNote : null,
 });
 

@@ -53,10 +53,6 @@ const accountDeletionRequestSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
-  backupExpiryAt: {
-    type: Date,
-    default: null,
-  },
   processedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

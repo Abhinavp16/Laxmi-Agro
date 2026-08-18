@@ -46,7 +46,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Request account deletion?'),
         content: const Text(
-          'We will process your request within 30 days. Direct account data, uploaded business documents, saved addresses, carts, device tokens, and notifications will be removed or anonymized. Financial records may be retained where required for tax, payment, fraud-prevention, dispute, or warranty obligations. Backup copies expire within 90 days after completion.',
+          'We will process your request within 30 days. Direct account data, uploaded business documents, saved addresses, carts, device tokens, and notifications will be removed or anonymized. Financial records may be retained where required for tax, payment, fraud-prevention, dispute, or warranty obligations. Backup handling follows our applicable operational and legal retention requirements.',
         ),
         actions: [
           TextButton(
@@ -158,15 +158,11 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                         ? 'Under review'
                         : 'Request received',
                     dueDate: _formatDate(_request?['dueAt']),
-                    backupExpiryDate: _request?['backupExpiryAt'] == null
-                        ? null
-                        : _formatDate(_request?['backupExpiryAt']),
                   )
                 else if (status == 'completed')
                   _RequestStatusCard(
                     status: 'Completed',
                     dueDate: _formatDate(_request?['completedAt']),
-                    backupExpiryDate: _formatDate(_request?['backupExpiryAt']),
                   )
                 else ...[
                   Text(
@@ -236,7 +232,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Your account access is revoked. Profile details, saved addresses, uploaded account media, carts, notification tokens, notification history, and negotiations are deleted or anonymized. Backup copies are scheduled to expire within 90 days. Orders and payment records are kept in restricted records for the applicable legal retention period.',
+                  'Your account access is revoked. Profile details, saved addresses, uploaded account media, carts, notification tokens, notification history, and negotiations are deleted or anonymized. Orders and payment records are kept in restricted records for the applicable legal retention period. Backup handling follows our applicable operational and legal retention requirements.',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     height: 1.55,
@@ -308,13 +304,8 @@ class _InfoCard extends StatelessWidget {
 class _RequestStatusCard extends StatelessWidget {
   final String status;
   final String dueDate;
-  final String? backupExpiryDate;
 
-  const _RequestStatusCard({
-    required this.status,
-    required this.dueDate,
-    this.backupExpiryDate,
-  });
+  const _RequestStatusCard({required this.status, required this.dueDate});
 
   @override
   Widget build(BuildContext context) {
@@ -360,17 +351,6 @@ class _RequestStatusCard extends StatelessWidget {
               color: const Color(0xFF475569),
             ),
           ),
-          if (backupExpiryDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Backup expiry: $backupExpiryDate',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: const Color(0xFF475569),
-                ),
-              ),
-            ),
         ],
       ),
     );

@@ -1,38 +1,26 @@
 # Laxmi Agro data retention, backup, and deletion policy
 
-**Status:** Operational policy for implementation. Business and legal owners must approve it before the public policy and App Store / Google Play declarations are published.
+**Status:** Internal implementation guidance. The business, finance, infrastructure, and legal owners must approve a complete retention schedule before detailed public retention commitments or store privacy declarations are published.
 
-**Effective only after approval:** The backend deletion workflow is designed to enforce the actions below. Infrastructure owners must separately configure backups and storage lifecycle rules to meet the stated backup-expiry limit.
+## Current deletion workflow
 
-## Deletion request commitment
+- A user may request account deletion in the app or on the public website.
+- The request receives a due date 30 calendar days after submission.
+- Staff must verify website-submitted requests before completing them.
+- Completion revokes refresh tokens, disables the account, removes or anonymizes direct account data, and removes associated avatar and business-proof files.
+- Orders and payment records remain restricted because they may be needed for financial, tax, payment, fraud-prevention, dispute, warranty, or other legal obligations.
 
-- A user may request account deletion in the app or at the public website deletion page.
-- The request is recorded with a due date **30 calendar days** after submission.
-- Staff verify public website requests against the account holder before processing them.
-- A pending request may be cancelled by the authenticated user before staff mark it in review.
-- Completion immediately revokes refresh tokens and disables the account. The user can no longer sign in or access account data.
-- A staff audit record stores request status, due date, action history, processor, completion time, and backup-expiry date.
+## Current retention position
 
-## Retention schedule
+The repository does not implement or verify a backup lifecycle or backup-purge job. It must not promise a specific backup expiry period. Public policy text therefore states only that backup handling follows applicable operational and legal retention requirements.
 
-| Data category | Purpose | Retention / deletion action | Owner |
-| --- | --- | --- | --- |
-| Account profile, addresses, avatar, business profile, GST/business proofs, shop location | Account and wholesale-service delivery | Remove or anonymize within the 30-day deletion process; delete associated avatar and proof files | Product / operations |
-| Cart, device tokens, notification history, negotiated quotes | Personalised app service and communications | Delete when the deletion request is completed | Product / operations |
-| Authentication refresh tokens and active access | Account security | Revoke all refresh tokens and disable the account at completion; expired tokens are automatically purged | Engineering |
-| Orders, invoices, payment proofs, payment transaction references, shipping records | Financial, tax, fraud-prevention, dispute, and warranty obligations | Keep in restricted finance/operations records for **8 financial years after the financial year of the transaction**, unless a longer legal hold applies. Remove from normal app access when the account is deleted. | Finance / operations |
-| Product-view events and non-financial operational logs | Service performance and security | Keep no longer than **90 days**, then delete or aggregate so they no longer identify a user | Engineering |
-| Deletion request audit record | Demonstrate privacy-rights handling and prevent repeated/abusive requests | Keep for **8 financial years** with access limited to authorised staff | Compliance / operations |
-| Encrypted backups | Service recovery | Deleted/anonymized data must age out of backups within **90 days** of account-deletion completion. Restores must reapply completed-deletion records before users regain access. | Infrastructure |
+## Required approval before more specific claims
 
-## Backup controls
+Before setting any exact retention period or completing Apple/Google privacy declarations, the responsible owners must document and approve:
 
-1. Backups that can include customer data must be encrypted and accessible only to authorised infrastructure personnel.
-2. Every completed deletion request records `backupExpiryAt` as 90 days after completion.
-3. Infrastructure owners must configure a lifecycle rule or documented recurring job to purge backup versions no later than that date.
-4. A backup restore must first apply completed deletion requests whose `backupExpiryAt` has not passed, preventing a restored account from becoming usable again.
-5. Backup expiry evidence (lifecycle configuration, job output, or provider audit logs) must be retained with the deletion request audit record.
+1. The legal entity/controller and privacy contact details.
+2. The applicable retention periods for invoices, tax, orders, payments, fraud prevention, disputes, and warranties.
+3. Each storage and backup provider, its data location, lifecycle configuration, restore process, and deletion evidence.
+4. The actual timing and process for deleting, purging, or reapplying completed deletion requests to restored data.
 
-## Required approval and verification
-
-Before release, the business owner, finance owner, infrastructure owner, and legal/compliance reviewer must confirm that the schedule is accurate for the actual GST, invoice, payment-provider, storage-provider, and backup arrangements. Do not publish a conflicting retention statement or complete Apple/Google privacy forms until that review is complete.
+Until that evidence exists, do not add a `backupExpiryAt` field, a fixed backup-deletion deadline, or a public claim that a specific backup purge process operates.

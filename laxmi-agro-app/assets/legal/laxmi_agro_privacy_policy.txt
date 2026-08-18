@@ -28,4 +28,4 @@ You can request deletion of your Laxmi Agro account from Account & Privacy in th
 
 After staff verifies the request, we target completion within 30 days. Direct account data is deleted or anonymized, including profile details, saved addresses, uploaded account media, carts, device tokens, notification history, and negotiations.
 
-Orders and payment records may be retained in restricted records when required for tax, payment, fraud-prevention, dispute, warranty, or other legal obligations. Backup copies are scheduled to expire within 90 days after deletion is completed.
+Orders and payment records may be retained in restricted records when required for tax, payment, fraud-prevention, dispute, warranty, or other legal obligations. Backup handling follows our applicable operational and legal retention requirements.
