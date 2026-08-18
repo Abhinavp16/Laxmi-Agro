@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../screens/splash/splash_screen.dart';
-import '../../screens/auth/register_screen.dart';
-import '../../screens/auth/apple_signup_screen.dart';
 import '../../screens/auth/auth_screen.dart';
 import '../../screens/home/marketplace_home_screen.dart';
 import '../../screens/home/featured_products_screen.dart';
@@ -29,7 +27,6 @@ import '../../screens/profile/about_laxmi_agro_screen.dart';
 import '../../screens/profile/legal_policy_screen.dart';
 import '../../screens/profile/account_privacy_screen.dart';
 import '../../screens/onboarding/permissions_onboarding_screen.dart';
-import '../../screens/referral/referral_screen.dart';
 import '../config/feature_flags.dart';
 
 final appRouter = GoRouter(
@@ -58,32 +55,6 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/signup',
-      pageBuilder: (context, state) => CustomTransitionPage(
-        key: state.pageKey,
-        child: const AppleSignupScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position:
-                Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
-            child: child,
-          );
-        },
-      ),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    GoRoute(
       path: '/home',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
@@ -109,7 +80,8 @@ final appRouter = GoRouter(
       path: '/brand/:id',
       builder: (context, state) => CategoriesScreen(
         brandId: state.pathParameters['id'],
-        brandName: state.uri.queryParameters['name'] ?? state.pathParameters['id'],
+        brandName:
+            state.uri.queryParameters['name'] ?? state.pathParameters['id'],
       ),
     ),
     GoRoute(
@@ -198,10 +170,6 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/edit-profile',
       builder: (context, state) => const EditProfileScreen(),
-    ),
-    GoRoute(
-      path: '/referral',
-      builder: (context, state) => const ReferralScreen(),
     ),
     GoRoute(
       path: '/addresses',

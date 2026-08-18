@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/providers/locale_provider.dart';
-import '../../core/providers/auth_provider.dart';
-import '../../core/config/feature_flags.dart';
 
+import '../../core/models/user_model.dart';
+import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -14,11 +13,17 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(localeProvider.notifier).translate;
+    final user = ref.watch(authProvider).user;
+    final profileName = user?.name.trim().isNotEmpty == true
+        ? user!.name.trim()
+        : 'Account';
+    final status = _accountStatus(user);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           onPressed: () => context.pop(),
@@ -27,9 +32,10 @@ class ProfileScreen extends ConsumerWidget {
             color: AppColors.textPrimary,
             size: 24,
           ),
+          tooltip: 'Back',
         ),
         title: Text(
-          t('My Account'),
+          'My Account',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -39,228 +45,140 @@ class ProfileScreen extends ConsumerWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => context.push('/edit-profile'),
             icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedSettings01,
+              icon: HugeIcons.strokeRoundedPencilEdit01,
               color: AppColors.textPrimary,
-              size: 24,
+              size: 22,
             ),
+            tooltip: 'Edit profile',
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Profile Header
             Container(
+              width: double.infinity,
               color: Colors.white,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
               child: Column(
                 children: [
-                  // Avatar
-                  Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.1),
-                          border: Border.all(
-                            color: AppColors.primary,
-                            width: 3,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'JD',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const HugeIcon(
-                            icon: HugeIcons.strokeRoundedCheckmarkCircle01,
-                            size: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _Avatar(user: user, name: profileName),
                   const SizedBox(height: 16),
                   Text(
-                    'John Doe',
+                    profileName,
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          t('VERIFIED WHOLESALER'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                  if ((user?.phone?.trim().isNotEmpty ?? false) ||
+                      (user?.email.trim().isNotEmpty ?? false)) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      user?.phone?.trim().isNotEmpty == true
+                          ? user!.phone!.trim()
+                          : user?.email.trim() ?? '',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Stats Row
-                  Row(
-                    children: [
-                      _buildStatCard('12', t('Negotiations'), t),
-                      const SizedBox(width: 12),
-                      _buildStatCard('8', t('Active Deals'), t),
-                      const SizedBox(width: 12),
-                      _buildStatCard('2.5K', t('Points'), t),
-                    ],
-                  ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  _StatusBadge(status: status),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-
-            // Business Management Section
-            Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      t('BUSINESS MANAGEMENT'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 1,
-                      ),
-                    ),
+            _Section(
+              title: 'ACCOUNT',
+              children: [
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedUserEdit01,
+                  title: 'Edit Profile',
+                  subtitle: 'Update your account information',
+                  onTap: () => context.push('/edit-profile'),
+                ),
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedLocation01,
+                  title: 'Addresses',
+                  subtitle: 'Manage delivery addresses',
+                  onTap: () => context.push('/addresses'),
+                ),
+                if (user?.businessInfo?.verified != true)
+                  _MenuItem(
+                    icon: HugeIcons.strokeRoundedStore01,
+                    title: _wholesalerActionTitle(user),
+                    subtitle: _wholesalerActionSubtitle(user),
+                    onTap: () => context.push('/convert-to-wholesaler'),
                   ),
-                  _buildMenuItem(
+              ],
+            ),
+            const SizedBox(height: 8),
+            _Section(
+              title: 'ACTIVITY',
+              children: [
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedShoppingBag01,
+                  title: 'Previous Orders',
+                  subtitle: 'View order history and status',
+                  onTap: () => context.push('/previous-orders'),
+                ),
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedHandGrip,
+                  title: 'Negotiations',
+                  subtitle: 'View your price negotiations',
+                  onTap: () => context.push('/negotiations'),
+                ),
+                if (user?.isWholesaler == true)
+                  _MenuItem(
                     icon: HugeIcons.strokeRoundedPackage,
-                    title: t('My Products'),
-                    subtitle: t('24 items listed'),
+                    title: 'Add Product',
+                    subtitle: 'Create a product listing',
                     onTap: () => context.push('/add-product'),
                   ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedShoppingBag01,
-                    title: t('Previous Orders'),
-                    subtitle: t('View all your orders'),
-                    onTap: () => context.push('/previous-orders'),
-                  ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedHandGrip,
-                    title: t('Negotiations'),
-                    subtitle: t('5 active requests'),
-                    onTap: () => context.push('/negotiations'),
-                  ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedAnalytics01,
-                    title: t('Analytics'),
-                    subtitle: t('View performance'),
-                    onTap: () {},
-                  ),
-                ],
-              ),
+              ],
             ),
             const SizedBox(height: 8),
-
-            // Support Section
-            Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      t('SUPPORT'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedHelpCircle,
-                    title: t('Help & Support'),
-                    subtitle: t('FAQs, contact us'),
-                    onTap: () => context.push('/help'),
-                  ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedUserGroup,
-                    title: t('Referral Program'),
-                    subtitle: t('Invite friends & earn rewards'),
-                    onTap: () => context.push('/referral'),
-                  ),
-                  if (!kHideOfferCouponUi)
-                    _buildMenuItem(
-                      icon: HugeIcons.strokeRoundedTicket01,
-                      title: t('My Coupon & Offer Code'),
-                      subtitle: t('View and redeem your offers'),
-                      onTap: () {},
-                    ),
-                  _buildMenuItem(
-                    icon: HugeIcons.strokeRoundedFile01,
-                    title: t('Terms & Policies'),
-                    subtitle: t('Privacy, terms of use'),
-                    onTap: () {},
-                  ),
-                ],
-              ),
+            _Section(
+              title: 'SUPPORT & LEGAL',
+              children: [
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedHelpCircle,
+                  title: 'Help & Support',
+                  subtitle: 'FAQs and contact information',
+                  onTap: () => context.push('/help'),
+                ),
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedShield01,
+                  title: 'Privacy Policy',
+                  subtitle: 'How we collect and use data',
+                  onTap: () => context.push('/legal/privacy-policy'),
+                ),
+                _MenuItem(
+                  icon: HugeIcons.strokeRoundedFile01,
+                  title: 'Terms & Conditions',
+                  subtitle: 'Terms of use',
+                  onTap: () => context.push('/legal/terms-conditions'),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-
-            // Logout
             Container(
               color: Colors.white,
-              child: _buildMenuItem(
+              child: _MenuItem(
                 icon: HugeIcons.strokeRoundedLogout01,
-                title: t('Sign Out'),
-                subtitle: t('Log out of your account'),
+                title: 'Sign Out',
+                subtitle: 'Log out of your account',
                 iconColor: AppColors.error,
                 titleColor: AppColors.error,
                 onTap: () async {
                   await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
+                  if (context.mounted) context.go('/login');
                 },
               ),
             ),
@@ -271,47 +189,212 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(String value, String label, String Function(String) t) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.gray50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.gray100),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+  _ProfileStatus _accountStatus(UserModel? user) {
+    final businessInfo = user?.businessInfo;
+    if (user?.isWholesaler == true && businessInfo?.verified == true) {
+      return const _ProfileStatus(
+        label: 'Verified wholesaler',
+        color: AppColors.success,
+        icon: HugeIcons.strokeRoundedCheckmarkCircle01,
+      );
+    }
+    if (businessInfo?.status == 'pending') {
+      return const _ProfileStatus(
+        label: 'Wholesaler application pending',
+        color: Color(0xFFD97706),
+        icon: HugeIcons.strokeRoundedTime02,
+      );
+    }
+    if (businessInfo?.status == 'rejected') {
+      return const _ProfileStatus(
+        label: 'Wholesaler application needs attention',
+        color: AppColors.error,
+        icon: HugeIcons.strokeRoundedAlert02,
+      );
+    }
+    if (user?.isWholesaler == true) {
+      return const _ProfileStatus(
+        label: 'Wholesaler verification required',
+        color: Color(0xFFD97706),
+        icon: HugeIcons.strokeRoundedAlert02,
+      );
+    }
+    return const _ProfileStatus(
+      label: 'Customer account',
+      color: AppColors.primary,
+      icon: HugeIcons.strokeRoundedUser,
+    );
+  }
+
+  String _wholesalerActionTitle(UserModel? user) {
+    if (user?.businessInfo?.status == 'pending') {
+      return 'Wholesaler Application';
+    }
+    return user?.isWholesaler == true
+        ? 'Complete Wholesaler Verification'
+        : 'Become a Wholesaler';
+  }
+
+  String _wholesalerActionSubtitle(UserModel? user) {
+    if (user?.businessInfo?.status == 'pending') {
+      return 'View your application status';
+    }
+    return user?.isWholesaler == true
+        ? 'Submit business proof for admin review'
+        : 'Submit business details for verification';
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.user, required this.name});
+
+  final UserModel? user;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = user?.avatar?.trim() ?? '';
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.primary.withValues(alpha: 0.1),
+        border: Border.all(color: AppColors.primary, width: 3),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: avatarUrl.isNotEmpty
+          ? Image.network(
+              avatarUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _Initials(name: name),
+            )
+          : _Initials(name: name),
+    );
+  }
+}
+
+class _Initials extends StatelessWidget {
+  const _Initials({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty);
+    final initials = parts.take(2).map((part) => part[0]).join().toUpperCase();
+    return Center(
+      child: Text(
+        initials.isEmpty ? 'A' : initials,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: AppColors.primary,
         ),
       ),
     );
   }
+}
 
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? iconColor,
-    Color? titleColor,
-  }) {
+class _ProfileStatus {
+  const _ProfileStatus({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final _ProfileStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: status.color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HugeIcon(icon: status.icon, size: 15, color: status.color),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: status.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.iconColor,
+    this.titleColor,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? titleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? AppColors.primary;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -321,14 +404,10 @@ class ProfileScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (iconColor ?? AppColors.primary).withOpacity(0.1),
+                color: effectiveIconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: iconColor ?? AppColors.primary,
-                size: 22,
-              ),
+              child: Icon(icon, color: effectiveIconColor, size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -343,6 +422,7 @@ class ProfileScreen extends ConsumerWidget {
                       color: titleColor ?? AppColors.textPrimary,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: GoogleFonts.plusJakartaSans(
@@ -353,7 +433,7 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            HugeIcon(
+            const HugeIcon(
               icon: HugeIcons.strokeRoundedArrowRight01,
               color: AppColors.gray400,
               size: 20,

@@ -1,341 +1,276 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class NegotiationGuideScreen extends StatelessWidget {
   const NegotiationGuideScreen({super.key});
 
-  // Colors from design
-  static const Color primary = Color(0xFF46ec13);
-  static const Color backgroundLight = Color(0xFFf6f8f6);
+  static const Color primary = Color(0xFF2D6A4F);
+  static const Color backgroundLight = Color(0xFFF6F8F6);
   static const Color backgroundDark = Color(0xFF142210);
-  static const Color textDark = Color(0xFF111b0d);
-  static const Color gray200 = Color(0xFFe5e7eb);
-  static const Color gray500 = Color(0xFF6b7280);
-  static const Color gray600 = Color(0xFF4b5563);
+  static const Color textDark = Color(0xFF111B0D);
+  static const Color gray200 = Color(0xFFE5E7EB);
+  static const Color gray600 = Color(0xFF4B5563);
   static const Color gray700 = Color(0xFF374151);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundLight,
-      body: Column(
-        children: [
-          // TopAppBar
-          Container(
-            color: backgroundLight,
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: gray200)),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Icon(Icons.arrow_back_ios, color: textDark),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'Negotiation Guide',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: textDark,
-                          letterSpacing: -0.015 * 18,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Icon(Icons.share, color: textDark),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      appBar: AppBar(
+        backgroundColor: backgroundLight,
+        surfaceTintColor: backgroundLight,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back_ios_new, color: textDark),
+          tooltip: 'Back',
+        ),
+        title: Text(
+          'Negotiation Guide',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textDark,
           ),
-
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: backgroundDark,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Image
-                  Stack(
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDWM7Zn7xn1Zptt14QxzzKlFp5IsmU4htIJ72jt3R9uEysAUCkZqa1bvZ9sZCo81e8SVmUCa_G_sJvf5-cVtWxL36ikqXAgXyLuLF39BIy3RGO68PozXiai7KyfxhIa5dk8mLa670KTWLTzFXFxruPjngfoabWBLaOxW4VSngJyCVx7EJWUQq2Lc05MjSO_ng3E_gxO1OWZJvcqrW4tI0aXnS1abRSxta99O17IpCqPfKuw5Ew6PFZ0u_3JTLhoS0t-SZAlx606Gzew',
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(height: 200, color: gray200),
-                        errorWidget: (context, url, error) => Container(height: 200, color: gray200),
-                      ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                backgroundDark.withOpacity(0.8),
-                              ],
-                              stops: const [0.4, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 16,
-                        bottom: 16,
-                        child: Text(
-                          'Bulk Pricing Guide',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.handshake_outlined,
+                    color: Colors.white,
+                    size: 40,
                   ),
-
-                  // Headline
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
-                    child: Text(
-                      'How Price Negotiation Works',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: textDark,
-                        letterSpacing: -0.5,
-                      ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Bulk Pricing Guide',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
-
-                  // Description
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Learn how to request and review bulk-price offers for agricultural equipment.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: Colors.white.withValues(alpha: 0.84),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'How price negotiation works',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Use negotiations for bulk requirements when you want to discuss quantity, price, and delivery expectations with the seller.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                height: 1.55,
+                color: gray600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _GuideStep(
+              number: '1',
+              icon: Icons.request_quote_outlined,
+              title: 'Request a bulk price',
+              description:
+                  'Open an eligible product and submit your quantity, target price, and delivery requirements.',
+            ),
+            _GuideStep(
+              number: '2',
+              icon: Icons.handshake_outlined,
+              title: 'Review the seller response',
+              description:
+                  'The seller may accept your request or send a counter-offer. Check the app for updates before confirming an order.',
+            ),
+            _GuideStep(
+              number: '3',
+              icon: Icons.receipt_long_outlined,
+              title: 'Send your order receipt',
+              description:
+                  'After your order is created, send its receipt to Laxmi Agro on WhatsApp so the team can coordinate the next step.',
+            ),
+            _GuideStep(
+              number: '4',
+              icon: Icons.verified_user_outlined,
+              title: 'Pay through the Laxmi Agro team',
+              description:
+                  'Complete payment at the shop or using QR or bank details provided by the Laxmi Agro team. Your order status is updated after admin verification.',
+              isLast: true,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: primary.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline, color: primary),
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      'Our wholesale platform allows you to negotiate directly with manufacturers for bulk agricultural equipment orders.',
+                      'Include the quantity and your preferred delivery timeline in your request so the seller can provide a useful response.',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: gray600,
+                        fontSize: 13,
                         height: 1.5,
+                        color: gray700,
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton.icon(
+                onPressed: () => context.go('/negotiations'),
+                icon: const Icon(Icons.handshake_outlined),
+                label: const Text('View Negotiations'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/help'),
+                icon: const Icon(Icons.support_agent_outlined),
+                label: const Text('Contact Support'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: textDark,
+                  side: const BorderSide(color: gray200),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                  // Section Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 32, 16, 8),
-                    child: Text(
-                      'The 3-Step Process',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textDark,
-                        letterSpacing: -0.015 * 18,
-                      ),
+class _GuideStep extends StatelessWidget {
+  const _GuideStep({
+    required this.number,
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.isLast = false,
+  });
+
+  final String number;
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 42,
+            child: Column(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: NegotiationGuideScreen.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    number,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-
-                  // Timeline
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        _buildTimelineStep(
-                          icon: Icons.request_quote,
-                          title: '1. Request Bulk Price',
-                          description: 'Go to any tractor or machinery listing and tap "Request Quote". Specify your quantity (min. 5 units) and target price.',
-                          showTopLine: false,
-                          showBottomLine: true,
-                        ),
-                        _buildTimelineStep(
-                          icon: Icons.handshake,
-                          title: '2. Review Counter-Offer',
-                          description: 'The seller will review and either accept or send a counter-offer. You\'ll receive a push notification for every update.',
-                          showTopLine: true,
-                          showBottomLine: true,
-                        ),
-                        _buildTimelineStep(
-                          icon: Icons.payments,
-                          title: '3. Complete Secure Payment',
-                          description: 'Once price is agreed, an invoice is generated. Pay via secure wire transfer or bank guarantee to unlock logistics tracking.',
-                          showTopLine: true,
-                          showBottomLine: false,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Expert Tips Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      'Expert Tips',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textDark,
-                        letterSpacing: -0.015 * 18,
-                      ),
-                    ),
-                  ),
-
-                  // Tip Card
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                if (!isLast)
+                  Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primary.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.lightbulb, color: primary),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Sellers are 40% more likely to accept offers if you include your desired delivery timeline in the message field.',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                color: gray700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      width: 2,
+                      color: NegotiationGuideScreen.gray200,
                     ),
                   ),
-
-                  // Feedback Section
-                  Container(
-                    margin: const EdgeInsets.only(top: 32),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: gray200)),
-                    ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: NegotiationGuideScreen.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Was this helpful?',
+                          title,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: textDark,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: NegotiationGuideScreen.textDark,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () {},
-                              icon: Icon(Icons.thumb_up, color: gray500, size: 20),
-                              label: Text(
-                                'Yes',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: textDark,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                                side: BorderSide(color: gray200),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            OutlinedButton.icon(
-                              onPressed: () {},
-                              icon: Icon(Icons.thumb_down, color: gray500, size: 20),
-                              label: Text(
-                                'No',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: textDark,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                                side: BorderSide(color: gray200),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // CTA Buttons
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primary,
-                              foregroundColor: backgroundDark,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              'Start a New Negotiation',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: Icon(Icons.support_agent, color: textDark),
-                            label: Text(
-                              'Contact Support',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: textDark,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: gray200),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                        const SizedBox(height: 5),
+                        Text(
+                          description,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            height: 1.48,
+                            color: NegotiationGuideScreen.gray600,
                           ),
                         ),
                       ],
@@ -347,64 +282,6 @@ class NegotiationGuideScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTimelineStep({
-    required IconData icon,
-    required String title,
-    required String description,
-    required bool showTopLine,
-    required bool showBottomLine,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Timeline indicator
-        SizedBox(
-          width: 40,
-          child: Column(
-            children: [
-              if (showTopLine)
-                Container(width: 2, height: 8, color: primary.withOpacity(0.3)),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Icon(icon, color: primary),
-              ),
-              if (showBottomLine)
-                Container(width: 2, height: 48, color: primary.withOpacity(0.3)),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Content
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: textDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: gray600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

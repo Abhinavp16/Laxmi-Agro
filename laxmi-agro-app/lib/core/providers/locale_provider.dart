@@ -70,10 +70,6 @@ class LocaleNotifier extends StateNotifier<String> {
     'Business Management': {'Hindi': 'व्यवसाय प्रबंधन'},
     'Support': {'Hindi': 'सहयोग'},
     'FAQs, contact us': {'Hindi': 'सामान्य प्रश्न, हमसे संपर्क करें'},
-    'Referral Program': {'Hindi': 'रेफरल कार्यक्रम'},
-    'Invite friends & earn rewards': {
-      'Hindi': 'दोस्तों को आमंत्रित करें और पुरस्कार जीतें',
-    },
     'Terms & Policies': {'Hindi': 'नियम और नीतियां'},
     'Privacy, terms of use': {'Hindi': 'गोपनीयता, उपयोग की शर्तें'},
     'Sign Out': {'Hindi': 'साइन आउट'},
@@ -284,7 +280,6 @@ class LocaleNotifier extends StateNotifier<String> {
       'Hindi':
           'वीपि पर प्रीमियम बीजों और आधुनिक सिंचाई उपकरणों की विविधता प्रभावशाली है। वाकई आधुनिक खेती के लिए यह एक ही स्थान पर सब कुछ है।',
     },
-    'REFERRAL PROGRAM': {'Hindi': 'रेफरल कार्यक्रम'},
     'My Coupon & Offer Code': {'Hindi': 'मेरे कूपन और ऑफर कोड'},
     'View and redeem your offers': {'Hindi': 'अपने ऑफर देखें और रिडीम करें'},
   };
