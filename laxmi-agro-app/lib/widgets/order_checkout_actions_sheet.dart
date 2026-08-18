@@ -1,9 +1,13 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/services/api_client.dart';
 import '../core/services/order_export_service.dart';
+import '../core/services/whatsapp_checkout_service.dart';
 import '../core/theme/app_theme.dart';
 
 class OrderCheckoutActionsSheet {
@@ -14,13 +18,12 @@ class OrderCheckoutActionsSheet {
   }) async {
     if (kIsWeb) {
       if (!context.mounted) return;
-
       await showFailure(
         context: context,
         apiClient: apiClient,
         responseData: responseData,
         failureMessage:
-            'Chrome cannot attach the PDF receipt directly to WhatsApp. Please use the Android app for receipt sharing.',
+            'Your order was saved. You can send the order details by WhatsApp or try sharing the receipt again.',
       );
       return;
     }
@@ -29,42 +32,30 @@ class OrderCheckoutActionsSheet {
       apiClient: apiClient,
       responseData: responseData,
     );
-
     if (!context.mounted) return;
 
     final orderFile = exportResult.file;
-    final phoneNumber = OrderExportService.extractWhatsAppNumber(responseData);
-    final caption = OrderExportService.extractCaption(responseData);
-
-    if (orderFile != null && phoneNumber != null) {
-      final shareResult = await OrderExportService.shareOrderReceiptToWhatsApp(
-        orderFile,
-        phoneNumber: phoneNumber,
-        caption: caption,
-      );
-
-      if (!context.mounted) return;
-      if (shareResult.launched) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'WhatsApp opened with your receipt attached.',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: const Color(0xFF16A34A),
-          ),
-        );
-        return;
-      }
-
+    if (orderFile == null) {
       await showFailure(
         context: context,
         apiClient: apiClient,
         responseData: responseData,
         failureMessage:
-            shareResult.errorMessage ??
-            'We saved your order, but could not open WhatsApp with the receipt attached.',
+            exportResult.errorMessage ??
+            'We saved your order, but could not prepare the PDF receipt.',
       );
+      return;
+    }
+
+    final shareResult = await OrderExportService.shareOrderReceipt(
+      orderFile,
+      caption: OrderExportService.extractCaption(responseData),
+      sharePositionOrigin: _sharePositionOrigin(context),
+    );
+    if (!context.mounted) return;
+
+    if (shareResult.shareSheetOpened) {
+      _showShareSheetOpenedMessage(context);
       return;
     }
 
@@ -72,9 +63,28 @@ class OrderCheckoutActionsSheet {
       context: context,
       apiClient: apiClient,
       responseData: responseData,
+      receiptFile: orderFile,
       failureMessage:
-          exportResult.errorMessage ??
-          'We saved your order, but could not prepare the PDF receipt.',
+          shareResult.errorMessage ??
+          'We saved your order, but could not open the receipt sharing options.',
+    );
+  }
+
+  static Rect? _sharePositionOrigin(BuildContext context) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return null;
+    return renderBox.localToGlobal(Offset.zero) & renderBox.size;
+  }
+
+  static void _showShareSheetOpenedMessage(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Choose WhatsApp or another app to send your receipt.',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF16A34A),
+      ),
     );
   }
 
@@ -83,72 +93,92 @@ class OrderCheckoutActionsSheet {
     required ApiClient apiClient,
     required dynamic responseData,
     required String failureMessage,
+    File? receiptFile,
   }) async {
     final orderNumber = OrderExportService.extractOrderNumber(responseData);
+    final receiptCaption = OrderExportService.extractCaption(responseData);
+    final message = WhatsAppCheckoutService.extractMessage(responseData);
+    final orderMessage = [
+      if (orderNumber != null && orderNumber.isNotEmpty) 'Order $orderNumber',
+      if (message.isNotEmpty) message else receiptCaption,
+    ].join('\n\n');
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        Future<void> retryReceiptShare() async {
-          final exportResult = await OrderExportService.downloadOrderReceipt(
-            apiClient: apiClient,
-            responseData: responseData,
-          );
-          if (!sheetContext.mounted) return;
-
-          final orderFile = exportResult.file;
-          final phoneNumber = OrderExportService.extractWhatsAppNumber(
-            responseData,
-          );
-          final caption = OrderExportService.extractCaption(responseData);
-
-          if (orderFile != null && phoneNumber != null) {
-            final shareResult =
-                await OrderExportService.shareOrderReceiptToWhatsApp(
-                  orderFile,
-                  phoneNumber: phoneNumber,
-                  caption: caption,
-                );
+        Future<void> shareReceipt() async {
+          File? file = receiptFile;
+          if (file == null || !file.existsSync()) {
+            final exportResult = await OrderExportService.downloadOrderReceipt(
+              apiClient: apiClient,
+              responseData: responseData,
+            );
             if (!sheetContext.mounted) return;
-            if (shareResult.launched) {
-              Navigator.of(sheetContext).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
+            file = exportResult.file;
+            if (file == null) {
+              ScaffoldMessenger.of(sheetContext).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'WhatsApp opened with your receipt attached.',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    exportResult.errorMessage ??
+                        'Unable to prepare the PDF receipt right now.',
                   ),
-                  backgroundColor: const Color(0xFF16A34A),
+                  backgroundColor: AppColors.error,
                 ),
               );
               return;
             }
+          }
 
-            ScaffoldMessenger.of(sheetContext).showSnackBar(
-              SnackBar(
-                content: Text(
-                  shareResult.errorMessage ??
-                      'Unable to share the PDF receipt to WhatsApp.',
-                ),
-                backgroundColor: AppColors.error,
-              ),
-            );
+          final shareResult = await OrderExportService.shareOrderReceipt(
+            file,
+            caption: receiptCaption,
+            sharePositionOrigin: _sharePositionOrigin(sheetContext),
+          );
+          if (!sheetContext.mounted) return;
+          if (shareResult.shareSheetOpened) {
+            Navigator.of(sheetContext).pop();
+            _showShareSheetOpenedMessage(context);
             return;
           }
 
           ScaffoldMessenger.of(sheetContext).showSnackBar(
             SnackBar(
               content: Text(
-                exportResult.errorMessage?.isNotEmpty == true
-                    ? exportResult.errorMessage!
-                    : 'Unable to prepare the PDF receipt for WhatsApp.',
+                shareResult.errorMessage ??
+                    'Unable to open receipt sharing options.',
               ),
               backgroundColor: AppColors.error,
             ),
+          );
+        }
+
+        Future<void> sendWhatsAppMessage() async {
+          final opened = await WhatsAppCheckoutService.openFromResponse(
+            responseData,
+          );
+          if (!sheetContext.mounted) return;
+          if (opened) {
+            Navigator.of(sheetContext).pop();
+            return;
+          }
+
+          ScaffoldMessenger.of(sheetContext).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not open WhatsApp. You can copy the order details instead.',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+
+        Future<void> copyOrderDetails() async {
+          await Clipboard.setData(ClipboardData(text: orderMessage));
+          if (!sheetContext.mounted) return;
+          ScaffoldMessenger.of(sheetContext).showSnackBar(
+            const SnackBar(content: Text('Order details copied.')),
           );
         }
 
@@ -217,8 +247,8 @@ class OrderCheckoutActionsSheet {
                               const SizedBox(height: 4),
                               Text(
                                 orderNumber == null || orderNumber.isEmpty
-                                    ? 'The order was saved, but sending the receipt to WhatsApp needs help.'
-                                    : 'Order $orderNumber was saved, but sending the receipt to WhatsApp needs help.',
+                                    ? 'Choose another way to send or save your receipt.'
+                                    : 'Order $orderNumber is saved. Choose another way to send or save your receipt.',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
@@ -242,9 +272,9 @@ class OrderCheckoutActionsSheet {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.info_outline_rounded,
-                            color: const Color(0xFFEA580C),
+                            color: Color(0xFFEA580C),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -263,18 +293,11 @@ class OrderCheckoutActionsSheet {
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: retryReceiptShare,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        icon: const Icon(Icons.description_outlined),
+                      child: FilledButton.icon(
+                        onPressed: shareReceipt,
+                        icon: const Icon(Icons.ios_share_rounded),
                         label: Text(
-                          'Retry Receipt Share',
+                          'Share Receipt',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                           ),
@@ -282,6 +305,40 @@ class OrderCheckoutActionsSheet {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: sendWhatsAppMessage,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(color: Color(0xFF25D366)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: Text(
+                          'Send WhatsApp Message',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: copyOrderDetails,
+                        icon: const Icon(Icons.copy_outlined),
+                        label: Text(
+                          'Copy Order Details',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -1,8 +1,9 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'api_client.dart';
 
@@ -20,32 +21,25 @@ class OrderExportDownloadResult {
   bool get hasFile => file != null;
 }
 
-enum WhatsAppDocumentShareStatus {
-  launched,
-  fileMissing,
-  whatsappNotInstalled,
-  launchFailed,
-}
+enum OrderReceiptShareStatus { shareSheetOpened, fileMissing, shareUnavailable }
 
-class WhatsAppDocumentShareResult {
-  final WhatsAppDocumentShareStatus status;
+class OrderReceiptShareResult {
+  final OrderReceiptShareStatus status;
   final String? errorMessage;
   final String? debugReason;
 
-  const WhatsAppDocumentShareResult({
+  const OrderReceiptShareResult({
     required this.status,
     this.errorMessage,
     this.debugReason,
   });
 
-  bool get launched => status == WhatsAppDocumentShareStatus.launched;
+  bool get shareSheetOpened =>
+      status == OrderReceiptShareStatus.shareSheetOpened;
 }
 
 class OrderExportService {
   static const String _defaultWhatsAppNumber = '9179110159';
-  static const MethodChannel _shareChannel = MethodChannel(
-    'laxmi_agro/whatsapp_share',
-  );
 
   static String? extractOrderId(dynamic responseData) {
     if (responseData is! Map) return null;
@@ -143,72 +137,47 @@ class OrderExportService {
     }
   }
 
-  static Future<WhatsAppDocumentShareResult> shareOrderReceiptToWhatsApp(
+  static Future<OrderReceiptShareResult> shareOrderReceipt(
     File file, {
-    required String phoneNumber,
-    String? caption,
+    required String caption,
+    Rect? sharePositionOrigin,
   }) async {
     if (!file.existsSync()) {
-      return const WhatsAppDocumentShareResult(
-        status: WhatsAppDocumentShareStatus.fileMissing,
+      return const OrderReceiptShareResult(
+        status: OrderReceiptShareStatus.fileMissing,
         errorMessage: 'The exported order receipt is missing on this device.',
         debugReason: 'Local order receipt file not found',
       );
     }
 
-    if (phoneNumber.trim().isEmpty) {
-      return const WhatsAppDocumentShareResult(
-        status: WhatsAppDocumentShareStatus.launchFailed,
-        errorMessage:
-            'The WhatsApp order number is missing, so the receipt could not be sent directly.',
-        debugReason: 'Missing WhatsApp target number',
-      );
-    }
-
     try {
-      await _shareChannel.invokeMethod('shareDocumentToWhatsApp', {
-        'filePath': file.path,
-        'phoneNumber': phoneNumber,
-        'caption':
-            caption ??
-            'Hi, I am customer. Please find my order receipt attached.',
-      });
-      return const WhatsAppDocumentShareResult(
-        status: WhatsAppDocumentShareStatus.launched,
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'application/pdf')],
+          text: caption,
+          subject: 'Laxmi Agro order receipt',
+          sharePositionOrigin: sharePositionOrigin,
+        ),
       );
-    } on PlatformException catch (error) {
-      debugPrint(
-        '[OrderExport] shareOrderReceiptToWhatsApp failed: '
-        '${error.code} ${error.message}',
-      );
-      if (error.code == 'WHATSAPP_NOT_INSTALLED') {
-        return WhatsAppDocumentShareResult(
-          status: WhatsAppDocumentShareStatus.whatsappNotInstalled,
+
+      if (result.status == ShareResultStatus.unavailable) {
+        return const OrderReceiptShareResult(
+          status: OrderReceiptShareStatus.shareUnavailable,
           errorMessage:
-              'WhatsApp is not installed on this device. You can still continue with the text-only WhatsApp checkout.',
-          debugReason: error.message,
+              'Receipt sharing is not available on this device. You can still send the order details by WhatsApp.',
+          debugReason: 'System share sheet unavailable',
         );
       }
-      if (error.code == 'FILE_MISSING') {
-        return WhatsAppDocumentShareResult(
-          status: WhatsAppDocumentShareStatus.fileMissing,
-          errorMessage:
-              'The exported order receipt is no longer available on this device.',
-          debugReason: error.message,
-        );
-      }
-      return WhatsAppDocumentShareResult(
-        status: WhatsAppDocumentShareStatus.launchFailed,
-        errorMessage:
-            'We saved your order, but could not open WhatsApp with the receipt attached.',
-        debugReason: '${error.code}: ${error.message}',
+
+      return const OrderReceiptShareResult(
+        status: OrderReceiptShareStatus.shareSheetOpened,
       );
     } catch (error) {
-      debugPrint('[OrderExport] shareOrderReceiptToWhatsApp error: $error');
-      return WhatsAppDocumentShareResult(
-        status: WhatsAppDocumentShareStatus.launchFailed,
+      debugPrint('[OrderExport] shareOrderReceipt failed: $error');
+      return OrderReceiptShareResult(
+        status: OrderReceiptShareStatus.shareUnavailable,
         errorMessage:
-            'We saved your order, but could not open WhatsApp with the receipt attached.',
+            'We saved your order, but could not open the receipt sharing options.',
         debugReason: error.toString(),
       );
     }
