@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/notification_navigation_service.dart';
 import '../../widgets/notification_countdown_label.dart';
 
 class NotificationsCenterScreen extends ConsumerStatefulWidget {
@@ -283,14 +284,11 @@ class _NotificationsCenterScreenState
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
-            // Handle notification tap based on type
-            final data = notification['data'];
-            if (data != null && data is Map) {
-              final orderId = data['orderId']?.toString();
-              if (orderId != null && orderId.isNotEmpty) {
-                context.push('/orders/$orderId');
-              }
-            }
+            NotificationNavigationService.instance.openFromContext(
+              context,
+              data,
+              isAuthenticated: ref.read(authProvider).isAuthenticated,
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(16),

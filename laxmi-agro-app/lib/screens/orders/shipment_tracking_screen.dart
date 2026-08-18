@@ -15,53 +15,112 @@ class ShipmentTrackingScreen extends ConsumerStatefulWidget {
   const ShipmentTrackingScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<ShipmentTrackingScreen> createState() => _ShipmentTrackingScreenState();
+  ConsumerState<ShipmentTrackingScreen> createState() =>
+      _ShipmentTrackingScreenState();
 }
 
-class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen> {
+class _ShipmentTrackingScreenState
+    extends ConsumerState<ShipmentTrackingScreen> {
   late final Dio _dio;
   Map<String, dynamic>? _order;
   bool _isLoading = true;
+  bool _requiresLogin = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        connectTimeout: ApiConfig.connectTimeout,
-        receiveTimeout: ApiConfig.receiveTimeout,
-      ),
-    )..interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) async {
-            final token = await StorageService.getAccessToken();
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-            return handler.next(options);
-          },
-        ),
-      );
+    _dio =
+        Dio(
+            BaseOptions(
+              baseUrl: ApiConfig.baseUrl,
+              connectTimeout: ApiConfig.connectTimeout,
+              receiveTimeout: ApiConfig.receiveTimeout,
+            ),
+          )
+          ..interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) async {
+                final token = await StorageService.getAccessToken();
+                if (token != null) {
+                  options.headers['Authorization'] = 'Bearer $token';
+                }
+                return handler.next(options);
+              },
+            ),
+          );
     _fetchOrder();
   }
 
   Future<void> _fetchOrder() async {
-    try {
-      final response = await _dio.get('/orders/${widget.orderId}');
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        setState(() {
-          _order = response.data['data'];
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching order: $e');
+    final orderId = widget.orderId.trim();
+    if (orderId.isEmpty) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Failed to load order details';
+        _error = 'This notification does not contain a valid order.';
         _isLoading = false;
       });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _requiresLogin = false;
+        _error = null;
+      });
+    }
+
+    try {
+      final response = await _dio.get(
+        '/orders/${Uri.encodeComponent(orderId)}',
+      );
+      final responseData = response.data;
+      final orderData = responseData is Map ? responseData['data'] : null;
+      if (response.statusCode == 200 &&
+          responseData is Map &&
+          responseData['success'] == true &&
+          orderData is Map) {
+        if (!mounted) return;
+        setState(() {
+          _order = Map<String, dynamic>.from(orderData);
+          _isLoading = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _error = 'Order details are unavailable.';
+        _isLoading = false;
+      });
+    } on DioException catch (error) {
+      if (!mounted) return;
+      final statusCode = error.response?.statusCode;
+      setState(() {
+        _requiresLogin = statusCode == 401 || statusCode == 403;
+        _error = switch (statusCode) {
+          401 || 403 => 'Please sign in to view this order.',
+          404 => 'This order is no longer available.',
+          _ => 'Could not load order details. Please try again.',
+        };
+        _isLoading = false;
+      });
+    } catch (error) {
+      debugPrint('Error fetching order: $error');
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load order details. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/previous-orders');
     }
   }
 
@@ -82,8 +141,14 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
       case 'cancelled':
         return 'Cancelled';
       default:
-        return status.replaceAll('_', ' ').split(' ').map((s) =>
-          s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+        return status
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map(
+              (s) =>
+                  s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
+            )
+            .join(' ');
     }
   }
 
@@ -166,8 +231,11 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
           backgroundColor: AppColors.backgroundLight,
           elevation: 0,
           leading: IconButton(
-            onPressed: () => context.pop(),
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+            onPressed: _goBack,
+            icon: const Icon(
+              Icons.arrow_back_ios,
+              color: AppColors.textPrimary,
+            ),
           ),
           title: Text(
             'Shipment Details',
@@ -192,8 +260,11 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
           backgroundColor: AppColors.backgroundLight,
           elevation: 0,
           leading: IconButton(
-            onPressed: () => context.pop(),
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+            onPressed: _goBack,
+            icon: const Icon(
+              Icons.arrow_back_ios,
+              color: AppColors.textPrimary,
+            ),
           ),
           title: Text(
             'Shipment Details',
@@ -206,19 +277,44 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
           centerTitle: true,
         ),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: AppColors.textTertiary),
-              const SizedBox(height: 16),
-              Text(
-                _error ?? 'Order not found',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: AppColors.textTertiary,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  _error ?? 'Order not found',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_requiresLogin)
+                  FilledButton(
+                    onPressed: () => context.go('/login'),
+                    child: const Text('Sign In'),
+                  )
+                else
+                  FilledButton.icon(
+                    onPressed: _fetchOrder,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.go('/previous-orders'),
+                  child: const Text('View Previous Orders'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -244,7 +340,7 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
         backgroundColor: AppColors.backgroundLight,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => context.pop(),
+          onPressed: _goBack,
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
@@ -303,7 +399,10 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
@@ -323,59 +422,72 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
                         const SizedBox(height: 16),
                         const Divider(color: AppColors.gray100),
                         const SizedBox(height: 16),
-                        ...items.take(2).map((item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundLight,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: item['productSnapshot']?['image'] != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          item['productSnapshot']['image'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.agriculture,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      )
-                                    : const Icon(Icons.agriculture, color: AppColors.primary),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                        ...items
+                            .take(2)
+                            .map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Row(
                                   children: [
-                                    Text(
-                                      item['productSnapshot']?['name'] ?? 'Product',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textPrimary,
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.backgroundLight,
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      child:
+                                          item['productSnapshot']?['image'] !=
+                                              null
+                                          ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: Image.network(
+                                                item['productSnapshot']['image'],
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    const Icon(
+                                                      Icons.agriculture,
+                                                      color: AppColors.primary,
+                                                    ),
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.agriculture,
+                                              color: AppColors.primary,
+                                            ),
                                     ),
-                                    Text(
-                                      'Qty: ${item['quantity']} • ₹${NumberFormat('#,##,###').format(item['totalPrice'])}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item['productSnapshot']?['name'] ??
+                                                'Product',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            'Qty: ${item['quantity']} • ₹${NumberFormat('#,##,###').format(item['totalPrice'])}',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                        )),
+                            ),
                         if (items.length > 2)
                           Text(
                             '+${items.length - 2} more items',
@@ -421,9 +533,11 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
                         (h) => h['status'] == s,
                         orElse: () => null,
                       );
-                      if (historyItem != null && historyItem['timestamp'] != null) {
-                        subtitle = DateFormat('MMM dd, yyyy hh:mm a')
-                            .format(DateTime.parse(historyItem['timestamp']));
+                      if (historyItem != null &&
+                          historyItem['timestamp'] != null) {
+                        subtitle = DateFormat(
+                          'MMM dd, yyyy hh:mm a',
+                        ).format(DateTime.parse(historyItem['timestamp']));
                       }
                     }
 
@@ -475,14 +589,18 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
                           const SizedBox(height: 12),
                           _buildInfoRow(
                             'Shipped Date',
-                            DateFormat('MMM dd, yyyy').format(DateTime.parse(shippedAt)),
+                            DateFormat(
+                              'MMM dd, yyyy',
+                            ).format(DateTime.parse(shippedAt)),
                           ),
                         ],
                         if (deliveredAt != null) ...[
                           const SizedBox(height: 12),
                           _buildInfoRow(
                             'Delivered Date',
-                            DateFormat('MMM dd, yyyy').format(DateTime.parse(deliveredAt)),
+                            DateFormat(
+                              'MMM dd, yyyy',
+                            ).format(DateTime.parse(deliveredAt)),
                           ),
                         ],
                       ],
@@ -640,13 +758,18 @@ class _ShipmentTrackingScreenState extends ConsumerState<ShipmentTrackingScreen>
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isCurrent ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.7),
+                        color: isCurrent
+                            ? AppColors.textPrimary
+                            : AppColors.textPrimary.withOpacity(0.7),
                       ),
                     ),
                     if (badge != null) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),

@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../router/app_router.dart';
+import 'notification_navigation_service.dart';
 
 const String _shopNowActionId = 'price_campaign_shop_now';
 const String _priceCampaignPayload = 'price_campaign_open_home';
@@ -54,6 +55,13 @@ class LocalNotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    final launchResponse = launchDetails?.notificationResponse;
+    if (launchDetails?.didNotificationLaunchApp == true &&
+        launchResponse != null) {
+      _handleNotificationResponse(launchResponse);
+    }
+
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -99,6 +107,8 @@ class LocalNotificationService {
       await showSimpleNotification(
         title: _extractTitle(message, fallback: 'Laxmi Agro'),
         body: _extractBody(message, fallback: 'New prices are now applied.'),
+        data: message.data,
+        messageId: message.messageId,
       );
       return;
     }
@@ -216,9 +226,18 @@ class LocalNotificationService {
   Future<void> showSimpleNotification({
     required String title,
     required String body,
+    Map<String, dynamic>? data,
+    String? messageId,
   }) async {
     if (kIsWeb) return;
     await ensureInitialized();
+
+    final payloadData = <String, dynamic>{
+      ...?data,
+      if (messageId != null && messageId.trim().isNotEmpty)
+        '_messageId': messageId,
+    };
+    final payload = payloadData.isEmpty ? null : jsonEncode(payloadData);
 
     await _plugin.show(
       DateTime.now().millisecondsSinceEpoch.remainder(100000),
@@ -241,7 +260,7 @@ class LocalNotificationService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
-      payload: _priceCampaignPayload,
+      payload: payload,
     );
   }
 
@@ -266,7 +285,24 @@ class LocalNotificationService {
   void _handleNotificationResponse(NotificationResponse response) {
     if (response.payload == _priceCampaignPayload ||
         response.actionId == _shopNowActionId) {
-      appRouter.go('/home');
+      NotificationNavigationService.instance.handlePayload(const {
+        'type': 'price_change_campaign_started',
+      });
+      return;
+    }
+
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map) return;
+      NotificationNavigationService.instance.handlePayload(
+        decoded,
+        messageId: decoded['_messageId']?.toString(),
+      );
+    } catch (error) {
+      debugPrint('[Notifications] Ignoring invalid local payload: $error');
     }
   }
 }

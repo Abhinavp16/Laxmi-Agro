@@ -6,9 +6,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/providers/auth_provider.dart';
+import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
 
-final GlobalKey<ScaffoldMessengerState> scafoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> scafoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,51 @@ Future<void> main() async {
 
 class LaxmiAgroApp extends StatelessWidget {
   const LaxmiAgroApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _NotificationBootstrap();
+  }
+}
+
+class _NotificationBootstrap extends ConsumerStatefulWidget {
+  const _NotificationBootstrap();
+
+  @override
+  ConsumerState<_NotificationBootstrap> createState() =>
+      _NotificationBootstrapState();
+}
+
+class _NotificationBootstrapState
+    extends ConsumerState<_NotificationBootstrap> {
+  ProviderSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = ref.listenManual<AuthState>(authProvider, (
+      previous,
+      next,
+    ) {
+      NotificationNavigationService.instance.updateAuthentication(
+        next.isAuthenticated,
+      );
+    }, fireImmediately: true);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(notificationServiceProvider).initialize();
+      } catch (error) {
+        debugPrint('[Notifications] Initialization skipped: $error');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

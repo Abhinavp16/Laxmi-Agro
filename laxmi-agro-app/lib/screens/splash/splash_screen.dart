@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/storage_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _checkAuthAndNavigate() async {
     // Wait minimum splash time, but also ensure auth check has completed
     await Future.delayed(const Duration(seconds: 2));
-    
+
     // Wait for auth loading to finish (max 3 more seconds)
     for (int i = 0; i < 30; i++) {
       if (!mounted) return;
@@ -31,16 +32,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       if (!authState.isLoading) break;
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    
+
     if (!mounted) return;
     final authState = ref.read(authProvider);
-    
-    debugPrint('[Splash] Auth check done: isAuthenticated=${authState.isAuthenticated}, user=${authState.user?.name}');
-    
+
+    debugPrint(
+      '[Splash] Auth check done: isAuthenticated=${authState.isAuthenticated}, user=${authState.user?.name}',
+    );
+
     final isFirstLaunch = await StorageService.isFirstLaunch();
     if (!mounted) return;
 
-    context.go(isFirstLaunch ? '/permissions-onboarding' : '/home');
+    if (isFirstLaunch) {
+      context.go('/permissions-onboarding');
+      return;
+    }
+
+    final openedNotification = NotificationNavigationService.instance
+        .completeStartup(isAuthenticated: authState.isAuthenticated);
+    if (!openedNotification && mounted) {
+      context.go('/home');
+    }
   }
 
   @override
