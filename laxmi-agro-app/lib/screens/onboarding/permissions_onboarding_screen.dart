@@ -1,12 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/providers/auth_provider.dart';
+import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/storage_service.dart';
 
@@ -20,39 +18,33 @@ class PermissionsOnboardingScreen extends ConsumerStatefulWidget {
 
 class _PermissionsOnboardingScreenState
     extends ConsumerState<PermissionsOnboardingScreen> {
-  bool _isRequesting = false;
+  bool _isContinuing = false;
 
-  Future<void> _complete({required bool requestPermissions}) async {
-    if (_isRequesting) return;
-    setState(() => _isRequesting = true);
+  Future<void> _complete({required bool requestNotificationPermission}) async {
+    if (_isContinuing) return;
+    setState(() => _isContinuing = true);
 
     try {
-      if (requestPermissions) {
-        await ref
-            .read(notificationServiceProvider)
-            .initialize(requestPermission: true);
-        await _requestLocationPermission();
-        await _requestPhotoPermission();
+      if (requestNotificationPermission) {
+        try {
+          await ref
+              .read(notificationServiceProvider)
+              .initialize(requestPermission: true);
+        } catch (error) {
+          debugPrint('[Notifications] Permission setup skipped: $error');
+        }
       }
+
       await StorageService.setFirstLaunchComplete();
-      if (mounted) context.go('/home');
+      if (!mounted) return;
+
+      final openedNotification = NotificationNavigationService.instance
+          .completeStartup(
+            isAuthenticated: ref.read(authProvider).isAuthenticated,
+          );
+      if (!openedNotification && mounted) context.go('/home');
     } finally {
-      if (mounted) setState(() => _isRequesting = false);
-    }
-  }
-
-  Future<void> _requestLocationPermission() async {
-    final current = await Geolocator.checkPermission();
-    if (current == LocationPermission.denied) {
-      await Geolocator.requestPermission();
-    }
-  }
-
-  Future<void> _requestPhotoPermission() async {
-    // Android's system photo picker used by image_picker does not need broad
-    // media-library access. iOS needs a purpose-bound photo-library prompt.
-    if (Platform.isIOS) {
-      await Permission.photos.request();
+      if (mounted) setState(() => _isContinuing = false);
     }
   }
 
@@ -81,14 +73,14 @@ class _PermissionsOnboardingScreenState
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(
-                      Icons.verified_user_outlined,
+                      Icons.notifications_outlined,
                       color: primary,
                       size: 30,
                     ),
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'Set up helpful permissions',
+                    'Stay updated',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -97,7 +89,7 @@ class _PermissionsOnboardingScreenState
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Laxmi Agro will ask only for permissions used by its features. You can continue without granting them and change your choice later in device settings.',
+                    'Choose whether you would like order, payment, and price-update notifications. You can change this later in device settings.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       height: 1.55,
@@ -109,37 +101,33 @@ class _PermissionsOnboardingScreenState
                     icon: Icons.notifications_outlined,
                     title: 'Notifications',
                     description:
-                        'Receive order, payment, and price-update alerts.',
+                        'Receive alerts when your order or payment status changes and when price updates are scheduled.',
                   ),
-                  const SizedBox(height: 12),
-                  const _PermissionBenefit(
-                    icon: Icons.location_on_outlined,
-                    title: 'Location while using the app',
-                    description:
-                        'Place a wholesaler shop accurately on the map. You can select a location manually instead.',
-                  ),
-                  const SizedBox(height: 12),
-                  const _PermissionBenefit(
-                    icon: Icons.photo_library_outlined,
-                    title: 'Photos',
-                    description:
-                        'Select profile images and business proof documents when you choose to upload them.',
+                  const SizedBox(height: 14),
+                  Text(
+                    'Location and photo access are requested only when you choose a current shop location or upload an image.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: FilledButton(
-                      onPressed: _isRequesting
+                      onPressed: _isContinuing
                           ? null
-                          : () => _complete(requestPermissions: true),
+                          : () =>
+                                _complete(requestNotificationPermission: true),
                       style: FilledButton.styleFrom(
                         backgroundColor: primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: _isRequesting
+                      child: _isContinuing
                           ? const SizedBox(
                               width: 22,
                               height: 22,
@@ -149,7 +137,7 @@ class _PermissionsOnboardingScreenState
                               ),
                             )
                           : Text(
-                              'Continue',
+                              'Enable Notifications',
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
@@ -161,9 +149,10 @@ class _PermissionsOnboardingScreenState
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: _isRequesting
+                      onPressed: _isContinuing
                           ? null
-                          : () => _complete(requestPermissions: false),
+                          : () =>
+                                _complete(requestNotificationPermission: false),
                       child: Text(
                         'Not now',
                         style: GoogleFonts.plusJakartaSans(
@@ -171,16 +160,6 @@ class _PermissionsOnboardingScreenState
                           color: textSecondary,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Notifications, location, and photo access are optional. Declining them does not prevent unrelated app functions from working.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      height: 1.45,
-                      color: textSecondary,
                     ),
                   ),
                 ],
@@ -194,15 +173,15 @@ class _PermissionsOnboardingScreenState
 }
 
 class _PermissionBenefit extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-
   const _PermissionBenefit({
     required this.icon,
     required this.title,
     required this.description,
   });
+
+  final IconData icon;
+  final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {

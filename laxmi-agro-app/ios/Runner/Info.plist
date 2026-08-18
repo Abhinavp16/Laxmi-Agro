@@ -26,10 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location while you use the app to help you place your shop accurately on the wholesaler map. You can select a location manually instead.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We use photos you choose to upload profile images, business verification documents, and payment screenshots.</string>
+	<string>We use photos you choose to upload for your profile image and business verification proof.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
