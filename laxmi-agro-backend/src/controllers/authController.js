@@ -9,6 +9,7 @@ const { UnauthorizedError, ConflictError, BadRequestError, ForbiddenError } = re
 const { USER_ROLES, AUTH_PROVIDERS } = require('../utils/constants');
 const { sanitizeUser } = require('../utils/helpers');
 const { recordAudit } = require('../services/auditService');
+const { currentLegalAcceptance } = require('../config/legalAcceptance');
 
 const DEFAULT_ADMIN_EMAILS = 'abhinavpandey12201@gmail.com,mayurkhatwani5@gmail.com';
 const STAFF_SESSION_MS = 6 * 60 * 60 * 1000;
@@ -90,6 +91,7 @@ exports.register = async (req, res, next) => {
       role: USER_ROLES.BUYER,
       marketingConsent,
       consentTimestamp: marketingConsent ? new Date() : null,
+      ...currentLegalAcceptance(),
     });
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
@@ -133,6 +135,7 @@ exports.registerWholesaler = async (req, res, next) => {
       },
       marketingConsent,
       consentTimestamp: marketingConsent ? new Date() : null,
+      ...currentLegalAcceptance(),
     });
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
@@ -296,6 +299,7 @@ exports.registerWithPhone = async (req, res, next) => {
       passwordHash: password,
       authProvider: AUTH_PROVIDERS.EMAIL,
       role: USER_ROLES.BUYER,
+      ...currentLegalAcceptance(),
     });
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
@@ -332,6 +336,7 @@ exports.registerWholesalerWithPhone = async (req, res, next) => {
         businessName: businessName || null,
         verified: false,
       },
+      ...currentLegalAcceptance(),
     });
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);

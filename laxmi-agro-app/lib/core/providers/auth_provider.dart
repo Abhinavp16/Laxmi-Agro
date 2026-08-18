@@ -232,6 +232,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String phone,
     required String password,
     required bool isWholesaler,
+    required bool termsAccepted,
+    required bool privacyPolicyAccepted,
+    required String termsVersion,
+    required String privacyPolicyVersion,
     String? businessName,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -246,6 +250,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'name': name,
           'phone': phone,
           'password': password,
+          'termsAccepted': termsAccepted,
+          'privacyPolicyAccepted': privacyPolicyAccepted,
+          'termsVersion': termsVersion,
+          'privacyPolicyVersion': privacyPolicyVersion,
           if (isWholesaler && businessName != null)
             'businessName': businessName,
         },

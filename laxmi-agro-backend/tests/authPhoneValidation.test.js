@@ -1,6 +1,7 @@
 const assert = require('assert');
 const User = require('../src/models/User');
 const { authValidation } = require('../src/validations');
+const { TERMS_VERSION, PRIVACY_POLICY_VERSION } = require('../src/config/legalAcceptance');
 const {
   hasRepeatedDigits,
   hasSequentialDigits,
@@ -16,6 +17,10 @@ const registrationSchemas = [
       email: 'customer@example.com',
       password: 'password123',
       phone,
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: TERMS_VERSION,
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
     }),
   },
   {
@@ -27,6 +32,10 @@ const registrationSchemas = [
       password: 'password123',
       phone,
       businessName: 'Test Traders',
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: TERMS_VERSION,
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
     }),
   },
   {
@@ -36,6 +45,10 @@ const registrationSchemas = [
       name: 'Test Customer',
       password: 'password123',
       phone,
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: TERMS_VERSION,
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
     }),
   },
   {
@@ -46,6 +59,10 @@ const registrationSchemas = [
       password: 'password123',
       phone,
       businessName: 'Test Traders',
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: TERMS_VERSION,
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
     }),
   },
 ];

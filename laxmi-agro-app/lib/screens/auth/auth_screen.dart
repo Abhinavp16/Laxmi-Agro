@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../../core/config/legal_acceptance_config.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/utils/phone_validation.dart';
@@ -30,9 +29,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   bool _isWholesaler = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _agreedToBusinessCallsAndMessages = false;
+  bool _acceptedTermsAndPrivacy = false;
   bool _showPolicyDetails = false;
-  File? _documentFile;
 
   // Animation Controllers
   late AnimationController _slideController;
@@ -107,7 +105,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
     setState(() {
       _isWholesaler = isWholesaler;
-      _documentFile = null;
     });
   }
 
@@ -117,23 +114,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _confirmPasswordController.clear();
     _nameController.clear();
     _businessNameController.clear();
-    _agreedToBusinessCallsAndMessages = false;
+    _acceptedTermsAndPrivacy = false;
     _showPolicyDetails = false;
-    _documentFile = null;
-  }
-
-  Future<void> _pickDocument() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _documentFile = File(image.path);
-      });
-    }
   }
 
   Future<void> _handleSubmit() async {
-    final phone = _isLogin ? _phoneController.text.trim() : _phoneController.text;
+    final phone = _isLogin
+        ? _phoneController.text.trim()
+        : _phoneController.text;
     final password = _passwordController.text;
 
     final phoneError = _isLogin
@@ -171,7 +159,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         _showError('Passwords do not match');
         return;
       }
-      if (!_agreedToBusinessCallsAndMessages) {
+      if (!_acceptedTermsAndPrivacy) {
         _showError('Please accept Terms & Conditions and Privacy Policy');
         return;
       }
@@ -183,6 +171,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             phone: phone,
             password: password,
             isWholesaler: _isWholesaler,
+            termsAccepted: true,
+            privacyPolicyAccepted: true,
+            termsVersion: LegalAcceptanceConfig.termsVersion,
+            privacyPolicyVersion: LegalAcceptanceConfig.privacyPolicyVersion,
             businessName: _isWholesaler
                 ? _businessNameController.text.trim()
                 : null,
@@ -307,7 +299,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
-          child: Image.asset('assets/images/laxmi-agro-logo.png', fit: BoxFit.cover),
+          child: Image.asset(
+            'assets/images/laxmi-agro-logo.png',
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
@@ -461,24 +456,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               icon: HugeIcons.strokeRoundedStore01,
               required: false,
             ),
-            const SizedBox(height: 16),
-            _buildDocumentPicker(),
+            const SizedBox(height: 10),
+            Text(
+              'After creating your account, submit your business proof from Convert to Wholesaler for admin review.',
+              style: AppFonts.caption(color: _textMuted),
+            ),
           ],
 
-          // Forgot password (login only)
+          // Account-access support (login only)
           if (_isLogin) ...[
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {},
+                onPressed: () => context.push('/help'),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Forgot Password?',
+                  'Need help accessing your account? Contact Support',
                   style: AppFonts.bodySmall(
                     color: _primaryColor,
                     fontWeight: FontWeight.w600,
@@ -572,98 +570,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  Widget _buildDocumentPicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Business Document',
-              style: AppFonts.labelMedium(color: _textDark),
-            ),
-            const SizedBox(width: 6),
-            Text('(Optional)', style: AppFonts.caption(color: _textMuted)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _pickDocument,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: _documentFile != null
-                  ? _primaryColor.withOpacity(0.05)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _documentFile != null ? _primaryColor : _borderColor,
-                width: _documentFile != null ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _documentFile != null
-                        ? _primaryColor.withOpacity(0.1)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: HugeIcon(
-                    icon: _documentFile != null
-                        ? HugeIcons.strokeRoundedCheckmarkCircle01
-                        : HugeIcons.strokeRoundedFileUpload,
-                    color: _documentFile != null ? _primaryColor : _textMuted,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _documentFile != null
-                            ? 'Document Selected'
-                            : 'Upload Document',
-                        style: AppFonts.bodyMedium(
-                          color: _textDark,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _documentFile != null
-                            ? _documentFile!.path.split('/').last
-                            : 'GST certificate, trade license, etc.',
-                        style: AppFonts.caption(color: _textMuted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                if (_documentFile != null)
-                  IconButton(
-                    icon: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedCancel01,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(() => _documentFile = null),
-                    color: _textMuted,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSubmitButton(bool isLoading) {
     return SizedBox(
       width: double.infinity,
@@ -712,10 +618,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Checkbox(
-                value: _agreedToBusinessCallsAndMessages,
-                onChanged: (value) => setState(
-                  () => _agreedToBusinessCallsAndMessages = value ?? false,
-                ),
+                value: _acceptedTermsAndPrivacy,
+                onChanged: (value) =>
+                    setState(() => _acceptedTermsAndPrivacy = value ?? false),
                 activeColor: _primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -725,15 +630,62 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    'By continuing, you agree to our Terms & Conditions and Privacy Policy.',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppFonts.bodyMedium(
-                      color: _textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'By continuing, you agree to our:',
+                        style: AppFonts.bodyMedium(
+                          color: _textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 2,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                context.push('/legal/terms-conditions'),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Terms & Conditions',
+                              style: AppFonts.bodyMedium(
+                                color: _primaryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'and',
+                            style: AppFonts.bodyMedium(
+                              color: _textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                context.push('/legal/privacy-policy'),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Privacy Policy.',
+                              style: AppFonts.bodyMedium(
+                                color: _primaryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),

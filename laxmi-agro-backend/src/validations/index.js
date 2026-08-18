@@ -1,5 +1,9 @@
 const Joi = require('joi');
 const { isRegistrationPhoneValid } = require('../utils/phoneValidation');
+const {
+  TERMS_VERSION,
+  PRIVACY_POLICY_VERSION,
+} = require('../config/legalAcceptance');
 
 const registrationPhoneRule = Joi.string()
   .pattern(/^[6-9]\d{9}$/)
@@ -20,6 +24,13 @@ const discountRuleSchema = Joi.object({
   maxDiscountAmount: Joi.number().min(0).allow('', null),
 });
 
+const legalAcceptanceSchema = {
+  termsAccepted: Joi.boolean().valid(true).required(),
+  privacyPolicyAccepted: Joi.boolean().valid(true).required(),
+  termsVersion: Joi.string().valid(TERMS_VERSION).required(),
+  privacyPolicyVersion: Joi.string().valid(PRIVACY_POLICY_VERSION).required(),
+};
+
 const authValidation = {
   register: Joi.object({
     name: Joi.string().required().max(100),
@@ -28,6 +39,7 @@ const authValidation = {
     phone: registrationPhoneRule.required(),
     role: Joi.string().valid('buyer').default('buyer'),
     marketingConsent: Joi.boolean().default(false),
+    ...legalAcceptanceSchema,
   }),
 
   registerWholesaler: Joi.object({
@@ -38,6 +50,7 @@ const authValidation = {
     businessName: Joi.string().required().max(200),
     gstNumber: Joi.string().allow('', null),
     marketingConsent: Joi.boolean().default(false),
+    ...legalAcceptanceSchema,
   }),
 
   login: Joi.object({
@@ -64,6 +77,7 @@ const authValidation = {
     name: Joi.string().required().max(100),
     phone: registrationPhoneRule.required(),
     password: Joi.string().min(6).required(),
+    ...legalAcceptanceSchema,
   }),
 
   registerPhoneWholesaler: Joi.object({
@@ -71,6 +85,7 @@ const authValidation = {
     phone: registrationPhoneRule.required(),
     password: Joi.string().min(6).required(),
     businessName: Joi.string().allow('', null).max(200),
+    ...legalAcceptanceSchema,
   }),
 
   refreshToken: Joi.object({

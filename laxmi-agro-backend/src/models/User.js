@@ -106,6 +106,22 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  termsAcceptedAt: {
+    type: Date,
+    default: null,
+  },
+  termsVersion: {
+    type: String,
+    default: null,
+  },
+  privacyPolicyAcceptedAt: {
+    type: Date,
+    default: null,
+  },
+  privacyPolicyVersion: {
+    type: String,
+    default: null,
+  },
 
   isActive: {
     type: Boolean,
