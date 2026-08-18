@@ -123,7 +123,7 @@ class _PermissionsOnboardingScreenState
                     icon: Icons.photo_library_outlined,
                     title: 'Photos',
                     description:
-                        'Select profile images, business proof, and payment screenshots when you choose to upload them.',
+                        'Select profile images and business proof documents when you choose to upload them.',
                   ),
                   const SizedBox(height: 30),
                   SizedBox(

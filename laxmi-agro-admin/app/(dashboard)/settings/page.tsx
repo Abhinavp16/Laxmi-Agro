@@ -146,6 +146,8 @@ export default function SettingsPage() {
                 checkout: {
                     ...values.checkout,
                     mode: "whatsapp",
+                    requireLoginForCheckout: true,
+                    createOrderBeforeRedirect: true,
                 },
             }
 
@@ -379,39 +381,11 @@ export default function SettingsPage() {
                                 )}
                             />
 
+                            <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4 text-sm text-[#cbd5e1]">
+                                Customers must sign in and every checkout is saved before WhatsApp opens. This keeps receipts and order history available in the app.
+                            </div>
+
                             <div className="grid gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="checkout.requireLoginForCheckout"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base text-white">Require Login Before Checkout</FormLabel>
-                                                <FormDescription>Keep the current login gate before opening WhatsApp.</FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="checkout.createOrderBeforeRedirect"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base text-white">Create Backend Order Before WhatsApp</FormLabel>
-                                                <FormDescription>Useful if you want every WhatsApp checkout attempt recorded in the backend first.</FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-
                                 <FormField
                                     control={form.control}
                                     name="checkout.allowNegotiationCheckout"

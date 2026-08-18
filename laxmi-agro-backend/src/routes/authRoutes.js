@@ -16,9 +16,6 @@ router.post('/staff/login', validate(authValidation.staffLogin), authController.
 router.post('/magic-link/request', authController.requestMagicLink);
 router.post('/magic-link/verify', validate(authValidation.magicLinkVerify), authController.verifyMagicLink);
 router.post('/login-phone', validate(authValidation.loginPhone), authController.loginWithPhone);
-router.post('/google', validate(authValidation.googleAuth), authController.googleAuth);
-router.post('/send-otp', validate(authValidation.sendOtp), authController.sendOtp);
-router.post('/verify-phone', validate(authValidation.verifyPhone), authController.verifyPhone);
 router.post('/refresh-token', validate(authValidation.refreshToken), authController.refreshToken);
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);

@@ -246,13 +246,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final currentPath = GoRouter.of(
       context,
     ).routeInformationProvider.value.uri.path;
-    const authPaths = <String>{
-      '/login',
-      '/register',
-      '/signup',
-      '/role-login',
-      '/wholesaler-registration',
-    };
+    const authPaths = <String>{'/login', '/register', '/signup'};
     return authPaths.any(
       (path) => currentPath == path || currentPath.startsWith('$path/'),
     );

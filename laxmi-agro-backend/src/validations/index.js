@@ -73,21 +73,6 @@ const authValidation = {
     businessName: Joi.string().allow('', null).max(200),
   }),
 
-  googleAuth: Joi.object({
-    idToken: Joi.string().required(),
-    phone: Joi.string().required(),
-    marketingConsent: Joi.boolean().default(false),
-  }),
-
-  sendOtp: Joi.object({
-    phone: Joi.string().required(),
-  }),
-
-  verifyPhone: Joi.object({
-    phone: Joi.string().required(),
-    otp: Joi.string().length(6).required(),
-  }),
-
   refreshToken: Joi.object({
     refreshToken: Joi.string().required(),
   }),
@@ -429,10 +414,10 @@ const adminValidation = {
       facebook: Joi.string().allow('', null),
     }),
     checkout: Joi.object({
-      mode: Joi.string().valid('payment', 'whatsapp'),
+      mode: Joi.string().valid('whatsapp'),
       orderWhatsappNumber: Joi.string().allow('', null),
-      requireLoginForCheckout: Joi.boolean(),
-      createOrderBeforeRedirect: Joi.boolean(),
+      requireLoginForCheckout: Joi.boolean().valid(true),
+      createOrderBeforeRedirect: Joi.boolean().valid(true),
       allowNegotiationCheckout: Joi.boolean(),
     }),
   }),

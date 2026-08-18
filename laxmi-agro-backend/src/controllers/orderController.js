@@ -213,10 +213,10 @@ const resolveCheckoutSettings = async () => {
   return {
     settings,
     checkout: {
-      mode: checkout.mode || 'whatsapp',
+      mode: 'whatsapp',
       orderWhatsappNumber: whatsappNumber,
-      requireLoginForCheckout: checkout.requireLoginForCheckout !== false,
-      createOrderBeforeRedirect: checkout.createOrderBeforeRedirect !== false,
+      requireLoginForCheckout: true,
+      createOrderBeforeRedirect: true,
       allowNegotiationCheckout: checkout.allowNegotiationCheckout !== false,
     },
   };
@@ -543,6 +543,7 @@ exports.getMyOrders = async (req, res, next) => {
   try {
     const { status } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const { checkout } = await resolveCheckoutSettings();
 
     const query = { userId: req.user._id };
     if (status) query.status = status;
@@ -569,12 +570,28 @@ exports.getMyOrders = async (req, res, next) => {
         variantId: item.variantId || null,
         variantSnapshot: item.variantSnapshot || null,
       })),
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      discount: order.discount,
       total: order.total,
+      shippingAddress: order.shippingAddress,
+      customerNote: order.customerNote,
       status: order.status,
+      statusHistory: order.statusHistory,
       trackingNumber: order.trackingNumber,
+      courierName: order.courierName,
+      shippedAt: order.shippedAt,
+      deliveredAt: order.deliveredAt,
       createdAt: order.createdAt,
       checkoutMethod: 'whatsapp',
-      payment: null,
+      exportPath: buildOrderExportPath(order._id, 'pdf'),
+      ...buildWhatsAppPayload(
+        checkout.orderWhatsappNumber,
+        buildCheckoutCaption({
+          user: req.user,
+          shippingAddress: order.shippingAddress,
+        })
+      ),
     }));
 
     res.json({

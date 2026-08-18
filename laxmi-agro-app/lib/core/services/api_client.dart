@@ -34,7 +34,6 @@ class ApiClient {
           final isAuthPath =
               path.contains('/auth/login') ||
               path.contains('/auth/register') ||
-              path.contains('/auth/send-otp') ||
               path.contains('/auth/refresh-token');
 
           if (error.response?.statusCode == 401 && !isAuthPath) {

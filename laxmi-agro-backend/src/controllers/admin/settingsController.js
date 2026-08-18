@@ -50,6 +50,14 @@ exports.updateSettings = async (req, res, next) => {
       }
     }
 
+    settings.checkout = {
+      ...(settings.checkout?.toObject?.() || settings.checkout || {}),
+      ...(req.body.checkout || {}),
+      mode: 'whatsapp',
+      requireLoginForCheckout: true,
+      createOrderBeforeRedirect: true,
+    };
+
     await settings.save();
 
     res.json({

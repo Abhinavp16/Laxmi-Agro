@@ -24,7 +24,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   final List<Map<String, String>> _faqs = [
     {'q': 'How do I place a bulk order?', 'a': 'Navigate to the product page and tap "Initiate Negotiation" to start the bulk ordering process. You can request custom pricing for large quantities.'},
-    {'q': 'What payment methods are accepted?', 'a': 'We accept UPI payments. After placing an order, you\'ll be shown our UPI ID to make the payment. Upload the payment screenshot and our team will verify it.'},
+    {'q': 'What payment methods are accepted?', 'a': 'After placing an order, send the generated receipt to our shop on WhatsApp. You can pay at the shop or use the QR code or bank details shared by our team. Your order status will update after an admin confirms the payment.'},
     {'q': 'How long does delivery take?', 'a': 'Standard delivery takes 3-5 business days. Express delivery options are available for select products and locations.'},
     {'q': 'How do I track my order?', 'a': 'Go to the Orders section in your profile and tap on any order to view real-time tracking details and status updates.'},
     {'q': 'What is the return policy?', 'a': 'Products can be returned within 7 days of delivery if they are defective or damaged during transit. Contact support to initiate a return.'},

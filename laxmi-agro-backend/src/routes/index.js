@@ -484,16 +484,11 @@ router.get('/settings/payment-options', async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        checkoutMode: settings.checkout?.mode || 'whatsapp',
-        bankTransferEnabled: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false,
-        bankDetails: (settings.checkout?.mode || 'whatsapp') === 'payment' && settings.bankTransferEnabled !== false ? {
-          bankName: settings.bankName || '',
-          accountNumber: settings.bankAccountNumber || '',
-          ifscCode: settings.bankIfscCode || '',
-          accountHolderName: settings.bankAccountHolderName || '',
-        } : null,
-        upiId: settings.upiId || '',
-        upiDisplayName: settings.upiDisplayName || '',
+        checkoutMode: 'whatsapp',
+        bankTransferEnabled: false,
+        bankDetails: null,
+        upiId: '',
+        upiDisplayName: '',
         whatsappNumber: settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '',
       },
     });

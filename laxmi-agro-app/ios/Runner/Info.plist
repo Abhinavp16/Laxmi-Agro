@@ -16,19 +16,6 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>Laxmi Agro Enterprises</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.laxmiagro.app.liveactivity</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>laxmiagro</string>
-			</array>
-		</dict>
-	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -43,8 +30,6 @@
 	<string>We use your location while you use the app to help you place your shop accurately on the wholesaler map. You can select a location manually instead.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We use photos you choose to upload profile images, business verification documents, and payment screenshots.</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
