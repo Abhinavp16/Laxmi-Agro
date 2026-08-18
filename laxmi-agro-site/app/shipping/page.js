@@ -14,9 +14,7 @@ export default function ShippingPage() {
                 <ScrollReveal>
                     <div className="space-y-10 text-text-secondary leading-relaxed">
                         <p className="text-sm text-gray-400 italic text-center">Effective Date: 20 April 2026</p>
-                        <p>Orders are processed based on stock, payment status, delivery zone, and logistics capacity. Dispatch windows, delivery timelines, and freight charges may vary by product type and destination.</p>
-                        <p>Some products may require order confirmation, advance payment, freight approval, or manual coordination before dispatch. Tracking details are shared when available.</p>
-                        <p>Standard commercial handling is delivery Ex-Godown, Raipur. Freight and onward transport arrangements may vary by order and destination.</p>
+                        <p>Orders are processed based on stock, payment status, delivery zone, and logistics capacity. Delivery arrangements, any freight or other charges, and payment steps depend on the product, order, and location. Contact Laxmi Agro to confirm the applicable terms before payment or dispatch.</p>
                     </div>
                 </ScrollReveal>
             </section>

@@ -24,6 +24,7 @@ const websiteCatalogController = require('../controllers/websiteCatalogControlle
 const accountDeletionController = require('../controllers/accountDeletionController');
 const validate = require('../middlewares/validate');
 const { authValidation } = require('../validations');
+const { orderWhatsAppNumber } = require('../config/publicBusiness');
 
 const normalizeNumber = (value) => {
   const num = Number(value);
@@ -294,7 +295,7 @@ router.get('/settings/banners', async (req, res, next) => {
       }))
       .filter(b => b.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-    const whatsapp = settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '';
+    const whatsapp = orderWhatsAppNumber;
     res.json({
       success: true,
       data: {
@@ -489,7 +490,7 @@ router.get('/settings/payment-options', async (req, res, next) => {
         bankDetails: null,
         upiId: '',
         upiDisplayName: '',
-        whatsappNumber: settings.checkout?.orderWhatsappNumber || settings.socialLinks?.whatsapp || settings.businessPhone || '',
+        whatsappNumber: orderWhatsAppNumber,
       },
     });
   } catch (error) {

@@ -15,6 +15,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/api_config.dart';
+import '../../core/config/public_business_config.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
@@ -56,7 +57,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   bool _isLoading = true;
   bool _isRelatedLoading = false;
   int _bgKey = 0;
-  String _whatsappNumber = '';
   String? _selectedVariantId;
   String? _error;
   late final Dio _dio =
@@ -108,7 +108,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       }
     });
     _fetchProduct();
-    _fetchWhatsappNumber();
   }
 
   @override
@@ -895,7 +894,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   final shareText =
                       'Check out $pName'
                       '${pPrice != null ? ' - ₹${_fmt(pPrice)}' : ''}'
-                      ' on Laxmi Agro!\n\nhttps://laxmiagro.local/product/${widget.productId}';
+                      ' on Laxmi Agro!\n\n${PublicBusinessConfig.productUrl(p['slug']?.toString())}';
                   SharePlus.instance.share(ShareParams(text: shareText));
                 }),
                 Builder(
@@ -2918,9 +2917,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   Widget _shippingSection(String Function(String) t) {
     final terms =
         _product?['shippingTerms']?.toString() ??
-        'Free shipping on orders above ₹5,000. Standard delivery 5-7 '
-            'business days.\n\nReturn Policy: 7-day returns for unused items '
-            'in original packaging.';
+        'Delivery, payment, and return arrangements depend on the product, '
+            'order, and location. Contact Laxmi Agro to confirm the applicable '
+            'terms before payment or dispatch.';
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       clipBehavior: Clip.antiAlias,
@@ -2997,23 +2996,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     );
   }
 
-  Future<void> _fetchWhatsappNumber() async {
-    try {
-      final response = await _dio.get('/settings/banners');
-      if (response.statusCode == 200) {
-        final data = response.data['data'] ?? {};
-        final wa = data['whatsapp']?.toString() ?? '';
-        if (wa.isNotEmpty && mounted) setState(() => _whatsappNumber = wa);
-      }
-    } catch (_) {}
-  }
-
   void _openWhatsApp(String name, dynamic price) {
     final pPrice = price != null ? '₹${_fmt(price)}' : '';
     final msg =
         'Hi, I need help with this product:\n\n'
         '*$name*${pPrice.isNotEmpty ? ' - $pPrice' : ''}\n\n'
-        'https://laxmiagro.local/product/${widget.productId}\n\n'
+        '${PublicBusinessConfig.productUrl(_product?['slug']?.toString())}\n\n'
         'Please share more details.';
     final selectedVariant = _selectedVariant;
     final finalMsg =
@@ -3024,7 +3012,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           )
         : msg;
     final encoded = Uri.encodeComponent(finalMsg);
-    final phone = _whatsappNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    final phone = PublicBusinessConfig.whatsappNumber;
     final url = Uri.parse('https://wa.me/$phone?text=$encoded');
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
@@ -3046,7 +3034,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           )
         : msg;
     final encoded = Uri.encodeComponent(finalMsg);
-    const phone = '917880080069';
+    final phone = PublicBusinessConfig.whatsappNumber;
     final url = Uri.parse('https://wa.me/$phone?text=$encoded');
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
@@ -3248,10 +3236,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         '*Retail Price:* $pPrice\n'
         '*Desired Quantity:* $qty\n'
         '*Requirement Details:* ${details.isEmpty ? 'N/A' : details}\n\n'
-        'View Product: https://laxmiagro.local/product/${widget.productId}';
+        'View Product: ${PublicBusinessConfig.productUrl(_product?['slug']?.toString())}';
 
     final encoded = Uri.encodeComponent(msg);
-    final phone = _whatsappNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    final phone = PublicBusinessConfig.whatsappNumber;
     final url = Uri.parse('https://wa.me/$phone?text=$encoded');
     launchUrl(url, mode: LaunchMode.externalApplication);
   }

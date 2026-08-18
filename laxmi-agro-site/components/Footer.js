@@ -49,7 +49,7 @@ export default function Footer() {
                                         <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
                                     </svg>
                                 </span>
-                                <span className="font-medium">Delivery Ex-Godown, Raipur</span>
+                                <span className="font-medium">Delivery arrangements confirmed per order</span>
                             </div>
                             <a href="tel:+919179110159" className="flex items-center gap-3 transition-colors hover:text-white">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe8d3]/12 text-[#dfe8d3]">

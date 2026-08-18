@@ -63,11 +63,17 @@ class OrderSuccessScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _buildDetailRow('Order ID', '#AGRI-${orderId.hashCode.abs() % 100000}'),
+                    _buildDetailRow(
+                      'Order ID',
+                      '#AGRI-${orderId.hashCode.abs() % 100000}',
+                    ),
                     const Divider(height: 24, color: AppColors.gray200),
                     _buildDetailRow('Status', 'Payment Verification Pending'),
                     const Divider(height: 24, color: AppColors.gray200),
-                    _buildDetailRow('Estimated Delivery', '3-5 Business Days'),
+                    _buildDetailRow(
+                      'Delivery',
+                      'Contact Laxmi Agro to confirm arrangements',
+                    ),
                   ],
                 ),
               ),
@@ -88,7 +94,10 @@ class OrderSuccessScreen extends StatelessWidget {
                   ),
                   child: Text(
                     'Track Order',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -107,7 +116,10 @@ class OrderSuccessScreen extends StatelessWidget {
                   ),
                   child: Text(
                     'Continue Shopping',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ const { NotFoundError, BadRequestError, UnauthorizedError } = require('../utils/
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { ORDER_STATUS, ORDER_TYPES, NEGOTIATION_STATUS, USER_ROLES } = require('../utils/constants');
 const { createOrderWorkbookBuffer, sanitizeFileNamePart } = require('../utils/orderWorkbook');
+const { orderWhatsAppNumber } = require('../config/publicBusiness');
 const { createOrderReceiptPdfBuffer } = require('../utils/orderReceiptPdf');
 const {
   normalizeObjectIdLike,
@@ -203,12 +204,7 @@ const resolveCouponDiscount = async ({ couponCode, subtotal, userRole }) => {
 const resolveCheckoutSettings = async () => {
   const settings = await Settings.getSettings();
   const checkout = settings.checkout || {};
-  const whatsappNumber = String(
-    checkout.orderWhatsappNumber ||
-    settings.socialLinks?.whatsapp ||
-    settings.businessPhone ||
-    ''
-  ).trim();
+  const whatsappNumber = orderWhatsAppNumber;
 
   return {
     settings,

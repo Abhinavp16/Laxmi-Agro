@@ -48,7 +48,6 @@ export default function ContactPage() {
                         </div>
                         <div className="space-y-3 rounded-[1.35rem] border border-[#17351d]/8 bg-[#fffdf7] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
                             <a href="tel:+919179110159" className="block text-xl font-semibold tracking-tight text-[#17351d]">+91 91791 10159</a>
-                            <a href="tel:+918770974845" className="block text-sm font-medium text-[#4f6248]">Alternate: +91 87709 74845</a>
                         </div>
                     </div>
 

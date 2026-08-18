@@ -17,13 +17,9 @@ const PUBLIC_UPLOAD_DIR = path.resolve(__dirname, '..', '..', 'uploads', 'catalo
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
 
 const SHIPPING_TERMS = [
-  'Delivery Ex-godown, Raipur.',
-  'Payment Terms - Advance Payment.',
-  'All rates are excluding GST unless the catalogue page explicitly says otherwise.',
-  'Minimum order bag or carton only.',
-  '1 year guarantee on motor only; pump body is not covered.',
-  'Replacement freight/transport charges are payable by the customer.',
-].join('\n');
+  'Delivery, payment, and return arrangements depend on the product, order, and location.',
+  'Contact Laxmi Agro to confirm the applicable terms before payment or dispatch.',
+].join('\n\n');
 
 const categories = [
   'Service Wire Aluminium',

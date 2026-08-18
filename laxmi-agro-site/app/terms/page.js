@@ -29,7 +29,7 @@ export default function TermsPage() {
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-text-primary mb-4">3. Orders and Pricing</h2>
-                            <p>Product pricing, availability, shipping, and commercial terms may vary by buyer type, quantity, service area, and negotiated agreements. Unless otherwise agreed, rates are treated as excluding GST and may require advance payment before dispatch.</p>
+                            <p>Product pricing, availability, delivery arrangements, and commercial terms may vary by buyer type, quantity, service area, and negotiated agreements. Confirm the final order terms with Laxmi Agro before payment or dispatch.</p>
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-text-primary mb-4">4. Acceptable Use</h2>
@@ -45,7 +45,7 @@ export default function TermsPage() {
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-text-primary mb-4">7. Contact and Legal</h2>
-                            <p>Business contact: Ashirvad Marketing, C/O Laxmi Agro Enterprises, Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.). Email: ashirvadmarketing62@gmail.com. Phones: +91 9179110159, +91 8770974845.</p>
+                            <p>Business contact: Ashirvad Marketing, C/O Laxmi Agro Enterprises, Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.). Email: ashirvadmarketing62@gmail.com. Phone: +91 91791 10159.</p>
                         </div>
                     </div>
                 </ScrollReveal>

@@ -50,7 +50,7 @@ export function Header() {
           <DropdownMenuLabel className="mb-2 border-b border-[#edf0e2] px-3 pb-3 font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-bold leading-none text-slate-900">{user?.name || "Administrator"}</p>
-              <p className="truncate text-xs leading-none text-slate-500">{user?.email || "admin@laxmiagro.local"}</p>
+              <p className="truncate text-xs leading-none text-slate-500">{user?.email || "Administrator email unavailable"}</p>
             </div>
           </DropdownMenuLabel>
           <Link href="/settings">

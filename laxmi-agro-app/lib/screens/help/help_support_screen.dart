@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/public_business_config.dart';
+
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
 
@@ -23,19 +25,49 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   int _expandedFaq = -1;
 
   final List<Map<String, String>> _faqs = [
-    {'q': 'How do I place a bulk order?', 'a': 'Navigate to the product page and tap "Initiate Negotiation" to start the bulk ordering process. You can request custom pricing for large quantities.'},
-    {'q': 'What payment methods are accepted?', 'a': 'After placing an order, send the generated receipt to our shop on WhatsApp. You can pay at the shop or use the QR code or bank details shared by our team. Your order status will update after an admin confirms the payment.'},
-    {'q': 'How long does delivery take?', 'a': 'Standard delivery takes 3-5 business days. Express delivery options are available for select products and locations.'},
-    {'q': 'How do I track my order?', 'a': 'Go to the Orders section in your profile and tap on any order to view real-time tracking details and status updates.'},
-    {'q': 'What is the return policy?', 'a': 'Products can be returned within 7 days of delivery if they are defective or damaged during transit. Contact support to initiate a return.'},
-    {'q': 'How do negotiations work?', 'a': 'Wholesalers can negotiate prices for bulk orders. Submit a negotiation request with your preferred price, and our team will review and respond with a counter-offer or acceptance.'},
-    {'q': 'How do I become a wholesaler?', 'a': 'Register with a wholesaler account and provide your business details. Once verified by our team, you\'ll get access to wholesale pricing and negotiations.'},
+    {
+      'q': 'How do I place a bulk order?',
+      'a':
+          'Navigate to the product page and tap "Initiate Negotiation" to start the bulk ordering process. You can request custom pricing for large quantities.',
+    },
+    {
+      'q': 'What payment methods are accepted?',
+      'a':
+          'After placing an order, send the generated receipt to our shop on WhatsApp. You can pay at the shop or use the QR code, UPI, or bank details shared by our team. Your order status will update after an admin confirms the payment.',
+    },
+    {
+      'q': 'How long does delivery take?',
+      'a':
+          'Delivery availability and timing depend on the product, order, and location. Contact support to confirm delivery arrangements for your order.',
+    },
+    {
+      'q': 'How do I track my order?',
+      'a':
+          'Go to the Orders section in your profile and tap on any order to view its available status updates.',
+    },
+    {
+      'q': 'What is the return policy?',
+      'a':
+          'Return availability depends on the product and order. Contact support so our team can review your request.',
+    },
+    {
+      'q': 'How do negotiations work?',
+      'a':
+          'Wholesalers can negotiate prices for bulk orders. Submit a negotiation request with your preferred price, and our team will review and respond with a counter-offer or acceptance.',
+    },
+    {
+      'q': 'How do I become a wholesaler?',
+      'a':
+          'Register with a wholesaler account and provide your business details. Once verified by our team, you\'ll get access to wholesale pricing and negotiations.',
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
         backgroundColor: backgroundWhite,
         body: SafeArea(
@@ -48,11 +80,23 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   children: [
                     IconButton(
                       onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back_ios_rounded, size: 20, color: textPrimary),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_rounded,
+                        size: 20,
+                        color: textPrimary,
+                      ),
                     ),
                     Expanded(
-                      child: Text('Help & Support', textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary, letterSpacing: -0.3)),
+                      child: Text(
+                        'Help & Support',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 40),
                   ],
@@ -96,29 +140,55 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: primaryBlue.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
-            width: 56, height: 56,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 30),
+            child: const Icon(
+              Icons.support_agent_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
           ),
           const SizedBox(height: 16),
-          Text('How can we help you?', style: GoogleFonts.plusJakartaSans(
-            fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
+          Text(
+            'How can we help you?',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('We\'re here to help with anything you need.\nReach out and we\'ll respond as soon as we can.',
-            textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(
-              fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8), height: 1.5)),
+          Text(
+            'We\'re here to help with anything you need.\nReach out and we\'ll respond as soon as we can.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.8),
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
@@ -126,8 +196,20 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   Widget _buildQuickContactRow() {
     final actions = [
-      {'icon': Icons.call_rounded, 'label': 'Call Us', 'color': const Color(0xFF16A34A), 'bg': const Color(0xFFF0FDF4), 'action': 'call'},
-      {'icon': Icons.chat_bubble_outline_rounded, 'label': 'WhatsApp', 'color': const Color(0xFF25D366), 'bg': const Color(0xFFF0FDF4), 'action': 'whatsapp'},
+      {
+        'icon': Icons.call_rounded,
+        'label': 'Call Us',
+        'color': const Color(0xFF16A34A),
+        'bg': const Color(0xFFF0FDF4),
+        'action': 'call',
+      },
+      {
+        'icon': Icons.chat_bubble_outline_rounded,
+        'label': 'WhatsApp',
+        'color': const Color(0xFF25D366),
+        'bg': const Color(0xFFF0FDF4),
+        'action': 'whatsapp',
+      },
     ];
 
     return Row(
@@ -143,21 +225,38 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   color: surfaceWhite,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: borderLight),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
                     Container(
-                      width: 44, height: 44,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: actions[i]['bg'] as Color,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(actions[i]['icon'] as IconData, color: actions[i]['color'] as Color, size: 22),
+                      child: Icon(
+                        actions[i]['icon'] as IconData,
+                        color: actions[i]['color'] as Color,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    Text(actions[i]['label'] as String, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: textPrimary)),
+                    Text(
+                      actions[i]['label'] as String,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -177,12 +276,29 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Frequently Asked Questions', style: GoogleFonts.plusJakartaSans(
-              fontSize: 17, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: -0.3)),
+            Text(
+              'Frequently Asked Questions',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: primaryBlue.withOpacity(0.08), borderRadius: BorderRadius.circular(100)),
-              child: Text('${faqs.length}', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: primaryBlue)),
+              decoration: BoxDecoration(
+                color: primaryBlue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                '${faqs.length}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: primaryBlue,
+                ),
+              ),
             ),
           ],
         ),
@@ -203,8 +319,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         decoration: BoxDecoration(
           color: isExpanded ? primaryBlue.withOpacity(0.03) : surfaceWhite,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isExpanded ? primaryBlue.withOpacity(0.2) : borderLight),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
+          border: Border.all(
+            color: isExpanded ? primaryBlue.withOpacity(0.2) : borderLight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,34 +336,65 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             Row(
               children: [
                 Container(
-                  width: 32, height: 32,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: isExpanded ? primaryBlue.withOpacity(0.1) : const Color(0xFFF1F5F9),
+                    color: isExpanded
+                        ? primaryBlue.withOpacity(0.1)
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Center(child: Text('${index + 1}', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, fontWeight: FontWeight.w800, color: isExpanded ? primaryBlue : textMuted))),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: isExpanded ? primaryBlue : textMuted,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(faq['q']!, style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: textPrimary, height: 1.3)),
+                  child: Text(
+                    faq['q']!,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
                 ),
                 AnimatedRotation(
                   turns: isExpanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.keyboard_arrow_down_rounded, color: isExpanded ? primaryBlue : textMuted, size: 24),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: isExpanded ? primaryBlue : textMuted,
+                    size: 24,
+                  ),
                 ),
               ],
             ),
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 200),
-              crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              crossFadeState: isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
               firstChild: const SizedBox.shrink(),
               secondChild: Padding(
                 padding: const EdgeInsets.only(top: 12, left: 44),
-                child: Text(faq['a']!, style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: textSecondary, height: 1.6)),
+                child: Text(
+                  faq['a']!,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: textSecondary,
+                    height: 1.6,
+                  ),
+                ),
               ),
             ),
           ],
@@ -250,9 +405,24 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   Widget _buildContactCard() {
     final contacts = [
-      {'icon': Icons.email_rounded, 'title': 'Email Us', 'value': 'ashirvadmarketing62@gmail.com', 'color': const Color(0xFF2563EB)},
-      {'icon': Icons.call_rounded, 'title': 'Call Us', 'value': '+91 91791 10159 / +91 87709 74845', 'color': const Color(0xFF16A34A)},
-      {'icon': Icons.access_time_rounded, 'title': 'Working Hours', 'value': 'Mon - Sat, 9:00 AM - 6:00 PM', 'color': const Color(0xFF7C3AED)},
+      {
+        'icon': Icons.email_rounded,
+        'title': 'Email Us',
+        'value': 'ashirvadmarketing62@gmail.com',
+        'color': const Color(0xFF2563EB),
+      },
+      {
+        'icon': Icons.call_rounded,
+        'title': 'Call Us',
+        'value': PublicBusinessConfig.whatsappDisplayNumber,
+        'color': const Color(0xFF16A34A),
+      },
+      {
+        'icon': Icons.access_time_rounded,
+        'title': 'Working Hours',
+        'value': 'Mon - Sat, 9:00 AM - 6:00 PM',
+        'color': const Color(0xFF7C3AED),
+      },
     ];
 
     return Container(
@@ -261,43 +431,83 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         color: surfaceWhite,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderLight),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Contact Information', style: GoogleFonts.plusJakartaSans(
-            fontSize: 17, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: -0.3)),
-          const SizedBox(height: 4),
-          Text('Get in touch with our support team', style: GoogleFonts.plusJakartaSans(
-            fontSize: 13, color: textMuted)),
-          const SizedBox(height: 20),
-          ...List.generate(contacts.length, (i) => Padding(
-            padding: EdgeInsets.only(bottom: i < contacts.length - 1 ? 16 : 0),
-            child: Row(
-              children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: (contacts[i]['color'] as Color).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(contacts[i]['icon'] as IconData, color: contacts[i]['color'] as Color, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(contacts[i]['title'] as String, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, fontWeight: FontWeight.w600, color: textMuted, letterSpacing: 0.3)),
-                    const SizedBox(height: 2),
-                    Text(contacts[i]['value'] as String, style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: textPrimary)),
-                  ],
-                )),
-              ],
+          Text(
+            'Contact Information',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+              letterSpacing: -0.3,
             ),
-          )),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Get in touch with our support team',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
+          ),
+          const SizedBox(height: 20),
+          ...List.generate(
+            contacts.length,
+            (i) => Padding(
+              padding: EdgeInsets.only(
+                bottom: i < contacts.length - 1 ? 16 : 0,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: (contacts[i]['color'] as Color).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      contacts[i]['icon'] as IconData,
+                      color: contacts[i]['color'] as Color,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          contacts[i]['title'] as String,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: textMuted,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          contacts[i]['value'] as String,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -309,7 +519,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [const Color(0xFFF8FAFC), const Color(0xFFEFF6FF)],
         ),
         borderRadius: BorderRadius.circular(20),
@@ -318,10 +529,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       child: Column(
         children: [
           Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -335,20 +545,35 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Text('Laxmi Agro', style: GoogleFonts.plusJakartaSans(
-            fontSize: 18, fontWeight: FontWeight.w800, color: textPrimary)),
+          Text(
+            'Laxmi Agro',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('Version 1.0.0', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: textMuted)),
+          Text(
+            'Version 1.0.0',
+            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: textMuted),
+          ),
           const SizedBox(height: 12),
-          Text('Raipur-based agricultural supply marketplace', textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textSecondary)),
+          Text(
+            'Raipur-based agricultural supply marketplace',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: textSecondary,
+            ),
+          ),
         ],
       ),
     );
   }
 
   void _handleQuickAction(String action) async {
-    final phoneNumber = '+919179110159';
+    final phoneNumber = PublicBusinessConfig.whatsappNumber;
 
     if (action == 'call') {
       final uri = Uri(scheme: 'tel', path: phoneNumber);

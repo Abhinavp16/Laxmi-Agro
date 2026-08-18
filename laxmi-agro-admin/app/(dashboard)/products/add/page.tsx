@@ -292,7 +292,7 @@ export default function AddProductPage() {
       company: "",
       videoUrl: "",
       shippingTerms:
-        "Free shipping on orders above ₹5,000. Standard delivery within 5-7 business days. Express delivery available at additional cost.\n\nReturn Policy: Products can be returned within 7 days of delivery if unused and in original packaging. Damaged or defective items will be replaced free of charge. Refunds are processed within 5-7 business days after the returned item is received and inspected.",
+        "Delivery, payment, and return arrangements depend on the product, order, and location. Contact Laxmi Agro to confirm the applicable terms before payment or dispatch.",
       labelIds: [],
       rating: "4.5",
       purchaseCountMin: "0",
