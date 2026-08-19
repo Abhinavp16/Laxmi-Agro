@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties. Do not commit android/key.properties or the keystore.
+# Store the generated upload keystore and these passwords in your team password manager.
+# Use an absolute path or a path relative to android/ for storeFile.
+storeFile=/absolute/path/to/laxmi-agro-upload-keystore.jks
+storePassword=REPLACE_WITH_KEYSTORE_PASSWORD
+keyAlias=laxmi-agro-upload
+keyPassword=REPLACE_WITH_KEY_PASSWORD

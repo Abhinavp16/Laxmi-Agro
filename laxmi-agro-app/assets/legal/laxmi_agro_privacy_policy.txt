@@ -1,27 +1,33 @@
-Privacy Policy - Laxmi Agro
+Privacy Policy - Laxmi Agro Enterprises
+Effective date: 20 April 2026
 
 PRIVACY POLICY
 
-This platform may collect contact details, delivery details, inquiry content, order history, and technical usage data required to operate commerce workflows.
+Laxmi Agro Enterprises may collect the following information to provide its wholesale agricultural-equipment marketplace and support services:
+- account and contact details, such as name, phone number, email address, and business name
+- account and authentication information needed to create, secure, and manage an account
+- delivery details, saved addresses, order history, inquiry and negotiation content
+- profile images that you choose to upload
+- approximate or precise location when you choose to use location-based features
+- device, notification-token, and technical usage information needed to operate, secure, and improve the platform
 
 Information may be used for:
-- order processing
-- logistics coordination
-- customer support
-- service improvement
-- security and compliance
+- account management and customer support
+- order processing and logistics coordination
+- responding to inquiries and negotiations
+- service improvement, security, fraud prevention, and legal compliance
+- sending service-related notifications when you allow them
 
-Data may be shared with payment providers, logistics partners, storage providers, and service operators as required to run the platform.
+Data may be processed by payment providers, logistics partners, storage providers, notification providers, and service operators only as needed to run the platform and meet legal obligations. We do not sell personal information.
 
-Reasonable safeguards are used to protect stored information, but no digital system can guarantee absolute security.
+Reasonable technical and organizational safeguards are used to protect stored information, but no digital system can guarantee absolute security.
 
 Privacy contact:
 - Ashirvad Marketing
 - C/O Laxmi Agro Enterprises
 - Station Road, Opp. Surja Devi Shukla Complex, Raipur (C.G.)
+- Email: ashirvadmarketing62@gmail.com
 
-Contact: ashirvadmarketing62@gmail.com
-Company: Laxmi Agro
 ACCOUNT DELETION AND RETENTION
 
 You can request deletion of your Laxmi Agro account from Account & Privacy in the app or at https://www.laxmiagroenterprises.com/delete-account.
