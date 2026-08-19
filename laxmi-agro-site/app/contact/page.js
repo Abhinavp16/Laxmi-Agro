@@ -47,7 +47,15 @@ export default function ContactPage() {
                             </span>
                         </div>
                         <div className="space-y-3 rounded-[1.35rem] border border-[#17351d]/8 bg-[#fffdf7] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-                            <a href="tel:+919179110159" className="block text-xl font-semibold tracking-tight text-[#17351d]">+91 91791 10159</a>
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wide text-[#6e7f62]">Support calls &amp; product enquiries</p>
+                                <a href="tel:+919179110159" className="mt-1 block text-xl font-semibold tracking-tight text-[#17351d]">+91 91791 10159</a>
+                            </div>
+                            <div className="border-t border-[#17351d]/8 pt-3">
+                                <p className="text-xs font-bold uppercase tracking-wide text-[#6e7f62]">Secondary office &amp; payment receipts</p>
+                                <a href="tel:+918770974845" className="mt-1 block text-xl font-semibold tracking-tight text-[#17351d]">+91 87709 74845</a>
+                                <a href="https://wa.me/918770974845" target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm font-semibold text-[#1b7a3b] underline underline-offset-4">WhatsApp payment desk</a>
+                            </div>
                         </div>
                     </div>
 

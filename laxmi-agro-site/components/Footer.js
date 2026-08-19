@@ -57,7 +57,15 @@ export default function Footer() {
                                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.78 19.78 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.59 2.61a2 2 0 0 1-.45 2.11L8 9.69a16 16 0 0 0 6.31 6.31l1.25-1.25a2 2 0 0 1 2.11-.45c.84.27 1.71.47 2.61.59A2 2 0 0 1 22 16.92Z" />
                                     </svg>
                                 </span>
-                                <span className="font-medium">+91 91791 10159</span>
+                                <span className="font-medium">Support: +91 91791 10159</span>
+                            </a>
+                            <a href="tel:+918770974845" className="flex items-center gap-3 transition-colors hover:text-white">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe8d3]/12 text-[#dfe8d3]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.78 19.78 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.59 2.61a2 2 0 0 1-.45 2.11L8 9.69a16 16 0 0 0 6.31 6.31l1.25-1.25a2 2 0 0 1 2.11-.45c.84.27 1.71.47 2.61.59A2 2 0 0 1 22 16.92Z" />
+                                    </svg>
+                                </span>
+                                <span className="font-medium">Office: +91 87709 74845</span>
                             </a>
                             <a href="mailto:ashirvadmarketing62@gmail.com" className="flex min-w-0 items-center gap-3 transition-colors hover:text-white">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe8d3]/12 text-[#dfe8d3]">

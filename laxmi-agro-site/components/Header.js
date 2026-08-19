@@ -110,10 +110,10 @@ export default function Header() {
                 {/* Desktop Actions */}
                 <div className="hidden md:flex items-center gap-4">
                     <a
-                        href="https://wa.me/919000000000"
+                        href="https://wa.me/919179110159"
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label="Chat on WhatsApp"
+                        aria-label="Chat with Laxmi Agro on WhatsApp"
                         className="w-11 h-11 rounded-full border border-gray-200 text-[#25D366] hover:border-[#25D366] hover:bg-[#25D366] hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center group bg-white"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -177,11 +177,11 @@ export default function Header() {
                     <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
                         {/* WhatsApp Icon Button */}
                         <a
-                            href="https://wa.me/919000000000"
+                            href="https://wa.me/919179110159"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-14 h-14 shrink-0 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm active:scale-95 transition-all"
-                            aria-label="Contact on WhatsApp"
+                            aria-label="Chat with Laxmi Agro on WhatsApp"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="#25D366">
                                 <path d="M12.04 2C6.52 2 2.04 6.48 2.04 12c0 1.77.46 3.43 1.26 4.88L2 22l5.27-1.28A9.96 9.96 0 0 0 12.04 22c5.52 0 10-4.48 10-10S17.56 2 12.04 2Zm0 18.18c-1.53 0-3.03-.4-4.35-1.16l-.31-.18-3.13.76.84-3.05-.2-.32A8.11 8.11 0 1 1 12.04 20.18Zm4.45-6.08c-.24-.12-1.4-.69-1.62-.76-.22-.08-.38-.12-.54.12-.16.24-.62.76-.76.92-.14.16-.28.18-.52.06a6.63 6.63 0 0 1-1.95-1.2 7.32 7.32 0 0 1-1.35-1.68c-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.48-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.7 2.6 4.12 3.64.58.25 1.03.4 1.38.51.58.18 1.1.16 1.52.1.46-.07 1.4-.57 1.6-1.12.2-.55.2-1.02.14-1.12-.06-.1-.22-.16-.46-.28Z" />
