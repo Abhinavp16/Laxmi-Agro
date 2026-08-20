@@ -80,7 +80,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
             {(["admin", "staff"] as LoginMode[]).map((value) => (
               <button key={value} type="button" onClick={() => { setMode(value); setSent(false) }} className={`rounded-md px-3 py-2 text-sm font-semibold capitalize ${mode === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>
-                {value} login
+                {value === "staff" ? "member" : value} login
               </button>
             ))}
           </div>
@@ -94,7 +94,7 @@ export default function LoginPage() {
               <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Username" autoComplete="username" required />
               <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" autoComplete="current-password" required />
               <Button type="submit" className="w-full bg-[#86efac] text-black hover:bg-[#74e39c]" disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Sign in as staff
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Sign in as member
               </Button>
             </form>
           ) : !sent ? (

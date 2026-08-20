@@ -199,7 +199,7 @@ export default function AccountDeletionRequestsPage() {
                   >
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-white">{request.userId?.name || "Account no longer available"}</p>
-                      <p className="truncate text-sm text-gray-400">{request.userId?.email || request.userId?.phone || "Account identity requires staff verification"}</p>
+                      <p className="truncate text-sm text-gray-400">{request.userId?.email || request.userId?.phone || "Account identity requires member verification"}</p>
                       <p className="mt-1 text-xs text-gray-500">Requested {formatDate(request.requestedAt)} via {request.source}</p>
                     </div>
                     <div className="text-left md:text-right">
@@ -240,7 +240,7 @@ export default function AccountDeletionRequestsPage() {
                         onChange={(event) => setIdentityVerified(event.target.checked)}
                         className="mt-1 h-4 w-4 accent-amber-400"
                       />
-                      <span>I verified this request directly with the account holder. This confirmation is recorded with my staff account.</span>
+                      <span>I verified this request directly with the account holder. This confirmation is recorded with my member account.</span>
                     </label>
                   ) : null}
                   <Textarea
@@ -256,7 +256,7 @@ export default function AccountDeletionRequestsPage() {
                   </div>
                 </>
               ) : (
-                <p className="rounded-lg border border-[#333] bg-[#0D0D0D] p-3 text-sm text-gray-400">This request is no longer actionable. Staff note: {selectedRequest.staffNote || "—"}</p>
+                <p className="rounded-lg border border-[#333] bg-[#0D0D0D] p-3 text-sm text-gray-400">This request is no longer actionable. Member note: {selectedRequest.staffNote || "—"}</p>
               )}
             </div>
           ) : null}

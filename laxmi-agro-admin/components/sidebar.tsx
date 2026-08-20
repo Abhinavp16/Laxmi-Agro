@@ -76,7 +76,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
       { href: "/negotiation-settings", label: "NEGOTIATION SETTINGS", icon: Settings01Icon },
-      { href: "/staff-management", label: "STAFF", icon: UserGroupIcon },
+      { href: "/staff-management", label: "MEMBERS", icon: UserGroupIcon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
       { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },
       { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: AddTeamIcon },
@@ -363,7 +363,7 @@ const staffPrimaryNavItems = staffNavGroups.flatMap((group) => group.items)
 
 function getStaffPageTitle(pathname: string) {
   const activeItem = staffPrimaryNavItems.find((item) => isNavItemActive(pathname, item))
-  return activeItem ? formatPageTitle(activeItem.label) : "Staff Workspace"
+  return activeItem ? formatPageTitle(activeItem.label) : "Member Workspace"
 }
 
 function useStaffSidebarState() {
@@ -427,7 +427,7 @@ function StaffSidebarNavContent({
 
   return (
     <div className="flex min-h-full flex-col">
-      <nav className="flex flex-col gap-6" aria-label="Staff navigation">
+      <nav className="flex flex-col gap-6" aria-label="Member navigation">
         {staffNavGroups.map((group) => (
           <section key={group.label} aria-labelledby={`staff-sidebar-group-${group.label.toLowerCase()}`}>
             <p id={`staff-sidebar-group-${group.label.toLowerCase()}`} className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
@@ -472,7 +472,7 @@ export function MobileStaffNav() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[88vw] border-r border-slate-200 bg-white p-0 text-slate-900 sm:max-w-sm">
-            <SheetHeader className="border-b border-slate-200 p-0 text-left"><SidebarBrand portalLabel="Staff Portal" /><SheetTitle className="sr-only">Staff Navigation</SheetTitle><SheetDescription className="sr-only">Browse your permitted work areas and account actions.</SheetDescription></SheetHeader>
+            <SheetHeader className="border-b border-slate-200 p-0 text-left"><SidebarBrand portalLabel="Member Portal" /><SheetTitle className="sr-only">Member Navigation</SheetTitle><SheetDescription className="sr-only">Browse your permitted work areas and account actions.</SheetDescription></SheetHeader>
             <div className="h-[calc(100dvh-77px)] overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} closeOnNavigate /></div>
           </SheetContent>
         </Sheet>
@@ -486,7 +486,7 @@ export function StaffSidebar() {
 
   return (
     <aside className="hidden h-screen shrink-0 md:flex md:w-60 lg:w-64 md:flex-col md:self-stretch md:overflow-hidden border-r border-slate-200 bg-white text-slate-900">
-      <div className="border-b border-slate-200"><SidebarBrand portalLabel="Staff Portal" /></div>
+      <div className="border-b border-slate-200"><SidebarBrand portalLabel="Member Portal" /></div>
       <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} /></div>
     </aside>
   )
