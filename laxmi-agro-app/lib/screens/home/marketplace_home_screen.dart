@@ -18,6 +18,7 @@ import '../../core/config/feature_flags.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/state_city_pincode_fields.dart';
@@ -1387,10 +1388,51 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                             color: borderLight,
                                             indent: 60,
                                           ),
-                                      itemBuilder: (_, i) =>
-                                          _buildNotificationItem(
-                                            _notifications[i],
+                                      itemBuilder: (_, i) {
+                                        final notification = _notifications[i];
+                                        final rawData = notification['data'];
+                                        final data = rawData is Map
+                                            ? {
+                                                ...rawData.map(
+                                                  (key, value) => MapEntry(
+                                                    key.toString(),
+                                                    value,
+                                                  ),
+                                                ),
+                                                'type':
+                                                    notification['type']
+                                                        ?.toString() ??
+                                                    'general',
+                                              }
+                                            : {
+                                                'type':
+                                                    notification['type']
+                                                        ?.toString() ??
+                                                    'general',
+                                              };
+
+                                        return GestureDetector(
+                                          onTap: () {
+                                            Navigator.of(ctx).pop();
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                                  if (!mounted) return;
+                                                  NotificationNavigationService
+                                                      .instance
+                                                      .openFromContext(
+                                                        context,
+                                                        data,
+                                                        isAuthenticated: ref
+                                                            .read(authProvider)
+                                                            .isAuthenticated,
+                                                      );
+                                                });
+                                          },
+                                          child: _buildNotificationItem(
+                                            notification,
                                           ),
+                                        );
+                                      },
                                     ),
                                   ),
                             // Footer

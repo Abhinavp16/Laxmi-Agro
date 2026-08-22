@@ -28,6 +28,14 @@ class NotificationNavigationService {
     'shipping',
   };
 
+  static const Set<String> _negotiationNotificationTypes = {
+    'negotiation',
+    'negotiation_update',
+    'negotiation_countered',
+    'negotiation_accepted',
+    'negotiation_rejected',
+  };
+
   static const Set<String> _priceNotificationTypes = {
     'price_change_campaign_started',
     'price_change_campaign_12h',
@@ -50,8 +58,19 @@ class NotificationNavigationService {
 
     final data = rawData.map((key, value) => MapEntry(key.toString(), value));
     final type = data['type']?.toString().trim().toLowerCase() ?? '';
+    final negotiationId =
+        (data['negotiationId'] ?? data['negotiation_id'])?.toString().trim() ??
+        '';
     final orderId =
         (data['orderId'] ?? data['order_id'])?.toString().trim() ?? '';
+
+    if (_negotiationNotificationTypes.contains(type) &&
+        negotiationId.isNotEmpty) {
+      return NotificationDestination(
+        route: '/negotiation-detail/${Uri.encodeComponent(negotiationId)}',
+        requiresAuthentication: true,
+      );
+    }
 
     if (orderId.isNotEmpty) {
       return NotificationDestination(

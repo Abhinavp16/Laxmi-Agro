@@ -84,8 +84,14 @@ exports.acceptNegotiation = async (req, res, next) => {
       throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
     }
 
-    if (negotiation.status !== NEGOTIATION_STATUS.PENDING) {
-      throw new BadRequestError('Cannot accept in current status', 'INVALID_NEGOTIATION_STATUS');
+    if (
+      negotiation.status !== NEGOTIATION_STATUS.PENDING ||
+      negotiation.currentOfferBy !== 'wholesaler'
+    ) {
+      throw new BadRequestError(
+        'Cannot accept until the wholesaler submits an offer',
+        'INVALID_NEGOTIATION_STATUS',
+      );
     }
 
     negotiation.history.push({

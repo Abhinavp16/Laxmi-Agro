@@ -45,6 +45,8 @@ interface NegotiationDetail {
     requestedQuantity: number
     requestedPricePerUnit: number
     status: string
+    currentOfferBy?: 'wholesaler' | 'admin'
+    currentPricePerUnit?: number
     message: string
     history: {
         action: string
@@ -203,6 +205,16 @@ export default function NegotiationsPage() {
         }
     }
 
+    const canAdminRespond =
+        selectedNegotiation?.status === 'pending' &&
+        selectedNegotiation.currentOfferBy === 'wholesaler'
+    const isAwaitingWholesaler =
+        selectedNegotiation?.status === 'countered' &&
+        selectedNegotiation.currentOfferBy === 'admin'
+    const canReject =
+        selectedNegotiation != null &&
+        !['accepted', 'rejected', 'converted'].includes(selectedNegotiation.status)
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
@@ -357,7 +369,7 @@ export default function NegotiationsPage() {
 
                             {/* Actions */}
                             <div className="pt-4 border-t border-[#333] mt-auto space-y-4">
-                                {selectedNegotiation.status !== 'accepted' && selectedNegotiation.status !== 'rejected' && (
+                                {canAdminRespond && (
                                     <>
                                         <div className="bg-[#0D0D0D] p-3 rounded-lg border border-[#333] space-y-3">
                                             <Label className="text-xs uppercase text-gray-500">Counter Offer</Label>
@@ -386,23 +398,30 @@ export default function NegotiationsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-3">
-                                            <Button
-                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                                                disabled={isSubmitting}
-                                                onClick={() => handleAction('accept')}
-                                            >
-                                                <Check className="w-4 h-4 mr-2" /> Accept Deal
-                                            </Button>
-                                            <Button
-                                                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                                                disabled={isSubmitting}
-                                                onClick={() => handleAction('reject')}
-                                            >
-                                                <X className="w-4 h-4 mr-2" /> Reject
-                                            </Button>
-                                        </div>
+                                        <Button
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                            disabled={isSubmitting}
+                                            onClick={() => handleAction('accept')}
+                                        >
+                                            <Check className="w-4 h-4 mr-2" /> Accept Deal
+                                        </Button>
                                     </>
+                                )}
+
+                                {isAwaitingWholesaler && (
+                                    <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
+                                        Waiting for the wholesaler to accept or counter this offer.
+                                    </div>
+                                )}
+
+                                {canReject && (
+                                    <Button
+                                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                                        disabled={isSubmitting}
+                                        onClick={() => handleAction('reject')}
+                                    >
+                                        <X className="w-4 h-4 mr-2" /> Reject
+                                    </Button>
                                 )}
                             </div>
                         </div>
