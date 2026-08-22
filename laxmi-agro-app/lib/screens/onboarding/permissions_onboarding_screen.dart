@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,19 +22,25 @@ class _PermissionsOnboardingScreenState
     extends ConsumerState<PermissionsOnboardingScreen> {
   bool _isContinuing = false;
 
+  Future<void> _requestNotificationPermission() async {
+    try {
+      await ref
+          .read(notificationServiceProvider)
+          .initialize(requestPermission: true);
+    } catch (error) {
+      debugPrint('[Notifications] Permission setup skipped: $error');
+    }
+  }
+
   Future<void> _complete({required bool requestNotificationPermission}) async {
     if (_isContinuing) return;
     setState(() => _isContinuing = true);
 
     try {
       if (requestNotificationPermission) {
-        try {
-          await ref
-              .read(notificationServiceProvider)
-              .initialize(requestPermission: true);
-        } catch (error) {
-          debugPrint('[Notifications] Permission setup skipped: $error');
-        }
+        // Native notification setup can wait on an iOS permission or APNs call.
+        // It must not block a user from completing onboarding.
+        unawaited(_requestNotificationPermission());
       }
 
       await StorageService.setFirstLaunchComplete();
