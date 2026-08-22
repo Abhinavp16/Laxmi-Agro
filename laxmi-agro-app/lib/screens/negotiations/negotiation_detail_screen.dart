@@ -56,25 +56,36 @@ class _NegotiationDetailScreenState
   }
 
   Future<void> _fetchDetail() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
     });
+
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.get('/negotiations/${widget.negotiationId}');
+      if (!mounted) return;
+
       if (response.data['success'] == true) {
         setState(() {
           _negotiation = response.data['data'];
           _isLoading = false;
         });
+      } else {
+        setState(() {
+          _error = response.data['message']?.toString() ?? 'Failed to load';
+          _isLoading = false;
+        });
       }
     } on DioException catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.response?.data?['message']?.toString() ?? 'Failed to load';
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
         _error = 'Something went wrong';
         _isLoading = false;
@@ -478,153 +489,159 @@ class _NegotiationDetailScreenState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
+      builder: (ctx) => AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: Container(
           padding: EdgeInsets.fromLTRB(
             20,
             20,
             20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
+            MediaQuery.paddingOf(ctx).bottom + 20,
           ),
           decoration: const BoxDecoration(
             color: surfaceWhite,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: borderLight,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Your Counter Offer',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'For $quantity units',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: slateBlue,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Price per unit (₹)',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _counterPriceController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: InputDecoration(
-                  prefixText: '₹ ',
-                  hintText: 'Enter your price',
-                  hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-                  filled: true,
-                  fillColor: backgroundWhite,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: borderLight),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: primaryBlue, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Message (optional)',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _counterMessageController,
-                maxLines: 2,
-                style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Add a note...',
-                  hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-                  filled: true,
-                  fillColor: backgroundWhite,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: borderLight),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: primaryBlue, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isActioning ? null : _submitCounterOffer,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: borderLight,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  child: _isActioning
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Send Counter Offer',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  'Your Counter Offer',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'For $quantity units',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: slateBlue,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Price per unit (₹)',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _counterPriceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    prefixText: '₹ ',
+                    hintText: 'Enter your price',
+                    hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+                    filled: true,
+                    fillColor: backgroundWhite,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: borderLight),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: borderLight),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: primaryBlue, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Message (optional)',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _counterMessageController,
+                  maxLines: 2,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Add a note...',
+                    hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+                    filled: true,
+                    fillColor: backgroundWhite,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: borderLight),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: borderLight),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: primaryBlue, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isActioning ? null : _submitCounterOffer,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isActioning
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Send Counter Offer',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

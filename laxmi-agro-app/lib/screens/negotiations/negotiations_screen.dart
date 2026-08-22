@@ -51,10 +51,17 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
   }
 
   Future<void> _fetchNegotiations() async {
-    setState(() { _isLoading = true; _error = null; });
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.get('/negotiations');
+      if (!mounted) return;
+
       final data = response.data;
       if (data['success'] == true) {
         final List items = data['data'] ?? [];
@@ -62,27 +69,47 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
           _negotiations = items.cast<Map<String, dynamic>>();
           _isLoading = false;
         });
+      } else {
+        setState(() {
+          _error = data['message']?.toString() ?? 'Failed to load negotiations';
+          _isLoading = false;
+        });
       }
-    } catch (e) {
-      setState(() { _error = 'Failed to load negotiations'; _isLoading = false; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to load negotiations';
+        _isLoading = false;
+      });
     }
   }
 
   List<Map<String, dynamic>> get _filteredNegotiations {
     if (_selectedTab == 0) return _negotiations;
     if (_selectedTab == 1) {
-      return _negotiations.where((n) =>
-        ['pending', 'countered'].contains(n['status'])).toList();
+      return _negotiations
+          .where((n) => ['pending', 'countered'].contains(n['status']))
+          .toList();
     }
     // Completed tab
-    return _negotiations.where((n) =>
-      ['accepted', 'rejected', 'expired', 'converted'].contains(n['status'])).toList();
+    return _negotiations
+        .where(
+          (n) => [
+            'accepted',
+            'rejected',
+            'expired',
+            'converted',
+          ].contains(n['status']),
+        )
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
         backgroundColor: backgroundWhite,
         body: SafeArea(
@@ -96,15 +123,21 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                   children: [
                     IconButton(
                       onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back_ios_rounded, size: 20, color: textPrimary),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_rounded,
+                        size: 20,
+                        color: textPrimary,
+                      ),
                     ),
                     Expanded(
                       child: Text(
                         'Negotiations',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18, fontWeight: FontWeight.w700,
-                          color: textPrimary, letterSpacing: -0.3,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ),
@@ -115,7 +148,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
               // Tabs
               Container(
                 decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: borderLight, width: 1)),
+                  border: Border(
+                    bottom: BorderSide(color: borderLight, width: 1),
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -140,60 +175,87 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                           physics: const AlwaysScrollableScrollPhysics(),
                           children: const [
                             SizedBox(height: 200),
-                            Center(child: CircularProgressIndicator(color: primaryBlue)),
+                            Center(
+                              child: CircularProgressIndicator(
+                                color: primaryBlue,
+                              ),
+                            ),
                           ],
                         )
                       : _error != null
-                          ? ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                const SizedBox(height: 200),
-                                Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(_error!, style: GoogleFonts.plusJakartaSans(color: textMuted)),
-                                      const SizedBox(height: 12),
-                                      TextButton(onPressed: _fetchNegotiations, child: const Text('Retry')),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : _filteredNegotiations.isEmpty
-                              ? ListView(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  children: [
-                                    const SizedBox(height: 200),
-                                    Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.handshake_outlined, size: 48, color: textMuted.withOpacity(0.5)),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            _selectedTab == 1 ? 'No active negotiations' :
-                                            _selectedTab == 2 ? 'No completed negotiations' :
-                                            'No negotiations yet',
-                                            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600, color: textMuted),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Start negotiating on product pages',
-                                            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: slateBlue),
-                                          ),
-                                        ],
-                                      ),
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            const SizedBox(height: 200),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _error!,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: textMuted,
                                     ),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                                  itemCount: _filteredNegotiations.length,
-                                  itemBuilder: (context, index) =>
-                                      _buildNegotiationCard(_filteredNegotiations[index]),
-                                ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextButton(
+                                    onPressed: _fetchNegotiations,
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : _filteredNegotiations.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            const SizedBox(height: 200),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.handshake_outlined,
+                                    size: 48,
+                                    color: textMuted.withOpacity(0.5),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _selectedTab == 1
+                                        ? 'No active negotiations'
+                                        : _selectedTab == 2
+                                        ? 'No completed negotiations'
+                                        : 'No negotiations yet',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: textMuted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Start negotiating on product pages',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      color: slateBlue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                          itemCount: _filteredNegotiations.length,
+                          itemBuilder: (context, index) =>
+                              _buildNegotiationCard(
+                                _filteredNegotiations[index],
+                              ),
+                        ),
                 ),
               ),
             ],
@@ -220,7 +282,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
         child: Text(
           label,
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w700,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
             color: isSelected ? primaryBlue : slateBlue,
           ),
@@ -232,19 +295,47 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
   Map<String, dynamic> _getStatusDisplay(String status) {
     switch (status) {
       case 'pending':
-        return {'label': 'PENDING', 'color': const Color(0xFF6B7280), 'bg': const Color(0xFFF3F4F6)};
+        return {
+          'label': 'PENDING',
+          'color': const Color(0xFF6B7280),
+          'bg': const Color(0xFFF3F4F6),
+        };
       case 'countered':
-        return {'label': 'COUNTER-OFFER', 'color': const Color(0xFFF59E0B), 'bg': const Color(0xFFFEF3C7)};
+        return {
+          'label': 'COUNTER-OFFER',
+          'color': const Color(0xFFF59E0B),
+          'bg': const Color(0xFFFEF3C7),
+        };
       case 'accepted':
-        return {'label': 'ACCEPTED', 'color': const Color(0xFF16A34A), 'bg': const Color(0xFFDCFCE7)};
+        return {
+          'label': 'ACCEPTED',
+          'color': const Color(0xFF16A34A),
+          'bg': const Color(0xFFDCFCE7),
+        };
       case 'rejected':
-        return {'label': 'REJECTED', 'color': const Color(0xFFDC2626), 'bg': const Color(0xFFFEE2E2)};
+        return {
+          'label': 'REJECTED',
+          'color': const Color(0xFFDC2626),
+          'bg': const Color(0xFFFEE2E2),
+        };
       case 'expired':
-        return {'label': 'EXPIRED', 'color': const Color(0xFF9CA3AF), 'bg': const Color(0xFFF3F4F6)};
+        return {
+          'label': 'EXPIRED',
+          'color': const Color(0xFF9CA3AF),
+          'bg': const Color(0xFFF3F4F6),
+        };
       case 'converted':
-        return {'label': 'CONVERTED', 'color': const Color(0xFF7C3AED), 'bg': const Color(0xFFF3E8FF)};
+        return {
+          'label': 'CONVERTED',
+          'color': const Color(0xFF7C3AED),
+          'bg': const Color(0xFFF3E8FF),
+        };
       default:
-        return {'label': status.toUpperCase(), 'color': const Color(0xFF6B7280), 'bg': const Color(0xFFF3F4F6)};
+        return {
+          'label': status.toUpperCase(),
+          'color': const Color(0xFF6B7280),
+          'bg': const Color(0xFFF3F4F6),
+        };
     }
   }
 
@@ -260,14 +351,17 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     final currentTotal = negotiation['currentTotalPrice'] ?? 0;
     final currentOfferBy = negotiation['currentOfferBy'] as String? ?? '';
     final negotiationNumber = negotiation['negotiationNumber'] as String? ?? '';
-    final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '').toString();
+    final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '')
+        .toString();
     final canPay = negotiation['canPay'] == true;
     final createdAt = negotiation['createdAt'] as String? ?? '';
 
     String formattedDate = '';
     if (createdAt.isNotEmpty) {
       try {
-        formattedDate = DateFormat('MMM d, yyyy').format(DateTime.parse(createdAt));
+        formattedDate = DateFormat(
+          'MMM d, yyyy',
+        ).format(DateTime.parse(createdAt));
       } catch (_) {}
     }
 
@@ -275,7 +369,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () async {
-          final result = await context.push('/negotiation-detail/$negotiationId');
+          final result = await context.push(
+            '/negotiation-detail/$negotiationId',
+          );
           if (result == true) _fetchNegotiations();
         },
         child: Container(
@@ -284,7 +380,11 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderLight),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -314,14 +414,21 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          negotiationNumber.isNotEmpty ? negotiationNumber : 'NEGOTIATION',
+                          negotiationNumber.isNotEmpty
+                              ? negotiationNumber
+                              : 'NEGOTIATION',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12, fontWeight: FontWeight.w600,
-                            color: slateBlue, letterSpacing: 0.5,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: slateBlue,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: statusDisplay['bg'] as Color,
                             borderRadius: BorderRadius.circular(100),
@@ -329,7 +436,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                           child: Text(
                             statusDisplay['label'] as String,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10, fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
                               color: statusDisplay['color'] as Color,
                               letterSpacing: 0.3,
                             ),
@@ -342,8 +450,11 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                     Text(
                       productName,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18, fontWeight: FontWeight.w700,
-                        color: textPrimary, height: 1.2, letterSpacing: -0.3,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                        height: 1.2,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -352,11 +463,26 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                       children: [
                         Text(
                           'Qty: $quantity units',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: slateBlue),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: slateBlue,
+                          ),
                         ),
                         if (formattedDate.isNotEmpty) ...[
-                          Text('  •  ', style: GoogleFonts.plusJakartaSans(color: textMuted)),
-                          Text(formattedDate, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: textMuted)),
+                          Text(
+                            '  •  ',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: textMuted,
+                            ),
+                          ),
+                          Text(
+                            formattedDate,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: textMuted,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -368,7 +494,12 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                         color: backgroundWhite,
                         borderRadius: BorderRadius.circular(8),
                         border: status == 'accepted'
-                            ? const Border(left: BorderSide(color: Color(0xFF16A34A), width: 4))
+                            ? const Border(
+                                left: BorderSide(
+                                  color: Color(0xFF16A34A),
+                                  width: 4,
+                                ),
+                              )
                             : null,
                       ),
                       child: Column(
@@ -376,10 +507,20 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Your Price/unit:', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: slateBlue)),
+                              Text(
+                                'Your Price/unit:',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: slateBlue,
+                                ),
+                              ),
                               Text(
                                 '₹${NumberFormat('#,##,###').format(requestedPrice)}',
-                                style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: textPrimary),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: textPrimary,
+                                ),
                               ),
                             ],
                           ),
@@ -388,16 +529,23 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                status == 'countered' && currentOfferBy == 'admin'
+                                status == 'countered' &&
+                                        currentOfferBy == 'admin'
                                     ? 'Admin Counter:'
                                     : 'Current Price/unit:',
-                                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: slateBlue),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: slateBlue,
+                                ),
                               ),
                               Text(
                                 '₹${NumberFormat('#,##,###').format(currentPrice)}',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14, fontWeight: FontWeight.w700,
-                                  color: status == 'accepted' ? const Color(0xFF16A34A) : primaryBlue,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: status == 'accepted'
+                                      ? const Color(0xFF16A34A)
+                                      : primaryBlue,
                                 ),
                               ),
                             ],
@@ -408,12 +556,22 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Total:', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
+                              Text(
+                                'Total:',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
+                              ),
                               Text(
                                 '₹${NumberFormat('#,##,###').format(currentTotal)}',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16, fontWeight: FontWeight.w800,
-                                  color: status == 'accepted' ? const Color(0xFF16A34A) : textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: status == 'accepted'
+                                      ? const Color(0xFF16A34A)
+                                      : textPrimary,
                                 ),
                               ),
                             ],
@@ -423,7 +581,12 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                     ),
                     const SizedBox(height: 16),
                     // Action Button
-                    _buildActionButton(status, currentOfferBy, canPay, negotiationId),
+                    _buildActionButton(
+                      status,
+                      currentOfferBy,
+                      canPay,
+                      negotiationId,
+                    ),
                   ],
                 ),
               ),
@@ -434,7 +597,12 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     );
   }
 
-  Widget _buildActionButton(String status, String currentOfferBy, bool canPay, String negotiationId) {
+  Widget _buildActionButton(
+    String status,
+    String currentOfferBy,
+    bool canPay,
+    String negotiationId,
+  ) {
     String label;
     String style;
     IconData? icon;
@@ -480,12 +648,18 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
           color: style == 'primary'
               ? primaryBlue
               : style == 'disabled'
-                  ? borderLight
-                  : surfaceWhite,
+              ? borderLight
+              : surfaceWhite,
           borderRadius: BorderRadius.circular(10),
           border: style == 'outline' ? Border.all(color: borderLight) : null,
           boxShadow: style == 'primary' && icon != null
-              ? [BoxShadow(color: primaryBlue.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))]
+              ? [
+                  BoxShadow(
+                    color: primaryBlue.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -498,12 +672,13 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 14, fontWeight: FontWeight.w700,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
                 color: style == 'primary'
                     ? Colors.white
                     : style == 'disabled'
-                        ? const Color(0xFF9CA3AF)
-                        : textPrimary,
+                    ? const Color(0xFF9CA3AF)
+                    : textPrimary,
               ),
             ),
           ],

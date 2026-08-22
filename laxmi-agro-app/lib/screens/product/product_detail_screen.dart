@@ -3629,41 +3629,50 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             );
           }
 
-          return Container(
-            margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom,
             ),
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                12,
-                20,
-                MediaQuery.of(ctx).padding.bottom + 20,
+            child: Container(
+              margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: _border,
-                        borderRadius: BorderRadius.circular(100),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  MediaQuery.of(ctx).padding.bottom + 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: _border,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
                       ),
                     ),
-                  ),
-                  _stepDots(step),
-                  const SizedBox(height: 24),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: KeyedSubtree(key: ValueKey(step), child: content),
-                  ),
-                ],
+                    _stepDots(step),
+                    const SizedBox(height: 24),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: KeyedSubtree(key: ValueKey(step), child: content),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

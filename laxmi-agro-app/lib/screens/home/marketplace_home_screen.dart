@@ -4111,23 +4111,46 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   int _negotiationTab = 0;
-  bool _isNegotiationsLoading = true;
+  bool _isNegotiationsLoading = false;
+  bool _isFetchingNegotiations = false;
   List<Map<String, dynamic>> _negotiations = [];
 
+  void _selectNavIndex(int index) {
+    if (_selectedNavIndex != index) {
+      setState(() => _selectedNavIndex = index);
+    }
+
+    if (_isWholesaler && index == 4) {
+      _fetchNegotiations();
+    }
+  }
+
   Future<void> _fetchNegotiations() async {
-    setState(() => _isNegotiationsLoading = true);
+    if (_isFetchingNegotiations) return;
+
+    _isFetchingNegotiations = true;
+    if (mounted) {
+      setState(() => _isNegotiationsLoading = true);
+    }
+
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.get('/negotiations');
-      if (response.data['success'] == true) {
-        final List items = response.data['data'] ?? [];
-        setState(() {
-          _negotiations = items.cast<Map<String, dynamic>>();
-          _isNegotiationsLoading = false;
-        });
+      if (!mounted) return;
+
+      final List items = response.data['success'] == true
+          ? response.data['data'] ?? []
+          : [];
+      setState(() {
+        _negotiations = items.cast<Map<String, dynamic>>();
+        _isNegotiationsLoading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isNegotiationsLoading = false);
       }
-    } catch (e) {
-      setState(() => _isNegotiationsLoading = false);
+    } finally {
+      _isFetchingNegotiations = false;
     }
   }
 
@@ -4200,9 +4223,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildNegotiationsContent() {
     final t = ref.read(localeProvider.notifier).translate;
-    if (_isNegotiationsLoading && _negotiations.isEmpty) {
-      _fetchNegotiations();
-    }
     return Column(
       children: [
         // Header
@@ -8430,7 +8450,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedNavIndex = index),
+        onTap: () => _selectNavIndex(index),
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
