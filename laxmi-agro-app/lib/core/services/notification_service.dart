@@ -48,7 +48,11 @@ class NotificationService {
     }
 
     final messaging = FirebaseMessaging.instance;
-    await _ensureLifecycleInitialized(messaging);
+
+    // Token registration must not wait for local-notification initialization or
+    // initial-message recovery. Either can be delayed on iOS, while a valid
+    // APNs/FCM token must be registered with the backend as soon as possible.
+    unawaited(_initializeLifecycleInBackground(messaging));
 
     final settings = requestPermission
         ? await messaging.requestPermission(
@@ -78,6 +82,16 @@ class NotificationService {
           defaultTargetPlatform == TargetPlatform.android) {
         _priceCountdownSynced = await _syncActivePriceCountdownFromBackend();
       }
+    }
+  }
+
+  Future<void> _initializeLifecycleInBackground(
+    FirebaseMessaging messaging,
+  ) async {
+    try {
+      await _ensureLifecycleInitialized(messaging);
+    } catch (error) {
+      debugPrint('[FCM] Lifecycle initialization failed: $error');
     }
   }
 
