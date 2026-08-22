@@ -52,10 +52,12 @@ class NotificationService {
         : await messaging.getNotificationSettings();
 
     debugPrint('[FCM] Permission status: ${settings.authorizationStatus}');
+    final useLocalForegroundPresentation =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     await messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
+      alert: !useLocalForegroundPresentation,
+      badge: !useLocalForegroundPresentation,
+      sound: !useLocalForegroundPresentation,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
@@ -107,6 +109,14 @@ class NotificationService {
 
   Future<void> _getAndRegisterToken(FirebaseMessaging messaging) async {
     try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        final apnsToken = await _awaitApnsToken(messaging);
+        if (apnsToken == null) {
+          debugPrint('[FCM] APNs token was not available; will retry later');
+          return;
+        }
+      }
+
       final token = await messaging.getToken();
       if (token != null) {
         _currentToken = token;
@@ -116,6 +126,15 @@ class NotificationService {
     } catch (e) {
       debugPrint('[FCM] Error getting token: $e');
     }
+  }
+
+  Future<String?> _awaitApnsToken(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      final token = await messaging.getAPNSToken();
+      if (token != null && token.isNotEmpty) return token;
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    return null;
   }
 
   void _setupTokenRefreshListener(FirebaseMessaging messaging) {
@@ -136,7 +155,7 @@ class NotificationService {
       final type = message.data['type']?.toString();
       if (LocalNotificationService.instance.isPriceCampaignType(type)) {
         await LocalNotificationService.instance.handleRemoteMessage(message);
-      } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      } else if (!kIsWeb) {
         final title = message.notification?.title ?? 'Notification';
         final body = message.notification?.body ?? '';
         if (body.isNotEmpty || title.isNotEmpty) {

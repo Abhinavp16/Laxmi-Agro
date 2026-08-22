@@ -258,7 +258,11 @@ class LocalNotificationService {
             summaryText: 'Laxmi Agro',
           ),
         ),
-        iOS: const DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
       payload: payload,
     );
