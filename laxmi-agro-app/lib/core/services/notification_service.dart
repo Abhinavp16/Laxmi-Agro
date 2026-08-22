@@ -1,4 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +32,12 @@ class NotificationService {
   bool _messageHandlersInstalled = false;
   bool _tokenRefreshListenerInstalled = false;
   bool _priceCountdownSynced = false;
+  bool _isTokenRegistered = false;
+  bool _isRegistrationInFlight = false;
+  int _registrationAttempt = 0;
+  Timer? _registrationRetryTimer;
+
+  static const int _maxRegistrationAttempts = 6;
 
   NotificationService(this._ref);
 
@@ -52,12 +60,13 @@ class NotificationService {
         : await messaging.getNotificationSettings();
 
     debugPrint('[FCM] Permission status: ${settings.authorizationStatus}');
-    final useLocalForegroundPresentation =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    // Let iOS present the FCM notification while the app is open. The previous
+    // local-notification fallback was not reliably becoming the iOS notification
+    // center delegate, leaving only the in-app SnackBar visible.
     await messaging.setForegroundNotificationPresentationOptions(
-      alert: !useLocalForegroundPresentation,
-      badge: !useLocalForegroundPresentation,
-      sound: !useLocalForegroundPresentation,
+      alert: true,
+      badge: true,
+      sound: true,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
@@ -108,33 +117,90 @@ class NotificationService {
   }
 
   Future<void> _getAndRegisterToken(FirebaseMessaging messaging) async {
+    if (_isRegistrationInFlight) return;
+    _isRegistrationInFlight = true;
+
     try {
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      final isIos = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+      if (isIos) {
         final apnsToken = await _awaitApnsToken(messaging);
         if (apnsToken == null) {
-          debugPrint('[FCM] APNs token was not available; will retry later');
+          debugPrint(
+            '[FCM] APNs token still unavailable. iOS cannot receive push yet. '
+            'Verify the push entitlement and provisioning profile.',
+          );
+          _scheduleRegistrationRetry();
           return;
         }
+        debugPrint('[FCM] APNs token acquired');
       }
 
       final token = await messaging.getToken();
-      if (token != null) {
-        _currentToken = token;
-        debugPrint('[FCM] Token: ${token.substring(0, 20)}...');
-        await _registerTokenWithBackend(token);
+      if (token == null || token.isEmpty) {
+        debugPrint('[FCM] getToken() returned no token; scheduling retry');
+        _scheduleRegistrationRetry();
+        return;
+      }
+
+      _currentToken = token;
+      debugPrint('[FCM] Token: ${token.substring(0, 20)}...');
+
+      final registered = await _registerTokenWithBackend(token);
+      if (registered) {
+        _isTokenRegistered = true;
+        _registrationAttempt = 0;
+        _registrationRetryTimer?.cancel();
+        _registrationRetryTimer = null;
+      } else {
+        _scheduleRegistrationRetry();
       }
     } catch (e) {
+      // On iOS getToken() throws until APNs registration completes.
       debugPrint('[FCM] Error getting token: $e');
+      _scheduleRegistrationRetry();
+    } finally {
+      _isRegistrationInFlight = false;
     }
   }
 
+  /// iOS only issues an FCM token after APNs registration completes, which can
+  /// take several seconds on a fresh install.
   Future<String?> _awaitApnsToken(FirebaseMessaging messaging) async {
-    for (var attempt = 0; attempt < 10; attempt++) {
-      final token = await messaging.getAPNSToken();
-      if (token != null && token.isNotEmpty) return token;
+    for (var attempt = 0; attempt < 15; attempt++) {
+      try {
+        final token = await messaging.getAPNSToken();
+        if (token != null && token.isNotEmpty) return token;
+      } catch (e) {
+        debugPrint('[FCM] APNs token lookup failed: $e');
+      }
       await Future<void>.delayed(const Duration(seconds: 1));
     }
     return null;
+  }
+
+  void _scheduleRegistrationRetry() {
+    if (_isTokenRegistered) return;
+    if (_registrationRetryTimer != null) return;
+    if (_registrationAttempt >= _maxRegistrationAttempts) {
+      debugPrint(
+        '[FCM] Giving up token registration after $_registrationAttempt attempts. '
+        'It will retry on next app start, login, or token refresh.',
+      );
+      return;
+    }
+
+    _registrationAttempt++;
+    final delay = Duration(seconds: 5 * _registrationAttempt);
+    debugPrint(
+      '[FCM] Retrying token registration in ${delay.inSeconds}s '
+      '(attempt $_registrationAttempt/$_maxRegistrationAttempts)',
+    );
+
+    _registrationRetryTimer = Timer(delay, () async {
+      _registrationRetryTimer = null;
+      if (_isTokenRegistered || Firebase.apps.isEmpty) return;
+      await _getAndRegisterToken(FirebaseMessaging.instance);
+    });
   }
 
   void _setupTokenRefreshListener(FirebaseMessaging messaging) {
@@ -144,7 +210,10 @@ class NotificationService {
     messaging.onTokenRefresh.listen((newToken) async {
       debugPrint('[FCM] Token refreshed');
       _currentToken = newToken;
-      await _registerTokenWithBackend(newToken);
+      _isTokenRegistered = await _registerTokenWithBackend(newToken);
+      if (!_isTokenRegistered) {
+        _scheduleRegistrationRetry();
+      }
     });
   }
 
@@ -155,7 +224,9 @@ class NotificationService {
       final type = message.data['type']?.toString();
       if (LocalNotificationService.instance.isPriceCampaignType(type)) {
         await LocalNotificationService.instance.handleRemoteMessage(message);
-      } else if (!kIsWeb) {
+      } else if (!kIsWeb && defaultTargetPlatform != TargetPlatform.iOS) {
+        // iOS presents the original FCM alert natively in the foreground.
+        // Android still uses a local notification for foreground messages.
         final title = message.notification?.title ?? 'Notification';
         final body = message.notification?.body ?? '';
         if (body.isNotEmpty || title.isNotEmpty) {
@@ -232,22 +303,29 @@ class NotificationService {
     });
   }
 
-  Future<void> _registerTokenWithBackend(String token) async {
+  Future<bool> _registerTokenWithBackend(String token) async {
+    final platform = defaultTargetPlatform == TargetPlatform.iOS
+        ? 'ios'
+        : 'android';
     try {
       final api = _ref.read(apiClientProvider);
       await api.post(
         '/notifications/register-token',
-        data: {
-          'fcmToken': token,
-          'platform': defaultTargetPlatform == TargetPlatform.iOS
-              ? 'ios'
-              : 'android',
-        },
+        data: {'fcmToken': token, 'platform': platform},
       );
-      debugPrint('[FCM] Token registered with backend');
+      debugPrint('[FCM] Token registered with backend as $platform');
+      return true;
     } on DioException catch (e) {
-      // Don't crash if backend is unavailable — token will be re-sent on next refresh
-      debugPrint('[FCM] Failed to register token: ${e.message}');
+      // A 401 here means registration ran before login; it retries after auth.
+      final status = e.response?.statusCode;
+      debugPrint(
+        '[FCM] Failed to register $platform token '
+        '(status: ${status ?? 'none'}): ${e.message}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('[FCM] Unexpected error registering $platform token: $e');
+      return false;
     }
   }
 

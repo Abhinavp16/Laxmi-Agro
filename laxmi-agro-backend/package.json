@@ -15,6 +15,7 @@
     "products:split-pump-categories": "node src/scripts/splitPumpCategories.js",
     "products:sync-shivnath-kq": "node src/scripts/syncShivnathKQCategories.js",
     "payments:remove-razorpay": "CONFIRM_RAZORPAY_CLEANUP=1 node src/scripts/removeRazorpayData.js",
+    "diagnose:ios-push": "node src/scripts/diagnoseIosPush.js",
     "media:audit-private": "node src/scripts/auditPrivateMediaMigration.js",
     "media:migrate-private": "node src/scripts/migratePrivateMedia.js",
     "media:rollback-private": "PRIVATE_MEDIA_MIGRATION_MODE=rollback node src/scripts/migratePrivateMedia.js",

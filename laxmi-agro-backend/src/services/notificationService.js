@@ -1,6 +1,18 @@
 const { getMessaging } = require('../config/firebase');
 const { DeviceToken, Notification } = require('../models');
 
+// Only these FCM error codes mean the device token itself is permanently unusable.
+// Every other failure (auth, APNs config, quota, outage) must leave the token active.
+const UNREGISTERED_TOKEN_ERROR_CODES = new Set([
+  'messaging/invalid-registration-token',
+  'messaging/registration-token-not-registered',
+]);
+
+const maskToken = (token) => {
+  if (!token || typeof token !== 'string') return 'unknown';
+  return token.length <= 12 ? token : `${token.slice(0, 8)}...${token.slice(-4)}`;
+};
+
 class NotificationService {
   constructor() {
     this.messaging = null;
@@ -67,16 +79,26 @@ class NotificationService {
 
       console.log(`Notifications sent: ${response.successCount} success, ${response.failureCount} failure`);
 
-      // Handle failed tokens
+      // Handle failed tokens. Only genuinely unusable tokens are deactivated so a
+      // transient FCM/APNs outage or misconfiguration cannot silently disable a device.
       if (response.failureCount > 0) {
-        const failedTokens = [];
+        const unregisteredTokens = [];
         response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            failedTokens.push(fcmTokens[idx]);
+          if (resp.success) return;
+
+          const code = resp.error?.code || 'unknown';
+          console.error(
+            `FCM delivery failed for token ${maskToken(fcmTokens[idx])}: ${code} - ${resp.error?.message || 'no message'}`
+          );
+
+          if (UNREGISTERED_TOKEN_ERROR_CODES.has(code)) {
+            unregisteredTokens.push(fcmTokens[idx]);
           }
         });
-        // Remove invalid tokens
-        await this.removeInvalidTokens(failedTokens);
+
+        if (unregisteredTokens.length > 0) {
+          await this.removeInvalidTokens(unregisteredTokens);
+        }
       }
 
       return response;
@@ -100,6 +122,12 @@ class NotificationService {
         priority: 'high',
       },
       apns: {
+        // Without these headers iOS can treat the push as low-priority/background
+        // and never present it in Notification Center.
+        headers: {
+          'apns-push-type': 'alert',
+          'apns-priority': '10',
+        },
         payload: {
           aps: {
             sound: 'default',
@@ -145,11 +173,20 @@ class NotificationService {
         console.error('Error storing notification:', dbErr);
       }
 
-      const tokens = await DeviceToken.find({ userId, isActive: true }).select('fcmToken');
+      const tokens = await DeviceToken.find({ userId, isActive: true }).select('fcmToken platform');
       if (!tokens || tokens.length === 0) {
         console.log(`No FCM tokens found for user ${userId}`);
         return null;
       }
+
+      const platformSummary = tokens.reduce((acc, token) => {
+        const platform = token.platform || 'unknown';
+        acc[platform] = (acc[platform] || 0) + 1;
+        return acc;
+      }, {});
+      console.log(
+        `Sending notification to user ${userId} across ${tokens.length} device(s): ${JSON.stringify(platformSummary)}`
+      );
 
       const fcmTokens = tokens.map(t => t.fcmToken);
       return await this.sendToMultipleDevices(fcmTokens, notification, data);
