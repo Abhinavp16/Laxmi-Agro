@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -61,6 +63,12 @@ class _NotificationBootstrapState
       NotificationNavigationService.instance.updateAuthentication(
         next.isAuthenticated,
       );
+
+      final justAuthenticated =
+          next.isAuthenticated && previous?.isAuthenticated != true;
+      if (justAuthenticated) {
+        unawaited(_registerNotificationsForAuthenticatedUser());
+      }
     }, fireImmediately: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -70,6 +78,14 @@ class _NotificationBootstrapState
         debugPrint('[Notifications] Initialization skipped: $error');
       }
     });
+  }
+
+  Future<void> _registerNotificationsForAuthenticatedUser() async {
+    try {
+      await ref.read(notificationServiceProvider).initialize();
+    } catch (error) {
+      debugPrint('[Notifications] Login registration skipped: $error');
+    }
   }
 
   @override
