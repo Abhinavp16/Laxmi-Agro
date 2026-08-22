@@ -26,28 +26,7 @@ import UIKit
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
     Messaging.messaging().apnsToken = deviceToken
-    print("[APNs] Device token registered and forwarded to Firebase Messaging")
-
-    Messaging.messaging().token { token, error in
-      if let error {
-        print("[FCM] Native token generation failed: \(error.localizedDescription)")
-        return
-      }
-
-      if let token {
-        print("[FCM] Native token generated: \(token.prefix(16))...")
-      }
-    }
-
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-  }
-
-  override func application(
-    _ application: UIApplication,
-    didFailToRegisterForRemoteNotificationsWithError error: Error
-  ) {
-    print("[APNs] Registration failed: \(error.localizedDescription)")
-    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
