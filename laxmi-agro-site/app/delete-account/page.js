@@ -21,7 +21,7 @@ export default function DeleteAccountPage() {
                     <div className="space-y-8 text-text-secondary leading-relaxed">
                         <div className="rounded-2xl border border-[#dfe8d3] bg-[#f8fbf5] p-6">
                             <h2 className="text-2xl font-bold text-text-primary">How this works</h2>
-                            <p className="mt-3">Submit the email address or phone number associated with your account. We use a privacy-preserving response and will contact the account holder to verify the request before staff complete it within 30 days.</p>
+                            <p className="mt-3">Submit the full name and registered mobile number associated with your account. We use a privacy-preserving response and will contact the account holder to verify the request before staff complete it within 30 days.</p>
                         </div>
 
                         <AccountDeletionRequestForm />

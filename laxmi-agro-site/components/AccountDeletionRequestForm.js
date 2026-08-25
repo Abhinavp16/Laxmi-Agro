@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { getApiBaseUrl } from '@/lib/api-base';
 
-const initialForm = { email: '', phone: '' };
+const initialForm = { name: '', phone: '' };
+const indianMobileNumberPattern = /^[6-9]\d{9}$/;
 
 export default function AccountDeletionRequestForm() {
     const [form, setForm] = useState(initialForm);
@@ -21,10 +22,14 @@ export default function AccountDeletionRequestForm() {
         setError('');
         setSuccessMessage('');
 
-        const email = form.email.trim();
+        const name = form.name.trim();
         const phone = form.phone.trim();
-        if (!email && !phone) {
-            setError('Enter the email address or phone number used for your Laxmi Agro account.');
+        if (!name || !phone) {
+            setError('Enter your full name and the registered mobile number for your Laxmi Agro account.');
+            return;
+        }
+        if (!indianMobileNumberPattern.test(phone)) {
+            setError('Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
             return;
         }
 
@@ -33,7 +38,7 @@ export default function AccountDeletionRequestForm() {
             const response = await fetch(`${getApiBaseUrl()}/account-deletion-request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, phone }),
+                body: JSON.stringify({ name, phone }),
             });
             const payload = await response.json().catch(() => ({}));
 
@@ -55,32 +60,39 @@ export default function AccountDeletionRequestForm() {
         <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" noValidate>
             <div>
                 <h2 className="text-2xl font-bold text-text-primary">Submit your request</h2>
-                <p className="mt-2 text-sm">Provide at least one account identifier. We do not confirm whether a matching account exists.</p>
+                <p className="mt-2 text-sm">Enter the full name and registered mobile number associated with your account. We do not confirm whether a matching account exists.</p>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                    <label htmlFor="deletion-email" className="mb-2 block text-sm font-semibold text-text-primary">Account email</label>
+                    <label htmlFor="deletion-name" className="mb-2 block text-sm font-semibold text-text-primary">Full name</label>
                     <input
-                        id="deletion-email"
-                        name="email"
-                        type="email"
-                        autoComplete="email"
-                        value={form.email}
+                        id="deletion-name"
+                        name="name"
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Enter your full name"
+                        value={form.name}
                         onChange={updateField}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
+                        required
+                        maxLength={100}
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition placeholder:text-gray-400 focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
                     />
                 </div>
                 <div>
-                    <label htmlFor="deletion-phone" className="mb-2 block text-sm font-semibold text-text-primary">Account phone number</label>
+                    <label htmlFor="deletion-phone" className="mb-2 block text-sm font-semibold text-text-primary">Registered mobile number</label>
                     <input
                         id="deletion-phone"
                         name="phone"
                         type="tel"
+                        inputMode="numeric"
                         autoComplete="tel"
+                        placeholder="9876521430"
                         value={form.phone}
                         onChange={updateField}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
+                        required
+                        maxLength={10}
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-text-primary outline-none transition placeholder:text-gray-400 focus:border-[#1b7a3b] focus:ring-2 focus:ring-[#1b7a3b]/20"
                     />
                 </div>
             </div>

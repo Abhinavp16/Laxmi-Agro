@@ -116,9 +116,9 @@ const authValidation = {
   requestAccountDeletion: Joi.object({}),
 
   publicAccountDeletionRequest: Joi.object({
-    email: Joi.string().email().allow('', null),
-    phone: Joi.string().trim().min(10).max(30).allow('', null),
-  }).or('email', 'phone'),
+    name: Joi.string().trim().max(100).required(),
+    phone: registrationPhoneRule.required(),
+  }),
 };
 
 const productValidation = {

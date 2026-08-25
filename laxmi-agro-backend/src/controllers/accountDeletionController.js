@@ -76,19 +76,18 @@ exports.cancelMyAccountDeletion = async (req, res, next) => {
 
 exports.requestDeletionFromWebsite = async (req, res, next) => {
   try {
-    const { email, phone } = req.body;
-    if (!email && !phone) {
-      throw new BadRequestError('Provide the email address or phone number used for your account.', 'DELETION_CONTACT_REQUIRED');
+    const name = String(req.body.name || '').trim();
+    const phone = String(req.body.phone || '').trim();
+    if (!name || !phone) {
+      throw new BadRequestError('Provide your full name and registered mobile number.', 'DELETION_IDENTIFIER_REQUIRED');
     }
 
-    const conditions = [];
-    if (email) conditions.push({ email: String(email).trim().toLowerCase() });
-    if (phone) conditions.push({ phone: String(phone).trim() });
-
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const user = await User.findOne({
-      role: { $ne: 'admin' },
+      name: new RegExp(`^${escapedName}$`, 'i'),
+      phone,
+      role: { $in: ['buyer', 'wholesaler'] },
       isActive: true,
-      $or: conditions,
     });
 
     // Return the same response when no active account matches to avoid account enumeration.
