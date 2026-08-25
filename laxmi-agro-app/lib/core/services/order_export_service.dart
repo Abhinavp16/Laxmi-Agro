@@ -139,7 +139,6 @@ class OrderExportService {
 
   static Future<OrderReceiptShareResult> shareOrderReceipt(
     File file, {
-    required String caption,
     Rect? sharePositionOrigin,
   }) async {
     if (!file.existsSync()) {
@@ -154,8 +153,6 @@ class OrderExportService {
       final result = await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path, mimeType: 'application/pdf')],
-          text: caption,
-          subject: 'Laxmi Agro order receipt',
           sharePositionOrigin: sharePositionOrigin,
         ),
       );

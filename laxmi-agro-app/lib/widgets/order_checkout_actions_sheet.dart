@@ -49,7 +49,6 @@ class OrderCheckoutActionsSheet {
 
     final shareResult = await OrderExportService.shareOrderReceipt(
       orderFile,
-      caption: OrderExportService.extractCaption(responseData),
       sharePositionOrigin: _sharePositionOrigin(context),
     );
     if (!context.mounted) return;
@@ -133,7 +132,6 @@ class OrderCheckoutActionsSheet {
 
           final shareResult = await OrderExportService.shareOrderReceipt(
             file,
-            caption: receiptCaption,
             sharePositionOrigin: _sharePositionOrigin(sheetContext),
           );
           if (!sheetContext.mounted) return;
