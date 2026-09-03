@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/utils/number_formatter.dart';
 
 class ShipmentTrackingScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -475,7 +476,7 @@ class _ShipmentTrackingScreenState
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           Text(
-                                            'Qty: ${item['quantity']} • ₹${NumberFormat('#,##,###').format(item['totalPrice'])}',
+                                            'Qty: ${item['quantity']} • ₹${NumberFormatter.formatPrice(item['totalPrice'])}',
                                             style: GoogleFonts.plusJakartaSans(
                                               fontSize: 12,
                                               color: AppColors.textSecondary,

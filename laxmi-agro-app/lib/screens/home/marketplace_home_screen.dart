@@ -33,6 +33,7 @@ import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
+import '../../core/utils/number_formatter.dart';
 
 class MarketplaceHomeScreen extends ConsumerStatefulWidget {
   final int? initialTab;
@@ -6721,17 +6722,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   String _formatPrice(dynamic price) {
     if (price == null) return '0';
     final val = (price is int) ? price.toDouble() : (price as num).toDouble();
-    if (val >= 100000) {
-      // Show 1L, 1.07L, etc. for amounts >= 1 lakh
-      final lakhs = val / 100000;
-      if (lakhs >= 10) {
-        return '${lakhs.toStringAsFixed(0)}L';
-      } else {
-        return '${lakhs.toStringAsFixed(2)}L';
-      }
-    }
-    // Show full number for amounts below 1 lakh (e.g., 6455 instead of 6.5K)
-    return val.toStringAsFixed(0);
+    return NumberFormatter.formatLakhs(val);
   }
 
   // Checkout state for cart address + coupon

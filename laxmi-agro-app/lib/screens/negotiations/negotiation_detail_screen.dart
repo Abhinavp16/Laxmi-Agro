@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../core/utils/number_formatter.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 
@@ -775,7 +776,7 @@ class _NegotiationDetailScreenState
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Retail: ₹${NumberFormat('#,##,###').format(originalPrice)}',
+                                'Retail: ₹${NumberFormatter.formatPrice(originalPrice)}',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   color: slateBlue,
@@ -907,7 +908,7 @@ class _NegotiationDetailScreenState
                 ),
               ),
               Text(
-                '₹${NumberFormat('#,##,###').format(currentPrice)}',
+                '₹${NumberFormatter.formatPrice(currentPrice)}',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -928,7 +929,7 @@ class _NegotiationDetailScreenState
                 ),
               ),
               Text(
-                '₹${NumberFormat('#,##,###').format(currentTotal)}',
+                '₹${NumberFormatter.formatPrice(currentTotal)}',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -1056,7 +1057,7 @@ class _NegotiationDetailScreenState
                       Row(
                         children: [
                           Text(
-                            '₹${NumberFormat('#,##,###').format(price)}/unit',
+                            '₹${NumberFormatter.formatPrice(price)}/unit',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -1065,7 +1066,7 @@ class _NegotiationDetailScreenState
                           ),
                           if (total != null)
                             Text(
-                              '  •  Total: ₹${NumberFormat('#,##,###').format(total)}',
+                              '  •  Total: ₹${NumberFormatter.formatPrice(total)}',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 color: slateBlue,

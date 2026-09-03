@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../widgets/app_image.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/app_image.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/utils/number_formatter.dart';
 
 class NegotiationsScreen extends ConsumerStatefulWidget {
   const NegotiationsScreen({super.key});
@@ -515,7 +516,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                               ),
                               Text(
-                                '₹${NumberFormat('#,##,###').format(requestedPrice)}',
+                                '₹${NumberFormatter.formatPrice(requestedPrice)}',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -539,7 +540,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                               ),
                               Text(
-                                '₹${NumberFormat('#,##,###').format(currentPrice)}',
+                                '₹${NumberFormatter.formatPrice(currentPrice)}',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -565,7 +566,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                               ),
                               Text(
-                                '₹${NumberFormat('#,##,###').format(currentTotal)}',
+                                '₹${NumberFormatter.formatPrice(currentTotal)}',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,

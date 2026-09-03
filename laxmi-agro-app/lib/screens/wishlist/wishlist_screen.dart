@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/app_image.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/utils/number_formatter.dart';
 
 class WishlistScreen extends ConsumerWidget {
   const WishlistScreen({super.key});
@@ -24,7 +24,7 @@ class WishlistScreen extends ConsumerWidget {
   String _formatPrice(dynamic price) {
     if (price == null) return '0';
     final num p = price is num ? price : num.tryParse(price.toString()) ?? 0;
-    return NumberFormat('#,##,###').format(p);
+    return NumberFormatter.formatPrice(p);
   }
 
   @override
