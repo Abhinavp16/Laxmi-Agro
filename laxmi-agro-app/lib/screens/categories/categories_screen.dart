@@ -173,12 +173,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     'slug': metadata['slug']?.toString() ?? name,
                     'image': metadata['image']?.toString() ?? '',
                     'count': entry.value,
+                    'order': metadata['order'] ?? 0,
                   };
                 })
                 .where((c) => (c['name'] as String).isNotEmpty)
                 .toList()
               ..sort(
-                (a, b) => a['name'].toString().compareTo(b['name'].toString()),
+                (a, b) {
+                  // Sort by order field first, then by name as fallback
+                  final orderA = int.tryParse(a['order']?.toString() ?? '0') ?? 0;
+                  final orderB = int.tryParse(b['order']?.toString() ?? '0') ?? 0;
+                  if (orderA != orderB) {
+                    return orderA.compareTo(orderB);
+                  }
+                  return a['name'].toString().compareTo(b['name'].toString());
+                },
               );
 
         setState(() {
@@ -228,11 +237,23 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 'slug': metadata['slug']?.toString() ?? '',
                 'image': metadata['image']?.toString() ?? '',
                 'count': item['count'] ?? item['productCount'],
+                'order': metadata['order'] ?? item['order'] ?? 0,
               };
             })
             .where((c) => (c['name'] as String).isNotEmpty)
             .where(_categoryHasProducts)
-            .toList();
+            .toList()
+          ..sort(
+            (a, b) {
+              // Sort by order field first, then by name as fallback
+              final orderA = int.tryParse(a['order']?.toString() ?? '0') ?? 0;
+              final orderB = int.tryParse(b['order']?.toString() ?? '0') ?? 0;
+              if (orderA != orderB) {
+                return orderA.compareTo(orderB);
+              }
+              return a['name'].toString().compareTo(b['name'].toString());
+            },
+          );
 
         setState(() {
           _categories = cats;
@@ -349,6 +370,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       'isActive': item['isActive'] == true,
       'showOnWebsite': item['showOnWebsite'] == true,
       'productCount': item['productCount'] ?? 0,
+      'order': item['order'] ?? 0,
     };
 
     final keys = <String>{
