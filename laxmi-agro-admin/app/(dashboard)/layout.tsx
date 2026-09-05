@@ -24,9 +24,9 @@ export default function DashboardLayout({
         return
       }
 
-      // Verify auth token is still valid
+      // 4-hour session lifetime check
       if (isSessionExpired()) {
-        toast.info("Session expired. Please sign in again.")
+        toast.info("Session expired after 4 hours. Please sign in again.")
         logout()
         return
       }
@@ -52,10 +52,10 @@ export default function DashboardLayout({
 
     verifyAuth()
 
-    // Periodically check if session is still valid (when token expires)
+    // Periodically enforce the 4-hour session limit mid-session
     const sessionCheck = setInterval(() => {
       if (isSessionExpired()) {
-        toast.info("Session expired. Please sign in again.")
+        toast.info("Session expired after 4 hours. Please sign in again.")
         logout()
       }
     }, 60 * 1000)
