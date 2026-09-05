@@ -11,6 +11,7 @@ import 'core/router/app_router.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/app_lifecycle_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> scafoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -56,6 +57,10 @@ class _NotificationBootstrapState
   @override
   void initState() {
     super.initState();
+    
+    // ✓ NEW: Initialize app lifecycle observer for token refresh on resume
+    AppLifecycleService().initialize();
+    
     _authSubscription = ref.listenManual<AuthState>(authProvider, (
       previous,
       next,
@@ -90,6 +95,9 @@ class _NotificationBootstrapState
 
   @override
   void dispose() {
+    // ✓ NEW: Dispose app lifecycle observer
+    AppLifecycleService().dispose();
+    
     _authSubscription?.close();
     super.dispose();
   }

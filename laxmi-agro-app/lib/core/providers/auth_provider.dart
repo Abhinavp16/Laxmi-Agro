@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/redeemed_coupon_service.dart';
 import '../services/shipping_address_service.dart';
 import '../services/storage_service.dart';
+import '../services/token_refresh_service.dart';
 
 // Auth State
 class AuthState {
@@ -90,6 +91,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         await StorageService.saveUserData(data['user']);
 
+        // ✓ NEW: Start proactive token refresh after successful login
+        TokenRefreshService().startProactiveRefresh();
+
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -143,6 +147,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           data['refreshToken'],
         );
         await StorageService.saveUserData(data['user']);
+
+        // ✓ NEW: Start proactive token refresh after successful login
+        TokenRefreshService().startProactiveRefresh();
 
         state = state.copyWith(
           user: user,
@@ -199,6 +206,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           data['refreshToken'],
         );
         await StorageService.saveUserData(data['user']);
+
+        // ✓ NEW: Start proactive token refresh after successful registration
+        TokenRefreshService().startProactiveRefresh();
 
         state = state.copyWith(
           user: user,
@@ -268,6 +278,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           data['refreshToken'],
         );
         await StorageService.saveUserData(data['user']);
+
+        // ✓ NEW: Start proactive token refresh after successful registration
+        TokenRefreshService().startProactiveRefresh();
 
         state = state.copyWith(
           user: user,
@@ -482,7 +495,51 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Attempts to refresh the access token using the refresh token
+  /// Returns true if refresh was successful, false otherwise
+  Future<bool> _attemptTokenRefresh() async {
+    try {
+      final refreshToken = await StorageService.getRefreshToken();
+      if (refreshToken == null) {
+        debugPrint('[Auth] No refresh token available');
+        return false;
+      }
+
+      // Use a fresh Dio instance to avoid interceptor loop
+      final dio = Dio(BaseOptions(baseUrl: ApiClient.baseUrl));
+      final response = await dio.post(
+        '/auth/refresh-token',
+        data: {'refreshToken': refreshToken},
+      );
+
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final newAccessToken = response.data['data']['accessToken'];
+        final newRefreshToken = response.data['data']['refreshToken'];
+        
+        if (newAccessToken != null && newRefreshToken != null) {
+          await StorageService.saveTokens(newAccessToken, newRefreshToken);
+          debugPrint('[Auth] Token refreshed successfully');
+          return true;
+        }
+      }
+      debugPrint('[Auth] Token refresh failed: Invalid response');
+      return false;
+    } on DioException catch (e) {
+      debugPrint('[Auth] Token refresh DioException: ${e.message}');
+      if (e.response?.statusCode == 401) {
+        debugPrint('[Auth] Refresh token expired or revoked');
+      }
+      return false;
+    } catch (e) {
+      debugPrint('[Auth] Token refresh error: $e');
+      return false;
+    }
+  }
+
   Future<void> logout() async {
+    // ✓ NEW: Stop proactive refresh on logout
+    TokenRefreshService().stopProactiveRefresh();
+    
     try {
       final refreshToken = await StorageService.getRefreshToken();
       if (refreshToken != null) {
@@ -501,6 +558,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     StorageService.saveUserData(user.toJson());
   }
 
+  /// Fetches the current user from the backend
+  /// Attempts to refresh token if 401 is received
+  /// Only clears session if refresh also fails
   Future<bool?> fetchCurrentUser() async {
     try {
       final response = await _apiClient.get('/auth/me');
@@ -516,6 +576,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
+        debugPrint('[Auth] Got 401 in fetchCurrentUser, attempting token refresh...');
+        
+        // ✓ NEW: Try to refresh token before clearing session
+        final refreshed = await _attemptTokenRefresh();
+        if (refreshed) {
+          debugPrint('[Auth] Token refreshed, retrying fetchCurrentUser...');
+          // Retry the request after successful refresh
+          return await fetchCurrentUser();
+        }
+        
+        // Only clear session if refresh failed
+        debugPrint('[Auth] Token refresh failed, clearing session');
         await _clearLocalSession();
         return false;
       }
