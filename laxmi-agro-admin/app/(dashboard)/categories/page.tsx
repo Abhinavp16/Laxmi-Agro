@@ -2,11 +2,28 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages } from "@/components/hugeicons"
+import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages, GripVertical } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core"
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import {
     Table,
     TableBody,
@@ -352,11 +369,267 @@ export default function CategoriesPage() {
         }
     }
 
+    // Drag and Drop Reorder Handler
+    async function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event
+
+        if (!over || active.id === over.id) return
+
+        // Find indices in the current categories array
+        const oldIndex = categories.findIndex(c => c._id === active.id)
+        const newIndex = categories.findIndex(c => c._id === over.id)
+
+        if (oldIndex === -1 || newIndex === -1) return
+
+        // Reorder locally first (optimistic update)
+        const newCategories = arrayMove(categories, oldIndex, newIndex)
+        
+        // Assign sequential order numbers starting from 1
+        const updates = newCategories.map((cat, index) => ({
+            categoryId: cat._id,
+            order: index + 1,
+        }))
+
+        // Update UI immediately
+        setCategories(newCategories.map((cat, index) => ({
+            ...cat,
+            order: index + 1,
+        })))
+
+        // Send to backend
+        try {
+            const res = await apiFetch("/categories/reorder", {
+                method: "POST",
+                body: JSON.stringify({ updates }),
+            })
+
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || "Failed to reorder categories")
+            }
+
+            toast.success("Categories reordered successfully")
+        } catch (error: any) {
+            console.error("Reorder error:", error)
+            toast.error(error.message || "Failed to reorder categories")
+            // Refresh to get correct state from backend
+            fetchCategories(1, true)
+        }
+    }
+
+    // Setup sensors for drag and drop
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    )
+
     // Get parent categories for the dropdown (exclude the category being edited)
     const parentOptions = categories.filter(c => 
         (!editingCategory || c._id !== editingCategory._id) &&
         (!companyId || getCategoryCompanyId(c) === companyId)
     )
+
+    // Draggable Table Row Component
+    function DraggableTableRow({ category, index }: { category: Category; index: number }) {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging,
+        } = useSortable({ id: category._id })
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+        }
+
+        return (
+            <TableRow
+                ref={setNodeRef}
+                style={style}
+                className={`cursor-pointer border-[#333] transition-colors ${
+                    isDragging ? 'bg-[#86efac]/10 ring-2 ring-[#86efac]' : 'hover:bg-[#1A1A1A]'
+                }`}
+                onClick={() => router.push(`/categories/${category._id}/products`)}
+            >
+                <TableCell 
+                    {...attributes}
+                    {...listeners}
+                    className="text-gray-400 cursor-grab active:cursor-grabbing"
+                >
+                    <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4" />
+                        <span className="font-bold text-[#86efac]">#{index + 1}</span>
+                    </div>
+                </TableCell>
+                <TableCell>
+                    {category.image?.url ? (
+                        <img 
+                            src={category.image.url} 
+                            alt={category.name}
+                            className="w-10 h-10 rounded-lg object-cover bg-[#0D0D0D]"
+                        />
+                    ) : (
+                        <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] flex items-center justify-center">
+                            <FolderTree className="h-5 w-5 text-gray-500" />
+                        </div>
+                    )}
+                </TableCell>
+                <TableCell className="font-medium text-white">
+                    <div>
+                        <div>{category.name}</div>
+                        {category.nameHindi ? (
+                            <div className="text-xs font-normal text-gray-400">{category.nameHindi}</div>
+                        ) : null}
+                    </div>
+                </TableCell>
+                <TableCell className="text-gray-400">
+                    {getCategoryCompanyName(category)}
+                </TableCell>
+                <TableCell className="text-gray-400">
+                    {category.slug}
+                </TableCell>
+                <TableCell className="text-gray-400">
+                    {category.parent?.name || "—"}
+                </TableCell>
+                <TableCell>
+                    <span className="flex items-center gap-1 text-gray-400">
+                        <Package className="h-3 w-3" />
+                        {category.productCount}
+                    </span>
+                </TableCell>
+                <TableCell>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        category.isActive 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                        {category.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </TableCell>
+                <TableCell className="text-right">
+                    <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+                        <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-blue-400 hover:text-blue-300"
+                            onClick={() => openEditDialog(category)}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            onClick={() => setDeleteConfirmId(category._id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </TableCell>
+            </TableRow>
+        )
+    }
+    function DraggableCard({ category, index }: { category: Category; index: number }) {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging,
+        } = useSortable({ id: category._id })
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+        }
+
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className={`relative bg-[#161616] rounded-xl p-4 transition-all ${
+                    isDragging ? 'opacity-50 ring-2 ring-[#86efac]' : ''
+                } ${category.isActive ? '' : 'opacity-60'}`}
+            >
+                {/* Order Number Badge */}
+                <div className="absolute top-2 right-2 bg-[#86efac]/20 text-[#86efac] px-2 py-1 rounded text-xs font-bold">
+                    #{index + 1}
+                </div>
+
+                {/* Drag Handle */}
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="absolute top-2 left-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#86efac] transition-colors"
+                >
+                    <GripVertical className="h-5 w-5" />
+                </div>
+
+                <div className="flex items-start justify-between mb-3 pt-6">
+                    {category.image?.url ? (
+                        <img 
+                            src={category.image.url} 
+                            alt={category.name}
+                            className="w-14 h-14 rounded-xl object-cover bg-[#0D0D0D]"
+                        />
+                    ) : (
+                        <div className="w-14 h-14 rounded-xl bg-[#0D0D0D] flex items-center justify-center">
+                            <FolderTree className="h-7 w-7 text-gray-500" />
+                        </div>
+                    )}
+                    <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
+                        <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-blue-400 hover:text-blue-300"
+                            onClick={() => openEditDialog(category)}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            onClick={() => setDeleteConfirmId(category._id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+                <h3 className="font-semibold text-white text-lg mb-1">{category.name}</h3>
+                {category.nameHindi ? (
+                    <p className="text-[#86efac] text-sm mb-1">{category.nameHindi}</p>
+                ) : null}
+                <p className="text-gray-500 text-sm mb-2">/{category.slug}</p>
+                <p className="text-[#86efac] text-xs font-medium mb-2">{getCategoryCompanyName(category)}</p>
+                <div className="flex items-center gap-3 text-xs">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
+                        category.isActive 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                        {category.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="flex items-center gap-1 text-gray-400">
+                        <Package className="h-3 w-3" />
+                        {category.productCount} products
+                    </span>
+                </div>
+                {category.parent?.name && (
+                    <p className="text-gray-500 text-xs mt-2">Parent: {category.parent.name}</p>
+                )}
+                {category.description && (
+                    <p className="text-gray-400 text-sm mt-2 line-clamp-2">{category.description}</p>
+                )}
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -455,177 +728,64 @@ export default function CategoriesPage() {
                     <p className="text-sm">Create your first category to get started</p>
                 </div>
             ) : viewMode === 'list' ? (
-                /* List View */
-                <div className="bg-[#161616] rounded-xl border border-[#333] overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-[#333] hover:bg-transparent">
-                                <TableHead className="text-gray-400">Image</TableHead>
-                                <TableHead className="text-gray-400">Name</TableHead>
-                                <TableHead className="text-gray-400">Brand</TableHead>
-                                <TableHead className="text-gray-400">Slug</TableHead>
-                                <TableHead className="text-gray-400">Parent</TableHead>
-                                <TableHead className="text-gray-400">Products</TableHead>
-                                <TableHead className="text-gray-400">Status</TableHead>
-                                <TableHead className="text-gray-400 text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {categories.map((category) => (
-                                <TableRow
-                                    key={category._id}
-                                    className="cursor-pointer border-[#333] transition-colors hover:bg-[#1A1A1A]"
-                                    onClick={() => router.push(`/categories/${category._id}/products`)}
-                                >
-                                    <TableCell>
-                                        {category.image?.url ? (
-                                            <img 
-                                                src={category.image.url} 
-                                                alt={category.name}
-                                                className="w-10 h-10 rounded-lg object-cover bg-[#0D0D0D]"
-                                            />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] flex items-center justify-center">
-                                                <FolderTree className="h-5 w-5 text-gray-500" />
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="font-medium text-white">
-                                        <div>
-                                            <div>{category.name}</div>
-                                            {category.nameHindi ? (
-                                                <div className="text-xs font-normal text-gray-400">{category.nameHindi}</div>
-                                            ) : null}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-gray-400">
-                                        {getCategoryCompanyName(category)}
-                                    </TableCell>
-                                    <TableCell className="text-gray-400">
-                                        {category.slug}
-                                    </TableCell>
-                                    <TableCell className="text-gray-400">
-                                        {category.parent?.name || "—"}
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="flex items-center gap-1 text-gray-400">
-                                            <Package className="h-3 w-3" />
-                                            {category.productCount}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                            category.isActive 
-                                                ? 'bg-green-500/20 text-green-400' 
-                                                : 'bg-gray-500/20 text-gray-400'
-                                        }`}>
-                                            {category.isActive ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-8 w-8 text-blue-400 hover:text-blue-300"
-                                                onClick={() => openEditDialog(category)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                                onClick={() => setDeleteConfirmId(category._id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            ) : (
-                /* Card View */
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {categories.map((category) => (
-                        <div
-                            key={category._id}
-                            role="link"
-                            tabIndex={0}
-                            style={{ border: "none" }}
-                            className={`catalog-card-borderless cursor-pointer bg-[#161616] rounded-xl p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86efac] ${
-                                category.isActive ? '' : 'opacity-60'
-                            }`}
-                            onClick={() => router.push(`/categories/${category._id}/products`)}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault()
-                                    router.push(`/categories/${category._id}/products`)
-                                }
-                            }}
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                {category.image?.url ? (
-                                    <img 
-                                        src={category.image.url} 
-                                        alt={category.name}
-                                        className="w-14 h-14 rounded-xl object-cover bg-[#0D0D0D]"
-                                    />
-                                ) : (
-                                    <div className="w-14 h-14 rounded-xl bg-[#0D0D0D] flex items-center justify-center">
-                                        <FolderTree className="h-7 w-7 text-gray-500" />
-                                    </div>
-                                )}
-                                <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 text-blue-400 hover:text-blue-300"
-                                        onClick={() => openEditDialog(category)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                        onClick={() => setDeleteConfirmId(category._id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                            <h3 className="font-semibold text-white text-lg mb-1">{category.name}</h3>
-                            {category.nameHindi ? (
-                                <p className="text-[#86efac] text-sm mb-1">{category.nameHindi}</p>
-                            ) : null}
-                            <p className="text-gray-500 text-sm mb-2">/{category.slug}</p>
-                            <p className="text-[#86efac] text-xs font-medium mb-2">{getCategoryCompanyName(category)}</p>
-                            <div className="flex items-center gap-3 text-xs">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                                    category.isActive 
-                                        ? 'bg-green-500/20 text-green-400' 
-                                        : 'bg-gray-500/20 text-gray-400'
-                                }`}>
-                                    {category.isActive ? 'Active' : 'Inactive'}
-                                </span>
-                                <span className="flex items-center gap-1 text-gray-400">
-                                    <Package className="h-3 w-3" />
-                                    {category.productCount} products
-                                </span>
-                            </div>
-                            {category.parent?.name && (
-                                <p className="text-gray-500 text-xs mt-2">Parent: {category.parent.name}</p>
-                            )}
-                            {category.description && (
-                                <p className="text-gray-400 text-sm mt-2 line-clamp-2">{category.description}</p>
-                            )}
+                /* List View with Drag and Drop */
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={categories.map(c => c._id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="bg-[#161616] rounded-xl border border-[#333] overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-[#333] hover:bg-transparent">
+                                        <TableHead className="text-gray-400 w-20">Order</TableHead>
+                                        <TableHead className="text-gray-400">Image</TableHead>
+                                        <TableHead className="text-gray-400">Name</TableHead>
+                                        <TableHead className="text-gray-400">Brand</TableHead>
+                                        <TableHead className="text-gray-400">Slug</TableHead>
+                                        <TableHead className="text-gray-400">Parent</TableHead>
+                                        <TableHead className="text-gray-400">Products</TableHead>
+                                        <TableHead className="text-gray-400">Status</TableHead>
+                                        <TableHead className="text-gray-400 text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {categories.map((category, index) => (
+                                        <DraggableTableRow key={category._id} category={category} index={index} />
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
-                    ))}
-                </div>
+                    </SortableContext>
+                </DndContext>
+            ) : (
+                /* Card View with Drag and Drop */
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={categories.map(c => c._id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {categories.map((category, index) => (
+                                <div
+                                    key={category._id}
+                                    onClick={() => router.push(`/categories/${category._id}/products`)}
+                                    className="cursor-pointer focus-visible:outline-none"
+                                >
+                                    <DraggableCard category={category} index={index} />
+                                </div>
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             )}
 
             {/* Create/Edit Dialog */}
