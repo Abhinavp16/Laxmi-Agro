@@ -108,8 +108,7 @@ export function isAuthenticated(): boolean {
   return !!localStorage.getItem('accessToken') && !isSessionExpired()
 }
 
-// Admin sessions are valid for 4 hours from the magic link sign-in,
-// regardless of JWT refresh token lifetime.
+// SESSION_MAX_MS kept for staff role session enforcement only
 export const SESSION_MAX_MS = 4 * 60 * 60 * 1000
 
 export function isSessionExpired(): boolean {
@@ -120,9 +119,8 @@ export function isSessionExpired(): boolean {
     return !sessionExpiresAt || new Date(sessionExpiresAt).getTime() <= Date.now()
   }
 
-  const loginAt = localStorage.getItem('loginAt')
-  if (!loginAt) return false // legacy sessions without loginAt are left to token expiry
-  return Date.now() - Number(loginAt) > SESSION_MAX_MS
+  // Admin role: rely on JWT token expiry (12h) instead of hardcoded session timeout
+  return false
 }
 
 export function getUser() {
