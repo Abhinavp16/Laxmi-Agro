@@ -7,6 +7,7 @@ const {
   updateCategory,
   deleteCategory,
   generateMissingHindiNames,
+  reorderCategories,
 } = require('../controllers/categoryController');
 const { protect, optionalAuth, authorize } = require('../middlewares/auth');
 
@@ -15,6 +16,7 @@ router.get('/', optionalAuth, getCategories);
 
 // Admin routes
 router.post('/hindi-names/generate-missing', protect, authorize('admin'), generateMissingHindiNames);
+router.post('/reorder', protect, authorize('admin'), reorderCategories);
 router.post('/', protect, authorize('admin'), createCategory);
 router.put('/:id', protect, authorize('admin'), updateCategory);
 router.delete('/:id', protect, authorize('admin'), deleteCategory);

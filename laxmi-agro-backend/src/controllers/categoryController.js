@@ -536,3 +536,68 @@ exports.generateMissingHindiNames = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Reorder categories with new sequential order numbers
+// @route   POST /api/v1/categories/reorder
+// @access  Private/Admin
+exports.reorderCategories = async (req, res, next) => {
+  try {
+    const { updates } = req.body;
+
+    // Validate input
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'updates array is required and must not be empty',
+      });
+    }
+
+    // Validate each update has categoryId and order
+    for (const update of updates) {
+      if (!update.categoryId || typeof update.order !== 'number' || update.order < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Each update must have categoryId (string) and order (number >= 1)',
+        });
+      }
+    }
+
+    // Perform bulk updates
+    const bulkOps = updates.map((update) => ({
+      updateOne: {
+        filter: { _id: update.categoryId },
+        update: { $set: { order: update.order } },
+      },
+    }));
+
+    const result = await Category.bulkWrite(bulkOps, { ordered: false });
+
+    // Fetch updated categories
+    const categoryIds = updates.map((u) => u.categoryId);
+    const updatedCategories = await Category.find({
+      _id: { $in: categoryIds },
+    })
+      .populate('parent', 'name nameHindi slug')
+      .populate('company', 'name slug logo')
+      .lean();
+
+    const countsByCategory = await getProductCountMap(updatedCategories, req.user);
+    const categoriesWithCounts = updatedCategories.map((category) => ({
+      ...category,
+      image: normalizeImageObject(category.image, req),
+      productCount: countsByCategory.get(String(category._id)) ?? 0,
+    }));
+
+    res.json({
+      success: true,
+      message: 'Categories reordered successfully',
+      data: {
+        updated: result.modifiedCount,
+        matched: result.matchedCount,
+        categories: categoriesWithCounts,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
