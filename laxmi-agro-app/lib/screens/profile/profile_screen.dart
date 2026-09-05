@@ -144,6 +144,19 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            if (user?.isWholesaler == true)
+              _Section(
+                title: 'WHOLESALE',
+                children: [
+                  _MenuItem(
+                    icon: HugeIcons.strokeRoundedShoppingCart01,
+                    title: 'View Customer App',
+                    subtitle: 'See what customers see',
+                    onTap: () => context.push('/guest-app-preview'),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 8),
             _Section(
               title: 'SUPPORT & LEGAL',
               children: [

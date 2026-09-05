@@ -20,6 +20,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/verified_seller_badge.dart';
@@ -401,6 +402,28 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             : null,
       );
     } catch (_) {}
+  }
+
+  Future<void> _showGuestModePopup(String title) async {
+    if (!mounted) return;
+
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: const Text(
+            'This feature is disabled while viewing the customer experience. Exit the demo mode to return to your wholesaler account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   List<Map<String, String>> get _imagesData {
@@ -2791,6 +2814,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                         // ADD TO CART ICON
                                         GestureDetector(
                                           onTap: () {
+                                            // Check guest mode
+                                            if (ref.read(guestModeProvider)) {
+                                              _showGuestModePopup('Add to Cart disabled in demo mode');
+                                              return;
+                                            }
+
                                             final pPrice = (price is num)
                                                 ? price.toDouble()
                                                 : 0.0;
@@ -3383,6 +3412,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   child: GestureDetector(
                     onTap: inStock && !_addedToCart
                         ? () {
+                            // Check guest mode
+                            if (ref.read(guestModeProvider)) {
+                              _showGuestModePopup('Add to Cart disabled in demo mode');
+                              return;
+                            }
+
                             final img = _images.isNotEmpty ? _images[0] : null;
                             ref
                                 .read(cartProvider.notifier)
@@ -3453,6 +3488,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   child: GestureDetector(
                     onTap: inStock && !_isBuyNowLoading
                         ? () async {
+                            // Check guest mode
+                            if (ref.read(guestModeProvider)) {
+                              _showGuestModePopup('Buy Now disabled in demo mode');
+                              return;
+                            }
+
                             setState(() => _isBuyNowLoading = true);
                             try {
                               final img = _images.isNotEmpty

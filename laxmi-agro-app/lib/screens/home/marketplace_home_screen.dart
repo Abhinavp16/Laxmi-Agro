@@ -33,6 +33,7 @@ import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
 
 class MarketplaceHomeScreen extends ConsumerStatefulWidget {
@@ -7112,6 +7113,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Future<void> _proceedToCheckout() async {
+    // Check if in guest mode first
+    if (ref.read(guestModeProvider)) {
+      await _showGuestModePopup('Checkout disabled in demo mode');
+      return;
+    }
+
     if (!ref.read(authProvider).isAuthenticated) {
       await _showCheckoutLoginRequiredPopup();
       return;
@@ -7318,6 +7325,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (shouldOpenLogin == true) {
       context.push('/login');
     }
+  }
+
+  Future<void> _showGuestModePopup(String title) async {
+    if (!mounted) return;
+
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: const Text(
+            'This feature is disabled while viewing the customer experience. Exit the demo mode to return to your wholesaler account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _proceedToNegotiationOrder(String negotiationId) async {

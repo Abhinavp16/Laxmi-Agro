@@ -27,6 +27,7 @@ import '../../screens/profile/about_laxmi_agro_screen.dart';
 import '../../screens/profile/legal_policy_screen.dart';
 import '../../screens/profile/account_privacy_screen.dart';
 import '../../screens/onboarding/permissions_onboarding_screen.dart';
+import '../../screens/profile/guest_app_preview_screen.dart';
 import '../config/feature_flags.dart';
 
 final appRouter = GoRouter(
@@ -191,6 +192,10 @@ final appRouter = GoRouter(
       path: '/legal/:policyId',
       builder: (context, state) =>
           LegalPolicyScreen(policyId: state.pathParameters['policyId'] ?? ''),
+    ),
+    GoRoute(
+      path: '/guest-app-preview',
+      builder: (context, state) => const GuestAppPreviewScreen(),
     ),
   ],
   errorBuilder: (context, state) =>
