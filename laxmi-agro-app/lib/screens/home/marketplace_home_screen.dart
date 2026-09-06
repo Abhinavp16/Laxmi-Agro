@@ -4776,6 +4776,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'subtitle': null,
           'onTap': () => context.push('/my-coupons'),
         },
+      if (user?.isWholesaler == true || user != null)
+        {
+          'type': 'setting',
+          'icon': HugeIcons.strokeRoundedShoppingCart01,
+          'color': primaryBlue,
+          'title': t('View Customer App'),
+          'subtitle': user?.isWholesaler == true 
+              ? t('See what customers see')
+              : t('Demo: See customer experience'),
+          'onTap': () => context.push('/guest-app-preview'),
+        },
       if (user?.role != 'wholesaler')
         {
           'type': 'setting',
