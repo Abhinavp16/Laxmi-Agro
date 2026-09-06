@@ -1816,14 +1816,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   _buildHomeSearchBar(),
                   const SizedBox(height: 8),
                   _buildCarousel(),
-                  const SizedBox(height: 24),
-                  _buildPartnershipStrip(),
                   const SizedBox(height: 16),
                   if (!kHideOfferCouponUi) _buildOfferSection(),
                   const SizedBox(height: 8),
-                  _buildCategorySection(),
-                  const SizedBox(height: 8),
                   _buildBrandsSection(),
+                  const SizedBox(height: 8),
+                  _buildCategorySection(),
                   const SizedBox(height: 8),
                   _buildProductsSection(
                     ref

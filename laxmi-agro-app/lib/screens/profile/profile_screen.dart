@@ -144,6 +144,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // Show View Customer App only for wholesalers
             if (user?.isWholesaler == true)
               _Section(
                 title: 'WHOLESALE',
