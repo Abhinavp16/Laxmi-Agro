@@ -7,20 +7,37 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../home/marketplace_home_screen.dart';
 
-class GuestAppPreviewScreen extends ConsumerWidget {
+class GuestAppPreviewScreen extends ConsumerStatefulWidget {
   const GuestAppPreviewScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Enable guest mode when entering this screen
-    ref.read(guestModeProvider.notifier).enableGuestMode();
+  ConsumerState<GuestAppPreviewScreen> createState() =>
+      _GuestAppPreviewScreenState();
+}
 
+class _GuestAppPreviewScreenState extends ConsumerState<GuestAppPreviewScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Enable guest mode when entering this screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(guestModeProvider.notifier).enableGuestMode();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Disable guest mode when leaving this screen
+    ref.read(guestModeProvider.notifier).disableGuestMode();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
         // Disable guest mode when leaving this screen
-        if (context.mounted) {
-          ref.read(guestModeProvider.notifier).disableGuestMode();
-        }
+        ref.read(guestModeProvider.notifier).disableGuestMode();
         return true;
       },
       child: Scaffold(
