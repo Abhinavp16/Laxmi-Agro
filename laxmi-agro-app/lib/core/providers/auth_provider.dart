@@ -487,10 +487,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await StorageService.clearAll();
     } finally {
-      await Future.wait([
-        ShippingAddressService.clearLocalData(),
-        RedeemedCouponService.clearLocalData(),
-      ]);
+      // Clear redeemed coupons but preserve addresses so users don't have to re-enter them
+      await RedeemedCouponService.clearLocalData();
+      // Note: ShippingAddressService.clearLocalData() is NOT called here
+      // This allows saved addresses to persist across login sessions
       state = AuthState();
     }
   }
