@@ -397,7 +397,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
       final categoryQueryName = category['queryName']?.toString().trim() ?? categoryName;
-      debugPrint('🔵 [CATEGORIES-PRODUCTS] Fetching products for category: $categoryName (query: $categoryQueryName)');
       
       // Fetch all products with pagination (no limit to get all products)
       final allItems = <Map<String, dynamic>>[];
@@ -409,7 +408,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final response = await _dio.get('/products', queryParameters: {'page': page});
           
           if (response.statusCode != 200) {
-            debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: Status code ${response.statusCode} on page $page');
             break;
           }
           
@@ -424,15 +422,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final pagination = response.data['pagination'];
           hasMore = pagination is Map && pagination['hasNext'] == true;
           page += 1;
-          
-          debugPrint('🟢 [CATEGORIES-PRODUCTS] Fetched page $page: ${pageItems.length} items');
         } catch (e) {
-          debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR fetching page $page: $e');
           break;
         }
       }
-      
-      debugPrint('🟢 [CATEGORIES-PRODUCTS] Total products from API: ${allItems.length}');
       
       // Filter products by category - normalize category names for comparison
       final filteredProducts = allItems.where((item) {
@@ -440,14 +433,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         final itemCategoryNormalized = _normalizedCategoryKey(itemCategory);
         final categoryNormalized = _normalizedCategoryKey(categoryQueryName);
         
-        final matches = itemCategoryNormalized == categoryNormalized;
-        if (matches) {
-          debugPrint('✅ [CATEGORIES-PRODUCTS] Product matched: ${item['name']} (cat: $itemCategory)');
-        }
-        return matches;
+        return itemCategoryNormalized == categoryNormalized;
       }).toList();
-      
-      debugPrint('🟢 [CATEGORIES-PRODUCTS] Filtered products for category: ${filteredProducts.length}');
       
       setState(() {
         _products = filteredProducts.map<Map<String, dynamic>>((item) {
@@ -473,7 +460,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           };
         }).toList()..sort(_compareProductsByPrice);
         
-        debugPrint('🟢 [CATEGORIES-PRODUCTS] Final product count for display: ${_products.length}');
         _isLoadingProducts = false;
       });
     } catch (e, stackTrace) {
