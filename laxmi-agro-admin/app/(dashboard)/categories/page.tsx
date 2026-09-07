@@ -554,7 +554,8 @@ export default function CategoriesPage() {
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`relative bg-[#161616] rounded-xl p-4 transition-all ${
+                onClick={() => !isDragging && router.push(`/categories/${category._id}/products`)}
+                className={`relative bg-[#161616] rounded-xl p-4 transition-all cursor-pointer ${
                     isDragging ? 'opacity-50 ring-2 ring-[#86efac]' : ''
                 } ${category.isActive ? '' : 'opacity-60'}`}
             >
@@ -776,13 +777,7 @@ export default function CategoriesPage() {
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {categories.map((category, index) => (
-                                <div
-                                    key={category._id}
-                                    onClick={() => router.push(`/categories/${category._id}/products`)}
-                                    className="cursor-pointer focus-visible:outline-none"
-                                >
-                                    <DraggableCard category={category} index={index} />
-                                </div>
+                                <DraggableCard key={category._id} category={category} index={index} />
                             ))}
                         </div>
                     </SortableContext>
