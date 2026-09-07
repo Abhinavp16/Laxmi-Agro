@@ -6228,11 +6228,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildProductsSection(String title, bool isFeatured) {
-    // Popular Products (isFeatured=true) shows only products where isFeatured==true.
-    // Hot Deals (isFeatured=false) shows only products where isHot==true.
-    final filteredProducts = isFeatured
-        ? _products.where((p) => p['isFeatured'] == true).toList()
-        : _products.where((p) => p['isHot'] == true).toList();
+    // Show all products - the API doesn't properly mark isFeatured/isHot
+    // so we show all products in both sections for now
+    final filteredProducts = _products.take(6).toList();
+    
+    debugPrint('🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Total products: ${_products.length} | Filtered: ${filteredProducts.length}');
+    
     final t = ref.read(localeProvider.notifier).translate;
     final currentLang = ref.read(localeProvider);
     final screenWidth = MediaQuery.sizeOf(context).width;
