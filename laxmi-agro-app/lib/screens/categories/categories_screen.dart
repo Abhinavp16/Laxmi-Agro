@@ -407,6 +407,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         '/products',
         queryParameters: {
           'category': categoryFilter,
+          'limit': 100,
           if (widget.brandName?.trim().isNotEmpty == true)
             'brand': widget.brandName!.trim(),
         },
