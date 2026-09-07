@@ -21,7 +21,7 @@ import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
-    rectGridStrategy,
+    rectSortingStrategy,
     useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -768,7 +768,7 @@ export default function CategoriesPage() {
                 >
                     <SortableContext
                         items={categories.map(c => c._id)}
-                        strategy={rectGridStrategy}
+                        strategy={rectSortingStrategy}
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {categories.map((category, index) => (
