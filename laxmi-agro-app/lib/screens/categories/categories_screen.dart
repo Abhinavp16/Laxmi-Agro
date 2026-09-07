@@ -851,17 +851,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Widget _buildProductGrid() {
-    debugPrint('🔵 [GRID-BUILD] _isLoadingProducts=$_isLoadingProducts, _products.length=${_products.length}');
-    
     if (_isLoadingProducts) {
-      debugPrint('🟡 [GRID-BUILD] Showing loading indicator');
       return const Center(
         child: CircularProgressIndicator(color: primaryBlue, strokeWidth: 2),
       );
     }
 
     if (_products.isEmpty) {
-      debugPrint('🔴 [GRID-BUILD] Products list is empty!');
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -884,8 +880,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ),
       );
     }
-    
-    debugPrint('🟢 [GRID-BUILD] Building grid with ${_products.length} products');
 
     return LayoutBuilder(
       builder: (context, constraints) {
