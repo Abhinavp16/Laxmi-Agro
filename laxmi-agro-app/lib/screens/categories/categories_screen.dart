@@ -895,61 +895,56 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             : 2;
         final gridSpacing = isTablet ? 14.0 : 10.0;
 
-        return CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Category header
-            SliverPadding(
+            Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: primaryBlue.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      child: Text(
-                        '${_products.length} items',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: primaryBlue,
-                        ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(
+                      '${_products.length} items',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: primaryBlue,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             // Products grid
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                isTablet ? 18 : 12,
-                4,
-                isTablet ? 18 : 12,
-                100,
-              ),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildProductCard(_products[index]),
-                  childCount: _products.length,
+            Expanded(
+              child: GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  isTablet ? 18 : 12,
+                  4,
+                  isTablet ? 18 : 12,
+                  100,
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: gridColumns,
@@ -957,6 +952,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   mainAxisSpacing: gridSpacing,
                   childAspectRatio: isTablet ? 0.72 : 0.48,
                 ),
+                itemCount: _products.length,
+                itemBuilder: (context, index) =>
+                    _buildProductCard(_products[index]),
               ),
             ),
           ],
