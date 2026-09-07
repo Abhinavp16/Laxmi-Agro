@@ -563,30 +563,32 @@ export default function CategoriesPage() {
                 <div
                     {...attributes}
                     {...listeners}
-                    className="absolute top-0 left-0 right-0 h-10 -mx-4 -mt-4 px-4 py-2 cursor-grab active:cursor-grabbing flex items-center justify-between rounded-t-xl hover:bg-[#86efac]/10 transition-colors"
+                    className="absolute top-0 left-0 right-0 h-12 -mx-4 -mt-4 px-4 py-3 cursor-grab active:cursor-grabbing flex items-center justify-between rounded-t-xl bg-gradient-to-r from-[#86efac]/15 to-[#86efac]/5 hover:from-[#86efac]/25 hover:to-[#86efac]/10 transition-colors border-b border-[#86efac]/20"
                 >
-                    <span className="text-[#86efac] font-bold text-sm">{index + 1}</span>
-                    <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[#86efac] font-bold text-lg">{index + 1}</span>
+                    </div>
+                    <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
                         <Button 
                             size="icon" 
                             variant="ghost" 
-                            className="h-6 w-6 text-blue-400 hover:text-blue-300"
+                            className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
                             onClick={() => openEditDialog(category)}
                         >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-4 w-4" />
                         </Button>
                         <Button 
                             size="icon" 
                             variant="ghost" 
-                            className="h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-400/10"
                             onClick={() => setDeleteConfirmId(category._id)}
                         >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
 
-                <div className="flex items-start justify-between mb-3 pt-8">
+                <div className="flex items-start justify-between mb-3 pt-10">
                     {category.image?.url ? (
                         <img 
                             src={category.image.url} 
