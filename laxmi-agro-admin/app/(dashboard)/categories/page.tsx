@@ -555,77 +555,81 @@ export default function CategoriesPage() {
                 ref={setNodeRef}
                 style={style}
                 onClick={() => !isDragging && router.push(`/categories/${category._id}/products`)}
-                className={`relative bg-[#161616] rounded-xl p-4 transition-all cursor-pointer ${
-                    isDragging ? 'opacity-50 ring-2 ring-[#86efac]' : ''
+                className={`relative bg-[#161616] rounded-xl overflow-hidden transition-all cursor-pointer border border-[#333] ${
+                    isDragging ? 'opacity-50 ring-2 ring-[#86efac] shadow-lg shadow-[#86efac]/20' : 'hover:border-[#86efac]/50'
                 } ${category.isActive ? '' : 'opacity-60'}`}
             >
-                {/* Drag Handle - Full width top area with card number */}
+                {/* Drag Handle - Top bar with card number and controls */}
                 <div
                     {...attributes}
                     {...listeners}
-                    className="absolute top-0 left-0 right-0 h-12 -mx-4 -mt-4 px-4 py-3 cursor-grab active:cursor-grabbing flex items-center justify-between rounded-t-xl bg-gradient-to-r from-[#86efac]/15 to-[#86efac]/5 hover:from-[#86efac]/25 hover:to-[#86efac]/10 transition-colors border-b border-[#86efac]/20"
+                    className="w-full h-12 px-4 py-0 cursor-grab active:cursor-grabbing flex items-center justify-between bg-blue-600/20 hover:bg-blue-600/30 transition-colors duration-200 border-b border-blue-500/50 group"
                 >
                     <div className="flex items-center gap-3">
-                        <span className="text-[#86efac] font-bold text-lg">{index + 1}</span>
+                        <span className="text-white font-bold text-sm">#{index + 1}</span>
                     </div>
-                    <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
+                    <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
                         <Button 
                             size="icon" 
                             variant="ghost" 
-                            className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                            className="h-7 w-7 text-blue-300 hover:text-blue-200 hover:bg-blue-400/20 transition-all"
                             onClick={() => openEditDialog(category)}
                         >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button 
                             size="icon" 
                             variant="ghost" 
-                            className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-400/20 transition-all"
                             onClick={() => setDeleteConfirmId(category._id)}
                         >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                     </div>
                 </div>
 
-                <div className="flex items-start justify-between mb-3 pt-10">
-                    {category.image?.url ? (
-                        <img 
-                            src={category.image.url} 
-                            alt={category.name}
-                            className="w-14 h-14 rounded-xl object-cover bg-[#0D0D0D]"
-                        />
-                    ) : (
-                        <div className="w-14 h-14 rounded-xl bg-[#0D0D0D] flex items-center justify-center">
-                            <FolderTree className="h-7 w-7 text-gray-500" />
-                        </div>
+                <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                        {category.image?.url ? (
+                            <img 
+                                src={category.image.url} 
+                                alt={category.name}
+                                className="w-14 h-14 rounded-lg object-cover bg-[#0D0D0D]"
+                            />
+                        ) : (
+                            <div className="w-14 h-14 rounded-lg bg-[#0D0D0D] flex items-center justify-center border border-[#333]">
+                                <FolderTree className="h-6 w-6 text-gray-500" />
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-white text-sm leading-tight">{category.name}</h3>
+                        {category.nameHindi ? (
+                            <p className="text-[#86efac] text-xs mt-0.5">{category.nameHindi}</p>
+                        ) : null}
+                    </div>
+                    <p className="text-gray-500 text-xs">/{category.slug}</p>
+                    <p className="text-[#86efac] text-xs font-medium">{getCategoryCompanyName(category)}</p>
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
+                            category.isActive 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                            {category.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <span className="flex items-center gap-1 text-gray-400">
+                            <Package className="h-3 w-3" />
+                            {category.productCount}
+                        </span>
+                    </div>
+                    {category.parent?.name && (
+                        <p className="text-gray-500 text-xs pt-2 border-t border-[#333]">Parent: {category.parent.name}</p>
+                    )}
+                    {category.description && (
+                        <p className="text-gray-400 text-xs line-clamp-2 pt-2 border-t border-[#333]">{category.description}</p>
                     )}
                 </div>
-                <h3 className="font-semibold text-white text-lg mb-1">{category.name}</h3>
-                {category.nameHindi ? (
-                    <p className="text-[#86efac] text-sm mb-1">{category.nameHindi}</p>
-                ) : null}
-                <p className="text-gray-500 text-sm mb-2">/{category.slug}</p>
-                <p className="text-[#86efac] text-xs font-medium mb-2">{getCategoryCompanyName(category)}</p>
-                <div className="flex items-center gap-3 text-xs">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                        category.isActive 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                        {category.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    <span className="flex items-center gap-1 text-gray-400">
-                        <Package className="h-3 w-3" />
-                        {category.productCount} products
-                    </span>
-                </div>
-                {category.parent?.name && (
-                    <p className="text-gray-500 text-xs mt-2">Parent: {category.parent.name}</p>
-                )}
-                {category.description && (
-                    <p className="text-gray-400 text-sm mt-2 line-clamp-2">{category.description}</p>
-                )}
             </div>
         )
     }

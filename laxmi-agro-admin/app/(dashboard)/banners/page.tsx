@@ -65,13 +65,25 @@ function getIconComponent(iconName: string) {
     return <ArrowRight className="h-4 w-4 text-white" />
 }
 
-type BannerLinkType = "url" | "product"
+type BannerLinkType = "product" | "brand" | "category"
 
 interface BannerProductOption {
     _id: string
     name: string
     category?: string
     slug?: string
+}
+
+interface BannerBrandOption {
+    _id: string
+    name: string
+    slug: string
+}
+
+interface BannerCategoryOption {
+    _id: string
+    name: string
+    slug: string
 }
 
 interface Banner {
@@ -83,6 +95,8 @@ interface Banner {
     linkUrl: string
     linkType: BannerLinkType
     linkedProductId: string
+    linkedBrandId: string
+    linkedCategoryId: string
     buttonText: string
     buttonIcon: string
     isActive: boolean
@@ -93,9 +107,29 @@ function buildProductLink(productId: string) {
     return productId ? `/product/${productId}` : ""
 }
 
+function buildBrandLink(brandId: string) {
+    return brandId ? `/brand/${brandId}` : ""
+}
+
+function buildCategoryLink(categoryId: string) {
+    return categoryId ? `/category/${categoryId}` : ""
+}
+
 function inferLinkedProductId(linkUrl: unknown) {
     const value = String(linkUrl || "").trim()
     const match = value.match(/^\/product\/([^/?#]+)/i)
+    return match?.[1] || ""
+}
+
+function inferLinkedBrandId(linkUrl: unknown) {
+    const value = String(linkUrl || "").trim()
+    const match = value.match(/^\/brand\/([^/?#]+)/i)
+    return match?.[1] || ""
+}
+
+function inferLinkedCategoryId(linkUrl: unknown) {
+    const value = String(linkUrl || "").trim()
+    const match = value.match(/^\/category\/([^/?#]+)/i)
     return match?.[1] || ""
 }
 
@@ -108,6 +142,8 @@ function createEmptyBanner(order: number): Banner {
         linkUrl: "",
         linkType: "url",
         linkedProductId: "",
+        linkedBrandId: "",
+        linkedCategoryId: "",
         buttonText: "Shop Now",
         buttonIcon: "ArrowRight",
         isActive: true,
@@ -117,7 +153,13 @@ function createEmptyBanner(order: number): Banner {
 
 function normalizeBanner(banner: any, index: number): Banner {
     const linkedProductId = String(banner?.linkedProductId || inferLinkedProductId(banner?.linkUrl))
-    const linkType: BannerLinkType = banner?.linkType === "product" || linkedProductId ? "product" : "url"
+    const linkedBrandId = String(banner?.linkedBrandId || inferLinkedBrandId(banner?.linkUrl))
+    const linkedCategoryId = String(banner?.linkedCategoryId || inferLinkedCategoryId(banner?.linkUrl))
+    
+    let linkType: BannerLinkType = "product"
+    if (linkedBrandId) linkType = "brand"
+    else if (linkedCategoryId) linkType = "category"
+    else if (linkedProductId) linkType = "product"
 
     return {
         _id: typeof banner?._id === "string" ? banner._id : undefined,
@@ -125,9 +167,15 @@ function normalizeBanner(banner: any, index: number): Banner {
         subtitle: String(banner?.subtitle || ""),
         tag: String(banner?.tag || ""),
         imageUrl: String(banner?.imageUrl || ""),
-        linkUrl: String(banner?.linkUrl || (linkType === "product" ? buildProductLink(linkedProductId) : "")),
+        linkUrl: String(banner?.linkUrl || (
+            linkType === "product" ? buildProductLink(linkedProductId) :
+            linkType === "brand" ? buildBrandLink(linkedBrandId) :
+            linkType === "category" ? buildCategoryLink(linkedCategoryId) : ""
+        )),
         linkType,
         linkedProductId,
+        linkedBrandId,
+        linkedCategoryId,
         buttonText: String(banner?.buttonText || "Shop Now"),
         buttonIcon: String(banner?.buttonIcon || "ArrowRight"),
         isActive: banner?.isActive !== false,
@@ -231,7 +279,11 @@ export default function BannersPage() {
     const [heroBanners, setHeroBanners] = useState<Banner[]>([])
     const [promoBanners, setPromoBanners] = useState<Banner[]>([])
     const [availableProducts, setAvailableProducts] = useState<BannerProductOption[]>([])
+    const [availableBrands, setAvailableBrands] = useState<BannerBrandOption[]>([])
+    const [availableCategories, setAvailableCategories] = useState<BannerCategoryOption[]>([])
     const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false)
+    const [isLoadingBrandOptions, setIsLoadingBrandOptions] = useState(false)
+    const [isLoadingCategoryOptions, setIsLoadingCategoryOptions] = useState(false)
     const [isSavingHero, setIsSavingHero] = useState(false)
     const [isSavingPromo, setIsSavingPromo] = useState(false)
     const [uploadingIndex, setUploadingIndex] = useState<{ type: 'hero' | 'promo', index: number } | null>(null)
@@ -288,6 +340,8 @@ export default function BannersPage() {
     useEffect(() => {
         fetchBanners()
         loadProductOptions()
+        loadBrandOptions()
+        loadCategoryOptions()
     }, [])
 
     async function fetchBanners() {
@@ -342,6 +396,76 @@ export default function BannersPage() {
             toast.error("Failed to load products for banner links")
         } finally {
             setIsLoadingProductOptions(false)
+        }
+    }
+
+    async function loadBrandOptions() {
+        setIsLoadingBrandOptions(true)
+        try {
+            const collected: BannerBrandOption[] = []
+            let page = 1
+            let hasNext = true
+
+            while (hasNext && page <= 20) {
+                const res = await apiFetch(`/companies?page=${page}&limit=50&sort=name:asc`, { skipAuth: true })
+                const data = await res.json()
+                if (!res.ok) throw new Error("failed")
+
+                const items = Array.isArray(data?.data) ? data.data : []
+                collected.push(
+                    ...items
+                        .map((item: any) => ({
+                            _id: String(item?._id || ""),
+                            name: String(item?.name || ""),
+                            slug: String(item?.slug || ""),
+                        }))
+                        .filter((item: BannerBrandOption) => item._id && item.name)
+                )
+
+                hasNext = Boolean(data?.pagination?.hasNext)
+                page += 1
+            }
+
+            setAvailableBrands(collected)
+        } catch {
+            toast.error("Failed to load brands for banner links")
+        } finally {
+            setIsLoadingBrandOptions(false)
+        }
+    }
+
+    async function loadCategoryOptions() {
+        setIsLoadingCategoryOptions(true)
+        try {
+            const collected: BannerCategoryOption[] = []
+            let page = 1
+            let hasNext = true
+
+            while (hasNext && page <= 20) {
+                const res = await apiFetch(`/categories?page=${page}&limit=50&sort=name:asc`, { skipAuth: true })
+                const data = await res.json()
+                if (!res.ok) throw new Error("failed")
+
+                const items = Array.isArray(data?.data) ? data.data : []
+                collected.push(
+                    ...items
+                        .map((item: any) => ({
+                            _id: String(item?._id || ""),
+                            name: String(item?.name || ""),
+                            slug: String(item?.slug || ""),
+                        }))
+                        .filter((item: BannerCategoryOption) => item._id && item.name)
+                )
+
+                hasNext = Boolean(data?.pagination?.hasNext)
+                page += 1
+            }
+
+            setAvailableCategories(collected)
+        } catch {
+            toast.error("Failed to load categories for banner links")
+        } finally {
+            setIsLoadingCategoryOptions(false)
         }
     }
 
@@ -537,11 +661,16 @@ export default function BannersPage() {
                                             updateFn(index, 'linkType', nextType)
                                             if (nextType === 'product') {
                                                 updateFn(index, 'linkUrl', buildProductLink(banner.linkedProductId))
+                                            } else if (nextType === 'brand') {
+                                                updateFn(index, 'linkUrl', buildBrandLink(banner.linkedBrandId))
+                                            } else if (nextType === 'category') {
+                                                updateFn(index, 'linkUrl', buildCategoryLink(banner.linkedCategoryId))
                                             }
                                         }}
                                     >
-                                        <option value="url">Custom URL</option>
                                         <option value="product">Link Product</option>
+                                        <option value="brand">Link Brand</option>
+                                        <option value="category">Link Category</option>
                                     </select>
 
                                     {banner.linkType === 'product' ? (
@@ -569,15 +698,59 @@ export default function BannersPage() {
                                                     : "The banner will automatically use the selected product link."}
                                             </p>
                                         </div>
+                                    ) : banner.linkType === 'brand' ? (
+                                        <div className="space-y-2">
+                                            <select
+                                                className="h-10 w-full rounded-md border border-[#333] bg-[#161616] px-3 text-sm text-white"
+                                                value={banner.linkedBrandId}
+                                                onChange={(e) => {
+                                                    const nextBrandId = e.target.value
+                                                    updateFn(index, 'linkedBrandId', nextBrandId)
+                                                    updateFn(index, 'linkUrl', buildBrandLink(nextBrandId))
+                                                }}
+                                                disabled={isLoadingBrandOptions}
+                                            >
+                                                <option value="">{isLoadingBrandOptions ? "Loading brands..." : "Select brand to link"}</option>
+                                                {availableBrands.map((brand) => (
+                                                    <option key={brand._id} value={brand._id}>
+                                                        {brand.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[10px] text-[#777]">
+                                                {availableBrands.find(b => b._id === banner.linkedBrandId)
+                                                    ? `Brand link: ${buildBrandLink(banner.linkedBrandId)}`
+                                                    : "The banner will automatically use the selected brand link."}
+                                            </p>
+                                        </div>
+                                    ) : banner.linkType === 'category' ? (
+                                        <div className="space-y-2">
+                                            <select
+                                                className="h-10 w-full rounded-md border border-[#333] bg-[#161616] px-3 text-sm text-white"
+                                                value={banner.linkedCategoryId}
+                                                onChange={(e) => {
+                                                    const nextCategoryId = e.target.value
+                                                    updateFn(index, 'linkedCategoryId', nextCategoryId)
+                                                    updateFn(index, 'linkUrl', buildCategoryLink(nextCategoryId))
+                                                }}
+                                                disabled={isLoadingCategoryOptions}
+                                            >
+                                                <option value="">{isLoadingCategoryOptions ? "Loading categories..." : "Select category to link"}</option>
+                                                {availableCategories.map((category) => (
+                                                    <option key={category._id} value={category._id}>
+                                                        {category.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[10px] text-[#777]">
+                                                {availableCategories.find(c => c._id === banner.linkedCategoryId)
+                                                    ? `Category link: ${buildCategoryLink(banner.linkedCategoryId)}`
+                                                    : "The banner will automatically use the selected category link."}
+                                            </p>
+                                        </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <Input
-                                                className="bg-[#161616] border-[#333] text-white text-sm"
-                                                placeholder="e.g. /product/abc123"
-                                                value={banner.linkUrl}
-                                                onChange={(e) => updateFn(index, 'linkUrl', e.target.value)}
-                                            />
-                                            <p className="text-[10px] text-[#777]">Use this if you want to enter a custom destination manually.</p>
+                                            <p className="text-[10px] text-[#777]">Select a link type above to configure the banner destination.</p>
                                         </div>
                                     )}
                                 </div>
