@@ -335,13 +335,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Future<void> _fetchBrands() async {
     try {
-      debugPrint('Fetching brands...');
+      debugPrint('🔵 [BRANDS] Starting fetch from: ${_dio.options.baseUrl}');
       final response = await _dio.get('/companies');
-      debugPrint('Brands response: ${response.statusCode}');
+      debugPrint('🟢 [BRANDS] Response status: ${response.statusCode}');
+      debugPrint('🟢 [BRANDS] Response data: ${response.data}');
+      
       if (response.statusCode == 200) {
         final data = response.data;
         final List<dynamic> items = data['data'] ?? data ?? [];
-        debugPrint('Found ${items.length} brands');
+        debugPrint('🟢 [BRANDS] Found ${items.length} brands');
+        
         setState(() {
           final fetched = items
               .map<Map<String, dynamic>>(
@@ -370,13 +373,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             return 0;
           });
 
+          debugPrint('🟢 [BRANDS] Final brand count: ${fetched.length}');
           // Use empty list if API returns nothing (shimmer/empty state will show)
           _brands = fetched.isEmpty ? [] : fetched;
           _isLoadingBrands = false;
         });
+      } else {
+        debugPrint('🔴 [BRANDS] ERROR: Unexpected status code: ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Error fetching brands: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🔴 [BRANDS] ERROR: $e');
+      debugPrint('🔴 [BRANDS] Stack trace: $stackTrace');
       setState(() {
         _brands = [];
         _isLoadingBrands = false;
@@ -392,20 +399,33 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Future<void> _fetchProducts() async {
     try {
-      debugPrint('Fetching products...');
-      final responses = await Future.wait([
-        _dio.get('/products', queryParameters: {'limit': 120}),
-        _dio.get('/products', queryParameters: {'featured': true, 'limit': 120}),
-        _dio.get('/products', queryParameters: {'hot': true, 'limit': 120}),
-      ]);
-      final response = responses.first;
-      debugPrint('Products response: ${response.statusCode}');
+      debugPrint('═══════════════════════════════════════════');
+      debugPrint('🔵 [PRODUCTS] Starting fetch');
+      debugPrint('🔵 [PRODUCTS] Base URL: ${_dio.options.baseUrl}');
+      debugPrint('═══════════════════════════════════════════');
+      
+      // Try just fetching without any parameters first
+      debugPrint('🔵 [PRODUCTS] Fetching: ${_dio.options.baseUrl}/products');
+      final response = await _dio.get('/products');
+      
+      debugPrint('═══════════════════════════════════════════');
+      debugPrint('🟢 [PRODUCTS] API Call Successful!');
+      debugPrint('🟢 [PRODUCTS] Status Code: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
-        final items = responses.expand<dynamic>((response) {
-          final data = response.data;
-          return data['data'] ?? data ?? [];
-        }).toList();
-        debugPrint('Found ${items.length} products');
+        final data = response.data;
+        debugPrint('🟢 [PRODUCTS] Response Keys: ${data is Map ? (data as Map).keys.toList() : 'N/A'}');
+        
+        final List<dynamic> items = data['data'] ?? data ?? [];
+        
+        debugPrint('═══════════════════════════════════════════');
+        debugPrint('🟢 [PRODUCTS] TOTAL ITEMS FOUND: ${items.length}');
+        debugPrint('═══════════════════════════════════════════');
+        
+        if (items.isNotEmpty) {
+          debugPrint('🟢 [PRODUCTS] First item keys: ${items.first is Map ? (items.first as Map).keys.toList() : 'N/A'}');
+        }
+        
         setState(() {
           final productsById = <String, Map<String, dynamic>>{};
 
@@ -413,7 +433,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             final name = item['name']?.toString() ?? '';
             final cat = (item['category'] ?? item['categoryName'] ?? '')
                 .toString();
-            // Try every possible image field the backend might use
             String apiImage =
                 (item['primaryImage'] ??
                         item['image'] ??
@@ -429,8 +448,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 apiImage.startsWith('http://') ||
                 apiImage.startsWith('https://');
             final image = isValidUrl ? apiImage : _fallbackImageFor(name, cat);
-            debugPrint('Product: $name | apiImage: $apiImage | final: $image');
             final id = item['id']?.toString() ?? item['_id']?.toString() ?? '';
+            
             productsById[id] = <String, dynamic>{
               'id': id,
               'name': name,
@@ -456,13 +475,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           }
 
           final fetched = productsById.values.toList();
-          // Use empty list if API returns nothing (shimmer/empty state will show)
+          debugPrint('═══════════════════════════════════════════');
+          debugPrint('🟢 [PRODUCTS] FINAL STATE UPDATE: ${fetched.length} products');
+          debugPrint('═══════════════════════════════════════════');
           _products = fetched.isEmpty ? [] : fetched;
           _isLoadingProducts = false;
         });
+      } else {
+        debugPrint('🔴 [PRODUCTS] ERROR: Unexpected status code: ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Error fetching products: $e');
+    } catch (e, stackTrace) {
+      debugPrint('═══════════════════════════════════════════');
+      debugPrint('🔴🔴🔴 [PRODUCTS] EXCEPTION CAUGHT 🔴🔴🔴');
+      debugPrint('🔴 [PRODUCTS] Error: $e');
+      debugPrint('🔴 [PRODUCTS] Stack trace: $stackTrace');
+      debugPrint('═══════════════════════════════════════════');
       setState(() {
         _products = [];
         _isLoadingProducts = false;
@@ -473,24 +500,35 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchCategories() async {
     setState(() => _isLoadingCategories = true);
     try {
+      debugPrint('🔵 [CATEGORIES] Starting fetch from: ${_dio.options.baseUrl}');
       final response = await _dio.get('/products/categories');
-      debugPrint('Products categories API response: ${response.data}');
+      debugPrint('🟢 [CATEGORIES] Response status: ${response.statusCode}');
+      debugPrint('🟢 [CATEGORIES] Response data: ${response.data}');
+      
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
+        debugPrint('🟢 [CATEGORIES] Found ${items.length} categories');
+        
         Map<String, Map<String, dynamic>> categoryMetaByName = {};
 
         try {
+          debugPrint('🔵 [CATEGORIES] Fetching category metadata from /categories');
           final metaResponse = await _dio.get(
             '/categories',
             queryParameters: {'active': true, 'limit': 200},
           );
+          debugPrint('🟢 [CATEGORIES] Metadata response status: ${metaResponse.statusCode}');
+          debugPrint('🟢 [CATEGORIES] Metadata response: ${metaResponse.data}');
+          
           if (metaResponse.statusCode == 200 &&
               metaResponse.data['success'] == true) {
             final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
+            debugPrint('🟢 [CATEGORIES] Found ${metaItems.length} category metadata items');
             categoryMetaByName = _buildCategoryMetadataMap(metaItems);
           }
-        } catch (e) {
-          debugPrint('Error fetching category metadata from /categories: $e');
+        } catch (e, stackTrace) {
+          debugPrint('⚠️ [CATEGORIES] Error fetching category metadata: $e');
+          debugPrint('⚠️ [CATEGORIES] Stack trace: $stackTrace');
         }
 
         setState(() {
@@ -498,7 +536,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               .map<Map<String, dynamic>>((item) {
                 final name = item['name']?.toString() ?? '';
                 final metadata = _categoryMetadataFor(categoryMetaByName, name);
-                return {
+                final catData = {
                   'name': name,
                   'displayName': metadata['name']?.toString() ?? '',
                   'queryName': name,
@@ -511,6 +549,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'slug': metadata['slug']?.toString() ?? '',
                   'count': item['count'] ?? item['productCount'],
                 };
+                debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']}');
+                return catData;
               })
               .where((item) => (item['name'] as String).isNotEmpty)
               .where(_categoryHasProducts)
@@ -518,11 +558,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           _categories = _categoryData
               .map<String>((item) => item['name']?.toString() ?? '')
               .toList();
+          debugPrint('🟢 [CATEGORIES] Final category count: ${_categories.length}');
           _isLoadingCategories = false;
         });
+      } else {
+        debugPrint('🔴 [CATEGORIES] ERROR: Unexpected status code: ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Error fetching categories: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🔴 [CATEGORIES] ERROR: $e');
+      debugPrint('🔴 [CATEGORIES] Stack trace: $stackTrace');
       setState(() => _isLoadingCategories = false);
     }
   }
