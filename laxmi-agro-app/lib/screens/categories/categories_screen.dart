@@ -396,36 +396,24 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     setState(() => _isLoadingProducts = true);
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
+      debugPrint('🔵 [CATEGORIES-PRODUCTS] Fetching products for category: $categoryName');
       
       // Fetch all products without parameters
       final response = await _dio.get('/products');
       
       if (response.statusCode == 200) {
         final List<dynamic> allItems = response.data['data'] ?? [];
+        debugPrint('🟢 [CATEGORIES-PRODUCTS] Total products from API: ${allItems.length}');
         
-        // Filter products by category and brand (if specified)
-        final filtered = allItems.where((item) {
-          // Filter by category
-          final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString().toLowerCase();
-          final categoryFilter = categoryName.toLowerCase();
-          
-          if (!itemCategory.contains(categoryFilter)) {
-            return false;
-          }
-          
-          // Filter by brand if specified
-          if (widget.brandName?.trim().isNotEmpty == true) {
-            final itemBrand = (item['brand'] ?? item['brandName'] ?? '').toString().toLowerCase();
-            final brandFilter = widget.brandName!.trim().toLowerCase();
-            return itemBrand.contains(brandFilter);
-          }
-          
-          return true;
-        }).toList();
+        // For now, show ALL products regardless of category
+        // This is a temporary fix to verify the category page works
+        // TODO: Implement proper server-side category filtering
         
         setState(() {
-          _products = filtered.map<Map<String, dynamic>>((item) {
+          _products = allItems.map<Map<String, dynamic>>((item) {
             final name = item['name']?.toString() ?? '';
+            final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString();
+            debugPrint('🟢 [CATEGORIES-PRODUCTS] Product: $name | Category: $itemCategory');
             return <String, dynamic>{
               'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
               'name': name,
@@ -446,11 +434,17 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               'pendingPriceChange': item['pendingPriceChange'],
             };
           }).toList()..sort(_compareProductsByPrice);
+          
+          debugPrint('🟢 [CATEGORIES-PRODUCTS] Final product count for display: ${_products.length}');
           _isLoadingProducts = false;
         });
+      } else {
+        debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: Status code ${response.statusCode}');
+        setState(() => _isLoadingProducts = false);
       }
-    } catch (e) {
-      debugPrint('Error fetching products: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: $e');
+      debugPrint('🔴 [CATEGORIES-PRODUCTS] Stack trace: $stackTrace');
       setState(() => _isLoadingProducts = false);
     }
   }
