@@ -851,13 +851,17 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Widget _buildProductGrid() {
+    debugPrint('🔵 [GRID-BUILD] _isLoadingProducts=$_isLoadingProducts, _products.length=${_products.length}');
+    
     if (_isLoadingProducts) {
+      debugPrint('🟡 [GRID-BUILD] Showing loading indicator');
       return const Center(
         child: CircularProgressIndicator(color: primaryBlue, strokeWidth: 2),
       );
     }
 
     if (_products.isEmpty) {
+      debugPrint('🔴 [GRID-BUILD] Products list is empty!');
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -880,65 +884,72 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ),
       );
     }
+    
+    debugPrint('🟢 [GRID-BUILD] Building grid with ${_products.length} products');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Category header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Text(
-                  '${_products.length} items',
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: primaryBlue,
-                  ),
-                ),
-              ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 700;
+        final gridColumns = isTablet
+            ? (constraints.maxWidth >= 1000 ? 4 : 3)
+            : 2;
+        final gridSpacing = isTablet ? 14.0 : 10.0;
+
+        return CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
-        ),
-        // Products
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 700;
-              final gridColumns = isTablet
-                  ? (constraints.maxWidth >= 1000 ? 4 : 3)
-                  : 2;
-              final gridSpacing = isTablet ? 14.0 : 10.0;
-
-              return GridView.builder(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
+          slivers: [
+            // Category header
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: primaryBlue.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        '${_products.length} items',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: primaryBlue,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                padding: EdgeInsets.fromLTRB(
-                  isTablet ? 18 : 12,
-                  4,
-                  isTablet ? 18 : 12,
-                  100,
+              ),
+            ),
+            // Products grid
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                isTablet ? 18 : 12,
+                4,
+                isTablet ? 18 : 12,
+                100,
+              ),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _buildProductCard(_products[index]),
+                  childCount: _products.length,
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: gridColumns,
@@ -946,14 +957,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   mainAxisSpacing: gridSpacing,
                   childAspectRatio: isTablet ? 0.72 : 0.48,
                 ),
-                itemCount: _products.length,
-                itemBuilder: (context, index) =>
-                    _buildProductCard(_products[index]),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
