@@ -396,52 +396,86 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     setState(() => _isLoadingProducts = true);
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
-      debugPrint('🔵 [CATEGORIES-PRODUCTS] Fetching products for category: $categoryName');
+      final categoryQueryName = category['queryName']?.toString().trim() ?? categoryName;
+      debugPrint('🔵 [CATEGORIES-PRODUCTS] Fetching products for category: $categoryName (query: $categoryQueryName)');
       
-      // Fetch all products without parameters
-      final response = await _dio.get('/products');
+      // Fetch all products with pagination (no limit to get all products)
+      final allItems = <Map<String, dynamic>>[];
+      var page = 1;
+      var hasMore = true;
       
-      if (response.statusCode == 200) {
-        final List<dynamic> allItems = response.data['data'] ?? [];
-        debugPrint('🟢 [CATEGORIES-PRODUCTS] Total products from API: ${allItems.length}');
-        
-        // For now, show ALL products regardless of category
-        // This is a temporary fix to verify the category page works
-        // TODO: Implement proper server-side category filtering
-        
-        setState(() {
-          _products = allItems.map<Map<String, dynamic>>((item) {
-            final name = item['name']?.toString() ?? '';
-            final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString();
-            debugPrint('🟢 [CATEGORIES-PRODUCTS] Product: $name | Category: $itemCategory');
-            return <String, dynamic>{
-              'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
-              'name': name,
-              'nameHindi': item['nameHindi']?.toString() ?? '',
-              'price': item['price'] ?? item['retailPrice'] ?? 0,
-              'mrp': item['mrp'] ?? 0,
-              'image': ApiConfig.normalizeMediaUrl(
-                item['primaryImage']?.toString() ?? '',
-              ),
-              'inStock': item['inStock'] != false,
-              'shortDescription': item['shortDescription']?.toString() ?? '',
-              'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
-              'reviewCount':
-                  item['ratingCount'] ??
-                  item['reviewCount'] ??
-                  item['reviews'] ??
-                  '',
-              'pendingPriceChange': item['pendingPriceChange'],
-            };
-          }).toList()..sort(_compareProductsByPrice);
+      while (hasMore) {
+        try {
+          final response = await _dio.get('/products', queryParameters: {'page': page});
           
-          debugPrint('🟢 [CATEGORIES-PRODUCTS] Final product count for display: ${_products.length}');
-          _isLoadingProducts = false;
-        });
-      } else {
-        debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: Status code ${response.statusCode}');
-        setState(() => _isLoadingProducts = false);
+          if (response.statusCode != 200) {
+            debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: Status code ${response.statusCode} on page $page');
+            break;
+          }
+          
+          final List<dynamic> pageItems = response.data['data'] ?? [];
+          if (pageItems.isEmpty) {
+            hasMore = false;
+            break;
+          }
+          
+          allItems.addAll(pageItems.whereType<Map>().map(Map<String, dynamic>.from));
+          
+          final pagination = response.data['pagination'];
+          hasMore = pagination is Map && pagination['hasNext'] == true;
+          page += 1;
+          
+          debugPrint('🟢 [CATEGORIES-PRODUCTS] Fetched page $page: ${pageItems.length} items');
+        } catch (e) {
+          debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR fetching page $page: $e');
+          break;
+        }
       }
+      
+      debugPrint('🟢 [CATEGORIES-PRODUCTS] Total products from API: ${allItems.length}');
+      
+      // Filter products by category - normalize category names for comparison
+      final filteredProducts = allItems.where((item) {
+        final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString().trim();
+        final itemCategoryNormalized = _normalizedCategoryKey(itemCategory);
+        final categoryNormalized = _normalizedCategoryKey(categoryQueryName);
+        
+        final matches = itemCategoryNormalized == categoryNormalized;
+        if (matches) {
+          debugPrint('✅ [CATEGORIES-PRODUCTS] Product matched: ${item['name']} (cat: $itemCategory)');
+        }
+        return matches;
+      }).toList();
+      
+      debugPrint('🟢 [CATEGORIES-PRODUCTS] Filtered products for category: ${filteredProducts.length}');
+      
+      setState(() {
+        _products = filteredProducts.map<Map<String, dynamic>>((item) {
+          final name = item['name']?.toString() ?? '';
+          return <String, dynamic>{
+            'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+            'name': name,
+            'nameHindi': item['nameHindi']?.toString() ?? '',
+            'price': item['price'] ?? item['retailPrice'] ?? 0,
+            'mrp': item['mrp'] ?? 0,
+            'image': ApiConfig.normalizeMediaUrl(
+              item['primaryImage']?.toString() ?? '',
+            ),
+            'inStock': item['inStock'] != false,
+            'shortDescription': item['shortDescription']?.toString() ?? '',
+            'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
+            'reviewCount':
+                item['ratingCount'] ??
+                item['reviewCount'] ??
+                item['reviews'] ??
+                '',
+            'pendingPriceChange': item['pendingPriceChange'],
+          };
+        }).toList()..sort(_compareProductsByPrice);
+        
+        debugPrint('🟢 [CATEGORIES-PRODUCTS] Final product count for display: ${_products.length}');
+        _isLoadingProducts = false;
+      });
     } catch (e, stackTrace) {
       debugPrint('🔴 [CATEGORIES-PRODUCTS] ERROR: $e');
       debugPrint('🔴 [CATEGORIES-PRODUCTS] Stack trace: $stackTrace');
