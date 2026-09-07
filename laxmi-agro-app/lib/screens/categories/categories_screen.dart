@@ -396,26 +396,35 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     setState(() => _isLoadingProducts = true);
     try {
       final categoryName = category['name']?.toString().trim() ?? '';
-      final queryName = category['queryName']?.toString().trim() ?? '';
-      final categorySlug = category['slug']?.toString().trim() ?? '';
-      final categoryFilter = queryName.isNotEmpty
-          ? queryName
-          : categoryName.isNotEmpty
-          ? categoryName
-          : categorySlug;
-      final response = await _dio.get(
-        '/products',
-        queryParameters: {
-          'category': categoryFilter,
-          'limit': 120,
-          if (widget.brandName?.trim().isNotEmpty == true)
-            'brand': widget.brandName!.trim(),
-        },
-      );
+      
+      // Fetch all products without parameters
+      final response = await _dio.get('/products');
+      
       if (response.statusCode == 200) {
-        final List<dynamic> items = response.data['data'] ?? [];
+        final List<dynamic> allItems = response.data['data'] ?? [];
+        
+        // Filter products by category and brand (if specified)
+        final filtered = allItems.where((item) {
+          // Filter by category
+          final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString().toLowerCase();
+          final categoryFilter = categoryName.toLowerCase();
+          
+          if (!itemCategory.contains(categoryFilter)) {
+            return false;
+          }
+          
+          // Filter by brand if specified
+          if (widget.brandName?.trim().isNotEmpty == true) {
+            final itemBrand = (item['brand'] ?? item['brandName'] ?? '').toString().toLowerCase();
+            final brandFilter = widget.brandName!.trim().toLowerCase();
+            return itemBrand.contains(brandFilter);
+          }
+          
+          return true;
+        }).toList();
+        
         setState(() {
-          _products = items.map<Map<String, dynamic>>((item) {
+          _products = filtered.map<Map<String, dynamic>>((item) {
             final name = item['name']?.toString() ?? '';
             return <String, dynamic>{
               'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',

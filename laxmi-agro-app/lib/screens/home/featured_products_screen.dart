@@ -60,25 +60,16 @@ class _FeaturedProductsScreenState
         _error = null;
       });
 
-      final queryParameters = <String, dynamic>{'limit': 120};
-      if (widget.brandName != null) {
-        queryParameters['brand'] = widget.brandName;
-      } else if (widget.isHotDeals) {
-        queryParameters['hot'] = true;
-      } else {
-        queryParameters['featured'] = true;
-      }
-
-      final response = await _dio.get(
-        '/products',
-        queryParameters: queryParameters,
-      );
+      // Fetch all products without query parameters
+      final response = await _dio.get('/products');
 
       if (response.statusCode == 200) {
         final data = response.data;
         final List<dynamic> items = data['data'] ?? data ?? [];
 
+        // Filter based on widget configuration
         final filtered = items.where((item) {
+          // Filter by brand if specified
           if (widget.brandName != null) {
             final brand = (item['brand'] ?? item['brandName'] ?? '').toString();
             final name = (item['name'] ?? '').toString();
@@ -87,7 +78,12 @@ class _FeaturedProductsScreenState
             );
             return brand.toLowerCase() == widget.brandName!.toLowerCase();
           }
-          return true;
+          // Filter hot deals
+          if (widget.isHotDeals) {
+            return item['isHot'] == true;
+          }
+          // Filter featured products
+          return item['isFeatured'] == true;
         }).toList();
 
         final products = filtered.map<Map<String, dynamic>>((item) {
