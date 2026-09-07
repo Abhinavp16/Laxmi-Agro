@@ -117,7 +117,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         while (hasNext) {
           final response = await _dio.get(
             '/products',
-            queryParameters: {'brand': brandFilter, 'page': page, 'limit': 50},
+            queryParameters: {'brand': brandFilter, 'page': page, 'limit': 120},
           );
 
           if (response.statusCode != 200) break;
@@ -407,7 +407,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         '/products',
         queryParameters: {
           'category': categoryFilter,
-          'limit': 100,
+          'limit': 120,
           if (widget.brandName?.trim().isNotEmpty == true)
             'brand': widget.brandName!.trim(),
         },

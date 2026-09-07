@@ -60,7 +60,7 @@ class _FeaturedProductsScreenState
         _error = null;
       });
 
-      final queryParameters = <String, dynamic>{'limit': 50};
+      final queryParameters = <String, dynamic>{'limit': 120};
       if (widget.brandName != null) {
         queryParameters['brand'] = widget.brandName;
       } else if (widget.isHotDeals) {

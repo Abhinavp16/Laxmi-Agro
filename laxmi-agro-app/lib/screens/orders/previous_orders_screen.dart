@@ -38,7 +38,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
       final api = ref.read(apiClientProvider);
       final response = await api.get(
         '/orders',
-        queryParameters: {'limit': 50},
+        queryParameters: {'limit': 120},
       );
       if (response.data['success'] != true) {
         throw StateError('Order request was unsuccessful');

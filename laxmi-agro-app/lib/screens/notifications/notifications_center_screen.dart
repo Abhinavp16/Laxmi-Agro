@@ -46,7 +46,7 @@ class _NotificationsCenterScreenState
       final api = ref.read(apiClientProvider);
       final response = await api.get(
         '/notifications/my',
-        queryParameters: {'limit': 50},
+        queryParameters: {'limit': 120},
       );
 
       if (response.statusCode == 200 && mounted) {

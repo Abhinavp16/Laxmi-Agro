@@ -348,7 +348,7 @@ class NotificationService {
       final api = _ref.read(apiClientProvider);
       final response = await api.get(
         '/notifications/my',
-        queryParameters: {'limit': 20},
+        queryParameters: {'limit': 120},
       );
       final items = response.data['data'];
       if (items is! List) return true;

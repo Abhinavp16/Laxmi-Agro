@@ -394,9 +394,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     try {
       debugPrint('Fetching products...');
       final responses = await Future.wait([
-        _dio.get('/products', queryParameters: {'limit': 50}),
-        _dio.get('/products', queryParameters: {'featured': true, 'limit': 50}),
-        _dio.get('/products', queryParameters: {'hot': true, 'limit': 50}),
+        _dio.get('/products', queryParameters: {'limit': 120}),
+        _dio.get('/products', queryParameters: {'featured': true, 'limit': 120}),
+        _dio.get('/products', queryParameters: {'hot': true, 'limit': 120}),
       ]);
       final response = responses.first;
       debugPrint('Products response: ${response.statusCode}');
