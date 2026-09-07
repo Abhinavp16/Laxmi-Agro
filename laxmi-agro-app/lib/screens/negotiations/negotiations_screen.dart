@@ -86,8 +86,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
   }
 
   List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_selectedTab == 0) return _negotiations;
-    if (_selectedTab == 1) {
+    if (_selectedTab == 0) {
       return _negotiations
           .where((n) => ['pending', 'countered'].contains(n['status']))
           .toList();
@@ -157,11 +156,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      _buildTab('All', 0),
+                      _buildTab('Active', 0),
                       const SizedBox(width: 32),
-                      _buildTab('Active', 1),
-                      const SizedBox(width: 32),
-                      _buildTab('Completed', 2),
+                      _buildTab('Completed', 1),
                     ],
                   ),
                 ),
@@ -224,11 +221,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    _selectedTab == 1
+                                    _selectedTab == 0
                                         ? 'No active negotiations'
-                                        : _selectedTab == 2
-                                        ? 'No completed negotiations'
-                                        : 'No negotiations yet',
+                                        : 'No completed negotiations',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
