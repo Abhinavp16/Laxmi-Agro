@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -4241,12 +4242,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_negotiationTab == 0) return _negotiations;
-    if (_negotiationTab == 1) {
+    if (_negotiationTab == 0) {
+      // Active tab - pending and countered negotiations
       return _negotiations
           .where((n) => ['pending', 'countered'].contains(n['status']))
           .toList();
     }
+    // Completed tab - accepted, rejected, expired, converted negotiations
     return _negotiations
         .where(
           (n) => [
@@ -4334,9 +4336,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             child: Row(
               children: [
-                _buildNegotiationTab(t('All'), 0),
-                _buildNegotiationTab(t('Active'), 1),
-                _buildNegotiationTab(t('Completed'), 2),
+                _buildNegotiationTab(t('Active'), 0),
+                _buildNegotiationTab(t('Completed'), 1),
               ],
             ),
           ),
@@ -4359,11 +4360,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _negotiationTab == 1
+                        _negotiationTab == 0
                             ? t('No active negotiations')
-                            : _negotiationTab == 2
-                            ? t('No completed negotiations')
-                            : t('No negotiations yet'),
+                            : t('No completed negotiations'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -4441,6 +4440,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '')
         .toString();
     final canPay = negotiation['canPay'] == true;
+    final createdAt = negotiation['createdAt'] as String? ?? '';
+
+    String formattedDate = '';
+    String formattedTime = '';
+    if (createdAt.isNotEmpty) {
+      try {
+        final dateTime = DateTime.parse(createdAt);
+        formattedDate = DateFormat('MMM d, yyyy').format(dateTime);
+        formattedTime = DateFormat('h:mm a').format(dateTime);
+      } catch (_) {}
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -4465,192 +4475,243 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (imageUrl.isNotEmpty)
-                AspectRatio(
-                  aspectRatio: 2.4,
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        Container(color: const Color(0xFFF1F5F9)),
-                    errorWidget: (_, __, ___) => Container(
-                      color: const Color(0xFFF1F5F9),
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedImage01,
-                          color: textMuted,
-                          size: 40,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          negotiationNumber.isNotEmpty
-                              ? negotiationNumber
-                              : t('NEGOTIATION'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4C669A),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusDisplay['bg'] as Color,
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            statusDisplay['label'] as String,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: statusDisplay['color'] as Color,
-                              letterSpacing: 0.3,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left: Product Image (100x100)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) =>
+                                Container(color: const Color(0xFFF1F5F9)),
+                            errorWidget: (_, __, ___) => Container(
+                              color: const Color(0xFFF1F5F9),
+                              child: Center(
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedImage01,
+                                  color: textMuted,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedImage01,
+                                color: textMuted,
+                                size: 32,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      productName,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
-                        height: 1.2,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      t('Qty: $quantity units'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF4C669A),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: backgroundWhite,
-                        borderRadius: BorderRadius.circular(8),
-                        border: status == 'accepted'
-                            ? const Border(
-                                left: BorderSide(
-                                  color: Color(0xFF16A34A),
-                                  width: 4,
-                                ),
-                              )
-                            : null,
-                      ),
-                      child: Column(
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Right: All Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Row: Date, Time, Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                t('Your Price/unit:'),
+                                formattedDate.isNotEmpty
+                                    ? formattedDate
+                                    : 'No date',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  color: const Color(0xFF4C669A),
+                                  fontSize: 11,
+                                  color: textMuted,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              Text(
-                                '₹$requestedPrice',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: textPrimary,
+                              if (formattedTime.isNotEmpty)
+                                Text(
+                                  formattedTime,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: textMuted,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                status == 'countered' &&
-                                        currentOfferBy == 'admin'
-                                    ? t('Admin Counter:')
-                                    : t('Current Price/unit:'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  color: const Color(0xFF4C669A),
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusDisplay['bg'] as Color,
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Text(
+                              statusDisplay['label'] as String,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: statusDisplay['color'] as Color,
+                                letterSpacing: 0.3,
                               ),
-                              Text(
-                                '₹$currentPrice',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: status == 'accepted'
-                                      ? const Color(0xFF16A34A)
-                                      : primaryBlue,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          const Divider(height: 1),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                t('Total:'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              Text(
-                                '₹$currentTotal',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: status == 'accepted'
-                                      ? const Color(0xFF16A34A)
-                                      : textPrimary,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildNegActionButton(
-                      status,
-                      currentOfferBy,
-                      canPay,
-                      negotiationId,
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      // SKU / Negotiation Number
+                      Text(
+                        negotiationNumber.isNotEmpty
+                            ? negotiationNumber
+                            : 'NEGOTIATION',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4C669A),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Product Name
+                      Text(
+                        productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                          height: 1.2,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Quantity
+                      Text(
+                        t('Qty: $quantity units'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF4C669A),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Price Info (Compact)
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: backgroundWhite,
+                          borderRadius: BorderRadius.circular(6),
+                          border: status == 'accepted'
+                              ? const Border(
+                                  left: BorderSide(
+                                    color: Color(0xFF16A34A),
+                                    width: 3,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  t('Your Price:'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFF4C669A),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  '₹$requestedPrice',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  status == 'countered' && currentOfferBy == 'admin'
+                                      ? t('Counter:')
+                                      : t('Current:'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFF4C669A),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  '₹$currentPrice',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: status == 'accepted'
+                                        ? const Color(0xFF16A34A)
+                                        : primaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  t('Total:'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  '₹$currentTotal',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: status == 'accepted'
+                                        ? const Color(0xFF16A34A)
+                                        : textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Action Button
+                      _buildNegActionButton(
+                        status,
+                        currentOfferBy,
+                        canPay,
+                        negotiationId,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
