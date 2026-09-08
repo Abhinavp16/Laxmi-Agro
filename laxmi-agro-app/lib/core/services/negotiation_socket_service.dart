@@ -45,17 +45,16 @@ class NegotiationSocketService {
 
     _currentNegotiationId = negotiationId;
 
-    _socket = IO.io(
-      serverUrl,
-      IO.SocketIoClientOptions(
-        transports: ['websocket'],
-        autoConnect: true,
-        reconnection: true,
-        reconnectionDelay: const Duration(milliseconds: 1000),
-        reconnectionDelayMax: const Duration(milliseconds: 5000),
-        reconnectionAttempts: 10,
-      ),
-    );
+    final socketOptions = {
+      'transports': ['websocket'],
+      'autoConnect': true,
+      'reconnection': true,
+      'reconnectionDelay': 1000,
+      'reconnectionDelayMax': 5000,
+      'reconnectionAttempts': 10,
+    };
+
+    _socket = IO.io(serverUrl, socketOptions);
 
     _socket!.on('connect', (_) {
       _isConnected = true;

@@ -108,6 +108,19 @@ export default function CategoriesPage() {
     const [isUploadingImage, setIsUploadingImage] = useState(false)
     const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
 
+    // Subcategory management state
+    const [isSubcategoryDialogOpen, setIsSubcategoryDialogOpen] = useState(false)
+    const [subcategoryName, setSubcategoryName] = useState("")
+    const [subcategoryNameHindi, setSubcategoryNameHindi] = useState("")
+    const [subcategoryDescription, setSubcategoryDescription] = useState("")
+    const [subcategoryOrder, setSubcategoryOrder] = useState("0")
+    const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false)
+    const [editingSubcategory, setEditingSubcategory] = useState<Category | null>(null)
+    
+    // Product assignment state
+    const [isProductAssignmentOpen, setIsProductAssignmentOpen] = useState(false)
+    const [selectedSubcategoryForProducts, setSelectedSubcategoryForProducts] = useState<Category | null>(null)
+
     useEffect(() => {
         fetchCategories(1, true)
         fetchCompanies()
@@ -324,6 +337,97 @@ export default function CategoriesPage() {
         }
     }
 
+    async function handleAddSubcategory() {
+        if (!subcategoryName.trim()) {
+            toast.error("Subcategory name is required")
+            return
+        }
+
+        if (!editingCategory) {
+            toast.error("Please select a parent category first")
+            return
+        }
+
+        setIsSubmittingSubcategory(true)
+
+        try {
+            const payload: any = {
+                name: subcategoryName.trim(),
+                nameHindi: subcategoryNameHindi.trim() || undefined,
+                description: subcategoryDescription.trim() || undefined,
+                company: editingCategory.company instanceof Object 
+                    ? editingCategory.company._id 
+                    : editingCategory.company,
+                parent: editingCategory._id,
+                order: Number(subcategoryOrder) || 0,
+                isActive: true,
+            }
+
+            const endpoint = editingSubcategory
+                ? `/categories/${editingSubcategory._id}`
+                : "/categories"
+
+            const res = await apiFetch(endpoint, {
+                method: editingSubcategory ? "PUT" : "POST",
+                body: JSON.stringify(payload),
+            })
+
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || "Failed to save subcategory")
+            }
+
+            toast.success(editingSubcategory ? "Subcategory updated successfully" : "Subcategory created successfully")
+            setSubcategoryName("")
+            setSubcategoryNameHindi("")
+            setSubcategoryDescription("")
+            setSubcategoryOrder("0")
+            setEditingSubcategory(null)
+            setIsSubcategoryDialogOpen(false)
+            fetchCategories()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to save subcategory")
+        } finally {
+            setIsSubmittingSubcategory(false)
+        }
+    }
+
+    async function handleDeleteSubcategory(subcategoryId: string) {
+        try {
+            const res = await apiFetch(`/categories/${subcategoryId}`, {
+                method: "DELETE",
+            })
+
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || "Failed to delete subcategory")
+            }
+
+            toast.success("Subcategory deleted successfully")
+            fetchCategories()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete subcategory")
+        }
+    }
+
+    function openEditSubcategoryDialog(subcategory: Category) {
+        setEditingSubcategory(subcategory)
+        setSubcategoryName(subcategory.name)
+        setSubcategoryNameHindi(subcategory.nameHindi || "")
+        setSubcategoryDescription(subcategory.description || "")
+        setSubcategoryOrder(String(subcategory.order || 0))
+        setIsSubcategoryDialogOpen(true)
+    }
+
+    function openAddSubcategoryDialog() {
+        setEditingSubcategory(null)
+        setSubcategoryName("")
+        setSubcategoryNameHindi("")
+        setSubcategoryDescription("")
+        setSubcategoryOrder("0")
+        setIsSubcategoryDialogOpen(true)
+    }
+
     async function convertMissingHindiNames() {
         setIsConvertingHindi(true)
         try {
@@ -415,6 +519,31 @@ export default function CategoriesPage() {
             toast.error(error.message || "Failed to reorder categories")
             // Refresh to get correct state from backend
             fetchCategories(1, true)
+        }
+    }
+
+    async function handleReorderSubcategories(subcategoryIds: string[]) {
+        if (!editingCategory) return
+
+        try {
+            const res = await apiFetch("/categories/reorder-subcategories", {
+                method: "POST",
+                body: JSON.stringify({
+                    parentId: editingCategory._id,
+                    subcategoryIds: subcategoryIds,
+                }),
+            })
+
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || "Failed to reorder subcategories")
+            }
+
+            toast.success("Subcategories reordered successfully")
+            fetchCategories()
+        } catch (error: any) {
+            console.error("Subcategory reorder error:", error)
+            toast.error(error.message || "Failed to reorder subcategories")
         }
     }
 
@@ -995,6 +1124,91 @@ export default function CategoriesPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Subcategories Section - Only show when editing */}
+                        {editingCategory && (
+                            <div className="order-8 w-full border-t border-[#333] pt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-medium text-white">
+                                        Subcategories
+                                    </label>
+                                    <Button
+                                        type="button"
+                                        onClick={() => openAddSubcategoryDialog()}
+                                        size="sm"
+                                        className="gap-1 is-active hover:bg-[#86efac]/90"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        Add Subcategory
+                                    </Button>
+                                </div>
+
+                                {/* Subcategories List */}
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {(() => {
+                                        const subcats = categories.filter(c => c.parent?._id === editingCategory._id).sort((a, b) => (a.order || 0) - (b.order || 0))
+                                        return subcats.length === 0 ? (
+                                            <p className="text-xs text-gray-500 italic">No subcategories yet</p>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                {subcats.map((subcat, idx) => (
+                                                    <div key={subcat._id} className="flex items-center justify-between p-2 rounded bg-[#0D0D0D] border border-[#333] group hover:border-[#555] transition-colors">
+                                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                            <GripVertical className="h-4 w-4 text-gray-600 group-hover:text-gray-400 cursor-grab active:cursor-grabbing shrink-0" />
+                                                            <span className="text-xs text-gray-500 min-w-[20px]">#{idx + 1}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm text-white truncate">{subcat.name}</p>
+                                                                {subcat.nameHindi && (
+                                                                    <p className="text-xs text-gray-400 truncate">{subcat.nameHindi}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 ml-2 shrink-0">
+                                                            <span className="text-xs text-gray-500">
+                                                                {subcat.productCount} products
+                                                            </span>
+                                                            <Button
+                                                                type="button"
+                                                                size="icon-xs"
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    setSelectedSubcategoryForProducts(subcat)
+                                                                    setIsProductAssignmentOpen(true)
+                                                                }}
+                                                                className="border-[#333] bg-[#0D0D0D] text-gray-400 hover:text-blue-400 h-6 w-6"
+                                                                title="Assign products to subcategory"
+                                                            >
+                                                                <Package className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="icon-xs"
+                                                                variant="outline"
+                                                                onClick={() => openEditSubcategoryDialog(subcat)}
+                                                                className="border-[#333] bg-[#0D0D0D] text-gray-400 hover:text-white h-6 w-6"
+                                                                title="Edit subcategory"
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="icon-xs"
+                                                                variant="outline"
+                                                                onClick={() => handleDeleteSubcategory(subcat._id)}
+                                                                className="border-[#333] bg-[#0D0D0D] text-gray-400 hover:text-red-400 h-6 w-6"
+                                                                title="Delete subcategory"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    })()}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     
                     <DialogFooter>
@@ -1035,6 +1249,164 @@ export default function CategoriesPage() {
                             className="max-h-[80vh] w-full object-contain"
                         />
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Add/Edit Subcategory Dialog */}
+            <Dialog open={isSubcategoryDialogOpen} onOpenChange={setIsSubcategoryDialogOpen}>
+                <DialogContent className="max-w-md border-[#333] bg-[#161616] gap-3">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">
+                            {editingSubcategory ? "Edit Subcategory" : "Add Subcategory"}
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            {editingSubcategory 
+                                ? `Update subcategory "${editingSubcategory.name}"`
+                                : `Add a new subcategory to "${editingCategory?.name}"`
+                            }
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Subcategory Name *
+                            </label>
+                            <Input
+                                placeholder="e.g., Tractors, Harvesters"
+                                value={subcategoryName}
+                                onChange={(e) => setSubcategoryName(e.target.value)}
+                                className="bg-[#0D0D0D] border-[#333] text-white"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Subcategory Name (Hindi)
+                            </label>
+                            <Input
+                                placeholder="e.g., ट्रैक्टर, कटाई"
+                                value={subcategoryNameHindi}
+                                onChange={(e) => setSubcategoryNameHindi(e.target.value)}
+                                className="bg-[#0D0D0D] border-[#333] text-white"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Description
+                            </label>
+                            <Textarea
+                                placeholder="Brief description..."
+                                value={subcategoryDescription}
+                                onChange={(e) => setSubcategoryDescription(e.target.value)}
+                                className="bg-[#0D0D0D] border-[#333] text-white min-h-[60px]"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Display Order
+                            </label>
+                            <Input
+                                type="number"
+                                placeholder="0"
+                                value={subcategoryOrder}
+                                onChange={(e) => setSubcategoryOrder(e.target.value)}
+                                className="bg-[#0D0D0D] border-[#333] text-white"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setIsSubcategoryDialogOpen(false)
+                                setEditingSubcategory(null)
+                            }}
+                            className="border-[#333] bg-[#1A1A1A] text-gray-300 hover:text-white hover:bg-[#333]"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAddSubcategory}
+                            disabled={isSubmittingSubcategory}
+                            className="is-active hover:bg-[#86efac]/90"
+                        >
+                            {isSubmittingSubcategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingSubcategory ? "Update Subcategory" : "Add Subcategory"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Product Assignment Dialog */}
+            <Dialog open={isProductAssignmentOpen} onOpenChange={setIsProductAssignmentOpen}>
+                <DialogContent className="max-w-2xl border-[#333] bg-[#161616] gap-3 max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">
+                            Assign Products to Subcategory
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Currently viewing products for "{selectedSubcategoryForProducts?.name}"
+                            <br />
+                            <span className="text-xs mt-1">
+                                This subcategory has {selectedSubcategoryForProducts?.productCount || 0} products assigned
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <div className="text-sm text-gray-300">
+                            <p className="mb-2 font-medium">To assign products to this subcategory:</p>
+                            <ol className="list-decimal list-inside space-y-1 text-xs text-gray-400">
+                                <li>Go to the Products section in the admin panel</li>
+                                <li>Edit the product you want to assign</li>
+                                <li>Select this subcategory from the category dropdown</li>
+                                <li>Save the product</li>
+                            </ol>
+                        </div>
+
+                        <div className="bg-[#0D0D0D] border border-[#333] rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                                <div className="text-blue-400 text-sm mt-1">ℹ</div>
+                                <div className="text-xs text-gray-400">
+                                    <p className="font-medium text-gray-300 mb-1">Quick Info:</p>
+                                    <p>Products are assigned to subcategories by updating the product's category field. This modal shows the current assignment status and provides quick links.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                            <div className="bg-[#0D0D0D] border border-[#333] rounded p-2">
+                                <div className="text-xs text-gray-500 mb-1">Subcategory</div>
+                                <div className="text-sm text-white font-medium truncate">
+                                    {selectedSubcategoryForProducts?.name}
+                                </div>
+                            </div>
+                            <div className="bg-[#0D0D0D] border border-[#333] rounded p-2">
+                                <div className="text-xs text-gray-500 mb-1">Products Count</div>
+                                <div className="text-sm text-white font-medium">
+                                    {selectedSubcategoryForProducts?.productCount || 0}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setIsProductAssignmentOpen(false)
+                                setSelectedSubcategoryForProducts(null)
+                            }}
+                            className="is-active hover:bg-[#86efac]/90"
+                        >
+                            Done
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
