@@ -549,17 +549,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'blurHash': metadata['blurHash']?.toString(),
                   'slug': metadata['slug']?.toString() ?? '',
                   'count': item['count'] ?? item['productCount'],
+                  'order': metadata['order'] ?? item['order'] ?? 999,
                 };
-                debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']}');
+                debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}');
                 return catData;
               })
               .where((item) => (item['name'] as String).isNotEmpty)
               .where(_categoryHasProducts)
-              .toList();
+              .toList()
+            ..sort((a, b) {
+              final orderA = int.tryParse(a['order']?.toString() ?? '999') ?? 999;
+              final orderB = int.tryParse(b['order']?.toString() ?? '999') ?? 999;
+              return orderA.compareTo(orderB);
+            });
           _categories = _categoryData
               .map<String>((item) => item['name']?.toString() ?? '')
               .toList();
           debugPrint('🟢 [CATEGORIES] Final category count: ${_categories.length}');
+          debugPrint('🟢 [CATEGORIES] Category order: ${_categoryData.map((c) => '${c['name']}(${c['order']})').join(', ')}');
           _isLoadingCategories = false;
         });
       } else {
