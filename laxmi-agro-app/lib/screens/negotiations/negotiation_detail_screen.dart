@@ -1096,6 +1096,46 @@ class _NegotiationDetailScreenState
     );
   }
 
+  Future<void> _sendChatMessage() async {
+    final messageText = _counterMessageController.text.trim();
+    if (messageText.isEmpty) {
+      _showError('Please enter a message');
+      return;
+    }
+
+    setState(() => _isActioning = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      await api.post(
+        '/negotiations/${widget.negotiationId}/message',
+        data: {'message': messageText},
+      );
+      if (mounted) {
+        _counterMessageController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Message sent!',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: primaryBlue,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        _fetchDetail();
+      }
+    } on DioException catch (e) {
+      _showError(
+        e.response?.data?['message']?.toString() ?? 'Failed to send message',
+      );
+    } finally {
+      if (mounted) setState(() => _isActioning = false);
+    }
+  }
+
   Widget _buildBottomActions(
     String status,
     String currentOfferBy,
@@ -1115,9 +1155,7 @@ class _NegotiationDetailScreenState
         ],
       ),
       child: SafeArea(
-        child: _isActioning
-            ? const Center(child: CircularProgressIndicator(color: primaryBlue))
-            : _buildActionRow(status, currentOfferBy, canPay),
+        child: _buildActionRow(status, currentOfferBy, canPay),
       ),
     );
   }
@@ -1148,103 +1186,6 @@ class _NegotiationDetailScreenState
       );
     }
 
-    if (status == 'countered' && currentOfferBy == 'admin') {
-      return Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _rejectNegotiation,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: redAccent,
-                side: const BorderSide(color: redAccent),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                'Decline',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _showCounterSheet,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: amberAccent,
-                side: const BorderSide(color: amberAccent),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                'Counter',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _acceptOffer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: greenAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                'Accept',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (status == 'pending' ||
-        (status == 'countered' && currentOfferBy == 'wholesaler')) {
-      return Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _rejectNegotiation,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: redAccent,
-                side: const BorderSide(color: redAccent),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                'Cancel Negotiation',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
     if (status == 'accepted') {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -1270,6 +1211,78 @@ class _NegotiationDetailScreenState
       );
     }
 
-    return const SizedBox.shrink();
+    // Chat input for all negotiation statuses except completed states
+    return _buildChatInput();
+  }
+
+  Widget _buildChatInput() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _counterMessageController,
+            enabled: !_isActioning,
+            maxLines: 1,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Type a message...',
+              hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+              filled: true,
+              fillColor: backgroundWhite,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderLight),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderLight),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: primaryBlue, width: 2),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderLight),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          height: 48,
+          width: 48,
+          child: ElevatedButton(
+            onPressed: _isActioning ? null : _sendChatMessage,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: textMuted.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: EdgeInsets.zero,
+            ),
+            child: _isActioning
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, size: 18),
+          ),
+        ),
+      ],
+    );
   }
 }
