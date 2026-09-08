@@ -601,3 +601,191 @@ exports.reorderCategories = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get categories with nested subcategories (hierarchical)
+// @route   GET /api/v1/categories/with-subcategories
+// @access  Public
+exports.getCategoriesWithSubcategories = async (req, res, next) => {
+  try {
+    const { company, brand, active } = req.query;
+
+    // Query for root categories (parent is null, undefined, or doesn't exist)
+    const query = { $or: [{ parent: null }, { parent: { $exists: false } }] };
+
+    // Filter by active status
+    if (active !== undefined) {
+      query.isActive = active === 'true';
+    }
+
+    const companyFilter = await resolveCompanyId(company || brand);
+    if (company || brand) {
+      if (!companyFilter) {
+        return res.json({
+          success: true,
+          data: [],
+        });
+      }
+      query.company = companyFilter;
+    }
+
+    // Fetch root categories
+    const rootCategories = await Category.find(query)
+      .populate('company', 'name slug logo')
+      .sort({ order: 1, name: 1 })
+      .lean();
+
+    const visibleRootCategories = filterCategoriesForUser(rootCategories, req.user);
+    const rootCategoryIds = visibleRootCategories.map((c) => c._id);
+
+    // Fetch all subcategories for these root categories
+    const subcategoryQuery = { parent: { $in: rootCategoryIds } };
+    if (active !== undefined) {
+      subcategoryQuery.isActive = active === 'true';
+    }
+
+    const allSubcategories = await Category.find(subcategoryQuery)
+      .sort({ order: 1, name: 1 })
+      .lean();
+
+    const visibleSubcategories = filterCategoriesForUser(allSubcategories, req.user);
+
+    // Get product counts for all categories (root + subcategories)
+    const allCategories = [...visibleRootCategories, ...visibleSubcategories];
+    const countsByCategory = await getProductCountMap(allCategories, req.user);
+
+    // Build nested structure
+    const subcategoriesByParent = new Map();
+    visibleSubcategories.forEach((subcat) => {
+      const parentId = String(subcat.parent);
+      if (!subcategoriesByParent.has(parentId)) {
+        subcategoriesByParent.set(parentId, []);
+      }
+      subcategoriesByParent.get(parentId).push({
+        id: subcat._id,
+        name: subcat.name,
+        nameHindi: subcat.nameHindi,
+        slug: subcat.slug,
+        order: subcat.order,
+        image: normalizeImageObject(subcat.image, req),
+        productCount: countsByCategory.get(String(subcat._id)) ?? 0,
+      });
+    });
+
+    // Format response with nested subcategories
+    const categoriesWithNested = visibleRootCategories.map((category) => ({
+      id: category._id,
+      name: category.name,
+      nameHindi: category.nameHindi,
+      slug: category.slug,
+      order: category.order,
+      image: normalizeImageObject(category.image, req),
+      productCount: countsByCategory.get(String(category._id)) ?? 0,
+      subcategories: subcategoriesByParent.get(String(category._id)) || [],
+    }));
+
+    res.json({
+      success: true,
+      data: categoriesWithNested,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get subcategories of a parent category
+// @route   GET /api/v1/categories/:parentId/subcategories
+// @access  Public
+exports.getSubcategories = async (req, res, next) => {
+  try {
+    const { parentId } = req.params;
+
+    const parentCategory = await Category.findById(parentId).lean();
+    if (!parentCategory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent category not found',
+      });
+    }
+
+    const subcategories = await Category.find({ parent: parentId })
+      .sort({ order: 1, name: 1 })
+      .lean();
+
+    const visibleSubcategories = filterCategoriesForUser(subcategories, req.user);
+    const countsByCategory = await getProductCountMap(visibleSubcategories, req.user);
+
+    const subcategoriesWithCounts = visibleSubcategories.map((subcat) => ({
+      id: subcat._id,
+      name: subcat.name,
+      nameHindi: subcat.nameHindi,
+      slug: subcat.slug,
+      order: subcat.order,
+      image: normalizeImageObject(subcat.image, req),
+      productCount: countsByCategory.get(String(subcat._id)) ?? 0,
+    }));
+
+    res.json({
+      success: true,
+      data: subcategoriesWithCounts,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reorder subcategories within a parent
+// @route   POST /api/v1/categories/reorder-subcategories
+// @access  Private/Admin
+exports.reorderSubcategories = async (req, res, next) => {
+  try {
+    const { parentId, subcategoryIds } = req.body;
+
+    if (!parentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'parentId is required',
+      });
+    }
+
+    if (!Array.isArray(subcategoryIds) || subcategoryIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'subcategoryIds array is required and must not be empty',
+      });
+    }
+
+    // Update order for each subcategory
+    const bulkOps = subcategoryIds.map((subcatId, index) => ({
+      updateOne: {
+        filter: { _id: subcatId, parent: parentId },
+        update: { $set: { order: index + 1 } },
+      },
+    }));
+
+    const result = await Category.bulkWrite(bulkOps, { ordered: false });
+
+    // Fetch updated subcategories
+    const updatedSubcategories = await Category.find({ parent: parentId })
+      .sort({ order: 1 })
+      .lean();
+
+    const countsByCategory = await getProductCountMap(updatedSubcategories, req.user);
+    const formattedSubcategories = updatedSubcategories.map((subcat) => ({
+      id: subcat._id,
+      name: subcat.name,
+      order: subcat.order,
+      productCount: countsByCategory.get(String(subcat._id)) ?? 0,
+    }));
+
+    res.json({
+      success: true,
+      message: 'Subcategories reordered successfully',
+      data: {
+        updated: result.modifiedCount,
+        subcategories: formattedSubcategories,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
