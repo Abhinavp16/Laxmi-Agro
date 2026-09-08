@@ -14,5 +14,6 @@ router.get('/:id', negotiationController.getNegotiationById);
 router.post('/:id/counter', validate(negotiationValidation.counter), negotiationController.counterOffer);
 router.post('/:id/accept', negotiationController.acceptOffer);
 router.post('/:id/reject', negotiationController.rejectNegotiation);
+router.post('/:id/message', negotiationController.sendMessage);
 
 module.exports = router;

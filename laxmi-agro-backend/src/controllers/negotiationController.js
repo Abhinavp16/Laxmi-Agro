@@ -283,3 +283,52 @@ exports.rejectNegotiation = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.sendMessage = async (req, res, next) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      throw new BadRequestError('Message cannot be empty', 'INVALID_MESSAGE');
+    }
+
+    if (message.length > 280) {
+      throw new BadRequestError('Message too long (max 280 characters)', 'MESSAGE_TOO_LONG');
+    }
+
+    const negotiation = await Negotiation.findOne({
+      _id: req.params.id,
+      wholesalerId: req.user._id,
+    });
+
+    if (!negotiation) {
+      throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
+    }
+
+    if (['rejected', 'converted', 'expired'].includes(negotiation.status)) {
+      throw new BadRequestError('Cannot send message in this negotiation status', 'INVALID_STATUS');
+    }
+
+    const messageEntry = {
+      action: 'message',
+      by: 'wholesaler',
+      message: message.trim(),
+      timestamp: new Date(),
+      messageId: `${req.user._id}-${Date.now()}`,
+    };
+
+    negotiation.history.push(messageEntry);
+    await negotiation.save();
+
+    res.json({
+      success: true,
+      message: 'Message sent',
+      data: {
+        messageId: messageEntry.messageId,
+        timestamp: messageEntry.timestamp,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

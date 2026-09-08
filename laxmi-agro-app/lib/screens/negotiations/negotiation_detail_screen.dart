@@ -29,8 +29,11 @@ class _NegotiationDetailScreenState
   bool _isActioning = false;
   String? _error;
   Map<String, dynamic>? _negotiation;
+  List<Map<String, dynamic>> _optimisticMessages = [];
   final _counterPriceController = TextEditingController();
   final _counterMessageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  static const int MAX_MESSAGE_LENGTH = 280;
 
   static const Color primaryBlue = Color(0xFF2563EB);
   static const Color backgroundWhite = Color(0xFFF8FAFC);
@@ -53,6 +56,7 @@ class _NegotiationDetailScreenState
   void dispose() {
     _counterPriceController.dispose();
     _counterMessageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -737,6 +741,7 @@ class _NegotiationDetailScreenState
           child: RefreshIndicator(
             onRefresh: _fetchDetail,
             child: ListView(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               children: [
                 // Product Card
@@ -810,7 +815,7 @@ class _NegotiationDetailScreenState
 
                 // History Timeline
                 Text(
-                  'Negotiation History',
+                  'Chat & History',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -818,6 +823,12 @@ class _NegotiationDetailScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
+                ..._optimisticMessages.map((msg) => _buildChatMessage(
+                      msg['by'] as String,
+                      msg['message'] as String,
+                      DateFormat('h:mm a')
+                          .format(DateTime.parse(msg['timestamp'] as String)),
+                    )),
                 ...history.reversed.map((entry) => _buildHistoryItem(entry)),
 
                 const SizedBox(height: 80),
@@ -960,6 +971,11 @@ class _NegotiationDetailScreenState
       } catch (_) {}
     }
 
+    // Handle chat messages differently
+    if (action == 'message') {
+      return _buildChatMessage(by, message, formattedTime);
+    }
+
     Color dotColor;
     IconData dotIcon;
     String actionLabel;
@@ -1096,12 +1112,111 @@ class _NegotiationDetailScreenState
     );
   }
 
+  Widget _buildChatMessage(String by, String message, String timestamp) {
+    final isAdmin = by == 'admin';
+    final messageColor = isAdmin ? primaryBlue : slateBlue;
+    final bgColor =
+        isAdmin ? primaryBlue.withOpacity(0.08) : backgroundWhite;
+    final alignment = isAdmin ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: alignment,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: messageColor.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: alignment,
+              children: [
+                // Sender badge + timestamp
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: messageColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isAdmin ? 'ADMIN' : 'YOU',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: messageColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (timestamp.isNotEmpty)
+                      Text(
+                        timestamp,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Message text
+                Text(
+                  message,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendChatMessage() async {
     final messageText = _counterMessageController.text.trim();
     if (messageText.isEmpty) {
       _showError('Please enter a message');
       return;
     }
+
+    if (messageText.length > MAX_MESSAGE_LENGTH) {
+      _showError('Message too long (max $MAX_MESSAGE_LENGTH characters)');
+      return;
+    }
+
+    // Optimistic update - show message immediately
+    final optimisticMessage = {
+      'action': 'message',
+      'by': 'wholesaler',
+      'message': messageText,
+      'timestamp': DateTime.now().toIso8601String(),
+      'messageId': 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      'isOptimistic': true,
+    };
+
+    setState(() {
+      _optimisticMessages.add(optimisticMessage);
+      _counterMessageController.clear();
+    });
+
+    // Auto-scroll to newest message
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _scrollToBottom();
+    });
 
     setState(() => _isActioning = true);
     try {
@@ -1111,7 +1226,6 @@ class _NegotiationDetailScreenState
         data: {'message': messageText},
       );
       if (mounted) {
-        _counterMessageController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1123,16 +1237,33 @@ class _NegotiationDetailScreenState
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            duration: const Duration(milliseconds: 1500),
           ),
         );
+        // Remove optimistic message and refresh
+        setState(() => _optimisticMessages.clear());
         _fetchDetail();
       }
     } on DioException catch (e) {
       _showError(
         e.response?.data?['message']?.toString() ?? 'Failed to send message',
       );
+      // Remove optimistic message on error
+      setState(() => _optimisticMessages.removeWhere(
+        (m) => m['messageId'] == optimisticMessage['messageId'],
+      ));
     } finally {
       if (mounted) setState(() => _isActioning = false);
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -1216,70 +1347,95 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildChatInput() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: TextField(
-            controller: _counterMessageController,
-            enabled: !_isActioning,
-            maxLines: 1,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _counterMessageController,
+                enabled: !_isActioning,
+                maxLines: 3,
+                minLines: 1,
+                onChanged: (value) {
+                  // Trigger rebuild to show character count
+                  setState(() {});
+                },
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Type a message... (max 280 chars)',
+                  hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+                  filled: true,
+                  fillColor: backgroundWhite,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: borderLight),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: borderLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: primaryBlue, width: 2),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: borderLight),
+                  ),
+                ),
+              ),
             ),
-            decoration: InputDecoration(
-              hintText: 'Type a message...',
-              hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-              filled: true,
-              fillColor: backgroundWhite,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: borderLight),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: borderLight),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: primaryBlue, width: 2),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: borderLight),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 48,
+              width: 48,
+              child: ElevatedButton(
+                onPressed: (_isActioning ||
+                        _counterMessageController.text.isEmpty)
+                    ? null
+                    : _sendChatMessage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryBlue,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: textMuted.withOpacity(0.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+                child: _isActioning
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded, size: 18),
               ),
             ),
-          ),
+          ],
         ),
-        const SizedBox(width: 10),
-        SizedBox(
-          height: 48,
-          width: 48,
-          child: ElevatedButton(
-            onPressed: _isActioning ? null : _sendChatMessage,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: textMuted.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            child: _isActioning
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.send_rounded, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          '${_counterMessageController.text.length}/$MAX_MESSAGE_LENGTH',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            color: _counterMessageController.text.length > MAX_MESSAGE_LENGTH
+                ? redAccent
+                : textMuted,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
