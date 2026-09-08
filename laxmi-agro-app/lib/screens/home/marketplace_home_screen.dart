@@ -501,55 +501,30 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchCategories() async {
     setState(() => _isLoadingCategories = true);
     try {
-      debugPrint('🔵 [CATEGORIES] Starting fetch from: ${_dio.options.baseUrl}');
-      final response = await _dio.get('/products/categories');
+      debugPrint('🔵 [CATEGORIES] Fetching from /categories/with-subcategories endpoint');
+      // Use the same endpoint as categories screen for consistency
+      final response = await _dio.get('/categories/with-subcategories', queryParameters: {'active': true});
       debugPrint('🟢 [CATEGORIES] Response status: ${response.statusCode}');
-      debugPrint('🟢 [CATEGORIES] Response data: ${response.data}');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> items = response.data['data'] ?? [];
-        debugPrint('🟢 [CATEGORIES] Found ${items.length} categories');
+        debugPrint('🟢 [CATEGORIES] Found ${items.length} root categories');
         
-        Map<String, Map<String, dynamic>> categoryMetaByName = {};
-
-        try {
-          debugPrint('🔵 [CATEGORIES] Fetching category metadata from /categories');
-          final metaResponse = await _dio.get(
-            '/categories',
-            queryParameters: {'active': true, 'limit': 200},
-          );
-          debugPrint('🟢 [CATEGORIES] Metadata response status: ${metaResponse.statusCode}');
-          debugPrint('🟢 [CATEGORIES] Metadata response: ${metaResponse.data}');
-          
-          if (metaResponse.statusCode == 200 &&
-              metaResponse.data['success'] == true) {
-            final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
-            debugPrint('🟢 [CATEGORIES] Found ${metaItems.length} category metadata items');
-            categoryMetaByName = _buildCategoryMetadataMap(metaItems);
-          }
-        } catch (e, stackTrace) {
-          debugPrint('⚠️ [CATEGORIES] Error fetching category metadata: $e');
-          debugPrint('⚠️ [CATEGORIES] Stack trace: $stackTrace');
-        }
-
         setState(() {
           _categoryData = items
               .map<Map<String, dynamic>>((item) {
                 final name = item['name']?.toString() ?? '';
-                final metadata = _categoryMetadataFor(categoryMetaByName, name);
+                final imageUrl = item['image'] is Map ? item['image']['url']?.toString() ?? '' : item['image']?.toString() ?? '';
                 final catData = {
                   'name': name,
-                  'displayName': metadata['name']?.toString() ?? '',
+                  'displayName': name,
                   'queryName': name,
-                  'nameHindi':
-                      item['nameHindi']?.toString() ??
-                      metadata['nameHindi']?.toString() ??
-                      '',
-                  'image': metadata['image']?.toString() ?? '',
-                  'blurHash': metadata['blurHash']?.toString(),
-                  'slug': metadata['slug']?.toString() ?? '',
-                  'count': item['count'] ?? item['productCount'],
-                  'order': metadata['order'] ?? item['order'] ?? 999,
+                  'nameHindi': item['nameHindi']?.toString() ?? '',
+                  'image': imageUrl,
+                  'blurHash': null,
+                  'slug': item['slug']?.toString() ?? '',
+                  'count': item['productCount'] ?? 0,
+                  'order': item['order'] ?? 999,
                 };
                 debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}');
                 return catData;
@@ -570,7 +545,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           _isLoadingCategories = false;
         });
       } else {
-        debugPrint('🔴 [CATEGORIES] ERROR: Unexpected status code: ${response.statusCode}');
+        debugPrint('🔴 [CATEGORIES] ERROR: Unexpected status or data');
+        setState(() => _isLoadingCategories = false);
       }
     } catch (e, stackTrace) {
       debugPrint('🔴 [CATEGORIES] ERROR: $e');

@@ -63,6 +63,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool _isLoadingCategories = true;
   bool _isLoadingProducts = false;
   int _selectedCategoryIndex = 0;
+  
+  // Subcategories support
+  final Map<String, bool> _expandedCategories = {};
 
   @override
   void initState() {
@@ -103,105 +106,70 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final brandName = widget.brandName?.trim();
-      final brandId = widget.brandId?.trim();
-      if ((brandId != null && brandId.isNotEmpty) ||
-          (brandName != null && brandName.isNotEmpty)) {
-        final brandFilter = brandName?.isNotEmpty == true
-            ? brandName!
-            : brandId!;
-        final products = <Map<String, dynamic>>[];
-        var page = 1;
-        var hasNext = true;
-
-        while (hasNext) {
-          final response = await _dio.get(
-            '/products',
-            queryParameters: {'brand': brandFilter, 'page': page, 'limit': 120},
-          );
-
-          if (response.statusCode != 200) break;
-
+      debugPrint('🔵 [CATEGORIES] Trying with-subcategories endpoint...');
+      // Try to fetch with subcategories first
+      try {
+        final response = await _dio.get('/categories/with-subcategories', queryParameters: {'active': true});
+        
+        debugPrint('🟢 [CATEGORIES] with-subcategories response status: ${response.statusCode}');
+        
+        if (response.statusCode == 200 && response.data['success'] == true) {
           final List<dynamic> items = response.data['data'] ?? [];
-          products.addAll(
-            items.whereType<Map>().map(Map<String, dynamic>.from),
-          );
-          final pagination = response.data['pagination'];
-          hasNext = pagination is Map && pagination['hasNext'] == true;
-          page += 1;
-        }
-
-        final categoryMetaByName = <String, Map<String, dynamic>>{};
-        try {
-          final metaResponse = await _dio.get(
-            '/categories',
-            queryParameters: {'active': true, 'limit': 200},
-          );
-          if (metaResponse.statusCode == 200 &&
-              metaResponse.data['success'] == true) {
-            final List<dynamic> metaItems = metaResponse.data['data'] ?? [];
-            categoryMetaByName.addAll(_buildCategoryMetadataMap(metaItems));
-          }
-        } catch (e) {
-          debugPrint('Error fetching category metadata: $e');
-        }
-
-        final countsByCategory = <String, int>{};
-        final displayNameByKey = <String, String>{};
-        for (final product in products) {
-          final categoryName = product['category']?.toString().trim() ?? '';
-          if (categoryName.isEmpty) continue;
-          final key = _normalizedCategoryKey(categoryName);
-          countsByCategory[key] = (countsByCategory[key] ?? 0) + 1;
-          displayNameByKey.putIfAbsent(key, () => categoryName);
-        }
-
-        final cats =
-            countsByCategory.entries
-                .map((entry) {
-                  final name = displayNameByKey[entry.key] ?? '';
-                  final metadata = _categoryMetadataFor(
-                    categoryMetaByName,
-                    entry.key,
-                  );
+          debugPrint('🟢 [CATEGORIES] with-subcategories found ${items.length} items');
+          
+          final cats = items.map<Map<String, dynamic>>((item) {
+            final subcats = (item['subcategories'] as List?)
+                ?.map<Map<String, dynamic>>((subitem) {
                   return <String, dynamic>{
-                    'id': metadata['id']?.toString() ?? '',
-                    'name': name,
-                    'displayName': metadata['name']?.toString() ?? '',
-                    'queryName': name,
-                    'nameHindi': metadata['nameHindi']?.toString() ?? '',
-                    'slug': metadata['slug']?.toString() ?? name,
-                    'image': metadata['image']?.toString() ?? '',
-                    'count': entry.value,
-                    'order': metadata['order'] ?? 0,
+                    'id': subitem['id']?.toString() ?? subitem['_id']?.toString() ?? '',
+                    'name': subitem['name']?.toString() ?? '',
+                    'nameHindi': subitem['nameHindi']?.toString() ?? '',
+                    'slug': subitem['slug']?.toString() ?? '',
+                    'productCount': subitem['productCount'] ?? 0,
                   };
                 })
-                .where((c) => (c['name'] as String).isNotEmpty)
-                .toList()
-              ..sort(
-                (a, b) {
-                  // Sort by order field first, then by name as fallback
-                  final orderA = int.tryParse(a['order']?.toString() ?? '0') ?? 0;
-                  final orderB = int.tryParse(b['order']?.toString() ?? '0') ?? 0;
-                  if (orderA != orderB) {
-                    return orderA.compareTo(orderB);
-                  }
-                  return a['name'].toString().compareTo(b['name'].toString());
-                },
-              );
+                .toList() ?? [];
+            
+            final imageUrl = item['image'] is Map ? item['image']['url']?.toString() ?? '' : item['image']?.toString() ?? '';
+            
+            return <String, dynamic>{
+              'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+              'name': item['name']?.toString() ?? '',
+              'nameHindi': item['nameHindi']?.toString() ?? '',
+              'slug': item['slug']?.toString() ?? '',
+              'image': imageUrl,
+              'productCount': item['productCount'] ?? 0,
+              'order': item['order'] ?? 0,
+              'subcategories': subcats,
+            };
+          }).toList()
+            ..sort((a, b) {
+              final orderA = int.tryParse(a['order']?.toString() ?? '0') ?? 0;
+              final orderB = int.tryParse(b['order']?.toString() ?? '0') ?? 0;
+              if (orderA != orderB) return orderA.compareTo(orderB);
+              return a['name'].toString().compareTo(b['name'].toString());
+            });
 
-        setState(() {
-          _categories = cats;
-          _selectedCategoryIndex = 0;
-          _isLoadingCategories = false;
-        });
+          debugPrint('🟢 [CATEGORIES] Successfully parsed ${cats.length} categories with subcategories');
+          
+          setState(() {
+            _categories = cats;
+            _selectedCategoryIndex = 0;
+            _isLoadingCategories = false;
+            _expandedCategories.clear();
+          });
 
-        if (cats.isNotEmpty) {
-          _fetchProductsForCategory(cats[_selectedCategoryIndex]);
+          if (cats.isNotEmpty) {
+            _fetchProductsForCategory(cats[_selectedCategoryIndex]);
+          }
+          return;
         }
-        return;
+      } catch (e) {
+        debugPrint('🟡 [CATEGORIES] with-subcategories failed: $e');
       }
 
+      // Fallback to old method if with-subcategories fails
+      debugPrint('🔵 [CATEGORIES] Falling back to /products/categories endpoint...');
       final response = await _dio.get('/products/categories');
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
@@ -238,6 +206,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 'image': metadata['image']?.toString() ?? '',
                 'count': item['count'] ?? item['productCount'],
                 'order': metadata['order'] ?? item['order'] ?? 0,
+                'subcategories': <Map<String, dynamic>>[],
               };
             })
             .where((c) => (c['name'] as String).isNotEmpty)
@@ -245,30 +214,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             .toList()
           ..sort(
             (a, b) {
-              // Sort by order field first, then by name as fallback
               final orderA = int.tryParse(a['order']?.toString() ?? '0') ?? 0;
               final orderB = int.tryParse(b['order']?.toString() ?? '0') ?? 0;
-              if (orderA != orderB) {
-                return orderA.compareTo(orderB);
-              }
+              if (orderA != orderB) return orderA.compareTo(orderB);
               return a['name'].toString().compareTo(b['name'].toString());
             },
           );
 
         setState(() {
           _categories = cats;
-
-          if (widget.initialCategoryName != null) {
-            final idx = cats.indexWhere(
-              (c) =>
-                  c['name']?.toString().toLowerCase() ==
-                  widget.initialCategoryName!.toLowerCase(),
-            );
-            if (idx != -1) {
-              _selectedCategoryIndex = idx;
-            }
-          }
-
           if (_selectedCategoryIndex >= _categories.length) {
             _selectedCategoryIndex = 0;
           }
@@ -280,7 +234,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error fetching categories: $e');
+      debugPrint('🔴 [CATEGORIES] Error in _fetchCategories: $e');
       setState(() => _isLoadingCategories = false);
     }
   }
@@ -392,20 +346,123 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return ApiConfig.normalizeMediaUrl(imageUrl);
   }
 
-  Future<void> _fetchProductsForCategory(Map<String, dynamic> category) async {
+  Future<void> _fetchProductsForCategoryAndSubcategory(
+    Map<String, dynamic> category,
+    Map<String, dynamic> subcategory,
+  ) async {
     setState(() => _isLoadingProducts = true);
     try {
-      final categoryName = category['name']?.toString().trim() ?? '';
-      final categoryQueryName = category['queryName']?.toString().trim() ?? categoryName;
+      final subcategorySlug = subcategory['slug']?.toString().trim() ?? '';
+      final subcategoryName = subcategory['name']?.toString().trim() ?? '';
       
-      // Fetch all products with pagination (no limit to get all products)
+      debugPrint('🔵 [SUBCATEGORY] Fetching products for subcategory: $subcategoryName (slug: $subcategorySlug)');
+      
+      if (subcategorySlug.isEmpty) {
+        debugPrint('🔴 [SUBCATEGORY] Subcategory slug is empty!');
+        setState(() => _isLoadingProducts = false);
+        return;
+      }
+      
+      // Fetch products by subcategory slug with pagination
       final allItems = <Map<String, dynamic>>[];
       var page = 1;
       var hasMore = true;
       
       while (hasMore) {
         try {
-          final response = await _dio.get('/products', queryParameters: {'page': page});
+          final response = await _dio.get(
+            '/products',
+            queryParameters: {
+              'page': page,
+              'subcategory': subcategorySlug,  // Use subcategory parameter
+            },
+          );
+          
+          debugPrint('🟢 [SUBCATEGORY] Page $page response: ${response.statusCode}');
+          
+          if (response.statusCode != 200) break;
+          
+          final List<dynamic> pageItems = response.data['data'] ?? [];
+          if (pageItems.isEmpty) {
+            hasMore = false;
+            break;
+          }
+          
+          allItems.addAll(pageItems.whereType<Map>().map(Map<String, dynamic>.from));
+          
+          final pagination = response.data['pagination'];
+          hasMore = pagination is Map && pagination['hasNext'] == true;
+          page += 1;
+        } catch (e) {
+          debugPrint('🔴 [SUBCATEGORY] Error fetching page $page: $e');
+          break;
+        }
+      }
+      
+      debugPrint('🟢 [SUBCATEGORY] Fetched ${allItems.length} products for subcategory: $subcategorySlug');
+      
+      setState(() {
+        _products = allItems.map<Map<String, dynamic>>((item) {
+          final name = item['name']?.toString() ?? '';
+          return <String, dynamic>{
+            'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+            'name': name,
+            'nameHindi': item['nameHindi']?.toString() ?? '',
+            'price': item['price'] ?? item['retailPrice'] ?? 0,
+            'mrp': item['mrp'] ?? 0,
+            'image': ApiConfig.normalizeMediaUrl(
+              item['primaryImage']?.toString() ?? '',
+            ),
+            'inStock': item['inStock'] != false,
+            'shortDescription': item['shortDescription']?.toString() ?? '',
+            'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
+            'reviewCount':
+                item['ratingCount'] ??
+                item['reviewCount'] ??
+                item['reviews'] ??
+                '',
+            'pendingPriceChange': item['pendingPriceChange'],
+          };
+        }).toList()..sort(_compareProductsByPrice);
+        
+        _isLoadingProducts = false;
+      });
+    } catch (e, stackTrace) {
+      debugPrint('🔴 [SUBCATEGORY] ERROR: $e');
+      debugPrint('🔴 [SUBCATEGORY] Stack trace: $stackTrace');
+      setState(() => _isLoadingProducts = false);
+    }
+  }
+
+  Future<void> _fetchProductsForCategory(Map<String, dynamic> category) async {
+    setState(() => _isLoadingProducts = true);
+    try {
+      final categorySlug = category['slug']?.toString().trim() ?? '';
+      
+      debugPrint('🔵 [CATEGORIES-PRODUCTS] Fetching products for category slug: $categorySlug');
+      
+      if (categorySlug.isEmpty) {
+        debugPrint('🔴 [CATEGORIES-PRODUCTS] Category slug is empty!');
+        setState(() => _isLoadingProducts = false);
+        return;
+      }
+      
+      // Fetch products by category slug with pagination
+      final allItems = <Map<String, dynamic>>[];
+      var page = 1;
+      var hasMore = true;
+      
+      while (hasMore) {
+        try {
+          final response = await _dio.get(
+            '/products',
+            queryParameters: {
+              'page': page,
+              'category': categorySlug,
+            },
+          );
+          
+          debugPrint('🟢 [CATEGORIES-PRODUCTS] Page $page response: ${response.statusCode}');
           
           if (response.statusCode != 200) {
             break;
@@ -423,21 +480,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           hasMore = pagination is Map && pagination['hasNext'] == true;
           page += 1;
         } catch (e) {
+          debugPrint('🔴 [CATEGORIES-PRODUCTS] Error fetching page $page: $e');
           break;
         }
       }
       
-      // Filter products by category - normalize category names for comparison
-      final filteredProducts = allItems.where((item) {
-        final itemCategory = (item['category'] ?? item['categoryName'] ?? '').toString().trim();
-        final itemCategoryNormalized = _normalizedCategoryKey(itemCategory);
-        final categoryNormalized = _normalizedCategoryKey(categoryQueryName);
-        
-        return itemCategoryNormalized == categoryNormalized;
-      }).toList();
+      debugPrint('🟢 [CATEGORIES-PRODUCTS] Fetched ${allItems.length} products for category: $categorySlug');
       
       setState(() {
-        _products = filteredProducts.map<Map<String, dynamic>>((item) {
+        _products = allItems.map<Map<String, dynamic>>((item) {
           final name = item['name']?.toString() ?? '';
           return <String, dynamic>{
             'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
@@ -794,75 +845,241 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final cat = _categories[index];
           final isSelected = _selectedCategoryIndex == index;
           final imageUrl = cat['image']?.toString() ?? '';
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedCategoryIndex = index);
-              _fetchProductsForCategory(cat);
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? primaryBlue.withOpacity(0.08)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                border: isSelected
-                    ? Border(left: BorderSide(color: primaryBlue, width: 3))
-                    : null,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
+          final hasSubcategories = (cat['subcategories'] as List?)?.isNotEmpty ?? false;
+          final isExpanded = _expandedCategories[cat['id'] as String] ?? false;
+          final subcategories = (cat['subcategories'] as List?) ?? [];
+          
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main category card
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedCategoryIndex = index;
+                      if (hasSubcategories) {
+                        _expandedCategories[cat['id'] as String] = !isExpanded;
+                      }
+                    });
+                    // If no subcategories OR first time tapping a category with subcategories,
+                    // fetch and show all category products
+                    if (!hasSubcategories || !isExpanded) {
+                      _fetchProductsForCategory(cat);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? primaryBlue.withOpacity(0.12)
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(14),
+                      color: isSelected ? primaryBlue : surfaceWhite,
+                      border: Border.all(
+                        color: isSelected ? primaryBlue : borderLight,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: primaryBlue.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: imageUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Icon(
-                                _categoryIcon(cat['name'] ?? ''),
-                                size: 22,
-                                color: isSelected ? primaryBlue : textSecondary,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Category Image
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? primaryBlue.withOpacity(0.15)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              errorWidget: (_, __, ___) => Icon(
-                                _categoryIcon(cat['name'] ?? ''),
-                                size: 22,
-                                color: isSelected ? primaryBlue : textSecondary,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: imageUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => Icon(
+                                          _categoryIcon(cat['name'] ?? ''),
+                                          size: 20,
+                                          color: isSelected ? primaryBlue : textSecondary,
+                                        ),
+                                        errorWidget: (_, __, ___) => Icon(
+                                          _categoryIcon(cat['name'] ?? ''),
+                                          size: 20,
+                                          color: isSelected ? primaryBlue : textSecondary,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _categoryIcon(cat['name'] ?? ''),
+                                        size: 20,
+                                        color: isSelected ? primaryBlue : textSecondary,
+                                      ),
                               ),
-                            )
-                          : Icon(
-                              _categoryIcon(cat['name'] ?? ''),
-                              size: 22,
-                              color: isSelected ? primaryBlue : textSecondary,
                             ),
+                            // Expand indicator badge
+                            if (hasSubcategories)
+                              Positioned(
+                                bottom: -4,
+                                right: -4,
+                                child: AnimatedRotation(
+                                  turns: isExpanded ? 0.25 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: primaryBlue,
+                                      borderRadius: BorderRadius.circular(999),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: primaryBlue.withOpacity(0.3),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.expand_more_rounded,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Category name
+                        Text(
+                          _getDisplayCategoryName(cat),
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color: isSelected ? Colors.white : textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _getDisplayCategoryName(cat),
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected ? primaryBlue : textSecondary,
+                ),
+                // Subcategories section
+                if (hasSubcategories && isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(subcategories.length, (subIndex) {
+                            final subcat = subcategories[subIndex] as Map<String, dynamic>;
+                            final subcatImageUrl = subcat['image'] is Map
+                                ? subcat['image']['url']?.toString() ?? ''
+                                : subcat['image']?.toString() ?? '';
+                            
+                            return GestureDetector(
+                              onTap: () {
+                                _fetchProductsForCategoryAndSubcategory(cat, subcat);
+                              },
+                              child: Container(
+                                width: 76,
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9), // Light green background
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFC8E6C9), // Slightly darker green border
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Subcategory image
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFC8E6C9),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: subcatImageUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: subcatImageUrl,
+                                                fit: BoxFit.cover,
+                                                placeholder: (_, __) => Container(
+                                                  color: const Color(0xFFA5D6A7),
+                                                  child: const Icon(
+                                                    Icons.category_rounded,
+                                                    size: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                errorWidget: (_, __, ___) => Container(
+                                                  color: const Color(0xFFA5D6A7),
+                                                  child: const Icon(
+                                                    Icons.category_rounded,
+                                                    size: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              )
+                                            : Container(
+                                                color: const Color(0xFFA5D6A7),
+                                                child: const Icon(
+                                                  Icons.category_rounded,
+                                                  size: 16,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Subcategory name
+                                    Text(
+                                      subcat['name']?.toString() ?? '',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 7,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF2E7D32), // Dark green text
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+              ],
             ),
           );
         },
