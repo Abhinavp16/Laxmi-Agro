@@ -51,18 +51,47 @@ const isTrueQuery = (value) => value === true || value === 'true';
 
 exports.getProducts = async (req, res, next) => {
   try {
-    const { category, brand, minPrice, maxPrice, inStock, featured, hot, sort } = req.query;
+    console.log('Raw req.query:', req.query);
+    const { category, brand, minPrice, maxPrice, inStock, featured, hot, sort, subcategory } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
     const userRole = req.user?.role || 'guest';
 
-    console.log('getProducts request - category:', category, 'brand:', brand);
+    console.log('getProducts request - category:', category, 'brand:', brand, 'subcategory:', subcategory);
 
     const query = { status: PRODUCT_STATUS.ACTIVE };
 
     // Price filter based on user role
     const priceField = userRole === 'wholesaler' ? 'wholesalePrice' : 'retailPrice';
     
-    if (category) {
+    // Subcategory takes precedence over category
+    if (subcategory) {
+      // For subcategory, find the Category document first by slug
+      const Category = require('../models/Category');
+      const subcatDoc = await Category.findOne({ slug: subcategory }).lean();
+      if (subcatDoc) {
+        // Filter products where category matches the subcategory name or slug
+        const subcatName = subcatDoc.name;
+        const subcatSlug = subcatDoc.slug;
+        const normalizedName = subcatName.replace(/[-_]+/g, ' ').trim();
+        const normalizedSlug = subcatSlug.replace(/[-_]+/g, ' ').trim();
+        
+        query.category = {
+          $in: [subcatName, subcatSlug, normalizedName, normalizedSlug].map(
+            (value) => new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+          ),
+        };
+        console.log('Filtering by subcategory name/slug:', { subcatName, subcatSlug, normalizedName, normalizedSlug });
+      } else {
+        // Fallback: just use the slug directly
+        const rawSubcategory = String(subcategory).trim();
+        const normalizedSubcategory = rawSubcategory.replace(/[-_]+/g, ' ').trim();
+        query.category = {
+          $in: [rawSubcategory, normalizedSubcategory].map(
+            (value) => new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+          ),
+        };
+      }
+    } else if (category) {
       const rawCategory = String(category).trim();
       const normalizedCategory = rawCategory.replace(/[-_]+/g, ' ').trim();
       query.category = {
