@@ -1,8 +1,11 @@
 require('dotenv').config();
+const http = require('http');
+const { Server: SocketIOServer } = require('socket.io');
 const app = require('./app');
 const connectDB = require('./config/database');
 const { initializeFirebase } = require('./config/firebase');
 const { startPriceChangeScheduler } = require('./services/productPriceSchedulerService');
+const NegotiationSocketService = require('./services/negotiationSocketService');
 const logger = require('./utils/logger');
 
 const PORT = process.env.PORT || 5000;
@@ -11,13 +14,39 @@ const startServer = async () => {
   try {
     await connectDB();
 
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize Socket.io
+    const io = new SocketIOServer(server, {
+      cors: {
+        origin: [
+          'http://localhost:3000',
+          'http://127.0.0.1:3000',
+          'http://localhost:3001',
+          'http://127.0.0.1:3001',
+          process.env.ADMIN_PANEL_URL || '',
+          process.env.FRONTEND_URL || '',
+        ].filter(Boolean),
+        credentials: true,
+      },
+      transports: ['websocket', 'polling'],
+    });
+
+    // Initialize negotiation socket events
+    NegotiationSocketService.initializeSocket(io);
+
+    // Make io accessible to routes/controllers
+    app.locals.io = io;
+
     // Initialize Firebase (optional - will warn if not configured)
     initializeFirebase();
     startPriceChangeScheduler();
 
-    app.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
       logger.info(`📚 API Docs: http://${process.env.HOST || 'localhost'}:${PORT}/api/v1`);
+      logger.info(`🔌 WebSocket: ws://${process.env.HOST || 'localhost'}:${PORT}`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

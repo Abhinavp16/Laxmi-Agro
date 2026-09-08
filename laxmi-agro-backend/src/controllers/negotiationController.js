@@ -320,6 +320,19 @@ exports.sendMessage = async (req, res, next) => {
     negotiation.history.push(messageEntry);
     await negotiation.save();
 
+    // Broadcast message via Socket.io
+    const io = req.app.locals.io;
+    if (io) {
+      io.to(`negotiation-${req.params.id}`).emit('receive-message', {
+        negotiationId: req.params.id,
+        message: message.trim(),
+        userId: req.user._id,
+        userRole: 'wholesaler',
+        timestamp: new Date(),
+        messageId: messageEntry.messageId,
+      });
+    }
+
     res.json({
       success: true,
       message: 'Message sent',

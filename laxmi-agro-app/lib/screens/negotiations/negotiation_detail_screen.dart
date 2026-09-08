@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../core/services/negotiation_socket_service.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
@@ -30,9 +31,13 @@ class _NegotiationDetailScreenState
   String? _error;
   Map<String, dynamic>? _negotiation;
   List<Map<String, dynamic>> _optimisticMessages = [];
+  Map<String, bool> _typingUsers = {}; // { userId: isTyping }
+  Map<String, bool> _readReceipts = {}; // { messageId: isRead }
   final _counterPriceController = TextEditingController();
   final _counterMessageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final NegotiationSocketService _socketService =
+      NegotiationSocketService();
   static const int MAX_MESSAGE_LENGTH = 280;
 
   static const Color primaryBlue = Color(0xFF2563EB);
@@ -50,6 +55,73 @@ class _NegotiationDetailScreenState
   void initState() {
     super.initState();
     _fetchDetail();
+    _initializeSocket();
+  }
+
+  void _initializeSocket() {
+    final auth = ref.read(authProvider);
+    final serverUrl =
+        'https://api.laxmiagroenterprises.com'; // Use production server
+
+    _socketService.onMessageReceived = (data) {
+      debugPrint('[Socket Message] $data');
+      if (mounted) {
+        setState(() {
+          // Message already in optimistic list, just remove it when confirmed
+          final messageId = data['messageId'];
+          _optimisticMessages.removeWhere((m) => m['messageId'] == messageId);
+        });
+        _scrollToBottom();
+      }
+    };
+
+    _socketService.onUserTyping = (userId, username) {
+      if (mounted) {
+        setState(() {
+          _typingUsers[userId] = true;
+        });
+      }
+    };
+
+    _socketService.onStopTyping = (userId, _) {
+      if (mounted) {
+        setState(() {
+          _typingUsers.remove(userId);
+        });
+      }
+    };
+
+    _socketService.onReadReceipt = (messageId, userId) {
+      if (mounted) {
+        setState(() {
+          _readReceipts[messageId] = true;
+        });
+      }
+    };
+
+    _socketService.onConnect = () {
+      debugPrint('[Socket] Connected');
+      if (mounted) {
+        setState(() {});
+      }
+    };
+
+    _socketService.onDisconnect = () {
+      debugPrint('[Socket] Disconnected');
+      if (mounted) {
+        setState(() {});
+      }
+    };
+
+    if (auth.user?.id != null) {
+      _socketService.connect(
+        serverUrl: serverUrl,
+        negotiationId: widget.negotiationId,
+        userId: auth.user!.id,
+        userRole: 'wholesaler',
+        username: auth.user?.name ?? 'Wholesaler',
+      );
+    }
   }
 
   @override
@@ -57,6 +129,17 @@ class _NegotiationDetailScreenState
     _counterPriceController.dispose();
     _counterMessageController.dispose();
     _scrollController.dispose();
+    
+    // Disconnect from socket
+    final auth = ref.read(authProvider);
+    if (auth.user?.id != null) {
+      _socketService.leaveNegotiation(
+        userId: auth.user!.id,
+        userRole: 'wholesaler',
+      );
+    }
+    _socketService.disconnect();
+    
     super.dispose();
   }
 
@@ -828,8 +911,22 @@ class _NegotiationDetailScreenState
                       msg['message'] as String,
                       DateFormat('h:mm a')
                           .format(DateTime.parse(msg['timestamp'] as String)),
+                      msg['messageId'] as String?,
                     )),
-                ...history.reversed.map((entry) => _buildHistoryItem(entry)),
+                ...history.reversed.map((entry) {
+                  if (entry['action'] == 'message') {
+                    return _buildChatMessage(
+                      entry['by'] as String,
+                      entry['message'] as String,
+                      entry['timestamp'] != null
+                          ? DateFormat('h:mm a')
+                              .format(DateTime.parse(entry['timestamp'] as String))
+                          : '',
+                      entry['messageId'] as String?,
+                    );
+                  }
+                  return _buildHistoryItem(entry);
+                }),
 
                 const SizedBox(height: 80),
               ],
@@ -1112,12 +1209,18 @@ class _NegotiationDetailScreenState
     );
   }
 
-  Widget _buildChatMessage(String by, String message, String timestamp) {
+  Widget _buildChatMessage(
+    String by,
+    String message,
+    String timestamp, [
+    String? messageId,
+  ]) {
     final isAdmin = by == 'admin';
     final messageColor = isAdmin ? primaryBlue : slateBlue;
     final bgColor =
         isAdmin ? primaryBlue.withOpacity(0.08) : backgroundWhite;
     final alignment = isAdmin ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+    final isRead = messageId != null ? _readReceipts[messageId] ?? false : false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1166,6 +1269,14 @@ class _NegotiationDetailScreenState
                           color: textMuted,
                         ),
                       ),
+                    if (!isAdmin && isRead) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.done_all_rounded,
+                        size: 12,
+                        color: primaryBlue,
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -1347,10 +1458,28 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildChatInput() {
+    final auth = ref.read(authProvider);
+    final typingIndicatorText =
+        _typingUsers.isNotEmpty
+            ? '${_typingUsers.keys.toList().join(', ')} is typing...'
+            : '';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (typingIndicatorText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              typingIndicatorText,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
         Row(
           children: [
             Expanded(
@@ -1360,8 +1489,18 @@ class _NegotiationDetailScreenState
                 maxLines: 3,
                 minLines: 1,
                 onChanged: (value) {
-                  // Trigger rebuild to show character count
                   setState(() {});
+
+                  // Emit typing indicator
+                  if (auth.user?.id != null && value.isNotEmpty) {
+                    _socketService.emitTyping(
+                      userId: auth.user!.id,
+                      username: auth.user?.name ?? 'Wholesaler',
+                      userRole: 'wholesaler',
+                    );
+                  } else if (value.isEmpty && auth.user?.id != null) {
+                    _socketService.emitStopTyping(userId: auth.user!.id);
+                  }
                 },
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
