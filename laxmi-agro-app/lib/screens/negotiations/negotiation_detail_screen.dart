@@ -33,7 +33,6 @@ class _NegotiationDetailScreenState
   List<Map<String, dynamic>> _optimisticMessages = [];
   Map<String, bool> _typingUsers = {}; // { userId: isTyping }
   Map<String, bool> _readReceipts = {}; // { messageId: isRead }
-  final _counterPriceController = TextEditingController();
   final _counterMessageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final NegotiationSocketService _socketService =
@@ -126,7 +125,6 @@ class _NegotiationDetailScreenState
 
   @override
   void dispose() {
-    _counterPriceController.dispose();
     _counterMessageController.dispose();
     _scrollController.dispose();
     
@@ -181,142 +179,10 @@ class _NegotiationDetailScreenState
     }
   }
 
-  Future<void> _acceptOffer() async {
-    setState(() => _isActioning = true);
-    try {
-      final api = ref.read(apiClientProvider);
-      await api.post('/negotiations/${widget.negotiationId}/accept');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Offer accepted!',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: greenAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-        context.pop(true);
-      }
-    } on DioException catch (e) {
-      _showError(
-        e.response?.data?['message']?.toString() ?? 'Failed to accept',
-      );
-    } finally {
-      if (mounted) setState(() => _isActioning = false);
-    }
-  }
-
-  Future<void> _rejectNegotiation() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Cancel Negotiation?',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'This action cannot be undone.',
-          style: GoogleFonts.plusJakartaSans(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Yes, Cancel',
-              style: GoogleFonts.plusJakartaSans(color: redAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    setState(() => _isActioning = true);
-    try {
-      final api = ref.read(apiClientProvider);
-      await api.post('/negotiations/${widget.negotiationId}/reject');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Negotiation cancelled',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-        context.pop(true);
-      }
-    } on DioException catch (e) {
-      _showError(e.response?.data?['message']?.toString() ?? 'Failed');
-    } finally {
-      if (mounted) setState(() => _isActioning = false);
-    }
-  }
-
-  Future<void> _submitCounterOffer() async {
-    final priceText = _counterPriceController.text.trim();
-    if (priceText.isEmpty) {
-      _showError('Please enter a price');
-      return;
-    }
-    final price = double.tryParse(priceText);
-    if (price == null || price <= 0) {
-      _showError('Invalid price');
-      return;
-    }
-
-    setState(() => _isActioning = true);
-    try {
-      final api = ref.read(apiClientProvider);
-      await api.post(
-        '/negotiations/${widget.negotiationId}/counter',
-        data: {
-          'pricePerUnit': price,
-          'message': _counterMessageController.text.trim(),
-        },
-      );
-      if (mounted) {
-        _counterPriceController.clear();
-        _counterMessageController.clear();
-        Navigator.pop(context); // close bottom sheet
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Counter offer sent!',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: primaryBlue,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-        _fetchDetail();
-      }
-    } on DioException catch (e) {
-      _showError(
-        e.response?.data?['message']?.toString() ?? 'Failed to send counter',
-      );
-    } finally {
-      if (mounted) setState(() => _isActioning = false);
-    }
-  }
-
+  // NOTE: wholesalers negotiate through chat messages only. Accept, counter
+  // and reject are admin/staff actions performed from the admin panel, so the
+  // corresponding app actions were removed. _proceedToOrder below is kept as a
+  // legacy fallback for negotiations accepted before order auto-creation.
   Future<void> _proceedToOrder() async {
     debugPrint('_proceedToOrder called for ${widget.negotiationId}');
     try {
@@ -569,172 +435,7 @@ class _NegotiationDetailScreenState
     );
   }
 
-  void _showCounterSheet() {
-    final n = _negotiation!;
-    final quantity = n['requestedQuantity'] ?? 0;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.paddingOf(ctx).bottom + 20,
-          ),
-          decoration: const BoxDecoration(
-            color: surfaceWhite,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: borderLight,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Your Counter Offer',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'For $quantity units',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: slateBlue,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Price per unit (₹)',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _counterPriceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    prefixText: '₹ ',
-                    hintText: 'Enter your price',
-                    hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-                    filled: true,
-                    fillColor: backgroundWhite,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: borderLight),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: borderLight),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryBlue, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Message (optional)',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _counterMessageController,
-                  maxLines: 2,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Add a note...',
-                    hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-                    filled: true,
-                    fillColor: backgroundWhite,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: borderLight),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: borderLight),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryBlue, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isActioning ? null : _submitCounterOffer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isActioning
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            'Send Counter Offer',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // NOTE: counter sheet removed — wholesalers reply through chat messages only.
 
   @override
   Widget build(BuildContext context) {
@@ -786,6 +487,17 @@ class _NegotiationDetailScreenState
     final productName = productSnapshot['name'] as String? ?? 'Product';
     final originalPrice = productSnapshot['price'] ?? 0;
     final canPay = n['canPay'] == true;
+    final orderRef = n['orderId'];
+    final orderId = orderRef is Map
+        ? orderRef['_id']?.toString()
+        : orderRef?.toString();
+    final orderNumber = orderRef is Map
+        ? orderRef['orderNumber']?.toString() ?? ''
+        : (n['orderNumber']?.toString() ?? '');
+    final approvedBy = n['approvedBy'] as Map<String, dynamic>?;
+    final approvedByLabel = approvedBy == null
+        ? null
+        : 'Accepted by ${(approvedBy['role'] == 'staff' ? 'Staff' : 'Admin')}${approvedBy['name'] != null && (approvedBy['name'] as String).isNotEmpty ? ' ${approvedBy['name']}' : ''}';
 
     return Column(
       children: [
@@ -894,6 +606,63 @@ class _NegotiationDetailScreenState
                   currentOfferBy,
                   quantity,
                 ),
+                if (approvedByLabel != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: greenAccent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.verified_rounded,
+                            color: greenAccent, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            approvedByLabel,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: greenAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (orderId != null && orderId.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push('/tracking/$orderId'),
+                      icon: const Icon(Icons.local_shipping_outlined,
+                          size: 18),
+                      label: Text(
+                        orderNumber.isNotEmpty
+                            ? 'View Order $orderNumber'
+                            : 'View Order',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primaryBlue,
+                        side: BorderSide(color: primaryBlue),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // History Timeline
@@ -934,8 +703,9 @@ class _NegotiationDetailScreenState
           ),
         ),
 
-        // Bottom Action Bar
-        if (!['rejected', 'expired', 'converted'].contains(status))
+        // Bottom Action Bar — chat stays open on converted orders so the
+        // wholesaler can follow up; only closed states hide it.
+        if (!['rejected', 'expired'].contains(status))
           _buildBottomActions(status, currentOfferBy, canPay),
       ],
     );
@@ -1453,7 +1223,8 @@ class _NegotiationDetailScreenState
       );
     }
 
-    // Chat input for all negotiation statuses except completed states
+    // Chat input for open + converted negotiations (admin confirms the order;
+    // wholesalers reply through chat only)
     return _buildChatInput();
   }
 
