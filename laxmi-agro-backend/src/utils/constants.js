@@ -46,6 +46,7 @@ module.exports = {
     COUNTERED: 'countered',
     ACCEPTED: 'accepted',
     REJECTED: 'rejected',
+    MESSAGE: 'message',
   },
 
   PAYMENT_STATUS: {
