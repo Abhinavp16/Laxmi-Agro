@@ -17,6 +17,7 @@ exports.getMyNegotiations = async (req, res, next) => {
 
     const [negotiations, total] = await Promise.all([
       Negotiation.find(query)
+        .populate('orderId', 'orderNumber status total')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -24,27 +25,33 @@ exports.getMyNegotiations = async (req, res, next) => {
       Negotiation.countDocuments(query),
     ]);
 
-    const formatted = negotiations.map((negotiation) => ({
-      id: negotiation._id,
-      negotiationNumber: negotiation.negotiationNumber,
-      product: {
-        id: negotiation.productId,
-        variantId: negotiation.variantId || null,
-        name: negotiation.productSnapshot.variantDisplayName || negotiation.productSnapshot.name,
-        image: negotiation.productSnapshot.image,
-        currentPrice: negotiation.productSnapshot.price,
-      },
-      requestedQuantity: negotiation.requestedQuantity,
-      requestedPricePerUnit: negotiation.requestedPricePerUnit,
-      requestedTotalPrice: negotiation.requestedTotalPrice,
-      currentPricePerUnit: negotiation.currentPricePerUnit,
-      currentTotalPrice: negotiation.currentTotalPrice,
-      status: negotiation.status,
-      currentOfferBy: negotiation.currentOfferBy,
-      expiresAt: negotiation.expiresAt,
-      canPay: negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId,
-      createdAt: negotiation.createdAt,
-    }));
+    const formatted = negotiations.map((negotiation) => {
+      const accepted = (negotiation.history || []).filter((h) => h.action === NEGOTIATION_ACTIONS.ACCEPTED).pop();
+      return {
+        id: negotiation._id,
+        negotiationNumber: negotiation.negotiationNumber,
+        product: {
+          id: negotiation.productId,
+          variantId: negotiation.variantId || null,
+          name: negotiation.productSnapshot.variantDisplayName || negotiation.productSnapshot.name,
+          image: negotiation.productSnapshot.image,
+          currentPrice: negotiation.productSnapshot.price,
+        },
+        requestedQuantity: negotiation.requestedQuantity,
+        requestedPricePerUnit: negotiation.requestedPricePerUnit,
+        requestedTotalPrice: negotiation.requestedTotalPrice,
+        currentPricePerUnit: negotiation.currentPricePerUnit,
+        currentTotalPrice: negotiation.currentTotalPrice,
+        status: negotiation.status,
+        currentOfferBy: negotiation.currentOfferBy,
+        expiresAt: negotiation.expiresAt,
+        canPay: negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId,
+        orderId: negotiation.orderId?._id ? String(negotiation.orderId._id) : null,
+        orderNumber: negotiation.orderId?.orderNumber || null,
+        approvedByRole: accepted?.actorRole || (accepted ? 'admin' : null),
+        createdAt: negotiation.createdAt,
+      };
+    });
 
     res.json({
       success: true,
@@ -132,7 +139,9 @@ exports.getNegotiationById = async (req, res, next) => {
     const negotiation = await Negotiation.findOne({
       _id: req.params.id,
       wholesalerId: req.user._id,
-    });
+    })
+      .populate('history.actorId', 'name username')
+      .populate('orderId', 'orderNumber status total');
 
     if (!negotiation) {
       throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
@@ -140,6 +149,13 @@ exports.getNegotiationById = async (req, res, next) => {
 
     const data = negotiation.toObject();
     data.canPay = negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId;
+    const accepted = (data.history || []).filter((h) => h.action === NEGOTIATION_ACTIONS.ACCEPTED).pop();
+    data.approvedBy = accepted
+      ? {
+          role: accepted.actorRole || 'admin',
+          name: accepted.actorId?.name || accepted.actorId?.username || (accepted.actorRole === 'staff' ? 'Staff' : 'Admin'),
+        }
+      : null;
 
     res.json({
       success: true,
@@ -150,140 +166,8 @@ exports.getNegotiationById = async (req, res, next) => {
   }
 };
 
-exports.counterOffer = async (req, res, next) => {
-  try {
-    const { pricePerUnit, message } = req.body;
-
-    const negotiation = await Negotiation.findOne({
-      _id: req.params.id,
-      wholesalerId: req.user._id,
-    });
-
-    if (!negotiation) {
-      throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    }
-
-    if (negotiation.status !== NEGOTIATION_STATUS.COUNTERED) {
-      throw new BadRequestError('Cannot counter in current status', 'INVALID_NEGOTIATION_STATUS');
-    }
-
-    if (negotiation.currentOfferBy !== 'admin') {
-      throw new BadRequestError('Waiting for admin response', 'WAITING_FOR_ADMIN');
-    }
-
-    const totalPrice = negotiation.requestedQuantity * pricePerUnit;
-
-    negotiation.history.push({
-      action: NEGOTIATION_ACTIONS.COUNTERED,
-      by: 'wholesaler',
-      pricePerUnit,
-      totalPrice,
-      message,
-    });
-
-    negotiation.status = NEGOTIATION_STATUS.PENDING;
-    negotiation.currentOfferBy = 'wholesaler';
-    negotiation.currentPricePerUnit = pricePerUnit;
-    negotiation.currentTotalPrice = totalPrice;
-
-    await negotiation.save();
-
-    res.json({
-      success: true,
-      message: 'Counter offer submitted',
-      data: {
-        status: negotiation.status,
-        currentPricePerUnit: negotiation.currentPricePerUnit,
-        currentTotalPrice: negotiation.currentTotalPrice,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.acceptOffer = async (req, res, next) => {
-  try {
-    const negotiation = await Negotiation.findOne({
-      _id: req.params.id,
-      wholesalerId: req.user._id,
-    });
-
-    if (!negotiation) {
-      throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    }
-
-    if (![NEGOTIATION_STATUS.COUNTERED, NEGOTIATION_STATUS.PENDING].includes(negotiation.status)) {
-      throw new BadRequestError('Cannot accept in current status', 'INVALID_NEGOTIATION_STATUS');
-    }
-
-    if (negotiation.currentOfferBy !== 'admin') {
-      throw new BadRequestError('Waiting for an admin counter offer', 'WAITING_FOR_ADMIN');
-    }
-    if (negotiation.expiresAt <= new Date()) {
-      throw new BadRequestError('Negotiation has expired', 'NEGOTIATION_EXPIRED');
-    }
-
-    negotiation.history.push({
-      action: NEGOTIATION_ACTIONS.ACCEPTED,
-      by: 'wholesaler',
-      pricePerUnit: negotiation.currentPricePerUnit,
-      totalPrice: negotiation.currentTotalPrice,
-    });
-
-    negotiation.status = NEGOTIATION_STATUS.ACCEPTED;
-    negotiation.finalPricePerUnit = negotiation.currentPricePerUnit;
-    negotiation.finalTotalPrice = negotiation.currentTotalPrice;
-
-    await negotiation.save();
-
-    res.json({
-      success: true,
-      message: 'Offer accepted. You can now continue through WhatsApp checkout.',
-      data: {
-        negotiationId: negotiation._id,
-        finalPricePerUnit: negotiation.finalPricePerUnit,
-        finalTotalPrice: negotiation.finalTotalPrice,
-        canPay: true,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.rejectNegotiation = async (req, res, next) => {
-  try {
-    const negotiation = await Negotiation.findOne({
-      _id: req.params.id,
-      wholesalerId: req.user._id,
-    });
-
-    if (!negotiation) {
-      throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    }
-
-    if ([NEGOTIATION_STATUS.REJECTED, NEGOTIATION_STATUS.CONVERTED].includes(negotiation.status)) {
-      throw new BadRequestError('Cannot reject in current status', 'INVALID_NEGOTIATION_STATUS');
-    }
-
-    negotiation.history.push({
-      action: NEGOTIATION_ACTIONS.REJECTED,
-      by: 'wholesaler',
-    });
-
-    negotiation.status = NEGOTIATION_STATUS.REJECTED;
-    await negotiation.save();
-
-    res.json({
-      success: true,
-      message: 'Negotiation cancelled',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
+// NOTE: wholesaler accept / counter / reject were removed. Wholesalers
+// negotiate through chat messages; only admin & staff accept from the panel.
 exports.sendMessage = async (req, res, next) => {
   try {
     const { message } = req.body;
@@ -305,7 +189,7 @@ exports.sendMessage = async (req, res, next) => {
       throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
     }
 
-    if (['rejected', 'converted', 'expired'].includes(negotiation.status)) {
+    if (['rejected', 'expired'].includes(negotiation.status)) {
       throw new BadRequestError('Cannot send message in this negotiation status', 'INVALID_STATUS');
     }
 

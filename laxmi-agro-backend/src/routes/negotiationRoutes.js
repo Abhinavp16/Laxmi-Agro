@@ -11,9 +11,8 @@ router.use(authorize('wholesaler'));
 router.get('/', negotiationController.getMyNegotiations);
 router.post('/', validate(negotiationValidation.create), negotiationController.createNegotiation);
 router.get('/:id', negotiationController.getNegotiationById);
-router.post('/:id/counter', validate(negotiationValidation.counter), negotiationController.counterOffer);
-router.post('/:id/accept', negotiationController.acceptOffer);
-router.post('/:id/reject', negotiationController.rejectNegotiation);
+// NOTE: wholesalers negotiate via chat messages only. Accept / counter /
+// reject are admin & staff actions performed from the admin panel.
 router.post('/:id/message', negotiationController.sendMessage);
 
 module.exports = router;
