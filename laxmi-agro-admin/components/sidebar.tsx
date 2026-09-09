@@ -66,7 +66,8 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/products", label: "PRODUCTS", icon: Package01Icon },
       { href: "/brands", label: "BRANDS", icon: Tag01Icon },
-      { href: "/categories", label: "CATEGORIES", icon: Folder01Icon },
+      { href: "/categories", label: "CATEGORIES", icon: Folder01Icon, matches: ["/categories"] },
+      { href: "/categories?scope=subcategories", label: "SUBCATEGORIES", icon: TagsIcon, matches: ["/subcategories"] },
       { href: "/price-management", label: "PRICE MANAGEMENT", icon: Clock01Icon },
     ],
   },
