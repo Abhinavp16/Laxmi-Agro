@@ -22,7 +22,7 @@ router.put('/payments/:id/hold', validate(adminValidation.holdPayment), staffOpe
 
 router.get('/negotiations', staffOperationsController.getNegotiations);
 router.get('/negotiations/:id', staffOperationsController.getNegotiationById);
-router.put('/negotiations/:id/accept', staffOperationsController.acceptNegotiation);
+router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), staffOperationsController.acceptNegotiation);
 router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiation), staffOperationsController.counterNegotiation);
 
 module.exports = router;

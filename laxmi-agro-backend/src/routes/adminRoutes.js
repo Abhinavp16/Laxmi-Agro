@@ -75,7 +75,8 @@ router.post('/products/hindi-names/generate-missing', adminProductController.gen
 // Negotiations
 router.get('/negotiations', adminNegotiationController.getNegotiations);
 router.get('/negotiations/:id', adminNegotiationController.getNegotiationById);
-router.put('/negotiations/:id/accept', adminNegotiationController.acceptNegotiation);
+router.post('/negotiations/:id/message', validate(adminValidation.negotiationMessage), adminNegotiationController.sendMessage);
+router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), adminNegotiationController.acceptNegotiation);
 router.put('/negotiations/:id/reject', validate(adminValidation.rejectNegotiation), adminNegotiationController.rejectNegotiation);
 router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiation), adminNegotiationController.counterNegotiation);
 

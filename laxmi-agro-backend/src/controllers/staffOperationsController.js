@@ -212,27 +212,24 @@ exports.acceptNegotiation = async (req, res, next) => {
       throw new ForbiddenError(`Staff cannot accept below the configured minimum price of ₹${minPrice}`, 'STAFF_NEGOTIATION_PRICE_LIMIT');
     }
 
-    negotiation.history.push({
-      action: NEGOTIATION_ACTIONS.ACCEPTED,
-      by: 'admin',
-      actorId: req.user._id,
-      actorRole: 'staff',
-      pricePerUnit: negotiation.currentPricePerUnit,
-      totalPrice: negotiation.currentTotalPrice,
-      message: req.body.message || 'Accepted by staff',
+    const staffName = req.user.name || req.user.username || 'Staff';
+    const { acceptNegotiationAndCreateOrder } = require('../services/negotiationOrderService');
+    const { negotiation: updated, order, alreadyConverted } = await acceptNegotiationAndCreateOrder({
+      negotiationId: negotiation._id,
+      actor: { id: req.user._id, role: 'staff', name: staffName },
+      message: req.body.message,
+      shippingAddress: req.body.shippingAddress,
+      customerNote: req.body.customerNote,
+      io: req.app.locals.io,
     });
-    negotiation.status = NEGOTIATION_STATUS.ACCEPTED;
-    negotiation.finalPricePerUnit = negotiation.currentPricePerUnit;
-    negotiation.finalTotalPrice = negotiation.currentTotalPrice;
-    await negotiation.save();
 
-    await recordAudit({ actorId: req.user._id, action: 'negotiation.accepted', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: negotiation.finalPricePerUnit } });
-    await notifyWholesaler(negotiation.wholesalerId, {
-      title: 'Negotiation Accepted!',
-      body: `Your offer for ${negotiation.productSnapshot.name} was accepted at ₹${negotiation.finalPricePerUnit}/unit.`,
-    }, { type: 'negotiation_accepted', negotiationId: negotiation._id.toString() });
+    await recordAudit({ actorId: req.user._id, action: 'negotiation.accepted', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: updated.finalPricePerUnit, orderId: String(order._id) } });
 
-    res.json({ success: true, message: 'Negotiation accepted', data: { status: negotiation.status, finalPricePerUnit: negotiation.finalPricePerUnit } });
+    res.json({
+      success: true,
+      message: alreadyConverted ? 'Negotiation was already converted to an order' : 'Negotiation accepted — order confirmed',
+      data: { status: updated.status, finalPricePerUnit: updated.finalPricePerUnit, orderId: String(order._id), orderNumber: order.orderNumber },
+    });
   } catch (error) {
     next(error);
   }
@@ -263,6 +260,15 @@ exports.counterNegotiation = async (req, res, next) => {
     negotiation.currentPricePerUnit = req.body.pricePerUnit;
     negotiation.currentTotalPrice = totalPrice;
     await negotiation.save();
+
+    const { emitToNegotiationRoom } = require('../services/negotiationOrderService');
+    emitToNegotiationRoom(req.app.locals.io, negotiation._id.toString(), 'negotiation-countered', {
+      negotiationId: negotiation._id.toString(),
+      pricePerUnit: req.body.pricePerUnit,
+      totalPrice,
+      message: req.body.message || null,
+      timestamp: new Date(),
+    });
 
     await recordAudit({ actorId: req.user._id, action: 'negotiation.countered', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: req.body.pricePerUnit } });
     await notifyWholesaler(negotiation.wholesalerId, {

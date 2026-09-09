@@ -165,11 +165,6 @@ const negotiationValidation = {
     pricePerUnit: Joi.number().min(0).required(),
     message: Joi.string().max(500).allow('', null),
   }),
-
-  counter: Joi.object({
-    pricePerUnit: Joi.number().min(0).required(),
-    message: Joi.string().max(500).allow('', null),
-  }),
 };
 
 const orderValidation = {
@@ -361,6 +356,24 @@ const adminValidation = {
 
   rejectNegotiation: Joi.object({
     reason: Joi.string().max(500).allow('', null),
+  }),
+
+  negotiationMessage: Joi.object({
+    message: Joi.string().trim().min(1).max(280).required(),
+  }),
+
+  acceptNegotiation: Joi.object({
+    message: Joi.string().max(500).allow('', null),
+    customerNote: Joi.string().max(500).allow('', null),
+    shippingAddress: Joi.object({
+      fullName: Joi.string().required().max(100),
+      phone: Joi.string().required(),
+      addressLine1: Joi.string().required().max(200),
+      addressLine2: Joi.string().allow('', null).max(200),
+      city: Joi.string().required().max(100),
+      state: Joi.string().required().max(100),
+      pincode: Joi.string().required().max(10),
+    }).allow(null),
   }),
 
   updateOrderStatus: Joi.object({

@@ -557,6 +557,7 @@ exports.getMyOrders = async (req, res, next) => {
       id: order._id,
       orderNumber: order.orderNumber,
       orderType: order.orderType,
+      negotiationId: order.negotiationId ? String(order.negotiationId) : null,
       items: order.items.map((item) => ({
         name: item.variantSnapshot?.displayName || item.productSnapshot.name,
         quantity: item.quantity,
