@@ -63,8 +63,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool _isLoadingCategories = true;
   bool _isLoadingProducts = false;
   int _selectedCategoryIndex = 0;
-  
-  // Subcategories support
+
+  // New navigation state: null = show subcategory cards (if any),
+  // non-null = show products inside that subcategory.
+  Map<String, dynamic>? _selectedSubcategory;
+
+  // Subcategories support (legacy expanded map kept for compat, no longer used in sidebar)
   final Map<String, bool> _expandedCategories = {};
 
   @override
@@ -82,6 +86,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         _categories = [];
         _products = [];
         _selectedCategoryIndex = 0;
+        _selectedSubcategory = null;
         _isLoadingCategories = true;
       });
       _fetchCategories();
@@ -98,8 +103,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       if (idx != -1 && idx != _selectedCategoryIndex) {
         setState(() {
           _selectedCategoryIndex = idx;
-          _fetchProductsForCategory(_categories[idx]);
+          _selectedSubcategory = null;
         });
+        _onCategorySelected(idx);
       }
     }
   }
@@ -120,12 +126,17 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final cats = items.map<Map<String, dynamic>>((item) {
             final subcats = (item['subcategories'] as List?)
                 ?.map<Map<String, dynamic>>((subitem) {
+                  final subImg = subitem['image'];
+                  final subImgUrl = subImg is Map
+                      ? subImg['url']?.toString() ?? ''
+                      : subImg?.toString() ?? '';
                   return <String, dynamic>{
                     'id': subitem['id']?.toString() ?? subitem['_id']?.toString() ?? '',
                     'name': subitem['name']?.toString() ?? '',
                     'nameHindi': subitem['nameHindi']?.toString() ?? '',
                     'slug': subitem['slug']?.toString() ?? '',
                     'productCount': subitem['productCount'] ?? 0,
+                    'image': subImgUrl,
                   };
                 })
                 .toList() ?? [];
@@ -155,12 +166,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           setState(() {
             _categories = cats;
             _selectedCategoryIndex = 0;
+            _selectedSubcategory = null;
             _isLoadingCategories = false;
             _expandedCategories.clear();
           });
 
           if (cats.isNotEmpty) {
-            _fetchProductsForCategory(cats[_selectedCategoryIndex]);
+            _onCategorySelected(0);
           }
           return;
         }
@@ -226,11 +238,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           if (_selectedCategoryIndex >= _categories.length) {
             _selectedCategoryIndex = 0;
           }
+          _selectedSubcategory = null;
           _isLoadingCategories = false;
         });
 
         if (cats.isNotEmpty) {
-          _fetchProductsForCategory(cats[_selectedCategoryIndex]);
+          _onCategorySelected(_selectedCategoryIndex);
         }
       }
     } catch (e) {
@@ -344,6 +357,54 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   String _resolveImageUrl(String imageUrl) {
     return ApiConfig.normalizeMediaUrl(imageUrl);
+  }
+
+  // ---- New navigation: Category (left) -> Subcategory cards (right) -> Products ----
+
+  List<Map<String, dynamic>> _subcategoriesOf(Map<String, dynamic> category) {
+    final raw = category['subcategories'];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map(Map<String, dynamic>.from).toList();
+  }
+
+  void _onCategorySelected(int index) {
+    if (index < 0 || index >= _categories.length) return;
+    final cat = _categories[index];
+    final subs = _subcategoriesOf(cat);
+    setState(() {
+      _selectedCategoryIndex = index;
+      _selectedSubcategory = null;
+      // If category has subcategories, show cards first (no product fetch yet).
+      // Otherwise fetch products directly.
+      if (subs.isEmpty) {
+        _isLoadingProducts = true;
+      } else {
+        _isLoadingProducts = false;
+        _products = [];
+      }
+    });
+    if (subs.isEmpty) {
+      _fetchProductsForCategory(cat);
+    }
+  }
+
+  void _onSubcategorySelected(Map<String, dynamic> subcategory) {
+    if (_selectedCategoryIndex < 0 ||
+        _selectedCategoryIndex >= _categories.length) return;
+    final cat = _categories[_selectedCategoryIndex];
+    setState(() {
+      _selectedSubcategory = Map<String, dynamic>.from(subcategory);
+      _isLoadingProducts = true;
+    });
+    _fetchProductsForCategoryAndSubcategory(cat, subcategory);
+  }
+
+  void _onBackToSubcategories() {
+    setState(() {
+      _selectedSubcategory = null;
+      _products = [];
+      _isLoadingProducts = false;
+    });
   }
 
   Future<void> _fetchProductsForCategoryAndSubcategory(
@@ -581,19 +642,39 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    final currentSelectedCategory = _categories.isNotEmpty
+    final currentSelectedCategory = _categories.isNotEmpty &&
+            _selectedCategoryIndex >= 0 &&
+            _selectedCategoryIndex < _categories.length
         ? Map<String, dynamic>.from(_categories[_selectedCategoryIndex])
         : null;
+    final currentSub = _selectedSubcategory != null
+        ? Map<String, dynamic>.from(_selectedSubcategory!)
+        : null;
     await _fetchCategories();
-    if (currentSelectedCategory != null) {
+    if (currentSelectedCategory != null && _categories.isNotEmpty) {
       final index = _categories.indexWhere(
         (c) =>
             c['slug'] == currentSelectedCategory['slug'] ||
             c['name'] == currentSelectedCategory['name'],
       );
       if (index != -1) {
-        setState(() => _selectedCategoryIndex = index);
-        await _fetchProductsForCategory(_categories[index]);
+        setState(() {
+          _selectedCategoryIndex = index;
+          _selectedSubcategory = null;
+        });
+        final subs = _subcategoriesOf(_categories[index]);
+        if (currentSub != null && subs.isNotEmpty) {
+          final subIdx = subs.indexWhere(
+            (s) =>
+                s['slug'] == currentSub['slug'] ||
+                s['name'] == currentSub['name'],
+          );
+          if (subIdx != -1) {
+            _onSubcategorySelected(subs[subIdx]);
+            return;
+          }
+        }
+        _onCategorySelected(index);
       }
     }
   }
@@ -710,16 +791,16 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       )
                     : Row(
                         children: [
-                          // Left sidebar
+                          // Left sidebar - categories only
                           _buildSidebar(),
                           // Vertical divider
                           Container(width: 1, color: borderLight),
-                          // Right product grid
+                          // Right panel - subcategory cards OR products
                           Expanded(
                             child: RefreshIndicator(
                               onRefresh: _handleRefresh,
                               color: primaryBlue,
-                              child: _buildProductGrid(),
+                              child: _buildRightPanel(),
                             ),
                           ),
                         ],
@@ -845,244 +926,389 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final cat = _categories[index];
           final isSelected = _selectedCategoryIndex == index;
           final imageUrl = cat['image']?.toString() ?? '';
-          final hasSubcategories = (cat['subcategories'] as List?)?.isNotEmpty ?? false;
-          final isExpanded = _expandedCategories[cat['id'] as String] ?? false;
-          final subcategories = (cat['subcategories'] as List?) ?? [];
-          
+
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Main category card
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedCategoryIndex = index;
-                      if (hasSubcategories) {
-                        _expandedCategories[cat['id'] as String] = !isExpanded;
-                      }
-                    });
-                    // If no subcategories OR first time tapping a category with subcategories,
-                    // fetch and show all category products
-                    if (!hasSubcategories || !isExpanded) {
-                      _fetchProductsForCategory(cat);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? primaryBlue : surfaceWhite,
-                      border: Border.all(
-                        color: isSelected ? primaryBlue : borderLight,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: primaryBlue.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Category Image
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? primaryBlue.withOpacity(0.15)
-                                    : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: imageUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: imageUrl,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => Icon(
-                                          _categoryIcon(cat['name'] ?? ''),
-                                          size: 20,
-                                          color: isSelected ? primaryBlue : textSecondary,
-                                        ),
-                                        errorWidget: (_, __, ___) => Icon(
-                                          _categoryIcon(cat['name'] ?? ''),
-                                          size: 20,
-                                          color: isSelected ? primaryBlue : textSecondary,
-                                        ),
-                                      )
-                                    : Icon(
-                                        _categoryIcon(cat['name'] ?? ''),
-                                        size: 20,
-                                        color: isSelected ? primaryBlue : textSecondary,
-                                      ),
-                              ),
-                            ),
-                            // Expand indicator badge
-                            if (hasSubcategories)
-                              Positioned(
-                                bottom: -4,
-                                right: -4,
-                                child: AnimatedRotation(
-                                  turns: isExpanded ? 0.25 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      color: primaryBlue,
-                                      borderRadius: BorderRadius.circular(999),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryBlue.withOpacity(0.3),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.expand_more_rounded,
-                                      size: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Category name
-                        Text(
-                          _getDisplayCategoryName(cat),
-                          style: GoogleFonts.outfit(
-                            fontSize: 9,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                            color: isSelected ? Colors.white : textPrimary,
+            child: GestureDetector(
+              onTap: () => _onCategorySelected(index),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryBlue : surfaceWhite,
+                  border: Border.all(
+                    color: isSelected ? primaryBlue : borderLight,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryBlue.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                 ),
-                // Subcategories section
-                if (hasSubcategories && isExpanded)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(subcategories.length, (subIndex) {
-                            final subcat = subcategories[subIndex] as Map<String, dynamic>;
-                            final subcatImageUrl = subcat['image'] is Map
-                                ? subcat['image']['url']?.toString() ?? ''
-                                : subcat['image']?.toString() ?? '';
-                            
-                            return GestureDetector(
-                              onTap: () {
-                                _fetchProductsForCategoryAndSubcategory(cat, subcat);
-                              },
-                              child: Container(
-                                width: 76,
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5E9), // Light green background
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: const Color(0xFFC8E6C9), // Slightly darker green border
-                                    width: 1,
-                                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Icon(
+                                  _categoryIcon(cat['name'] ?? ''),
+                                  size: 20,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : textSecondary,
                                 ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Subcategory image
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFC8E6C9),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: subcatImageUrl.isNotEmpty
-                                            ? CachedNetworkImage(
-                                                imageUrl: subcatImageUrl,
-                                                fit: BoxFit.cover,
-                                                placeholder: (_, __) => Container(
-                                                  color: const Color(0xFFA5D6A7),
-                                                  child: const Icon(
-                                                    Icons.category_rounded,
-                                                    size: 16,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                                errorWidget: (_, __, ___) => Container(
-                                                  color: const Color(0xFFA5D6A7),
-                                                  child: const Icon(
-                                                    Icons.category_rounded,
-                                                    size: 16,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              )
-                                            : Container(
-                                                color: const Color(0xFFA5D6A7),
-                                                child: const Icon(
-                                                  Icons.category_rounded,
-                                                  size: 16,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Subcategory name
-                                    Text(
-                                      subcat['name']?.toString() ?? '',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 7,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF2E7D32), // Dark green text
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                                errorWidget: (_, __, ___) => Icon(
+                                  _categoryIcon(cat['name'] ?? ''),
+                                  size: 20,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : textSecondary,
                                 ),
+                              )
+                            : Icon(
+                                _categoryIcon(cat['name'] ?? ''),
+                                size: 20,
+                                color: isSelected
+                                    ? Colors.white
+                                    : textSecondary,
                               ),
-                            );
-                          }),
-                        ),
                       ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 8),
+                    Text(
+                      _getDisplayCategoryName(cat),
+                      style: GoogleFonts.outfit(
+                        fontSize: 9,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color:
+                            isSelected ? Colors.white : textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Subcategory count hint (no dropdown anymore)
+                    if ((_subcategoriesOf(cat)).isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '${_subcategoriesOf(cat).length} types',
+                          style: GoogleFonts.outfit(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.8)
+                                : textMuted,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRightPanel() {
+    if (_categories.isEmpty) return const SizedBox.shrink();
+    final cat = _categories[_selectedCategoryIndex];
+    final subs = _subcategoriesOf(cat);
+    // Case 1: category has subcategories and none selected -> subcategory cards
+    if (subs.isNotEmpty && _selectedSubcategory == null) {
+      return _buildSubcategoryGrid(cat, subs);
+    }
+    // Case 2: otherwise products
+    return _buildProductGrid();
+  }
+
+  Widget _buildSubcategoryGrid(
+    Map<String, dynamic> category,
+    List<Map<String, dynamic>> subcategories,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getDisplayCategoryName(category),
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Select a type',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  '${subcategories.length} types',
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: primaryBlue,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.72,
+            ),
+            itemCount: subcategories.length,
+            itemBuilder: (context, index) {
+              final sub = subcategories[index];
+              final name = sub['name']?.toString() ?? '';
+              final count = sub['productCount'] ?? 0;
+              final rawImg = sub['image'];
+              final imgUrl = rawImg is Map
+                  ? rawImg['url']?.toString() ?? ''
+                  : rawImg?.toString() ?? '';
+              return GestureDetector(
+                onTap: () => _onSubcategorySelected(sub),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: surfaceWhite,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderLight),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: imgUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl:
+                                      ApiConfig.normalizeMediaUrl(imgUrl),
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => const Icon(
+                                    Icons.category_rounded,
+                                    color: primaryBlue,
+                                    size: 24,
+                                  ),
+                                  errorWidget: (_, __, ___) =>
+                                      const Icon(
+                                    Icons.category_rounded,
+                                    color: primaryBlue,
+                                    size: 24,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.category_rounded,
+                                  color: primaryBlue,
+                                  size: 26,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        name,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$count items',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: primaryBlue,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'View',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackHeader(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _onBackToSubcategories,
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: textPrimary,
+              size: 20,
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: surfaceWhite,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: borderLight),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: primaryBlue.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              '${_products.length} items',
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: primaryBlue,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1094,27 +1320,57 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       );
     }
 
+    final bool inSubcategory = _selectedSubcategory != null;
+    final String headerTitle = inSubcategory
+        ? (_selectedSubcategory!['name']?.toString() ?? '')
+        : (_categories.isNotEmpty
+            ? _getDisplayCategoryName(
+                _categories[_selectedCategoryIndex])
+            : '');
+    final String headerSubtitle = inSubcategory &&
+            _categories.isNotEmpty
+        ? _getDisplayCategoryName(_categories[_selectedCategoryIndex])
+        : '';
+
     if (_products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 48,
-              color: textMuted.withOpacity(0.4),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No products in this category',
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textMuted,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (inSubcategory) _buildBackHeader(headerTitle, headerSubtitle),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 48,
+                    color: textMuted.withOpacity(0.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    inSubcategory
+                        ? 'No products in this subcategory'
+                        : 'No products in this category',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textMuted,
+                    ),
+                  ),
+                  if (inSubcategory) ...[
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _onBackToSubcategories,
+                      icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                      label: const Text('Back to types'),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -1129,42 +1385,45 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Category header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _getDisplayCategoryName(_categories[_selectedCategoryIndex]),
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
+            // Category / subcategory header with back
+            if (inSubcategory)
+              _buildBackHeader(headerTitle, headerSubtitle)
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        headerTitle,
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: primaryBlue.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Text(
-                      '${_products.length} items',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: primaryBlue,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: primaryBlue.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        '${_products.length} items',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: primaryBlue,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             // Products grid
             Expanded(
               child: GridView.builder(
