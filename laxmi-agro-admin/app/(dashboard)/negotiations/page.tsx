@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import {
     Table,
     TableBody,
@@ -12,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, MessageSquare, Check, X, Send, Search } from "@/components/hugeicons"
+import { Loader2, MessageSquare, Check, X, Send, Search, Package } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Sheet,
@@ -21,11 +22,48 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { apiFetch } from "@/lib/api"
+import { Textarea } from "@/components/ui/textarea"
+import { apiFetch, getUser } from "@/lib/api"
+import { useNegotiationSocket } from "@/lib/hooks/useNegotiationSocket"
+
+const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
+    .replace(/\/api\/v1\/?$/, "")
+
+interface HistoryActor {
+    _id?: string
+    name?: string
+    username?: string
+    email?: string
+}
+
+interface HistoryEntry {
+    action: string
+    by: 'wholesaler' | 'admin'
+    pricePerUnit?: number
+    totalPrice?: number
+    message?: string
+    timestamp: string
+    actorId?: string | HistoryActor | null
+    actorRole?: string | null
+}
+
+interface ApprovedBy {
+    role: string
+    userId: string | null
+    name: string
+}
 
 interface NegotiationList {
     id: string
@@ -35,40 +73,65 @@ interface NegotiationList {
     requestedQuantity: number
     requestedPricePerUnit: number
     status: string
+    orderId?: string | null
+    approvedBy?: ApprovedBy | null
 }
 
 interface NegotiationDetail {
     _id: string
     negotiationNumber: string
-    productSnapshot: { name: string; sku: string; price: number }
-    wholesalerId: { _id: string; name: string }
+    productSnapshot: { name: string; sku: string; price: number; image?: string }
+    wholesalerId: { _id: string; name: string; email?: string; phone?: string; address?: string; businessInfo?: { businessName?: string; businessAddress?: string } }
     requestedQuantity: number
     requestedPricePerUnit: number
     status: string
     currentOfferBy?: 'wholesaler' | 'admin'
     currentPricePerUnit?: number
+    currentTotalPrice?: number
+    finalPricePerUnit?: number
+    finalTotalPrice?: number
+    orderId?: { _id: string; orderNumber: string; status: string; total: number } | string | null
+    approvedBy?: ApprovedBy | null
+    lastOrderAddress?: ShippingAddress | null
     message: string
-    history: {
-        action: string
-        by: 'wholesaler' | 'admin'
-        pricePerUnit: number
-        message: string
-        timestamp: string
-    }[]
+    history: HistoryEntry[]
     createdAt: string
+}
+
+interface ShippingAddress {
+    fullName: string
+    phone: string
+    addressLine1: string
+    addressLine2?: string
+    city: string
+    state: string
+    pincode: string
+}
+
+const EMPTY_ADDRESS: ShippingAddress = {
+    fullName: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+}
+
+function actorDisplayName(entry: HistoryEntry): string {
+    if (typeof entry.actorId === 'object' && entry.actorId) {
+        return entry.actorId.name || entry.actorId.username || entry.actorId.email || 'Staff'
+    }
+    if (entry.by === 'wholesaler') return 'Wholesaler'
+    return entry.actorRole === 'staff' ? 'Staff' : 'Admin'
 }
 
 export default function NegotiationsPage() {
     const [negotiations, setNegotiations] = useState<NegotiationList[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
-    const [selectedNegotiation, setSelectedNegotiation] = useState<NegotiationDetail | null>(null)
+    const [selectedId, setSelectedId] = useState<string | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
-
-    // Counter offer state
-    const [counterPrice, setCounterPrice] = useState("")
-    const [counterMessage, setCounterMessage] = useState("")
-    const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Search & Pagination state
     const [searchQuery, setSearchQuery] = useState("")
@@ -137,83 +200,22 @@ export default function NegotiationsPage() {
         }
     }, [hasMore, isLoadingMore, page])
 
-    async function fetchNegotiationDetails(id: string) {
-        try {
-            const res = await apiFetch(`/admin/negotiations/${id}`)
-            const data = await res.json()
-            if (res.ok) {
-                setSelectedNegotiation(data.data)
-                setIsSheetOpen(true)
-            }
-        } catch (error) {
-            toast.error("Failed to load details")
-        }
-    }
-
-    async function handleAction(action: 'accept' | 'reject' | 'counter') {
-        if (!selectedNegotiation) return
-        setIsSubmitting(true)
-
-        let endpoint = `/admin/negotiations/${selectedNegotiation._id}/${action}`
-        let body = {}
-
-        if (action === 'counter') {
-            body = {
-                pricePerUnit: Number(counterPrice),
-                message: counterMessage
-            }
-        } else if (action === 'reject') {
-            const reason = prompt("Enter rejection reason:")
-            if (!reason) {
-                setIsSubmitting(false)
-                return
-            }
-            body = { reason }
-        } else if (action === 'accept') {
-            body = { message: "Accepted by admin" }
-        }
-
-        try {
-            const res = await apiFetch(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify(body)
-            })
-
-            if (res.ok) {
-                toast.success(`Negotiation ${action}ed successfully`)
-                setIsSheetOpen(false)
-                fetchNegotiations()
-                setCounterPrice("")
-                setCounterMessage("")
-            } else {
-                toast.error("Action failed")
-            }
-        } catch (error) {
-            toast.error("Error processing request")
-        } finally {
-            setIsSubmitting(false)
-        }
+    function openDetails(id: string) {
+        setSelectedId(id)
+        setIsSheetOpen(true)
     }
 
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500">Pending</Badge>
             case 'accepted': return <Badge variant="outline" className="text-green-500 border-green-500">Accepted</Badge>
+            case 'converted': return <Badge variant="outline" className="text-emerald-400 border-emerald-400">Converted</Badge>
             case 'rejected': return <Badge variant="outline" className="text-red-500 border-red-500">Rejected</Badge>
             case 'countered': return <Badge variant="outline" className="text-blue-500 border-blue-500">Countered</Badge>
+            case 'expired': return <Badge variant="outline" className="text-gray-500 border-gray-500">Expired</Badge>
             default: return <Badge variant="outline" className="text-gray-500 border-gray-500">{status}</Badge>
         }
     }
-
-    const canAdminRespond =
-        selectedNegotiation?.status === 'pending' &&
-        selectedNegotiation.currentOfferBy === 'wholesaler'
-    const isAwaitingWholesaler =
-        selectedNegotiation?.status === 'countered' &&
-        selectedNegotiation.currentOfferBy === 'admin'
-    const canReject =
-        selectedNegotiation != null &&
-        !['accepted', 'rejected', 'converted'].includes(selectedNegotiation.status)
 
     return (
         <div className="flex flex-col gap-6">
@@ -279,6 +281,7 @@ export default function NegotiationsPage() {
                                     <TableHead className="text-gray-400 text-right">Qty</TableHead>
                                     <TableHead className="text-gray-400 text-right">Req. Price</TableHead>
                                     <TableHead className="text-gray-400 text-center">Status</TableHead>
+                                    <TableHead className="text-gray-400">Approved By</TableHead>
                                     <TableHead className="text-gray-400 text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -293,12 +296,17 @@ export default function NegotiationsPage() {
                                         <TableCell className="text-center">
                                             {getStatusBadge(negotiation.status)}
                                         </TableCell>
+                                        <TableCell className="text-gray-300 text-sm">
+                                            {negotiation.approvedBy
+                                                ? `${negotiation.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · ${negotiation.approvedBy.name}`
+                                                : <span className="text-gray-600">—</span>}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-8 w-8 p-0 text-white hover:bg-[#333]"
-                                                onClick={() => fetchNegotiationDetails(negotiation.id)}
+                                                onClick={() => openDetails(negotiation.id)}
                                             >
                                                 <MessageSquare className="h-4 w-4" />
                                             </Button>
@@ -313,118 +321,11 @@ export default function NegotiationsPage() {
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="bg-[#161616] border-l-[#333] text-white w-[500px] sm:w-[600px] flex flex-col">
-                    <SheetHeader>
-                        <SheetTitle className="text-white">Negotiation Details</SheetTitle>
-                        <SheetDescription className="text-gray-400">
-                            {selectedNegotiation?.negotiationNumber} - {selectedNegotiation?.productSnapshot?.name}
-                        </SheetDescription>
-                    </SheetHeader>
-
-                    {selectedNegotiation && (
-                        <div className="flex-1 flex flex-col gap-6 mt-6 overflow-hidden">
-                            {/* Summary Card */}
-                            <div className="bg-[#0D0D0D] p-4 rounded-lg border border-[#333] grid grid-cols-2 gap-4">
-                                <div>
-                                    <span className="text-xs text-gray-500 uppercase">Original Price</span>
-                                    <p className="text-lg font-mono">₹{selectedNegotiation.productSnapshot?.price}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-gray-500 uppercase">Requested Qty</span>
-                                    <p className="text-lg font-mono">{selectedNegotiation.requestedQuantity}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-gray-500 uppercase">Requested Price</span>
-                                    <p className="text-lg font-mono text-yellow-500">₹{selectedNegotiation.requestedPricePerUnit}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-gray-500 uppercase">Total Value</span>
-                                    <p className="text-lg font-mono">₹{(selectedNegotiation.requestedQuantity * selectedNegotiation.requestedPricePerUnit).toLocaleString()}</p>
-                                </div>
-                            </div>
-
-                            <Separator className="bg-[#333]" />
-
-                            {/* Chat History */}
-                            <div className="flex-1 overflow-hidden flex flex-col">
-                                <h3 className="text-sm font-medium mb-2">History</h3>
-                                <ScrollArea className="flex-1 pr-4">
-                                    <div className="space-y-4">
-                                        {selectedNegotiation.history.map((entry, idx) => (
-                                            <div key={idx} className={`flex flex-col gap-1 ${entry.by === 'admin' ? 'items-end' : 'items-start'}`}>
-                                                <div className={`p-3 rounded-lg max-w-[80%] ${entry.by === 'admin' ? 'bg-[#86efac] text-black' : 'bg-[#333] text-white'}`}>
-                                                    <div className="flex justify-between items-center gap-4 mb-1">
-                                                        <span className="text-xs font-bold uppercase opacity-70">{entry.action}</span>
-                                                        {entry.pricePerUnit && <span className="text-xs font-mono font-bold">₹{entry.pricePerUnit}</span>}
-                                                    </div>
-                                                    {entry.message && <p className="text-sm">{entry.message}</p>}
-                                                </div>
-                                                <span className="text-[10px] text-gray-500">
-                                                    {new Date(entry.timestamp).toLocaleString()}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="pt-4 border-t border-[#333] mt-auto space-y-4">
-                                {canAdminRespond && (
-                                    <>
-                                        <div className="bg-[#0D0D0D] p-3 rounded-lg border border-[#333] space-y-3">
-                                            <Label className="text-xs uppercase text-gray-500">Counter Offer</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="Price per unit"
-                                                    className="bg-black border-[#333] h-9"
-                                                    value={counterPrice}
-                                                    onChange={(e) => setCounterPrice(e.target.value)}
-                                                />
-                                                <Input
-                                                    placeholder="Message (optional)"
-                                                    className="bg-black border-[#333] h-9 flex-1"
-                                                    value={counterMessage}
-                                                    onChange={(e) => setCounterMessage(e.target.value)}
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-blue-600 hover:bg-blue-700"
-                                                    disabled={!counterPrice || isSubmitting}
-                                                    onClick={() => handleAction('counter')}
-                                                >
-                                                    <Send className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <Button
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                            disabled={isSubmitting}
-                                            onClick={() => handleAction('accept')}
-                                        >
-                                            <Check className="w-4 h-4 mr-2" /> Accept Deal
-                                        </Button>
-                                    </>
-                                )}
-
-                                {isAwaitingWholesaler && (
-                                    <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
-                                        Waiting for the wholesaler to accept or counter this offer.
-                                    </div>
-                                )}
-
-                                {canReject && (
-                                    <Button
-                                        className="w-full bg-red-600 hover:bg-red-700 text-white"
-                                        disabled={isSubmitting}
-                                        onClick={() => handleAction('reject')}
-                                    >
-                                        <X className="w-4 h-4 mr-2" /> Reject
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
+                    {selectedId && (
+                        <NegotiationChatPanel
+                            negotiationId={selectedId}
+                            onChanged={() => fetchNegotiations(1, true)}
+                        />
                     )}
                 </SheetContent>
             </Sheet>
@@ -451,4 +352,505 @@ export default function NegotiationsPage() {
             )}
         </div>
     )
+}
+
+function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: string; onChanged: () => void }) {
+    const router = useRouter()
+    const [detail, setDetail] = useState<NegotiationDetail | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Chat message input
+    const [chatMessage, setChatMessage] = useState("")
+    const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+    // Counter offer state
+    const [counterPrice, setCounterPrice] = useState("")
+    const [counterMessage, setCounterMessage] = useState("")
+
+    // Reject dialog
+    const [isRejectOpen, setIsRejectOpen] = useState(false)
+    const [rejectReason, setRejectReason] = useState("")
+
+    // Accept (confirm order) dialog + address form
+    const [isAcceptOpen, setIsAcceptOpen] = useState(false)
+    const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS)
+    const [customerNote, setCustomerNote] = useState("")
+    const [addressTouched, setAddressTouched] = useState(false)
+
+    const bottomRef = useRef<HTMLDivElement | null>(null)
+
+    const currentUser = (typeof window !== 'undefined' ? getUser() : null) as { _id?: string; id?: string; name?: string } | null
+    const socketUserId = currentUser?._id || currentUser?.id || ""
+    const socketUsername = currentUser?.name || "Admin"
+
+    const { isConnected, typingUsers, lastAction, emitTyping, emitStopTyping } = useNegotiationSocket(
+        negotiationId,
+        socketUserId,
+        socketUsername,
+        SOCKET_URL
+    )
+
+    const fetchDetail = useCallback(async () => {
+        try {
+            const res = await apiFetch(`/admin/negotiations/${negotiationId}`)
+            const data = await res.json()
+            if (res.ok) {
+                setDetail(data.data)
+            } else {
+                toast.error(data?.message || "Failed to load details")
+            }
+        } catch {
+            toast.error("Failed to load details")
+        } finally {
+            setIsLoading(false)
+        }
+    }, [negotiationId])
+
+    useEffect(() => {
+        setIsLoading(true)
+        setDetail(null)
+        setAddress(EMPTY_ADDRESS)
+        setAddressTouched(false)
+        setCustomerNote("")
+        setCounterPrice("")
+        setCounterMessage("")
+        setChatMessage("")
+        fetchDetail()
+    }, [negotiationId, fetchDetail])
+
+    // Live updates from wholesaler / staff actions
+    useEffect(() => {
+        if (!lastAction) return
+        if (lastAction.kind === 'negotiation-accepted') {
+            toast.success("Negotiation accepted — order confirmed")
+        }
+        fetchDetail()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lastAction?.at])
+
+    // Prefill address form once detail loads
+    useEffect(() => {
+        if (!detail || addressTouched) return
+        const w = detail.wholesalerId
+        const base = detail.lastOrderAddress
+        setAddress({
+            fullName: base?.fullName || w?.name || "",
+            phone: base?.phone || w?.phone || "",
+            addressLine1: base?.addressLine1 || w?.address || w?.businessInfo?.businessAddress || "",
+            addressLine2: base?.addressLine2 || w?.businessInfo?.businessName || "",
+            city: base?.city || "",
+            state: base?.state || "",
+            pincode: base?.pincode || "",
+        })
+    }, [detail, addressTouched])
+
+    // Auto-scroll chat to bottom on new entries
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, [detail?.history?.length])
+
+    async function sendChatMessage() {
+        const text = chatMessage.trim()
+        if (!text || isSendingMessage) return
+        setIsSendingMessage(true)
+        emitStopTyping()
+        try {
+            const res = await apiFetch(`/admin/negotiations/${negotiationId}/message`, {
+                method: 'POST',
+                body: JSON.stringify({ message: text }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (res.ok) {
+                setChatMessage("")
+                await fetchDetail()
+            } else {
+                toast.error(data?.message || "Failed to send message")
+            }
+        } catch {
+            toast.error("Error sending message")
+        } finally {
+            setIsSendingMessage(false)
+        }
+    }
+
+    async function sendCounter() {
+        const price = Number(counterPrice)
+        if (!price || price <= 0) {
+            toast.error("Enter a valid counter price")
+            return
+        }
+        setIsSubmitting(true)
+        try {
+            const res = await apiFetch(`/admin/negotiations/${negotiationId}/counter`, {
+                method: 'PUT',
+                body: JSON.stringify({ pricePerUnit: price, message: counterMessage || undefined }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (res.ok) {
+                toast.success("Counter offer sent")
+                setCounterPrice("")
+                setCounterMessage("")
+                await fetchDetail()
+                onChanged()
+            } else {
+                toast.error(data?.message || "Counter failed")
+            }
+        } catch {
+            toast.error("Error processing request")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    async function confirmAccept() {
+        setIsSubmitting(true)
+        try {
+            const res = await apiFetch(`/admin/negotiations/${negotiationId}/accept`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    message: "Accepted by admin",
+                    shippingAddress: address,
+                    customerNote: customerNote || undefined,
+                }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (res.ok) {
+                toast.success(data?.data?.orderNumber
+                    ? `Order ${data.data.orderNumber} confirmed`
+                    : "Negotiation accepted — order confirmed")
+                setIsAcceptOpen(false)
+                await fetchDetail()
+                onChanged()
+            } else {
+                toast.error(data?.message || "Accept failed")
+            }
+        } catch {
+            toast.error("Error processing request")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    async function confirmReject() {
+        setIsSubmitting(true)
+        try {
+            const res = await apiFetch(`/admin/negotiations/${negotiationId}/reject`, {
+                method: 'PUT',
+                body: JSON.stringify({ reason: rejectReason || undefined }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (res.ok) {
+                toast.success("Negotiation rejected")
+                setIsRejectOpen(false)
+                setRejectReason("")
+                await fetchDetail()
+                onChanged()
+            } else {
+                toast.error(data?.message || "Reject failed")
+            }
+        } catch {
+            toast.error("Error processing request")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    if (isLoading || !detail) {
+        return (
+            <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
+            </div>
+        )
+    }
+
+    const canAdminRespond =
+        (detail.status === 'pending' || detail.status === 'countered') &&
+        detail.currentOfferBy === 'wholesaler' &&
+        !detail.orderId
+    // Legacy rows accepted before order auto-creation can still be converted.
+    const canConfirmLegacy = detail.status === 'accepted' && !detail.orderId
+    const canAccept = canAdminRespond || canConfirmLegacy
+    const canReject = detail.status === 'pending' || detail.status === 'countered'
+    const canChat = !['rejected', 'expired'].includes(detail.status)
+    const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number } | null
+    const orderTotal = detail.finalTotalPrice ?? detail.currentTotalPrice ?? 0
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="text-white">Negotiation Details</SheetTitle>
+                <SheetDescription className="text-gray-400">
+                    {detail.negotiationNumber} - {detail.productSnapshot?.name}
+                </SheetDescription>
+                <div className="flex items-center gap-2 pt-1 text-xs">
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 capitalize ${statusColor(detail.status)}`}>
+                        {detail.status}
+                    </span>
+                    {detail.approvedBy && (
+                        <span className="text-gray-400">
+                            Approved by {detail.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · {detail.approvedBy.name}
+                        </span>
+                    )}
+                    <span className={`ml-auto inline-flex items-center gap-1 ${isConnected ? 'text-[#86efac]' : 'text-gray-600'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-[#86efac]' : 'bg-gray-600'}`} />
+                        {isConnected ? 'Live' : 'Offline'}
+                    </span>
+                </div>
+            </SheetHeader>
+
+            <div className="flex flex-1 flex-col gap-4 mt-4 overflow-hidden">
+                {/* Summary Card */}
+                <div className="bg-[#0D0D0D] p-4 rounded-lg border border-[#333] grid grid-cols-2 gap-4">
+                    <div>
+                        <span className="text-xs text-gray-500 uppercase">Original Price</span>
+                        <p className="text-lg font-mono">₹{detail.productSnapshot?.price}</p>
+                    </div>
+                    <div>
+                        <span className="text-xs text-gray-500 uppercase">Requested Qty</span>
+                        <p className="text-lg font-mono">{detail.requestedQuantity}</p>
+                    </div>
+                    <div>
+                        <span className="text-xs text-gray-500 uppercase">Requested Price</span>
+                        <p className="text-lg font-mono text-yellow-500">₹{detail.requestedPricePerUnit}</p>
+                    </div>
+                    <div>
+                        <span className="text-xs text-gray-500 uppercase">Total Value</span>
+                        <p className="text-lg font-mono">₹{(detail.requestedQuantity * detail.requestedPricePerUnit).toLocaleString()}</p>
+                    </div>
+                </div>
+
+                {/* Converted order chip */}
+                {orderObj && (
+                    <button
+                        type="button"
+                        onClick={() => router.push(`/orders?search=${encodeURIComponent(orderObj.orderNumber)}`)}
+                        className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-left transition-colors hover:bg-emerald-500/20"
+                    >
+                        <Package className="h-5 w-5 shrink-0 text-emerald-300" />
+                        <span>
+                            <span className="block text-sm font-semibold text-emerald-200">Order {orderObj.orderNumber} confirmed</span>
+                            <span className="block text-xs text-emerald-200/70 capitalize">
+                                {orderObj.status?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · tap to view
+                            </span>
+                        </span>
+                    </button>
+                )}
+
+                <Separator className="bg-[#333]" />
+
+                {/* Live chat */}
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <h3 className="text-sm font-medium mb-2">Chat</h3>
+                    <ScrollArea className="min-h-0 flex-1 pr-4">
+                        <div className="space-y-4">
+                            {detail.history.map((entry, idx) => (
+                                <div key={idx} className={`flex flex-col gap-1 ${entry.by === 'admin' ? 'items-end' : 'items-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-[80%] ${entry.by === 'admin' ? 'bg-[#86efac] text-black' : 'bg-[#333] text-white'}`}>
+                                        <div className="flex justify-between items-center gap-4 mb-1">
+                                            <span className="text-xs font-bold uppercase opacity-70">
+                                                {entry.action === 'message'
+                                                    ? actorDisplayName(entry)
+                                                    : `${entry.action}${entry.by === 'admin' ? ` · ${actorDisplayName(entry)}` : ''}`}
+                                            </span>
+                                            {entry.pricePerUnit != null && <span className="text-xs font-mono font-bold">₹{entry.pricePerUnit}</span>}
+                                        </div>
+                                        {entry.message && <p className="text-sm whitespace-pre-wrap">{entry.message}</p>}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500">
+                                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
+                                    </span>
+                                </div>
+                            ))}
+                            <div ref={bottomRef} />
+                        </div>
+                    </ScrollArea>
+                    {typingUsers.length > 0 && (
+                        <p className="pt-1 text-xs italic text-gray-500">Wholesaler is typing…</p>
+                    )}
+
+                    {/* Message composer */}
+                    {canChat ? (
+                        <div className="flex gap-2 pt-2">
+                            <Input
+                                placeholder="Type a message… (max 280)"
+                                maxLength={280}
+                                className="bg-black border-[#333] h-10 flex-1 text-white"
+                                value={chatMessage}
+                                onChange={(e) => {
+                                    setChatMessage(e.target.value)
+                                    if (e.target.value.trim()) emitTyping()
+                                    else emitStopTyping()
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault()
+                                        sendChatMessage()
+                                    }
+                                }}
+                            />
+                            <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 h-10 px-4"
+                                disabled={!chatMessage.trim() || isSendingMessage}
+                                onClick={sendChatMessage}
+                            >
+                                {isSendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="pt-2 text-center text-xs text-gray-600">This negotiation is closed.</p>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="pt-3 border-t border-[#333] space-y-3">
+                    {canAdminRespond && (
+                        <div className="bg-[#0D0D0D] p-3 rounded-lg border border-[#333] space-y-3">
+                            <Label className="text-xs uppercase text-gray-500">Counter Offer</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    type="number"
+                                    placeholder="Price per unit"
+                                    className="bg-black border-[#333] h-9"
+                                    value={counterPrice}
+                                    onChange={(e) => setCounterPrice(e.target.value)}
+                                />
+                                <Input
+                                    placeholder="Message (optional)"
+                                    className="bg-black border-[#333] h-9 flex-1"
+                                    value={counterMessage}
+                                    onChange={(e) => setCounterMessage(e.target.value)}
+                                />
+                                <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    disabled={!counterPrice || isSubmitting}
+                                    onClick={sendCounter}
+                                >
+                                    <Send className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {canAccept && (
+                        <Button
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            disabled={isSubmitting}
+                            onClick={() => setIsAcceptOpen(true)}
+                        >
+                            <Check className="w-4 h-4 mr-2" />
+                            {canConfirmLegacy ? 'Confirm Order' : 'Accept Deal'}
+                        </Button>
+                    )}
+
+                    {detail.status === 'countered' && (
+                        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
+                            Wholesaler is replying in chat. You can counter again or accept to confirm the order.
+                        </div>
+                    )}
+
+                    {canReject && (
+                        <Button
+                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                            disabled={isSubmitting}
+                            onClick={() => setIsRejectOpen(true)}
+                        >
+                            <X className="w-4 h-4 mr-2" /> Reject
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Reject dialog */}
+            <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
+                <DialogContent className="border-[#333] bg-[#161616] text-white">
+                    <DialogHeader>
+                        <DialogTitle>Reject negotiation?</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            The wholesaler will be notified with your reason.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        placeholder="Rejection reason (optional)"
+                        className="bg-black border-[#333] text-white"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                    />
+                    <DialogFooter>
+                        <Button variant="ghost" className="text-gray-300" onClick={() => setIsRejectOpen(false)}>Cancel</Button>
+                        <Button className="bg-red-600 hover:bg-red-700" disabled={isSubmitting} onClick={confirmReject}>
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reject'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Accept / confirm-order dialog with address */}
+            <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
+                <DialogContent className="border-[#333] bg-[#161616] text-white max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Accept &amp; confirm order</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            {detail.requestedQuantity} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
+                            This creates a pending-payment order in the wholesaler&apos;s history.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">Full name *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.fullName} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, fullName: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">Phone *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.phone} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, phone: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-2">
+                            <Label className="text-xs text-gray-400">Address line 1 *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.addressLine1} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine1: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-2">
+                            <Label className="text-xs text-gray-400">Address line 2</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.addressLine2 || ''} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine2: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">City *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.city} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, city: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">State *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.state} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, state: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">Pincode *</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.pincode} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, pincode: e.target.value }) }} />
+                        </div>
+                        <div className="col-span-1">
+                            <Label className="text-xs text-gray-400">Note for order</Label>
+                            <Input className="bg-black border-[#333] h-9 mt-1" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" className="text-gray-300" onClick={() => setIsAcceptOpen(false)}>Cancel</Button>
+                        <Button className="bg-green-600 hover:bg-green-700" disabled={isSubmitting} onClick={confirmAccept}>
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : `Accept · ₹${orderTotal.toLocaleString()}`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}
+
+function statusColor(status: string): string {
+    switch (status) {
+        case 'pending': return 'text-yellow-500 border-yellow-500'
+        case 'accepted': return 'text-green-500 border-green-500'
+        case 'converted': return 'text-emerald-400 border-emerald-400'
+        case 'rejected': return 'text-red-500 border-red-500'
+        case 'countered': return 'text-blue-500 border-blue-500'
+        case 'expired': return 'text-gray-500 border-gray-500'
+        default: return 'text-gray-500 border-gray-500'
+    }
 }

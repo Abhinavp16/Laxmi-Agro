@@ -27,6 +27,7 @@ export function useNegotiationSocket(
   const [messages, setMessages] = useState<SocketMessage[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [readReceipts, setReadReceipts] = useState<Set<string>>(new Set());
+  const [lastAction, setLastAction] = useState<{ kind: string; payload: unknown; at: number } | null>(null);
 
   useEffect(() => {
     if (!negotiationId || !userId) return;
@@ -83,6 +84,14 @@ export function useNegotiationSocket(
       console.log('[Socket Admin] Message read:', data);
       setReadReceipts((prev) => new Set([...prev, data.messageId]));
     });
+
+    // Deal lifecycle events emitted by the backend (accept / counter / reject)
+    for (const kind of ['negotiation-accepted', 'negotiation-countered', 'negotiation-rejected']) {
+      socket.on(kind, (payload: unknown) => {
+        console.log(`[Socket Admin] ${kind}:`, payload);
+        setLastAction({ kind, payload, at: Date.now() });
+      });
+    }
 
     socketRef.current = socket;
 
@@ -142,6 +151,7 @@ export function useNegotiationSocket(
     messages,
     typingUsers,
     readReceipts,
+    lastAction,
     sendMessage,
     emitTyping,
     emitStopTyping,
