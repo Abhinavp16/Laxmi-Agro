@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages, GripVertical } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,7 +76,16 @@ type UploadStatus = 'idle' | 'converting' | 'uploading' | 'done'
 
 export default function CategoriesPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [categories, setCategories] = useState<Category[]>([])
+    // Drill-down navigation: null = top level, set = viewing subcategories of parent
+    const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
+    const [scope, setScope] = useState<'parents' | 'subs' | 'all'>(() => {
+        const s = searchParams?.get('scope')
+        if (s === 'subcategories' || s === 'subs') return 'subs'
+        if (s === 'all') return 'all'
+        return 'parents'
+    })
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -126,6 +135,21 @@ export default function CategoriesPage() {
         fetchCompanies()
     }, [])
 
+    // Sync scope from sidebar link (?scope=subcategories)
+    useEffect(() => {
+        const s = searchParams?.get('scope')
+        if (s === 'subcategories' || s === 'subs') {
+            setScope('subs')
+            setSelectedParentId(null)
+        } else if (s === 'all') {
+            setScope('all')
+            setSelectedParentId(null)
+        } else if (s === 'parents') {
+            setScope('parents')
+            setSelectedParentId(null)
+        }
+    }, [searchParams])
+
     async function fetchCompanies() {
         try {
             const res = await apiFetch('/companies?page=1&limit=500', { skipAuth: true })
@@ -149,6 +173,51 @@ export default function CategoriesPage() {
         return companies.find(company => company._id === category.company)?.name || 'Unassigned'
     }
 
+    // ---- Hierarchy helpers: parents vs subcategories ----
+    const parentCategories = useMemo(
+        () => categories.filter((c) => !c.parent?._id),
+        [categories]
+    )
+    const allSubcategories = useMemo(
+        () => categories.filter((c) => !!c.parent?._id),
+        [categories]
+    )
+    const selectedParent = useMemo(
+        () => categories.find((c) => c._id === selectedParentId) || null,
+        [categories, selectedParentId]
+    )
+    const subcategoriesOfSelected = useMemo(
+        () => categories.filter((c) => c.parent?._id === selectedParentId),
+        [categories, selectedParentId]
+    )
+    const subcategoryCountByParent = useMemo(() => {
+        const map = new Map<string, number>()
+        for (const c of categories) {
+            const pid = c.parent?._id
+            if (pid) map.set(pid, (map.get(pid) || 0) + 1)
+        }
+        return map
+    }, [categories])
+
+    const visibleCategories = useMemo(() => {
+        // Drill-down takes precedence: show subs of selected parent
+        if (selectedParentId) return subcategoriesOfSelected
+        if (scope === 'parents') return parentCategories
+        if (scope === 'subs') return allSubcategories
+        return categories
+    }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories])
+
+    function handleCategoryClick(category: Category) {
+        // Parent (no parent ref): drill into its subcategories in-place
+        if (!category.parent?._id) {
+            setSelectedParentId(category._id)
+            setScope('parents')
+            return
+        }
+        // Subcategory: open its products
+        router.push(`/categories/${category._id}/products`)
+    }
+
     async function fetchCategories(pageNum: number = 1, reset: boolean = false) {
         if (reset) {
             setIsLoading(true)
@@ -160,7 +229,7 @@ export default function CategoriesPage() {
         try {
             const params = new URLSearchParams()
             params.append('page', pageNum.toString())
-            params.append('limit', '200')
+            params.append('limit', '500')
             if (searchQuery.trim()) {
                 params.append('search', searchQuery.trim())
             }
@@ -584,9 +653,9 @@ export default function CategoriesPage() {
                 className={`cursor-pointer border-[#333] transition-colors ${
                     isDragging ? 'bg-[#86efac]/10 ring-2 ring-[#86efac]' : 'hover:bg-[#1A1A1A]'
                 }`}
-                onClick={() => router.push(`/categories/${category._id}/products`)}
+                onClick={() => handleCategoryClick(category)}
             >
-                <TableCell 
+                <TableCell
                     {...attributes}
                     {...listeners}
                     className="text-gray-400 cursor-grab active:cursor-grabbing"
@@ -683,7 +752,7 @@ export default function CategoriesPage() {
             <div
                 ref={setNodeRef}
                 style={style}
-                onClick={() => !isDragging && router.push(`/categories/${category._id}/products`)}
+                onClick={() => !isDragging && handleCategoryClick(category)}
                 className={`relative bg-[#161616] rounded-xl overflow-hidden transition-all cursor-pointer border border-[#333] ${
                     isDragging ? 'opacity-50 ring-2 ring-[#86efac] shadow-lg shadow-[#86efac]/20' : 'hover:border-[#86efac]/50'
                 } ${category.isActive ? '' : 'opacity-60'}`}
@@ -751,6 +820,12 @@ export default function CategoriesPage() {
                             <Package className="h-3 w-3" />
                             {category.productCount}
                         </span>
+                        {!category.parent?._id && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 font-medium text-blue-300">
+                                <FolderTree className="h-3 w-3" />
+                                {subcategoryCountByParent.get(category._id) || 0} subs
+                            </span>
+                        )}
                     </div>
                     {category.parent?.name && (
                         <p className="text-gray-500 text-xs pt-2 border-t border-[#333]">Parent: {category.parent.name}</p>
@@ -770,8 +845,27 @@ export default function CategoriesPage() {
                 <div className="flex min-w-0 items-center gap-3">
                     <FolderTree className="h-7 w-7 shrink-0 text-[#86efac] sm:h-8 sm:w-8" />
                     <div>
-                        <h1 className="text-2xl font-bold text-white sm:text-3xl">Categories</h1>
-                        <p className="text-gray-400 text-sm">{totalCategories > 0 && `(${totalCategories} categories)`}</p>
+                        <h1 className="text-2xl font-bold text-white sm:text-3xl">
+                            {selectedParent ? selectedParent.name : scope === 'subs' ? 'Subcategories' : 'Categories'}
+                        </h1>
+                        <p className="text-gray-400 text-sm">
+                            {selectedParent
+                                ? `Subcategories of ${selectedParent.name} (${visibleCategories.length})`
+                                : scope === 'subs'
+                                    ? `(${allSubcategories.length} subcategories)`
+                                    : scope === 'all'
+                                        ? `(${totalCategories} total)`
+                                        : `(${parentCategories.length} categories)`}
+                        </p>
+                        {selectedParent && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedParentId(null)}
+                                className="mt-1 text-xs text-[#86efac] hover:underline"
+                            >
+                                ← Back to all categories
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -848,16 +942,87 @@ export default function CategoriesPage() {
                 )}
             </form>
 
+            {/* Scope tabs + breadcrumb */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-1 rounded-lg border border-[#333] bg-[#161616] p-1 text-sm">
+                    {([
+                        { key: 'parents', label: `Categories (${parentCategories.length})` },
+                        { key: 'subs', label: `Subcategories (${allSubcategories.length})` },
+                        { key: 'all', label: `All (${categories.length})` },
+                    ] as const).map((tab) => (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => {
+                                setScope(tab.key)
+                                setSelectedParentId(null)
+                            }}
+                            className={`rounded-md px-3 py-1.5 transition-colors ${
+                                !selectedParentId && scope === tab.key
+                                    ? 'bg-[#86efac] font-semibold text-black'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                {selectedParent ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <span>Categories</span>
+                        <span>/</span>
+                        <span className="font-medium text-white">{selectedParent.name}</span>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                                setEditingCategory(selectedParent)
+                                setSubcategoryName("")
+                                setSubcategoryNameHindi("")
+                                setSubcategoryDescription("")
+                                setSubcategoryOrder("0")
+                                setEditingSubcategory(null)
+                                setIsSubcategoryDialogOpen(true)
+                            }}
+                            className="ml-2 h-8 bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                        >
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            Add Subcategory
+                        </Button>
+                    </div>
+                ) : (
+                    <p className="text-xs text-gray-500">Click a category card to open its subcategories. Click a subcategory to open its products.</p>
+                )}
+            </div>
+
             {/* Categories Content */}
             {isLoading ? (
                 <div className="bg-[#161616] rounded-xl border border-[#333] flex justify-center items-center h-48">
                     <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                 </div>
-            ) : categories.length === 0 ? (
+            ) : visibleCategories.length === 0 ? (
                 <div className="bg-[#161616] rounded-xl border border-[#333] flex flex-col items-center justify-center h-48 text-gray-400">
                     <FolderTree className="h-12 w-12 mb-4 opacity-50" />
-                    <p>No categories found</p>
-                    <p className="text-sm">Create your first category to get started</p>
+                    <p>{selectedParent ? `No subcategories under ${selectedParent.name}` : scope === 'subs' ? 'No subcategories found' : 'No categories found'}</p>
+                    <p className="text-sm">{selectedParent ? 'Add your first subcategory' : 'Create your first category to get started'}</p>
+                    {selectedParent && (
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setEditingCategory(selectedParent)
+                                setSubcategoryName("")
+                                setSubcategoryNameHindi("")
+                                setSubcategoryDescription("")
+                                setSubcategoryOrder("0")
+                                setEditingSubcategory(null)
+                                setIsSubcategoryDialogOpen(true)
+                            }}
+                            className="mt-4 bg-[#86efac] text-black hover:bg-[#86efac]/90"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Subcategory
+                        </Button>
+                    )}
                 </div>
             ) : viewMode === 'list' ? (
                 /* List View with Drag and Drop */
@@ -867,7 +1032,7 @@ export default function CategoriesPage() {
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
-                        items={categories.map(c => c._id)}
+                        items={visibleCategories.map(c => c._id)}
                         strategy={verticalListSortingStrategy}
                     >
                         <div className="bg-[#161616] rounded-xl border border-[#333] overflow-hidden">
@@ -886,7 +1051,7 @@ export default function CategoriesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {categories.map((category, index) => (
+                                    {visibleCategories.map((category, index) => (
                                         <DraggableTableRow key={category._id} category={category} index={index} />
                                     ))}
                                 </TableBody>
@@ -902,11 +1067,11 @@ export default function CategoriesPage() {
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
-                        items={categories.map(c => c._id)}
+                        items={visibleCategories.map(c => c._id)}
                         strategy={rectSortingStrategy}
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {categories.map((category, index) => (
+                            {visibleCategories.map((category, index) => (
                                 <DraggableCard key={category._id} category={category} index={index} />
                             ))}
                         </div>
