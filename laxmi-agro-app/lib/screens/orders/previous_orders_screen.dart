@@ -243,6 +243,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final orderType = order['orderType']?.toString() == 'wholesale'
         ? 'Wholesale order'
         : 'Retail order';
+    final isNegotiated = order['negotiationId'] != null &&
+        order['negotiationId'].toString().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -278,12 +280,39 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$orderType · ${_formatDate(order['createdAt'])}',
+                '$orderType${isNegotiated ? ' · Negotiated price' : ''} · ${_formatDate(order['createdAt'])}',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (isNegotiated) ...[
+                const SizedBox(height: 5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E40AF).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.handshake_outlined,
+                          size: 13, color: Color(0xFF1E40AF)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Negotiated',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1E40AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 7),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

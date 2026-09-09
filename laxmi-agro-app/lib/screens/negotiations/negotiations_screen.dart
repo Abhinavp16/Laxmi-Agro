@@ -350,6 +350,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '')
         .toString();
     final canPay = negotiation['canPay'] == true;
+    final hasOrder = negotiation['orderId'] != null &&
+        negotiation['orderId'].toString().isNotEmpty;
     final createdAt = negotiation['createdAt'] as String? ?? '';
 
     String formattedDate = '';
@@ -605,6 +607,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                         currentOfferBy,
                         canPay,
                         negotiationId,
+                        hasOrder,
                       ),
                     ],
                   ),
@@ -622,25 +625,34 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     String currentOfferBy,
     bool canPay,
     String negotiationId,
+    bool hasOrder,
   ) {
     String label;
     String style;
     IconData? icon;
     VoidCallback? onTap;
 
-    if (status == 'countered' && currentOfferBy == 'admin') {
-      label = 'Respond to Counter';
+    Future<void> openDetail() async {
+      final result = await context.push('/negotiation-detail/$negotiationId');
+      if (result == true) _fetchNegotiations();
+    }
+
+    if (hasOrder || status == 'converted') {
+      label = 'View Order';
+      style = 'primary';
+      icon = Icons.local_shipping_outlined;
+      onTap = () => context.push('/previous-orders');
+    } else if (status == 'countered' && currentOfferBy == 'admin') {
+      label = 'Reply in Chat';
       style = 'primary';
       icon = Icons.reply_rounded;
-      onTap = () async {
-        final result = await context.push('/negotiation-detail/$negotiationId');
-        if (result == true) _fetchNegotiations();
-      };
+      onTap = openDetail;
     } else if (status == 'accepted' && canPay) {
+      // Legacy rows accepted before order auto-creation.
       label = 'Proceed to Order';
       style = 'primary';
       icon = Icons.account_balance_wallet_rounded;
-      onTap = () {};
+      onTap = openDetail;
     } else if (status == 'pending') {
       label = 'Under Review';
       style = 'disabled';
@@ -653,10 +665,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     } else {
       label = 'View Details';
       style = 'outline';
-      onTap = () async {
-        final result = await context.push('/negotiation-detail/$negotiationId');
-        if (result == true) _fetchNegotiations();
-      };
+      onTap = openDetail;
     }
 
     return GestureDetector(
