@@ -22,6 +22,10 @@ const magicLinkTokenSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  deliveredAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 });

@@ -1,10 +1,10 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const sharp = require('sharp');
 const { User, RefreshToken, MagicLinkToken } = require('../models');
 const { saveBuffer } = require('../config/storage');
-const { sendMagicLinkEmail } = require('../services/emailService');
+const { assertSmtpConfigured } = require('../services/emailService');
+const { consumeMagicLink, issueMagicLink } = require('../services/magicLinkService');
 const { UnauthorizedError, ConflictError, BadRequestError, ForbiddenError } = require('../utils/errors');
 const { USER_ROLES, AUTH_PROVIDERS } = require('../utils/constants');
 const { sanitizeUser } = require('../utils/helpers');
@@ -13,8 +13,6 @@ const { currentLegalAcceptance } = require('../config/legalAcceptance');
 
 const DEFAULT_ADMIN_EMAILS = 'abhinavpandey12201@gmail.com,mayurkhatwani5@gmail.com';
 const STAFF_SESSION_MS = 6 * 60 * 60 * 1000;
-
-const hashMagicToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 function getMagicLinkPanelUrl() {
   const configuredUrl = String(process.env.ADMIN_PANEL_URL || process.env.FRONTEND_URL || '').trim();
@@ -587,6 +585,8 @@ exports.convertToWholesaler = async (req, res, next) => {
 
 exports.requestMagicLink = async (req, res, next) => {
   try {
+    assertSmtpConfigured();
+
     const adminEmails = (process.env.ADMIN_EMAILS || DEFAULT_ADMIN_EMAILS)
       .split(',')
       .map((email) => email.trim().toLowerCase())
@@ -599,20 +599,11 @@ exports.requestMagicLink = async (req, res, next) => {
       const user = await User.findOne({ email, role: USER_ROLES.ADMIN, isActive: true });
       if (!user) continue; // silently skip unseeded/inactive admins
 
-      // Invalidate previous unused links for this admin
-      await MagicLinkToken.deleteMany({ email, used: false });
-
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
-
-      await MagicLinkToken.create({
+      await issueMagicLink({
         email,
-        tokenHash: hashMagicToken(rawToken),
-        expiresAt,
+        panelUrl,
+        expiryMinutes,
       });
-
-      const link = `${panelUrl}/login/verify?token=${rawToken}`;
-      await sendMagicLinkEmail(email, link, expiryMinutes);
     }
 
     // Generic response - no account enumeration
@@ -629,14 +620,11 @@ exports.verifyMagicLink = async (req, res, next) => {
   try {
     const { token } = req.body;
 
-    const record = await MagicLinkToken.findOne({ tokenHash: hashMagicToken(token) });
+    const record = await consumeMagicLink(token);
 
-    if (!record || record.used || record.expiresAt < new Date()) {
+    if (!record) {
       throw new ForbiddenError('Magic link is invalid or has expired', 'MAGIC_LINK_INVALID');
     }
-
-    // Delete immediately to guarantee one-time use even under concurrent clicks
-    await MagicLinkToken.deleteOne({ _id: record._id });
 
     const user = await User.findOne({
       email: record.email,
@@ -652,6 +640,7 @@ exports.verifyMagicLink = async (req, res, next) => {
     await user.save();
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
+    await MagicLinkToken.deleteMany({ email: record.email, used: false });
 
     res.json({
       success: true,

@@ -46,6 +46,12 @@ class ValidationError extends AppError {
   }
 }
 
+class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service temporarily unavailable', code = 'SERVICE_UNAVAILABLE') {
+    super(message, 503, code);
+  }
+}
+
 module.exports = {
   AppError,
   BadRequestError,
@@ -54,4 +60,5 @@ module.exports = {
   NotFoundError,
   ConflictError,
   ValidationError,
+  ServiceUnavailableError,
 };

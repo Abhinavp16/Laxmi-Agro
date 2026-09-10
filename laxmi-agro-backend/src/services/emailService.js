@@ -1,8 +1,18 @@
 const nodemailer = require('nodemailer');
+const { ServiceUnavailableError } = require('../utils/errors');
 
 let transporter = null;
 
 const isSmtpConfigured = () => Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+const assertSmtpConfigured = () => {
+  if (!isSmtpConfigured()) {
+    throw new ServiceUnavailableError(
+      'Admin sign-in email is temporarily unavailable',
+      'MAGIC_LINK_EMAIL_UNAVAILABLE',
+    );
+  }
+};
 
 const getTransporter = () => {
   if (!transporter) {
@@ -47,18 +57,9 @@ const buildMagicLinkHtml = (link, expiryMinutes) => `
 
 /**
  * Sends a magic link sign-in email.
- * In non-production environments without SMTP configured, logs the link to the console instead.
  */
 exports.sendMagicLinkEmail = async (to, link, expiryMinutes = 5) => {
-  if (!isSmtpConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('SMTP is not configured in production');
-    }
-    console.log('\n[EmailService] SMTP not configured - magic link logged to console instead:');
-    console.log(`[EmailService] To: ${to}`);
-    console.log(`[EmailService] Magic link: ${link}\n`);
-    return;
-  }
+  assertSmtpConfigured();
 
   const info = await getTransporter().sendMail({
     from: `"Laxmi Agro Admin" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
@@ -70,3 +71,6 @@ exports.sendMagicLinkEmail = async (to, link, expiryMinutes = 5) => {
 
   console.log(`[EmailService] Magic link email sent to ${to} (messageId: ${info.messageId})`);
 };
+
+exports.assertSmtpConfigured = assertSmtpConfigured;
+exports.isSmtpConfigured = isSmtpConfigured;

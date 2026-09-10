@@ -13,6 +13,4 @@ router.get('/:id/related', optionalAuth, productController.getRelatedProducts);
 router.get('/:slug', optionalAuth, productController.getProductBySlug);
 router.post('/:id/view', optionalAuth, productController.trackProductView);
 router.post('/:id/event', optionalAuth, productController.trackProductEvent);
-router.patch('/:id/hindi-name', productController.updateProductNameHindi);
-
 module.exports = router;

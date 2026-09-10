@@ -18,6 +18,7 @@
     "products:clean-names": "node src/scripts/cleanProductNames.js",
     "products:split-pump-categories": "node src/scripts/splitPumpCategories.js",
     "products:sync-shivnath-kq": "node src/scripts/syncShivnathKQCategories.js",
+    "migrate:negotiation-order-index": "node scripts/ensureNegotiationOrderUniqueIndex.js",
     "payments:remove-razorpay": "CONFIRM_RAZORPAY_CLEANUP=1 node src/scripts/removeRazorpayData.js",
     "diagnose:ios-push": "node src/scripts/diagnoseIosPush.js",
     "media:audit-private": "node src/scripts/auditPrivateMediaMigration.js",
@@ -26,6 +27,7 @@
     "staff:clear-password-change-flags": "node scripts/clearStaffPasswordChangeFlags.js",
     "test": "node tests/inventory.test.js",
     "test:auth-phone": "node tests/authPhoneValidation.test.js",
+    "test:critical": "node tests/productionCritical.test.js",
     "test:price-snapshot": "node tests/priceSnapshotWorkbook.test.js"
   },
   "keywords": [

@@ -492,47 +492,6 @@ exports.trackProductEvent = async (req, res, next) => {
   }
 };
 
-exports.updateProductNameHindi = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { nameHindi } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid product id',
-        code: 'INVALID_PRODUCT_ID',
-      });
-    }
-
-    if (!nameHindi) {
-      return res.status(400).json({ success: false, message: 'nameHindi is required' });
-    }
-
-    const product = await Product.findByIdAndUpdate(
-      id,
-      { nameHindi },
-      { new: true, runValidators: true }
-    );
-
-    if (!product) {
-      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
-    }
-
-    res.json({
-      success: true,
-      data: {
-        id: product._id,
-        name: product.name,
-        nameHindi: product.nameHindi,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
 exports.getRelatedProducts = async (req, res, next) => {
   try {
     const { id } = req.params;

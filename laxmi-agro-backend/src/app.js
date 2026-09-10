@@ -13,6 +13,10 @@ const { NotFoundError } = require('./utils/errors');
 
 const app = express();
 
+app.set('trust proxy', process.env.NODE_ENV === 'production'
+  ? Number(process.env.TRUST_PROXY_HOPS || 1)
+  : false);
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
