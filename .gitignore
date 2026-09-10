@@ -14,3 +14,7 @@ laxmi-agro-admin/tests/*.png
 .local-*.err.log
 veepee-app
 **/uploads
+# Environment secrets - defense in depth (nested rules exist too)
+**/.env
+**/.env.*
+!**/.env.example

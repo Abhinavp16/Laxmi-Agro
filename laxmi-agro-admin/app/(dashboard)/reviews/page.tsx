@@ -42,9 +42,10 @@ export default function ReviewsPage() {
             const res = await apiFetch('/admin/reviews')
             const data = await res.json()
             if (res.ok) {
-                setReviews(data.data.reviews || [])
+                const list = Array.isArray(data.data) ? data.data : (data.data?.reviews ?? data.reviews ?? [])
+                setReviews(list)
             } else {
-                toast.error("Failed to fetch reviews")
+                toast.error(data?.message || "Failed to fetch reviews")
             }
         } catch (error) {
             console.error(error)
@@ -112,7 +113,7 @@ export default function ReviewsPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                         </div>
                     ) : reviews.length === 0 ? (
-                        <div className="text-center text-gray-500 py-10">No reviews found. Click "Add Review" to create one.</div>
+                        <div className="text-center text-gray-500 py-10">No reviews found. Click &quot;Add Review&quot; to create one.</div>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -132,7 +133,7 @@ export default function ReviewsPage() {
                                             <div className="text-xs text-[#86efac]">{review.role}</div>
                                         </TableCell>
                                         <TableCell className="text-gray-400">
-                                            <p className="line-clamp-2 italic text-sm">"{review.review}"</p>
+                                            <p className="line-clamp-2 italic text-sm">&quot;{review.review}&quot;</p>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1 text-[#F59E0B]">
