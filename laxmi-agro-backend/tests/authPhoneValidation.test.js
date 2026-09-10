@@ -79,6 +79,18 @@ function run() {
     const result = validate(schema, payload(validPhone));
     assert.ifError(result.error, `${name} should accept a valid Indian mobile number`);
     assert.strictEqual(result.value.phone, validPhone);
+    assert.strictEqual(result.value.termsAccepted, true);
+    assert.strictEqual(result.value.privacyPolicyAccepted, true);
+  }
+
+  for (const { name, schema, payload } of registrationSchemas.slice(2)) {
+    const missingConsent = payload(validPhone);
+    delete missingConsent.termsAccepted;
+    assert.ok(validate(schema, missingConsent).error, `${name} must require terms acceptance`);
+
+    const refusedPrivacy = payload(validPhone);
+    refusedPrivacy.privacyPolicyAccepted = false;
+    assert.ok(validate(schema, refusedPrivacy).error, `${name} must require privacy acceptance`);
   }
 
   const invalidPhones = [
