@@ -26,8 +26,8 @@ export default function SiteNavbar() {
     const pathname = usePathname();
 
     return (
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 sm:pt-6 lg:px-7 lg:pt-7">
-            <nav className="pointer-events-auto relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between text-white">
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-[40px] sm:px-6 sm:pt-12 lg:px-7 lg:pt-[60px]">
+            <nav className="pointer-events-auto relative z-20 flex w-full items-center justify-between px-5 text-white sm:px-8 lg:px-10">
                 <Link href="/" className="group flex items-center gap-3">
                     <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f8f5e9] text-[#123b1f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:h-14 sm:w-14">
                         <img src="/favicon-rounded.png" alt="Laxmi Agro" className="h-10 w-10 rounded-full object-cover sm:h-11 sm:w-11" />
