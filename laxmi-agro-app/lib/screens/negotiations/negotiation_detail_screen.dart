@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 
+import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
@@ -30,14 +31,15 @@ class _NegotiationDetailScreenState
   bool _isActioning = false;
   String? _error;
   Map<String, dynamic>? _negotiation;
-  List<Map<String, dynamic>> _optimisticMessages = [];
-  Map<String, bool> _typingUsers = {}; // { userId: isTyping }
-  Map<String, bool> _readReceipts = {}; // { messageId: isRead }
+  final List<Map<String, dynamic>> _optimisticMessages = [];
+  final Map<String, bool> _typingUsers = {}; // { userId: isTyping }
+  final Map<String, bool> _readReceipts = {}; // { messageId: isRead }
   final _counterMessageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final NegotiationSocketService _socketService =
-      NegotiationSocketService();
-  static const int MAX_MESSAGE_LENGTH = 280;
+  final NegotiationSocketService _socketService = NegotiationSocketService();
+  int _detailRequestSequence = 0;
+  bool _refreshAfterInitialLoad = false;
+  static const int maxMessageLength = 280;
 
   static const Color primaryBlue = Color(0xFF2563EB);
   static const Color backgroundWhite = Color(0xFFF8FAFC);
@@ -59,20 +61,12 @@ class _NegotiationDetailScreenState
 
   void _initializeSocket() {
     final auth = ref.read(authProvider);
-    final serverUrl =
-        'https://api.laxmiagroenterprises.com'; // Use production server
 
     _socketService.onMessageReceived = (data) {
-      debugPrint('[Socket Message] $data');
-      if (mounted) {
-        setState(() {
-          // Message already in optimistic list, just remove it when confirmed
-          final messageId = data['messageId'];
-          _optimisticMessages.removeWhere((m) => m['messageId'] == messageId);
-        });
-        _scrollToBottom();
-      }
+      if (data['negotiationId']?.toString() != widget.negotiationId) return;
+      _refreshFromSocket();
     };
+    _socketService.onNegotiationChanged = _refreshFromSocket;
 
     _socketService.onUserTyping = (userId, username) {
       if (mounted) {
@@ -99,22 +93,22 @@ class _NegotiationDetailScreenState
     };
 
     _socketService.onConnect = () {
-      debugPrint('[Socket] Connected');
       if (mounted) {
-        setState(() {});
+        setState(_typingUsers.clear);
       }
     };
+    _socketService.onReconnect = _refreshFromSocket;
 
     _socketService.onDisconnect = () {
       debugPrint('[Socket] Disconnected');
       if (mounted) {
-        setState(() {});
+        setState(_typingUsers.clear);
       }
     };
 
     if (auth.user?.id != null) {
       _socketService.connect(
-        serverUrl: serverUrl,
+        serverUrl: ApiConfig.publicBaseUrl,
         negotiationId: widget.negotiationId,
         userId: auth.user!.id,
         userRole: 'wholesaler',
@@ -123,11 +117,26 @@ class _NegotiationDetailScreenState
     }
   }
 
+  void _refreshFromSocket() {
+    if (!mounted) return;
+    if (_negotiation == null || _isLoading) {
+      _refreshAfterInitialLoad = true;
+      return;
+    }
+    _fetchDetail(background: true);
+  }
+
+  void _flushQueuedRefresh() {
+    if (!_refreshAfterInitialLoad || _negotiation == null || _isLoading) return;
+    _refreshAfterInitialLoad = false;
+    _fetchDetail(background: true);
+  }
+
   @override
   void dispose() {
     _counterMessageController.dispose();
     _scrollController.dispose();
-    
+
     // Disconnect from socket
     final auth = ref.read(authProvider);
     if (auth.user?.id != null) {
@@ -137,46 +146,73 @@ class _NegotiationDetailScreenState
       );
     }
     _socketService.disconnect();
-    
+
     super.dispose();
   }
 
-  Future<void> _fetchDetail() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<bool> _fetchDetail({bool background = false}) async {
+    if (!mounted) return false;
+    final requestSequence = ++_detailRequestSequence;
+    if (!background) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.get('/negotiations/${widget.negotiationId}');
-      if (!mounted) return;
+      if (!mounted || requestSequence != _detailRequestSequence) return false;
 
       if (response.data['success'] == true) {
         setState(() {
           _negotiation = response.data['data'];
+          final history = (_negotiation?['history'] as List?) ?? const [];
+          final confirmedMessageIds = history
+              .map((entry) => entry is Map ? entry['messageId']?.toString() : null)
+              .whereType<String>()
+              .toSet();
+          _optimisticMessages.removeWhere(
+            (entry) => confirmedMessageIds.contains(entry['messageId']),
+          );
+          _error = null;
           _isLoading = false;
         });
+        _flushQueuedRefresh();
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) _scrollToBottom();
+        });
+        return true;
       } else {
-        setState(() {
-          _error = response.data['message']?.toString() ?? 'Failed to load';
-          _isLoading = false;
-        });
+        if (!background) {
+          setState(() {
+            _error = response.data['message']?.toString() ?? 'Failed to load';
+            _isLoading = false;
+          });
+          _flushQueuedRefresh();
+        }
       }
     } on DioException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.response?.data?['message']?.toString() ?? 'Failed to load';
-        _isLoading = false;
-      });
+      if (!mounted || requestSequence != _detailRequestSequence) return false;
+      if (!background) {
+        setState(() {
+          _error = e.response?.data?['message']?.toString() ?? 'Failed to load';
+          _isLoading = false;
+        });
+        _flushQueuedRefresh();
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Something went wrong';
-        _isLoading = false;
-      });
+      if (!mounted || requestSequence != _detailRequestSequence) return false;
+      if (!background) {
+        setState(() {
+          _error = 'Something went wrong';
+          _isLoading = false;
+        });
+        _flushQueuedRefresh();
+      }
     }
+    return false;
   }
 
   // NOTE: wholesalers negotiate through chat messages only. Accept, counter
@@ -617,8 +653,11 @@ class _NegotiationDetailScreenState
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.verified_rounded,
-                            color: greenAccent, size: 18),
+                        Icon(
+                          Icons.verified_rounded,
+                          color: greenAccent,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -640,10 +679,8 @@ class _NegotiationDetailScreenState
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          context.push('/tracking/$orderId'),
-                      icon: const Icon(Icons.local_shipping_outlined,
-                          size: 18),
+                      onPressed: () => context.push('/tracking/$orderId'),
+                      icon: const Icon(Icons.local_shipping_outlined, size: 18),
                       label: Text(
                         orderNumber.isNotEmpty
                             ? 'View Order $orderNumber'
@@ -675,27 +712,31 @@ class _NegotiationDetailScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                ..._optimisticMessages.map((msg) => _buildChatMessage(
-                      msg['by'] as String,
-                      msg['message'] as String,
-                      DateFormat('h:mm a')
-                          .format(DateTime.parse(msg['timestamp'] as String)),
-                      msg['messageId'] as String?,
-                    )),
-                ...history.reversed.map((entry) {
+                ...history.map((entry) {
                   if (entry['action'] == 'message') {
                     return _buildChatMessage(
                       entry['by'] as String,
                       entry['message'] as String,
                       entry['timestamp'] != null
-                          ? DateFormat('h:mm a')
-                              .format(DateTime.parse(entry['timestamp'] as String))
+                          ? DateFormat('h:mm a').format(
+                              DateTime.parse(entry['timestamp'] as String),
+                            )
                           : '',
                       entry['messageId'] as String?,
                     );
                   }
                   return _buildHistoryItem(entry);
                 }),
+                ..._optimisticMessages.map(
+                  (msg) => _buildChatMessage(
+                    msg['by'] as String,
+                    msg['message'] as String,
+                    DateFormat(
+                      'h:mm a',
+                    ).format(DateTime.parse(msg['timestamp'] as String)),
+                    msg['messageId'] as String?,
+                  ),
+                ),
 
                 const SizedBox(height: 80),
               ],
@@ -987,10 +1028,13 @@ class _NegotiationDetailScreenState
   ]) {
     final isAdmin = by == 'admin';
     final messageColor = isAdmin ? primaryBlue : slateBlue;
-    final bgColor =
-        isAdmin ? primaryBlue.withOpacity(0.08) : backgroundWhite;
-    final alignment = isAdmin ? CrossAxisAlignment.start : CrossAxisAlignment.end;
-    final isRead = messageId != null ? _readReceipts[messageId] ?? false : false;
+    final bgColor = isAdmin ? primaryBlue.withOpacity(0.08) : backgroundWhite;
+    final alignment = isAdmin
+        ? CrossAxisAlignment.start
+        : CrossAxisAlignment.end;
+    final isRead = messageId != null
+        ? _readReceipts[messageId] ?? false
+        : false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1074,8 +1118,8 @@ class _NegotiationDetailScreenState
       return;
     }
 
-    if (messageText.length > MAX_MESSAGE_LENGTH) {
-      _showError('Message too long (max $MAX_MESSAGE_LENGTH characters)');
+    if (messageText.length > maxMessageLength) {
+      _showError('Message too long (max $maxMessageLength characters)');
       return;
     }
 
@@ -1104,7 +1148,10 @@ class _NegotiationDetailScreenState
       final api = ref.read(apiClientProvider);
       await api.post(
         '/negotiations/${widget.negotiationId}/message',
-        data: {'message': messageText},
+        data: {
+          'message': messageText,
+          'messageId': optimisticMessage['messageId'],
+        },
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1121,18 +1168,19 @@ class _NegotiationDetailScreenState
             duration: const Duration(milliseconds: 1500),
           ),
         );
-        // Remove optimistic message and refresh
-        setState(() => _optimisticMessages.clear());
-        _fetchDetail();
+        await _fetchDetail(background: true);
       }
     } on DioException catch (e) {
+      if (!mounted) return;
       _showError(
         e.response?.data?['message']?.toString() ?? 'Failed to send message',
       );
       // Remove optimistic message on error
-      setState(() => _optimisticMessages.removeWhere(
-        (m) => m['messageId'] == optimisticMessage['messageId'],
-      ));
+      setState(
+        () => _optimisticMessages.removeWhere(
+          (m) => m['messageId'] == optimisticMessage['messageId'],
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isActioning = false);
     }
@@ -1166,9 +1214,7 @@ class _NegotiationDetailScreenState
           ),
         ],
       ),
-      child: SafeArea(
-        child: _buildActionRow(status, currentOfferBy, canPay),
-      ),
+      child: SafeArea(child: _buildActionRow(status, currentOfferBy, canPay)),
     );
   }
 
@@ -1230,10 +1276,9 @@ class _NegotiationDetailScreenState
 
   Widget _buildChatInput() {
     final auth = ref.read(authProvider);
-    final typingIndicatorText =
-        _typingUsers.isNotEmpty
-            ? '${_typingUsers.keys.toList().join(', ')} is typing...'
-            : '';
+    final typingIndicatorText = _typingUsers.isNotEmpty
+        ? '${_typingUsers.keys.toList().join(', ')} is typing...'
+        : '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1310,8 +1355,8 @@ class _NegotiationDetailScreenState
               height: 48,
               width: 48,
               child: ElevatedButton(
-                onPressed: (_isActioning ||
-                        _counterMessageController.text.isEmpty)
+                onPressed:
+                    (_isActioning || _counterMessageController.text.isEmpty)
                     ? null
                     : _sendChatMessage,
                 style: ElevatedButton.styleFrom(
@@ -1339,10 +1384,10 @@ class _NegotiationDetailScreenState
         ),
         const SizedBox(height: 4),
         Text(
-          '${_counterMessageController.text.length}/$MAX_MESSAGE_LENGTH',
+          '${_counterMessageController.text.length}/$maxMessageLength',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 11,
-            color: _counterMessageController.text.length > MAX_MESSAGE_LENGTH
+            color: _counterMessageController.text.length > maxMessageLength
                 ? redAccent
                 : textMuted,
             fontWeight: FontWeight.w500,

@@ -1,22 +1,16 @@
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:flutter/foundation.dart';
 
 typedef MessageCallback = void Function(Map<String, dynamic> data);
 typedef TypingCallback = void Function(String userId, String username);
 typedef ReadReceiptCallback = void Function(String messageId, String userId);
-typedef UserStatusCallback = void Function(String userId, String userRole, bool isOnline);
+typedef UserStatusCallback =
+    void Function(String userId, String userRole, bool isOnline);
 
 class NegotiationSocketService {
-  static final NegotiationSocketService _instance =
-      NegotiationSocketService._internal();
+  NegotiationSocketService();
 
-  factory NegotiationSocketService() {
-    return _instance;
-  }
-
-  NegotiationSocketService._internal();
-
-  IO.Socket? _socket;
+  io.Socket? _socket;
   bool _isConnected = false;
   String? _currentNegotiationId;
 
@@ -27,7 +21,9 @@ class NegotiationSocketService {
   ReadReceiptCallback? onReadReceipt;
   UserStatusCallback? onUserStatus;
   VoidCallback? onConnect;
+  VoidCallback? onReconnect;
   VoidCallback? onDisconnect;
+  VoidCallback? onNegotiationChanged;
 
   bool get isConnected => _isConnected;
 
@@ -43,22 +39,30 @@ class NegotiationSocketService {
       return; // Already connected to this negotiation
     }
 
+    _disposeSocket();
+
     _currentNegotiationId = negotiationId;
+    var hasConnected = false;
 
     final socketOptions = {
       'transports': ['websocket'],
-      'autoConnect': true,
+      'autoConnect': false,
       'reconnection': true,
       'reconnectionDelay': 1000,
       'reconnectionDelayMax': 5000,
       'reconnectionAttempts': 10,
     };
 
-    _socket = IO.io(serverUrl, socketOptions);
+    _socket = io.io(serverUrl, socketOptions);
 
     _socket!.on('connect', (_) {
       _isConnected = true;
-      onConnect?.call();
+      if (hasConnected) {
+        onReconnect?.call();
+      } else {
+        hasConnected = true;
+        onConnect?.call();
+      }
 
       // Join negotiation room
       _socket!.emit('join-negotiation', {
@@ -68,7 +72,8 @@ class NegotiationSocketService {
       });
 
       debugPrint(
-          '[Socket] Connected to negotiation $negotiationId - Socket ID: ${_socket!.id}');
+        '[Socket] Connected to negotiation $negotiationId - Socket ID: ${_socket!.id}',
+      );
     });
 
     _socket!.on('disconnect', (_) {
@@ -79,9 +84,16 @@ class NegotiationSocketService {
 
     // Listen for incoming messages
     _socket!.on('receive-message', (data) {
-      debugPrint('[Socket] Message received: $data');
       onMessageReceived?.call(Map<String, dynamic>.from(data));
     });
+
+    for (final event in [
+      'negotiation-accepted',
+      'negotiation-countered',
+      'negotiation-rejected',
+    ]) {
+      _socket!.on(event, (_) => onNegotiationChanged?.call());
+    }
 
     // Listen for typing indicators
     _socket!.on('user-typing', (data) {
@@ -122,27 +134,6 @@ class NegotiationSocketService {
     _socket!.connect();
   }
 
-  /// Send a message via Socket.io
-  void sendMessage({
-    required String message,
-    required String userId,
-    required String userRole,
-  }) {
-    if (!_isConnected || _currentNegotiationId == null) {
-      debugPrint('[Socket] Not connected, cannot send message');
-      return;
-    }
-
-    _socket!.emit('send-message', {
-      'negotiationId': _currentNegotiationId,
-      'message': message,
-      'userId': userId,
-      'userRole': userRole,
-    });
-
-    debugPrint('[Socket] Message sent: $message');
-  }
-
   /// Emit typing indicator
   void emitTyping({
     required String userId,
@@ -170,10 +161,7 @@ class NegotiationSocketService {
   }
 
   /// Mark message as read
-  void markMessageAsRead({
-    required String messageId,
-    required String userId,
-  }) {
+  void markMessageAsRead({required String messageId, required String userId}) {
     if (!_isConnected || _currentNegotiationId == null) return;
 
     _socket!.emit('mark-read', {
@@ -184,10 +172,7 @@ class NegotiationSocketService {
   }
 
   /// Leave negotiation
-  void leaveNegotiation({
-    required String userId,
-    required String userRole,
-  }) {
+  void leaveNegotiation({required String userId, required String userRole}) {
     if (!_isConnected || _currentNegotiationId == null) return;
 
     _socket!.emit('leave-negotiation', {
@@ -201,7 +186,21 @@ class NegotiationSocketService {
 
   /// Disconnect from server
   void disconnect() {
-    _socket?.disconnect();
+    onMessageReceived = null;
+    onUserTyping = null;
+    onStopTyping = null;
+    onReadReceipt = null;
+    onUserStatus = null;
+    onConnect = null;
+    onReconnect = null;
+    onDisconnect = null;
+    onNegotiationChanged = null;
+    _disposeSocket();
+  }
+
+  void _disposeSocket() {
+    _socket?.dispose();
+    _socket = null;
     _isConnected = false;
     _currentNegotiationId = null;
   }

@@ -4,9 +4,32 @@ import 'package:dio/dio.dart';
 import '../models/user_model.dart';
 import '../services/api_client.dart';
 import '../services/redeemed_coupon_service.dart';
-import '../services/shipping_address_service.dart';
 import '../services/storage_service.dart';
 import '../services/token_refresh_service.dart';
+
+String phoneRegistrationEndpoint(bool isWholesaler) =>
+    isWholesaler ? '/auth/register-phone/wholesaler' : '/auth/register-phone';
+
+Map<String, dynamic> buildPhoneRegistrationPayload({
+  required String name,
+  required String phone,
+  required String password,
+  required bool isWholesaler,
+  required bool termsAccepted,
+  required bool privacyPolicyAccepted,
+  required String termsVersion,
+  required String privacyPolicyVersion,
+  String? businessName,
+}) => {
+  'name': name,
+  'phone': phone,
+  'password': password,
+  'termsAccepted': termsAccepted,
+  'privacyPolicyAccepted': privacyPolicyAccepted,
+  'termsVersion': termsVersion,
+  'privacyPolicyVersion': privacyPolicyVersion,
+  if (isWholesaler && businessName != null) 'businessName': businessName,
+};
 
 // Auth State
 class AuthState {
@@ -72,55 +95,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
-
-    try {
-      final response = await _apiClient.post(
-        '/auth/login',
-        data: {'email': email, 'password': password},
-      );
-
-      if (response.data['success'] == true) {
-        final data = response.data['data'];
-        final user = UserModel.fromJson(data['user']);
-
-        await StorageService.saveTokens(
-          data['accessToken'],
-          data['refreshToken'],
-        );
-        await StorageService.saveUserData(data['user']);
-
-        // ✓ NEW: Start proactive token refresh after successful login
-        TokenRefreshService().startProactiveRefresh();
-
-        state = state.copyWith(
-          user: user,
-          isAuthenticated: true,
-          isLoading: false,
-        );
-        return true;
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: response.data['message'] ?? 'Login failed',
-        );
-        return false;
-      }
-    } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? 'Network error. Please try again.';
-      state = state.copyWith(isLoading: false, error: message);
-      return false;
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'An unexpected error occurred',
-      );
-      return false;
-    }
-  }
-
   Future<bool> loginWithPhone({
     required String phone,
     required String password,
@@ -178,65 +152,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> register({
-    required String name,
-    required String email,
-    required String password,
-    String? phone,
-  }) async {
-    state = state.copyWith(isLoading: true, error: null);
-
-    try {
-      final response = await _apiClient.post(
-        '/auth/register',
-        data: {
-          'name': name,
-          'email': email,
-          'password': password,
-          'phone': phone,
-        },
-      );
-
-      if (response.data['success'] == true) {
-        final data = response.data['data'];
-        final user = UserModel.fromJson(data['user']);
-
-        await StorageService.saveTokens(
-          data['accessToken'],
-          data['refreshToken'],
-        );
-        await StorageService.saveUserData(data['user']);
-
-        // ✓ NEW: Start proactive token refresh after successful registration
-        TokenRefreshService().startProactiveRefresh();
-
-        state = state.copyWith(
-          user: user,
-          isAuthenticated: true,
-          isLoading: false,
-        );
-        return true;
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: response.data['message'] ?? 'Registration failed',
-        );
-        return false;
-      }
-    } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? 'Network error. Please try again.';
-      state = state.copyWith(isLoading: false, error: message);
-      return false;
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'An unexpected error occurred',
-      );
-      return false;
-    }
-  }
-
   Future<bool> registerWithPhone({
     required String name,
     required String phone,
@@ -251,22 +166,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final endpoint = isWholesaler
-          ? '/auth/register-phone/wholesaler'
-          : '/auth/register-phone';
+      final endpoint = phoneRegistrationEndpoint(isWholesaler);
       final response = await _apiClient.post(
         endpoint,
-        data: {
-          'name': name,
-          'phone': phone,
-          'password': password,
-          'termsAccepted': termsAccepted,
-          'privacyPolicyAccepted': privacyPolicyAccepted,
-          'termsVersion': termsVersion,
-          'privacyPolicyVersion': privacyPolicyVersion,
-          if (isWholesaler && businessName != null)
-            'businessName': businessName,
-        },
+        data: buildPhoneRegistrationPayload(
+          name: name,
+          phone: phone,
+          password: password,
+          isWholesaler: isWholesaler,
+          termsAccepted: termsAccepted,
+          privacyPolicyAccepted: privacyPolicyAccepted,
+          termsVersion: termsVersion,
+          privacyPolicyVersion: privacyPolicyVersion,
+          businessName: businessName,
+        ),
       );
 
       if (response.data['success'] == true) {
@@ -515,7 +428,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (response.data['success'] == true && response.data['data'] != null) {
         final newAccessToken = response.data['data']['accessToken'];
         final newRefreshToken = response.data['data']['refreshToken'];
-        
+
         if (newAccessToken != null && newRefreshToken != null) {
           await StorageService.saveTokens(newAccessToken, newRefreshToken);
           debugPrint('[Auth] Token refreshed successfully');
@@ -539,7 +452,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     // ✓ NEW: Stop proactive refresh on logout
     TokenRefreshService().stopProactiveRefresh();
-    
+
     try {
       final refreshToken = await StorageService.getRefreshToken();
       if (refreshToken != null) {
@@ -576,8 +489,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        debugPrint('[Auth] Got 401 in fetchCurrentUser, attempting token refresh...');
-        
+        debugPrint(
+          '[Auth] Got 401 in fetchCurrentUser, attempting token refresh...',
+        );
+
         // ✓ NEW: Try to refresh token before clearing session
         final refreshed = await _attemptTokenRefresh();
         if (refreshed) {
@@ -585,7 +500,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           // Retry the request after successful refresh
           return await fetchCurrentUser();
         }
-        
+
         // Only clear session if refresh failed
         debugPrint('[Auth] Token refresh failed, clearing session');
         await _clearLocalSession();

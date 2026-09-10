@@ -123,9 +123,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   int _currentPromoBannerIndex = 0;
   final PageController _promoBannerController = PageController();
   Timer? _promoAutoRotateTimer;
-  final Set<String> _pendingHindiSync = <String>{};
-  final Set<String> _completedHindiSync = <String>{};
-  static final RegExp _mongoObjectIdPattern = RegExp(r'^[a-fA-F0-9]{24}$');
+  final Set<String> _pendingHindiTransliterations = <String>{};
+  final Set<String> _completedHindiTransliterations = <String>{};
+  final Map<String, String> _localHindiNames = <String, String>{};
 
   // Notification state
   List<Map<String, dynamic>> _notifications = [];
@@ -422,7 +422,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         debugPrint('═══════════════════════════════════════════');
         debugPrint('🟢 [PRODUCTS] TOTAL ITEMS FOUND: ${items.length}');
         debugPrint('═══════════════════════════════════════════');
-        
+
         if (items.isNotEmpty) {
           debugPrint('🟢 [PRODUCTS] First item keys: ${items.first is Map ? (items.first as Map).keys.toList() : 'N/A'}');
         }
@@ -1693,9 +1693,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
       if (nameEnglish.isNotEmpty && productId.isNotEmpty) {
         final syncKey = '$productId|$nameEnglish';
-        if (!_pendingHindiSync.contains(syncKey) &&
-            !_completedHindiSync.contains(syncKey)) {
-          _pendingHindiSync.add(syncKey);
+        final localName = _localHindiNames[syncKey];
+        if (localName != null) return localName;
+        if (!_pendingHindiTransliterations.contains(syncKey) &&
+            !_completedHindiTransliterations.contains(syncKey)) {
+          _pendingHindiTransliterations.add(syncKey);
           Future.microtask(
             () => _triggerBackgroundTransliteration(
               productId,
@@ -1717,15 +1719,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     String syncKey,
   ) async {
     if (productId.isEmpty || nameEnglish.isEmpty) {
-      _pendingHindiSync.remove(syncKey);
-      _completedHindiSync.add(syncKey);
-      return;
-    }
-
-    // Avoid backend errors/noise for non-ObjectId placeholder IDs.
-    if (!_mongoObjectIdPattern.hasMatch(productId)) {
-      _pendingHindiSync.remove(syncKey);
-      _completedHindiSync.add(syncKey);
+      _pendingHindiTransliterations.remove(syncKey);
+      _completedHindiTransliterations.add(syncKey);
       return;
     }
 
@@ -1733,12 +1728,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       final transliterated = await TransliterationService.transliterateToHindi(
         nameEnglish,
       );
-      if (transliterated != nameEnglish) {
-        await TransliterationService.syncHindiName(productId, transliterated);
+      if (mounted && transliterated != nameEnglish) {
+        setState(() => _localHindiNames[syncKey] = transliterated);
       }
     } finally {
-      _pendingHindiSync.remove(syncKey);
-      _completedHindiSync.add(syncKey);
+      _pendingHindiTransliterations.remove(syncKey);
+      _completedHindiTransliterations.add(syncKey);
     }
   }
 
