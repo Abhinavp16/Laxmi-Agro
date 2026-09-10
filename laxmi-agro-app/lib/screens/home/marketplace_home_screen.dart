@@ -6269,7 +6269,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildProductsSection(String title, bool isFeatured) {
     // Show all products - the API doesn't properly mark isFeatured/isHot
     // so we show all products in both sections for now
-    final filteredProducts = _products.take(6).toList();
+    final filteredProducts = _products.take(4).toList();
     
     debugPrint('🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Total products: ${_products.length} | Filtered: ${filteredProducts.length}');
     

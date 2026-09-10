@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/order_pagination.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 
 class PreviousOrdersScreen extends ConsumerStatefulWidget {
@@ -36,18 +37,29 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
 
     try {
       final api = ref.read(apiClientProvider);
-      final response = await api.get(
-        '/orders',
-        queryParameters: {'limit': 120},
-      );
-      if (response.data['success'] != true) {
-        throw StateError('Order request was unsuccessful');
-      }
+      final allOrders = <Map<String, dynamic>>[];
+      var page = 1;
+      var hasNext = true;
+      // Backend clamps limit to 50; page through until the server says done.
+      while (hasNext) {
+        final response = await api.get(
+          '/orders',
+          queryParameters: {'page': page, 'limit': 50},
+        );
+        if (response.data['success'] != true) {
+          throw StateError('Order request was unsuccessful');
+        }
 
-      final data = response.data['data'] as List<dynamic>? ?? [];
+        final data = response.data['data'] as List<dynamic>? ?? [];
+        allOrders.addAll(data.cast<Map<String, dynamic>>());
+        hasNext = hasNextOrderPage(
+          Map<String, dynamic>.from(response.data as Map),
+        );
+        page += 1;
+      }
       if (!mounted) return;
       setState(() {
-        _orders = data.cast<Map<String, dynamic>>();
+        _orders = allOrders;
         _isLoading = false;
       });
     } catch (_) {
@@ -60,10 +72,12 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   }
 
   String _fmt(num? price) {
-    return (price ?? 0).toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
+    return (price ?? 0)
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]},',
+        );
   }
 
   String _formatDate(dynamic value) {
@@ -144,10 +158,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: AppColors.textPrimary,
-          ),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
           'My Orders',
@@ -243,7 +254,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final orderType = order['orderType']?.toString() == 'wholesale'
         ? 'Wholesale order'
         : 'Retail order';
-    final isNegotiated = order['negotiationId'] != null &&
+    final isNegotiated =
+        order['negotiationId'] != null &&
         order['negotiationId'].toString().isNotEmpty;
 
     return Container(
@@ -289,8 +301,10 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
               if (isNegotiated) ...[
                 const SizedBox(height: 5),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E40AF).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -298,8 +312,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.handshake_outlined,
-                          size: 13, color: Color(0xFF1E40AF)),
+                      const Icon(
+                        Icons.handshake_outlined,
+                        size: 13,
+                        color: Color(0xFF1E40AF),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Negotiated',
@@ -463,7 +480,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           _detailRow('Delivery', delivery == 0 ? 'Free' : '₹${_fmt(delivery)}'),
           if (discount > 0) ...[
             const SizedBox(height: 6),
-            _detailRow('Discount', '-₹${_fmt(discount)}', valueColor: AppColors.success),
+            _detailRow(
+              'Discount',
+              '-₹${_fmt(discount)}',
+              valueColor: AppColors.success,
+            ),
           ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
@@ -678,7 +699,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   Widget _buildActions(Map<String, dynamic> order, String status) {
     final orderId = order['id']?.toString() ?? '';
     final trackingNumber = order['trackingNumber']?.toString();
-    final canShareReceipt = status == 'pending_payment' || status == 'payment_uploaded';
+    final canShareReceipt =
+        status == 'pending_payment' || status == 'payment_uploaded';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
