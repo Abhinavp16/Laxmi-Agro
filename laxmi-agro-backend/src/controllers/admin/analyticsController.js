@@ -260,7 +260,7 @@ exports.getPotentialCustomers = async (req, res, next) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const SIX_HOURS_MS = 1 * 60 * 1000; // TODO: revert to 6 * 60 * 60 * 1000 after testing
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Step 1: Get unique (userId, productId, latestViewTime) for logged-in users

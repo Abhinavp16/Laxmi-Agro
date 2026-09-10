@@ -28,9 +28,11 @@ exports.getAllReviews = async (req, res, next) => {
         if (rating) query.rating = parseInt(rating);
         if (productId) query.productId = productId;
         if (search) {
+            const safe = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
-                { comment: { $regex: search, $options: 'i' } },
-                { 'userSnapshot.name': { $regex: search, $options: 'i' } },
+                { name: { $regex: safe, $options: 'i' } },
+                { role: { $regex: safe, $options: 'i' } },
+                { review: { $regex: safe, $options: 'i' } },
             ];
         }
 
