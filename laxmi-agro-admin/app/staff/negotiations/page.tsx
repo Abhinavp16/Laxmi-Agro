@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Check, Loader2, MessageSquare, Search, Send } from "@/components/hugeicons"
 
-type StatusFilter = "all" | "pending" | "accepted" | "rejected" | "expired"
+type StatusFilter = "all" | "pending" | "countered" | "accepted" | "rejected" | "expired"
 
 type NegotiationHistory = {
   action: string
@@ -45,6 +45,7 @@ type Negotiation = {
 const statusFilters: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
+  { value: "countered", label: "Countered" },
   { value: "accepted", label: "Accepted" },
   { value: "rejected", label: "Rejected" },
   { value: "expired", label: "Expired" },
@@ -73,8 +74,7 @@ function getStatusBadge(item: Pick<Negotiation, "status" | "isExpired">) {
 
 function getReadOnlyReason(item: Negotiation) {
   if (item.isExpired) return "This negotiation has expired. Only a full admin can continue it."
-  if (item.status !== "pending") return `This negotiation is ${item.status}. It is available to review only.`
-  if (item.currentOfferBy !== "wholesaler") return "Waiting for the wholesaler to respond to the latest counter-offer."
+  if (!["pending", "countered"].includes(item.status)) return `This negotiation is ${item.status}. It is available to review only.`
   if (item.staffMinPrice === null) return "A full admin must set a minimum member price for this product before a member can act."
   return null
 }

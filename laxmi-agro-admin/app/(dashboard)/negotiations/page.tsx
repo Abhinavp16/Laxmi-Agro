@@ -379,35 +379,43 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const [addressTouched, setAddressTouched] = useState(false)
 
     const bottomRef = useRef<HTMLDivElement | null>(null)
+    const detailRequestSequence = useRef(0)
+    const handledSocketRevision = useRef({ negotiationId, message: 0, reconnect: 0 })
+    const handledActionAt = useRef(0)
 
     const currentUser = (typeof window !== 'undefined' ? getUser() : null) as { _id?: string; id?: string; name?: string } | null
     const socketUserId = currentUser?._id || currentUser?.id || ""
     const socketUsername = currentUser?.name || "Admin"
 
-    const { isConnected, typingUsers, lastAction, emitTyping, emitStopTyping } = useNegotiationSocket(
+    const { isConnected, messageRevision, reconnectRevision, typingUsers, lastAction, emitTyping, emitStopTyping } = useNegotiationSocket(
         negotiationId,
         socketUserId,
         socketUsername,
         SOCKET_URL
     )
 
-    const fetchDetail = useCallback(async () => {
+    const fetchDetail = useCallback(async (silent = false) => {
+        const requestSequence = ++detailRequestSequence.current
         try {
             const res = await apiFetch(`/admin/negotiations/${negotiationId}`)
             const data = await res.json()
+            if (requestSequence !== detailRequestSequence.current) return
             if (res.ok) {
                 setDetail(data.data)
-            } else {
+            } else if (!silent) {
                 toast.error(data?.message || "Failed to load details")
             }
         } catch {
-            toast.error("Failed to load details")
+            if (requestSequence === detailRequestSequence.current && !silent) {
+                toast.error("Failed to load details")
+            }
         } finally {
-            setIsLoading(false)
+            if (requestSequence === detailRequestSequence.current) setIsLoading(false)
         }
     }, [negotiationId])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(true)
         setDetail(null)
         setAddress(EMPTY_ADDRESS)
@@ -416,24 +424,52 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
         setCounterPrice("")
         setCounterMessage("")
         setChatMessage("")
-        fetchDetail()
+        fetchDetail(false)
     }, [negotiationId, fetchDetail])
+
+    useEffect(() => {
+        const handled = handledSocketRevision.current
+        if (handled.negotiationId !== negotiationId) {
+            handledSocketRevision.current = {
+                negotiationId,
+                message: messageRevision,
+                reconnect: reconnectRevision,
+            }
+            return
+        }
+        if (handled.message === messageRevision && handled.reconnect === reconnectRevision) return
+        if (!detail) return
+        handledSocketRevision.current = {
+            negotiationId,
+            message: messageRevision,
+            reconnect: reconnectRevision,
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchDetail(true)
+    }, [negotiationId, messageRevision, reconnectRevision, detail, fetchDetail])
 
     // Live updates from wholesaler / staff actions
     useEffect(() => {
-        if (!lastAction) return
+        if (!lastAction || !detail || handledActionAt.current === lastAction.at) return
+        const actionNegotiationId = (lastAction.payload as { negotiationId?: string })?.negotiationId
+        if (actionNegotiationId && String(actionNegotiationId) !== negotiationId) {
+            handledActionAt.current = lastAction.at
+            return
+        }
+        handledActionAt.current = lastAction.at
         if (lastAction.kind === 'negotiation-accepted') {
             toast.success("Negotiation accepted — order confirmed")
         }
-        fetchDetail()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lastAction?.at])
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchDetail(true)
+    }, [lastAction, detail, negotiationId, fetchDetail])
 
     // Prefill address form once detail loads
     useEffect(() => {
         if (!detail || addressTouched) return
         const w = detail.wholesalerId
         const base = detail.lastOrderAddress
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAddress({
             fullName: base?.fullName || w?.name || "",
             phone: base?.phone || w?.phone || "",
@@ -566,11 +602,8 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
     const canAdminRespond =
         (detail.status === 'pending' || detail.status === 'countered') &&
-        detail.currentOfferBy === 'wholesaler' &&
         !detail.orderId
-    // Legacy rows accepted before order auto-creation can still be converted.
-    const canConfirmLegacy = detail.status === 'accepted' && !detail.orderId
-    const canAccept = canAdminRespond || canConfirmLegacy
+    const canAccept = canAdminRespond
     const canReject = detail.status === 'pending' || detail.status === 'countered'
     const canChat = !['rejected', 'expired'].includes(detail.status)
     const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number } | null
@@ -741,7 +774,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             onClick={() => setIsAcceptOpen(true)}
                         >
                             <Check className="w-4 h-4 mr-2" />
-                            {canConfirmLegacy ? 'Confirm Order' : 'Accept Deal'}
+                            Accept Deal
                         </Button>
                     )}
 

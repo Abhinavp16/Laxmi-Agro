@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 
-export const BASE_URL = 'http://localhost:3000';
+export const BASE_URL = 'http://localhost:3001';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/laxmi_agro';
 const JWT_SECRET = process.env.JWT_SECRET || 'agrimart-super-secret-jwt-key-dev-2024';
 

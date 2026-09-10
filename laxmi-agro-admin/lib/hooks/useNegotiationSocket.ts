@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-interface SocketMessage {
-  negotiationId: string;
-  message: string;
-  userId: string;
-  userRole: 'admin' | 'wholesaler';
-  timestamp: string;
-  messageId: string;
-}
-
 interface TypingUser {
   userId: string;
   username: string;
@@ -24,15 +15,15 @@ export function useNegotiationSocket(
 ) {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState<SocketMessage[]>([]);
+  const [messageRevision, setMessageRevision] = useState(0);
+  const [reconnectRevision, setReconnectRevision] = useState(0);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
-  const [readReceipts, setReadReceipts] = useState<Set<string>>(new Set());
   const [lastAction, setLastAction] = useState<{ kind: string; payload: unknown; at: number } | null>(null);
 
   useEffect(() => {
     if (!negotiationId || !userId) return;
 
-    // Initialize Socket.io connection
+    let hasConnected = false;
     const socket = io(serverUrl, {
       transports: ['websocket'],
       reconnection: true,
@@ -42,31 +33,29 @@ export function useNegotiationSocket(
     });
 
     socket.on('connect', () => {
-      console.log('[Socket Admin] Connected:', socket.id);
       setIsConnected(true);
-
-      // Join negotiation room
+      setTypingUsers([]);
       socket.emit('join-negotiation', {
         negotiationId,
         userId,
         userRole: 'admin',
       });
+      if (hasConnected) setReconnectRevision((revision) => revision + 1);
+      hasConnected = true;
     });
 
     socket.on('disconnect', () => {
-      console.log('[Socket Admin] Disconnected');
       setIsConnected(false);
+      setTypingUsers([]);
     });
 
-    // Listen for messages
-    socket.on('receive-message', (data: SocketMessage) => {
-      console.log('[Socket Admin] Message received:', data);
-      setMessages((prev) => [...prev, data]);
+    socket.on('receive-message', (data: { negotiationId?: string }) => {
+      if (String(data?.negotiationId || '') !== negotiationId) return;
+      setMessageRevision((revision) => revision + 1);
     });
 
     // Listen for typing indicators
     socket.on('user-typing', (data: TypingUser) => {
-      console.log('[Socket Admin] User typing:', data);
       setTypingUsers((prev) => {
         // Remove if already exists, then add (to update timestamp)
         const filtered = prev.filter((u) => u.userId !== data.userId);
@@ -75,20 +64,14 @@ export function useNegotiationSocket(
     });
 
     socket.on('stop-typing', (data: { userId: string }) => {
-      console.log('[Socket Admin] User stopped typing:', data.userId);
       setTypingUsers((prev) => prev.filter((u) => u.userId !== data.userId));
-    });
-
-    // Listen for read receipts
-    socket.on('message-read', (data: { messageId: string; userId: string }) => {
-      console.log('[Socket Admin] Message read:', data);
-      setReadReceipts((prev) => new Set([...prev, data.messageId]));
     });
 
     // Deal lifecycle events emitted by the backend (accept / counter / reject)
     for (const kind of ['negotiation-accepted', 'negotiation-countered', 'negotiation-rejected']) {
       socket.on(kind, (payload: unknown) => {
-        console.log(`[Socket Admin] ${kind}:`, payload);
+        const eventNegotiationId = (payload as { negotiationId?: string })?.negotiationId;
+        if (eventNegotiationId && String(eventNegotiationId) !== negotiationId) return;
         setLastAction({ kind, payload, at: Date.now() });
       });
     }
@@ -101,23 +84,11 @@ export function useNegotiationSocket(
         userId,
         userRole: 'admin',
       });
+      socket.removeAllListeners();
       socket.disconnect();
+      if (socketRef.current === socket) socketRef.current = null;
     };
   }, [negotiationId, userId, serverUrl]);
-
-  const sendMessage = (message: string) => {
-    if (!socketRef.current?.connected) {
-      console.error('[Socket Admin] Not connected');
-      return;
-    }
-
-    socketRef.current.emit('send-message', {
-      negotiationId,
-      message,
-      userId,
-      userRole: 'admin',
-    });
-  };
 
   const emitTyping = () => {
     if (!socketRef.current?.connected) return;
@@ -137,24 +108,13 @@ export function useNegotiationSocket(
     });
   };
 
-  const markAsRead = (messageId: string) => {
-    if (!socketRef.current?.connected) return;
-    socketRef.current.emit('mark-read', {
-      negotiationId,
-      messageId,
-      userId,
-    });
-  };
-
   return {
     isConnected,
-    messages,
+    messageRevision,
+    reconnectRevision,
     typingUsers,
-    readReceipts,
     lastAction,
-    sendMessage,
     emitTyping,
     emitStopTyping,
-    markAsRead,
   };
 }
