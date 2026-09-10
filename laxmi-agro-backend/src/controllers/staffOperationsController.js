@@ -194,8 +194,8 @@ function assertStaffNegotiationAction(negotiation, minPrice) {
   if (negotiation.expiresAt <= new Date()) {
     throw new ForbiddenError('Expired negotiations can only be continued by a full admin', 'NEGOTIATION_EXPIRED');
   }
-  if (negotiation.status !== NEGOTIATION_STATUS.PENDING || negotiation.currentOfferBy !== 'wholesaler') {
-    throw new BadRequestError('Waiting for a wholesaler offer before acting', 'INVALID_NEGOTIATION_STATUS');
+  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
+    throw new BadRequestError('Cannot act in the current negotiation status', 'INVALID_NEGOTIATION_STATUS');
   }
   if (minPrice === null) {
     throw new ForbiddenError('A full admin must set this product’s staff minimum price first', 'STAFF_NEGOTIATION_LIMIT_NOT_CONFIGURED');
@@ -220,10 +220,9 @@ exports.acceptNegotiation = async (req, res, next) => {
       message: req.body.message,
       shippingAddress: req.body.shippingAddress,
       customerNote: req.body.customerNote,
+      minimumPrice: minPrice,
       io: req.app.locals.io,
     });
-
-    await recordAudit({ actorId: req.user._id, action: 'negotiation.accepted', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: updated.finalPricePerUnit, orderId: String(order._id) } });
 
     res.json({
       success: true,

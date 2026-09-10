@@ -187,7 +187,10 @@ orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ orderType: 1 });
-orderSchema.index({ negotiationId: 1 }, { sparse: true });
+orderSchema.index(
+  { negotiationId: 1 },
+  { unique: true, partialFilterExpression: { negotiationId: { $type: 'objectId' } } },
+);
 orderSchema.index({ 'items.productId': 1 });
 orderSchema.index({ 'items.variantId': 1 });
 

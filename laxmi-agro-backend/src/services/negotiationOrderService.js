@@ -1,5 +1,5 @@
 const { Order, Product, User, Negotiation } = require('../models');
-const { NotFoundError, BadRequestError } = require('../utils/errors');
+const { NotFoundError, BadRequestError, ConflictError, ForbiddenError } = require('../utils/errors');
 const { ORDER_STATUS, ORDER_TYPES, NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../utils/constants');
 const { getVariantById, buildVariantSnapshot } = require('../utils/productVariants');
 const { recordAudit } = require('./auditService');
@@ -76,6 +76,7 @@ async function acceptNegotiationAndCreateOrder({
   message,
   shippingAddress: bodyAddress,
   customerNote,
+  minimumPrice = null,
   io,
 }) {
   const negotiation = await Negotiation.findById(negotiationId);
@@ -88,13 +89,60 @@ async function acceptNegotiationAndCreateOrder({
     return { negotiation, order: existingOrder, alreadyConverted: true };
   }
 
-  if (
-    ![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status) ||
-    negotiation.currentOfferBy !== 'wholesaler'
-  ) {
+  const orphanedOrder = await Order.findOne({ negotiationId: negotiation._id }).lean();
+  if (orphanedOrder) {
+    const recoveredNegotiation = await finalizeNegotiation({
+      negotiation,
+      order: orphanedOrder,
+      actor,
+      message,
+      recoverExisting: true,
+    });
+    if (recoveredNegotiation) {
+      const [product, wholesaler] = await Promise.all([
+        Product.findById(negotiation.productId),
+        User.findById(negotiation.wholesalerId),
+      ]);
+      await runPostConversionEffects({
+        negotiation: recoveredNegotiation,
+        order: orphanedOrder,
+        actor,
+        product,
+        wholesaler,
+        io,
+      });
+      return {
+        negotiation: recoveredNegotiation,
+        order: orphanedOrder,
+        alreadyConverted: true,
+        addressSource: 'existing_order',
+      };
+    }
     throw new BadRequestError(
-      'Cannot accept until the wholesaler submits an offer',
+      'An existing order could not be linked in the current negotiation status',
+      'NEGOTIATION_ORDER_CONFLICT',
+    );
+  }
+
+  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
+    throw new BadRequestError(
+      'Cannot accept in the current negotiation status',
       'INVALID_NEGOTIATION_STATUS',
+    );
+  }
+
+  if (negotiation.expiresAt <= new Date()) {
+    await Negotiation.updateOne(
+      { _id: negotiation._id, status: { $in: [NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED] } },
+      { $set: { status: NEGOTIATION_STATUS.EXPIRED } },
+    );
+    throw new BadRequestError('Negotiation has expired', 'NEGOTIATION_EXPIRED');
+  }
+
+  if (actor.role === 'staff' && Number(negotiation.currentPricePerUnit) < Number(minimumPrice)) {
+    throw new ForbiddenError(
+      `Staff cannot accept below the configured minimum price of ₹${minimumPrice}`,
+      'STAFF_NEGOTIATION_PRICE_LIMIT',
     );
   }
 
@@ -144,46 +192,84 @@ async function acceptNegotiationAndCreateOrder({
   }];
 
   const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
-  const order = await Order.create({
-    userId: wholesaler._id,
-    customerSnapshot: {
-      name: wholesaler.name,
-      email: wholesaler.email,
-      phone: wholesaler.phone,
-      businessName: wholesaler.businessInfo?.businessName,
-    },
-    orderType: ORDER_TYPES.WHOLESALE,
-    negotiationId: negotiation._id,
-    items: orderItems,
-    subtotal,
-    discount: 0,
-    total: subtotal,
-    shippingAddress,
-    customerNote,
-    adminNote: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed from negotiation chat.`,
-    statusHistory: [{
-      status: ORDER_STATUS.PENDING_PAYMENT,
-      note: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed`,
-      updatedBy: actor.id,
-    }],
+  let order;
+  let createdOrder = false;
+  try {
+    order = await Order.create({
+      userId: wholesaler._id,
+      customerSnapshot: {
+        name: wholesaler.name,
+        email: wholesaler.email,
+        phone: wholesaler.phone,
+        businessName: wholesaler.businessInfo?.businessName,
+      },
+      orderType: ORDER_TYPES.WHOLESALE,
+      negotiationId: negotiation._id,
+      items: orderItems,
+      subtotal,
+      discount: 0,
+      total: subtotal,
+      shippingAddress,
+      customerNote,
+      adminNote: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed from negotiation chat.`,
+      statusHistory: [{
+        status: ORDER_STATUS.PENDING_PAYMENT,
+        note: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed`,
+        updatedBy: actor.id,
+      }],
+    });
+    createdOrder = true;
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+    order = await Order.findOne({ negotiationId: negotiation._id }).lean();
+    if (!order) throw error;
+  }
+
+  const finalizedNegotiation = await finalizeNegotiation({ negotiation, order, actor, message });
+  if (!finalizedNegotiation) {
+    const currentNegotiation = await Negotiation.findById(negotiation._id);
+    if (!currentNegotiation?.orderId) {
+      if (createdOrder) {
+        await Order.deleteOne({ _id: order._id, negotiationId: negotiation._id });
+      }
+      throw new ConflictError(
+        'Negotiation changed while the order was being confirmed. Review it and try again.',
+        'NEGOTIATION_CHANGED',
+      );
+    }
+    const currentOrder = currentNegotiation?.orderId
+      ? await Order.findById(currentNegotiation.orderId).lean()
+      : order;
+    return {
+      negotiation: currentNegotiation || negotiation,
+      order: currentOrder,
+      alreadyConverted: true,
+      addressSource: createdOrder ? source : 'existing_order',
+    };
+  }
+
+  await runPostConversionEffects({
+    negotiation: finalizedNegotiation,
+    order,
+    actor,
+    product,
+    wholesaler,
+    io,
   });
 
-  negotiation.history.push({
-    action: NEGOTIATION_ACTIONS.ACCEPTED,
-    by: 'admin',
-    actorId: actor.id,
-    actorRole: actor.role,
-    pricePerUnit: negotiation.currentPricePerUnit,
-    totalPrice: negotiation.currentTotalPrice,
-    message: message || `Accepted by ${actorLabel}`,
-  });
-  negotiation.status = NEGOTIATION_STATUS.CONVERTED;
-  negotiation.finalPricePerUnit = negotiation.currentPricePerUnit;
-  negotiation.finalTotalPrice = negotiation.currentTotalPrice;
-  negotiation.orderId = order._id;
-  await negotiation.save();
+  return {
+    negotiation: finalizedNegotiation,
+    order,
+    alreadyConverted: false,
+    addressSource: createdOrder ? source : 'existing_order',
+  };
+}
 
-  await Product.findByIdAndUpdate(product._id, { $inc: { orderCount: 1 } });
+async function runPostConversionEffects({ negotiation, order, actor, product, wholesaler, io }) {
+  const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  if (product) {
+    await Product.findByIdAndUpdate(product._id, { $inc: { orderCount: 1 } });
+  }
   await recordAudit({
     actorId: actor.id,
     action: 'negotiation.accepted_with_order',
@@ -196,15 +282,17 @@ async function acceptNegotiationAndCreateOrder({
     },
   });
 
-  await notifyWholesaler(wholesaler._id, {
-    title: 'Negotiation Accepted! ✅',
-    body: `Your offer for ${negotiation.productSnapshot.name} was accepted at ₹${negotiation.finalPricePerUnit}/unit. Order ${order.orderNumber} confirmed.`,
-  }, {
-    type: 'negotiation_accepted',
-    negotiationId: negotiation._id.toString(),
-    orderId: order._id.toString(),
-    orderNumber: order.orderNumber,
-  });
+  if (wholesaler) {
+    await notifyWholesaler(wholesaler._id, {
+      title: 'Negotiation Accepted! ✅',
+      body: `Your negotiated price for ${negotiation.productSnapshot.name} was confirmed at ₹${negotiation.finalPricePerUnit}/unit. Order ${order.orderNumber} confirmed.`,
+    }, {
+      type: 'negotiation_accepted',
+      negotiationId: negotiation._id.toString(),
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+    });
+  }
 
   emitToNegotiationRoom(io, negotiation._id.toString(), 'negotiation-accepted', {
     negotiationId: negotiation._id.toString(),
@@ -215,8 +303,41 @@ async function acceptNegotiationAndCreateOrder({
     acceptedBy: actorLabel,
     timestamp: new Date(),
   });
+}
 
-  return { negotiation, order, alreadyConverted: false, addressSource: source };
+async function finalizeNegotiation({ negotiation, order, actor, message, recoverExisting = false }) {
+  const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  return Negotiation.findOneAndUpdate(
+    {
+      _id: negotiation._id,
+      orderId: null,
+      status: negotiation.status,
+      currentOfferBy: negotiation.currentOfferBy,
+      currentPricePerUnit: negotiation.currentPricePerUnit,
+      currentTotalPrice: negotiation.currentTotalPrice,
+      ...(recoverExisting ? {} : { expiresAt: { $gt: new Date() } }),
+    },
+    {
+      $push: {
+        history: {
+          action: NEGOTIATION_ACTIONS.ACCEPTED,
+          by: 'admin',
+          actorId: actor.id,
+          actorRole: actor.role,
+          pricePerUnit: negotiation.currentPricePerUnit,
+          totalPrice: negotiation.currentTotalPrice,
+          message: message || `Accepted by ${actorLabel}`,
+        },
+      },
+      $set: {
+        status: NEGOTIATION_STATUS.CONVERTED,
+        finalPricePerUnit: negotiation.currentPricePerUnit,
+        finalTotalPrice: negotiation.currentTotalPrice,
+        orderId: order._id,
+      },
+    },
+    { new: true, runValidators: true },
+  );
 }
 
 module.exports = {

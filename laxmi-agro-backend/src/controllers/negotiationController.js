@@ -170,7 +170,7 @@ exports.getNegotiationById = async (req, res, next) => {
 // negotiate through chat messages; only admin & staff accept from the panel.
 exports.sendMessage = async (req, res, next) => {
   try {
-    const { message } = req.body;
+    const { message, messageId } = req.body;
 
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       throw new BadRequestError('Message cannot be empty', 'INVALID_MESSAGE');
@@ -198,7 +198,7 @@ exports.sendMessage = async (req, res, next) => {
       by: 'wholesaler',
       message: message.trim(),
       timestamp: new Date(),
-      messageId: `${req.user._id}-${Date.now()}`,
+      messageId: messageId || `${req.user._id}-${Date.now()}`,
     };
 
     negotiation.history.push(messageEntry);

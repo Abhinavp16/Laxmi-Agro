@@ -16,6 +16,10 @@ const historyEntrySchema = new mongoose.Schema({
   pricePerUnit: Number,
   totalPrice: Number,
   message: String,
+  messageId: {
+    type: String,
+    maxlength: 100,
+  },
   timestamp: {
     type: Date,
     default: Date.now,

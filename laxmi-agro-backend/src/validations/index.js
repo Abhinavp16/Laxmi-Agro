@@ -360,6 +360,7 @@ const adminValidation = {
 
   negotiationMessage: Joi.object({
     message: Joi.string().trim().min(1).max(280).required(),
+    messageId: Joi.string().trim().pattern(/^[A-Za-z0-9:_-]+$/).max(100),
   }),
 
   acceptNegotiation: Joi.object({

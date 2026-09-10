@@ -168,6 +168,7 @@ exports.sendMessage = async (req, res, next) => {
       actorId: req.user._id,
       actorRole: 'admin',
       message: message.trim(),
+      messageId: `${req.user._id}-${Date.now()}`,
       timestamp: new Date(),
     };
     negotiation.history.push(entry);
@@ -179,6 +180,7 @@ exports.sendMessage = async (req, res, next) => {
       userId: String(req.user._id),
       userRole: 'admin',
       timestamp: new Date(),
+      messageId: entry.messageId,
     });
 
     await notifyWholesaler(negotiation.wholesalerId, {
@@ -209,14 +211,6 @@ exports.acceptNegotiation = async (req, res, next) => {
         customerNote,
         io: req.app.locals.io,
       });
-
-    await recordAudit({
-      actorId: req.user._id,
-      action: 'negotiation.accepted_by_admin',
-      entityType: 'negotiation',
-      entityId: negotiation._id,
-      metadata: { orderId: String(order._id), orderNumber: order.orderNumber },
-    });
 
     res.json({
       success: true,
