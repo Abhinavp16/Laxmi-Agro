@@ -1,5 +1,42 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
+
+function readSource(relativePath) {
+  return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+}
+
+function testAnalyticsConversionWindow() {
+  const source = readSource('src/controllers/admin/analyticsController.js');
+  assert.ok(
+    source.includes('const SIX_HOURS_MS = 6 * 60 * 60 * 1000;'),
+    'potential-customer window must be six hours',
+  );
+  assert.ok(
+    !source.includes('revert to 6 * 60 * 60 * 1000 after testing'),
+    'testing TODO must not remain',
+  );
+}
+
+function testAdminNegotiationSearch() {
+  const source = readSource('src/controllers/admin/negotiationController.js');
+  assert.ok(source.includes('query.$or = or;'), 'admin search must apply to the query');
+  assert.ok(source.includes('negotiationNumber'), 'search must cover negotiation numbers');
+  assert.ok(source.includes('productSnapshot.name'), 'search must cover product names');
+  assert.ok(
+    source.includes('wholesalerId: { $in:'),
+    'search must resolve wholesaler names via User lookup',
+  );
+}
+
+function testReviewSearchFields() {
+  const source = readSource('src/controllers/admin/reviewController.js');
+  assert.ok(source.includes('{ name:'), 'review search must query names');
+  assert.ok(source.includes('{ role:'), 'review search must query roles');
+  assert.ok(source.includes('{ review:'), 'review search must query review text');
+  assert.ok(!source.includes('comment:'), 'review search must not use dead fields');
+}
 
 async function testPublicHindiWriteIsRemoved() {
   const productRoutes = require('../src/routes/productRoutes');
@@ -299,6 +336,9 @@ async function run() {
   await testMissingSmtpFailsWithoutLoggingSecrets();
   await testMagicLinkTokenLifecycle();
   await testNegotiationAcceptanceStatesAndIdempotency();
+  testAnalyticsConversionWindow();
+  testAdminNegotiationSearch();
+  testReviewSearchFields();
   console.log('Production critical regression tests passed');
 }
 
