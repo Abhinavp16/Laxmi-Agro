@@ -149,9 +149,10 @@ exports.getNegotiations = async (req, res, next) => {
       query.status = status;
     }
     if (search) {
+      const safe = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { negotiationNumber: { $regex: search, $options: 'i' } },
-        { 'productSnapshot.name': { $regex: search, $options: 'i' } },
+        { negotiationNumber: { $regex: safe, $options: 'i' } },
+        { 'productSnapshot.name': { $regex: safe, $options: 'i' } },
       ];
     }
 

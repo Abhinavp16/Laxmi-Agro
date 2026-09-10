@@ -45,6 +45,9 @@ async function attachApprovers(negotiations) {
   });
 }
 
+// Escape user input before building $regex queries (prevents regex injection).
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 exports.getNegotiations = async (req, res, next) => {
   try {
     const { status, search } = req.query;
@@ -52,6 +55,28 @@ exports.getNegotiations = async (req, res, next) => {
 
     const query = {};
     if (status) query.status = status;
+
+    const term = String(search || '').trim().slice(0, 100);
+    if (term) {
+      const safe = escapeRegExp(term);
+      const or = [
+        { negotiationNumber: { $regex: safe, $options: 'i' } },
+        { 'productSnapshot.name': { $regex: safe, $options: 'i' } },
+      ];
+      // wholesalerId is a ref, so resolve matching users first (capped fan-out).
+      const users = await User.find({
+        $or: [
+          { name: { $regex: safe, $options: 'i' } },
+          { email: { $regex: safe, $options: 'i' } },
+          { phone: { $regex: safe, $options: 'i' } },
+          { 'businessInfo.businessName': { $regex: safe, $options: 'i' } },
+        ],
+      }).select('_id').limit(50).lean();
+      if (users.length > 0) {
+        or.push({ wholesalerId: { $in: users.map((u) => u._id) } });
+      }
+      query.$or = or;
+    }
 
     let negotiations = await Negotiation.find(query)
       .populate('wholesalerId', 'name email phone businessInfo.businessName')
