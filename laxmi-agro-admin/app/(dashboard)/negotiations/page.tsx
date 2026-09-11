@@ -320,7 +320,7 @@ export default function NegotiationsPage() {
             </Card>
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="bg-[#161616] border-l-[#333] text-white w-[500px] sm:w-[600px] flex flex-col">
+                <SheetContent className="bg-[#161616] border-l-[#333] text-white w-[500px] sm:w-[560px] sm:max-w-[560px] max-w-[95vw] flex flex-col overflow-y-auto">
                     {selectedId && (
                         <NegotiationChatPanel
                             negotiationId={selectedId}
