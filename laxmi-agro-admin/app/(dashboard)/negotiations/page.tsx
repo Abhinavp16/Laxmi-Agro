@@ -320,7 +320,7 @@ export default function NegotiationsPage() {
             </Card>
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="bg-[#161616] border-l-[#333] text-white w-[500px] sm:w-[560px] sm:max-w-[560px] max-w-[95vw] flex flex-col overflow-y-auto">
+                <SheetContent className="bg-white text-slate-900 w-[500px] sm:w-[560px] sm:max-w-[560px] max-w-[95vw] flex flex-col overflow-y-auto border-l border-slate-200">
                     {selectedId && (
                         <NegotiationChatPanel
                             negotiationId={selectedId}
@@ -595,7 +595,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     if (isLoading || !detail) {
         return (
             <div className="flex flex-1 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         )
     }
@@ -615,11 +615,11 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     return (
         <>
             <SheetHeader>
-                <SheetTitle className="text-white">Negotiation Details</SheetTitle>
-                <SheetDescription className="text-gray-400">
+                <SheetTitle className="text-slate-900">Negotiation Details</SheetTitle>
+                <SheetDescription className="text-slate-500">
                     {detail.negotiationNumber} · {detail.productSnapshot?.name}
                 </SheetDescription>
-                <SheetDescription className="text-gray-500">
+                <SheetDescription className="text-slate-500">
                     {detail.wholesalerId?.businessInfo?.businessName || detail.wholesalerId?.name || 'Wholesaler'}
                     {detail.wholesalerId?.phone ? ` · ${detail.wholesalerId.phone}` : ''} · Qty {detail.requestedQuantity}
                 </SheetDescription>
@@ -628,12 +628,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                         {detail.status}
                     </span>
                     {detail.approvedBy && (
-                        <span className="text-gray-400">
+                        <span className="text-slate-500">
                             Approved by {detail.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · {detail.approvedBy.name}
                         </span>
                     )}
-                    <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium ${isConnected ? 'bg-[#86efac]/15 text-[#86efac]' : 'bg-[#222] text-gray-500'}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-[#86efac]' : 'bg-gray-600'}`} />
+                    <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium ${isConnected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                         {isConnected ? 'Live' : 'Offline'}
                     </span>
                 </div>
@@ -641,28 +641,28 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
             <div className="flex flex-1 flex-col gap-4 mt-4 overflow-hidden">
                 {/* Summary Card */}
-                <div className="rounded-xl border border-[#333] bg-[#0D0D0D] p-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                         <div>
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Original Price</span>
-                            <p className="font-mono text-lg text-white">₹{detail.productSnapshot?.price}</p>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Original Price</span>
+                            <p className="font-mono text-lg text-slate-900">₹{detail.productSnapshot?.price}</p>
                         </div>
                         <div className="text-right">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Qty</span>
-                            <p className="font-mono text-lg text-white">{detail.requestedQuantity}</p>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested Qty</span>
+                            <p className="font-mono text-lg text-slate-900">{detail.requestedQuantity}</p>
                         </div>
                         <div>
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Price</span>
-                            <p className="font-mono text-lg text-white">₹{detail.requestedPricePerUnit}</p>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested Price</span>
+                            <p className="font-mono text-lg text-slate-900">₹{detail.requestedPricePerUnit}</p>
                         </div>
                         <div className="text-right">
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Total</span>
-                            <p className="font-mono text-lg text-white">₹{(detail.requestedQuantity * detail.requestedPricePerUnit).toLocaleString()}</p>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested Total</span>
+                            <p className="font-mono text-lg text-slate-900">₹{(detail.requestedQuantity * detail.requestedPricePerUnit).toLocaleString()}</p>
                         </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-[#86efac]/10 px-3 py-2">
-                        <span className="text-xs font-medium text-[#86efac]">Current offer · {liveByLabel}</span>
-                        <span className="font-mono text-base font-bold text-[#86efac]">₹{livePrice.toLocaleString()} <span className="text-xs font-medium text-[#86efac]/70">/unit · ₹{liveTotal.toLocaleString()}</span></span>
+                    <div className="mt-3 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2">
+                        <span className="text-xs font-medium text-blue-700">Current offer · {liveByLabel}</span>
+                        <span className="font-mono text-base font-bold text-blue-700">₹{livePrice.toLocaleString()} <span className="text-xs font-medium text-blue-500">/unit · ₹{liveTotal.toLocaleString()}</span></span>
                     </div>
                 </div>
 
@@ -671,24 +671,24 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     <button
                         type="button"
                         onClick={() => router.push(`/orders?search=${encodeURIComponent(orderObj.orderNumber)}`)}
-                        className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-left transition-colors hover:bg-emerald-500/20"
+                        className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-left transition-colors hover:bg-emerald-100"
                     >
-                        <Package className="h-5 w-5 shrink-0 text-emerald-300" />
+                        <Package className="h-5 w-5 shrink-0 text-emerald-600" />
                         <span>
-                            <span className="block text-sm font-semibold text-emerald-200">Order {orderObj.orderNumber} confirmed</span>
-                            <span className="block text-xs text-emerald-200/70 capitalize">
+                            <span className="block text-sm font-semibold text-emerald-800">Order {orderObj.orderNumber} confirmed</span>
+                            <span className="block text-xs text-emerald-700 capitalize">
                                 {orderObj.status?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · tap to view
                             </span>
                         </span>
                     </button>
                 )}
 
-                <Separator className="bg-[#333]" />
+                <Separator className="bg-slate-200" />
 
                 {/* Live chat */}
                 <div className="flex min-h-0 flex-1 flex-col">
-                    <h3 className="mb-2 text-sm font-semibold text-white">Chat</h3>
-                    <ScrollArea className="min-h-0 flex-1 rounded-xl border border-[#2a2a2a] bg-black/40 p-3 pr-4">
+                    <h3 className="mb-2 text-sm font-semibold text-slate-900">Chat</h3>
+                    <ScrollArea className="min-h-0 flex-1 rounded-xl border border-slate-200 bg-slate-100/70 p-3 pr-4">
                         <div className="space-y-3">
                             {detail.history.map((entry, idx) => {
                                 const isAdmin = entry.by === 'admin'
@@ -701,15 +701,15 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                                     : entry.action
                                 return (
                                 <div key={idx} className={`flex flex-col gap-0.5 ${isAdmin ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[85%] px-3 py-2 shadow-sm ${isAdmin ? 'rounded-2xl rounded-br-md bg-[#86efac] text-black' : 'rounded-2xl rounded-bl-md bg-[#262626] text-white'}`}>
+                                    <div className={`max-w-[85%] px-3 py-2 shadow-sm ${isAdmin ? 'rounded-2xl rounded-br-md bg-blue-600 text-white' : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white text-slate-800'}`}>
                                         <div className="mb-0.5 flex items-center justify-between gap-3">
-                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${isAdmin ? 'text-black/60' : 'text-[#86efac]'}`}>
+                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${isAdmin ? 'text-blue-100' : 'text-blue-600'}`}>
                                                 {actionLabel}
                                             </span>
-                                            {entry.pricePerUnit != null && <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${isAdmin ? 'bg-black/15 text-black' : 'bg-[#86efac]/15 text-[#86efac]'}`}>₹{entry.pricePerUnit}</span>}
+                                            {entry.pricePerUnit != null && <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${isAdmin ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>₹{entry.pricePerUnit}</span>}
                                         </div>
                                         {entry.message && <p className="whitespace-pre-wrap text-sm leading-snug">{entry.message}</p>}
-                                        <span className={`mt-1 block text-right text-[10px] ${isAdmin ? 'text-black/50' : 'text-gray-500'}`}>
+                                        <span className={`mt-1 block text-right text-[10px] ${isAdmin ? 'text-blue-100/70' : 'text-slate-400'}`}>
                                             {entry.timestamp ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                                         </span>
                                     </div>
@@ -720,7 +720,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                         </div>
                     </ScrollArea>
                     {typingUsers.length > 0 && (
-                        <p className="pt-1 text-xs italic text-gray-500">Wholesaler is typing…</p>
+                        <p className="pt-1 text-xs italic text-slate-500">Wholesaler is typing…</p>
                     )}
 
                     {/* Message composer */}
@@ -729,7 +729,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             <Input
                                 placeholder="Type a message… (max 280)"
                                 maxLength={280}
-                                className="bg-black border-[#333] h-10 flex-1 text-white"
+                                className="h-10 flex-1 border-slate-200 bg-white text-slate-900"
                                 value={chatMessage}
                                 onChange={(e) => {
                                     setChatMessage(e.target.value)
@@ -745,7 +745,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             />
                             <Button
                                 size="sm"
-                                className="bg-[#86efac] hover:bg-[#86efac]/90 text-black h-10 px-4"
+                                className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4"
                                 disabled={!chatMessage.trim() || isSendingMessage}
                                 onClick={sendChatMessage}
                             >
@@ -753,32 +753,32 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             </Button>
                         </div>
                     ) : (
-                        <p className="pt-2 text-center text-xs text-gray-600">This negotiation is closed.</p>
+                        <p className="pt-2 text-center text-xs text-slate-400">This negotiation is closed.</p>
                     )}
                 </div>
 
                 {/* Actions */}
-                <div className="space-y-3 border-t border-[#333] pt-3">
+                <div className="space-y-3 border-t border-slate-200 pt-3">
                     {canAdminRespond && (
-                        <div className="space-y-2 rounded-xl border border-[#333] bg-[#0D0D0D] p-3">
-                            <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Counter Offer</Label>
+                        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <Label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Counter Offer</Label>
                             <div className="flex gap-2">
                                 <Input
                                     type="number"
                                     placeholder="₹ per unit"
-                                    className="h-9 w-32 border-[#333] bg-black text-white"
+                                    className="h-9 w-32 border-slate-200 bg-white text-slate-900"
                                     value={counterPrice}
                                     onChange={(e) => setCounterPrice(e.target.value)}
                                 />
                                 <Input
                                     placeholder="Message (optional)"
-                                    className="h-9 flex-1 border-[#333] bg-black text-white"
+                                    className="h-9 flex-1 border-slate-200 bg-white text-slate-900"
                                     value={counterMessage}
                                     onChange={(e) => setCounterMessage(e.target.value)}
                                 />
                                 <Button
                                     size="sm"
-                                    className="bg-[#86efac] hover:bg-[#86efac]/90 text-black"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
                                     disabled={!counterPrice || isSubmitting}
                                     onClick={sendCounter}
                                 >
@@ -790,7 +790,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
                     {canAccept && (
                         <Button
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                             disabled={isSubmitting}
                             onClick={() => setIsAcceptOpen(true)}
                         >
@@ -802,7 +802,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     {canReject && (
                         <Button
                             variant="outline"
-                            className="w-full border-[#444] bg-transparent text-gray-400 hover:bg-red-600/10 hover:text-red-400 hover:border-red-600/40"
+                            className="w-full border-slate-200 bg-transparent text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                             disabled={isSubmitting}
                             onClick={() => setIsRejectOpen(true)}
                         >
@@ -814,21 +814,21 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
             {/* Reject dialog */}
             <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
-                <DialogContent className="border-[#333] bg-[#161616] text-white">
+                <DialogContent className="border-slate-200 bg-white text-slate-900">
                     <DialogHeader>
                         <DialogTitle>Reject negotiation?</DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-slate-500">
                             The wholesaler will be notified with your reason.
                         </DialogDescription>
                     </DialogHeader>
                     <Textarea
                         placeholder="Rejection reason (optional)"
-                        className="bg-black border-[#333] text-white"
+                        className="border-slate-200 bg-white text-slate-900"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                     />
                     <DialogFooter>
-                        <Button variant="ghost" className="text-gray-300" onClick={() => setIsRejectOpen(false)}>Cancel</Button>
+                        <Button variant="ghost" className="text-slate-600" onClick={() => setIsRejectOpen(false)}>Cancel</Button>
                         <Button className="bg-red-600 hover:bg-red-700" disabled={isSubmitting} onClick={confirmReject}>
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reject'}
                         </Button>
@@ -838,51 +838,51 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
             {/* Accept / confirm-order dialog with address */}
             <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
-                <DialogContent className="border-[#333] bg-[#161616] text-white max-w-lg">
+                <DialogContent className="border-slate-200 bg-white text-slate-900 max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Accept &amp; confirm order</DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-slate-500">
                             {detail.requestedQuantity} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
                             This creates a pending-payment order in the wholesaler&apos;s history.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">Full name *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.fullName} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, fullName: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">Full name *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.fullName} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, fullName: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">Phone *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.phone} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, phone: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">Phone *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.phone} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, phone: e.target.value }) }} />
                         </div>
                         <div className="col-span-2">
-                            <Label className="text-xs text-gray-400">Address line 1 *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.addressLine1} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine1: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">Address line 1 *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.addressLine1} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine1: e.target.value }) }} />
                         </div>
                         <div className="col-span-2">
-                            <Label className="text-xs text-gray-400">Address line 2</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.addressLine2 || ''} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine2: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">Address line 2</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.addressLine2 || ''} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine2: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">City *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.city} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, city: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">City *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.city} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, city: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">State *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.state} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, state: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">State *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.state} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, state: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">Pincode *</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={address.pincode} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, pincode: e.target.value }) }} />
+                            <Label className="text-xs text-slate-500">Pincode *</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.pincode} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, pincode: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
-                            <Label className="text-xs text-gray-400">Note for order</Label>
-                            <Input className="bg-black border-[#333] h-9 mt-1" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
+                            <Label className="text-xs text-slate-500">Note for order</Label>
+                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" className="text-gray-300" onClick={() => setIsAcceptOpen(false)}>Cancel</Button>
-                        <Button className="bg-green-600 hover:bg-green-700" disabled={isSubmitting} onClick={confirmAccept}>
+                        <Button variant="ghost" className="text-slate-600" onClick={() => setIsAcceptOpen(false)}>Cancel</Button>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting} onClick={confirmAccept}>
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : `Accept · ₹${orderTotal.toLocaleString()}`}
                         </Button>
                     </DialogFooter>
@@ -894,12 +894,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
 function statusColor(status: string): string {
     switch (status) {
-        case 'pending': return 'text-yellow-500 border-yellow-500'
-        case 'accepted': return 'text-green-500 border-green-500'
-        case 'converted': return 'text-emerald-400 border-emerald-400'
-        case 'rejected': return 'text-red-500 border-red-500'
-        case 'countered': return 'text-blue-500 border-blue-500'
-        case 'expired': return 'text-gray-500 border-gray-500'
-        default: return 'text-gray-500 border-gray-500'
+        case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
+        case 'accepted': return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        case 'converted': return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        case 'rejected': return 'bg-red-50 text-red-700 border-red-200'
+        case 'countered': return 'bg-blue-50 text-blue-700 border-blue-200'
+        case 'expired': return 'bg-slate-100 text-slate-500 border-slate-200'
+        default: return 'bg-slate-100 text-slate-500 border-slate-200'
     }
 }
