@@ -608,16 +608,23 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const canChat = !['rejected', 'expired'].includes(detail.status)
     const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number } | null
     const orderTotal = detail.finalTotalPrice ?? detail.currentTotalPrice ?? 0
+    const livePrice = detail.currentPricePerUnit ?? detail.requestedPricePerUnit ?? 0
+    const liveTotal = detail.currentTotalPrice ?? (detail.requestedQuantity * (detail.requestedPricePerUnit ?? 0))
+    const liveByLabel = detail.currentOfferBy === 'admin' ? 'Admin' : 'Wholesaler'
 
     return (
         <>
             <SheetHeader>
                 <SheetTitle className="text-white">Negotiation Details</SheetTitle>
                 <SheetDescription className="text-gray-400">
-                    {detail.negotiationNumber} - {detail.productSnapshot?.name}
+                    {detail.negotiationNumber} · {detail.productSnapshot?.name}
                 </SheetDescription>
-                <div className="flex items-center gap-2 pt-1 text-xs">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 capitalize ${statusColor(detail.status)}`}>
+                <SheetDescription className="text-gray-500">
+                    {detail.wholesalerId?.businessInfo?.businessName || detail.wholesalerId?.name || 'Wholesaler'}
+                    {detail.wholesalerId?.phone ? ` · ${detail.wholesalerId.phone}` : ''} · Qty {detail.requestedQuantity}
+                </SheetDescription>
+                <div className="flex items-center gap-2 pt-2 text-xs">
+                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-medium capitalize ${statusColor(detail.status)}`}>
                         {detail.status}
                     </span>
                     {detail.approvedBy && (
@@ -625,7 +632,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             Approved by {detail.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · {detail.approvedBy.name}
                         </span>
                     )}
-                    <span className={`ml-auto inline-flex items-center gap-1 ${isConnected ? 'text-[#86efac]' : 'text-gray-600'}`}>
+                    <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium ${isConnected ? 'bg-[#86efac]/15 text-[#86efac]' : 'bg-[#222] text-gray-500'}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-[#86efac]' : 'bg-gray-600'}`} />
                         {isConnected ? 'Live' : 'Offline'}
                     </span>
@@ -634,22 +641,28 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
             <div className="flex flex-1 flex-col gap-4 mt-4 overflow-hidden">
                 {/* Summary Card */}
-                <div className="bg-[#0D0D0D] p-4 rounded-lg border border-[#333] grid grid-cols-2 gap-4">
-                    <div>
-                        <span className="text-xs text-gray-500 uppercase">Original Price</span>
-                        <p className="text-lg font-mono">₹{detail.productSnapshot?.price}</p>
+                <div className="rounded-xl border border-[#333] bg-[#0D0D0D] p-4">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        <div>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Original Price</span>
+                            <p className="font-mono text-lg text-white">₹{detail.productSnapshot?.price}</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Qty</span>
+                            <p className="font-mono text-lg text-white">{detail.requestedQuantity}</p>
+                        </div>
+                        <div>
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Price</span>
+                            <p className="font-mono text-lg text-white">₹{detail.requestedPricePerUnit}</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Requested Total</span>
+                            <p className="font-mono text-lg text-white">₹{(detail.requestedQuantity * detail.requestedPricePerUnit).toLocaleString()}</p>
+                        </div>
                     </div>
-                    <div>
-                        <span className="text-xs text-gray-500 uppercase">Requested Qty</span>
-                        <p className="text-lg font-mono">{detail.requestedQuantity}</p>
-                    </div>
-                    <div>
-                        <span className="text-xs text-gray-500 uppercase">Requested Price</span>
-                        <p className="text-lg font-mono text-yellow-500">₹{detail.requestedPricePerUnit}</p>
-                    </div>
-                    <div>
-                        <span className="text-xs text-gray-500 uppercase">Total Value</span>
-                        <p className="text-lg font-mono">₹{(detail.requestedQuantity * detail.requestedPricePerUnit).toLocaleString()}</p>
+                    <div className="mt-3 flex items-center justify-between rounded-lg bg-[#86efac]/10 px-3 py-2">
+                        <span className="text-xs font-medium text-[#86efac]">Current offer · {liveByLabel}</span>
+                        <span className="font-mono text-base font-bold text-[#86efac]">₹{livePrice.toLocaleString()} <span className="text-xs font-medium text-[#86efac]/70">/unit · ₹{liveTotal.toLocaleString()}</span></span>
                     </div>
                 </div>
 
@@ -674,27 +687,35 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
                 {/* Live chat */}
                 <div className="flex min-h-0 flex-1 flex-col">
-                    <h3 className="text-sm font-medium mb-2">Chat</h3>
-                    <ScrollArea className="min-h-0 flex-1 pr-4">
-                        <div className="space-y-4">
-                            {detail.history.map((entry, idx) => (
-                                <div key={idx} className={`flex flex-col gap-1 ${entry.by === 'admin' ? 'items-end' : 'items-start'}`}>
-                                    <div className={`p-3 rounded-lg max-w-[80%] ${entry.by === 'admin' ? 'bg-[#86efac] text-black' : 'bg-[#333] text-white'}`}>
-                                        <div className="flex justify-between items-center gap-4 mb-1">
-                                            <span className="text-xs font-bold uppercase opacity-70">
-                                                {entry.action === 'message'
-                                                    ? actorDisplayName(entry)
-                                                    : `${entry.action}${entry.by === 'admin' ? ` · ${actorDisplayName(entry)}` : ''}`}
+                    <h3 className="mb-2 text-sm font-semibold text-white">Chat</h3>
+                    <ScrollArea className="min-h-0 flex-1 rounded-xl border border-[#2a2a2a] bg-black/40 p-3 pr-4">
+                        <div className="space-y-3">
+                            {detail.history.map((entry, idx) => {
+                                const isAdmin = entry.by === 'admin'
+                                const actionLabel = entry.action === 'message'
+                                    ? actorDisplayName(entry)
+                                    : entry.action === 'requested' ? 'Requested'
+                                    : entry.action === 'countered' ? `Counter · ${actorDisplayName(entry)}`
+                                    : entry.action === 'accepted' ? `Accepted · ${actorDisplayName(entry)}`
+                                    : entry.action === 'rejected' ? `Rejected · ${actorDisplayName(entry)}`
+                                    : entry.action
+                                return (
+                                <div key={idx} className={`flex flex-col gap-0.5 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                    <div className={`max-w-[85%] px-3 py-2 shadow-sm ${isAdmin ? 'rounded-2xl rounded-br-md bg-[#86efac] text-black' : 'rounded-2xl rounded-bl-md bg-[#262626] text-white'}`}>
+                                        <div className="mb-0.5 flex items-center justify-between gap-3">
+                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${isAdmin ? 'text-black/60' : 'text-[#86efac]'}`}>
+                                                {actionLabel}
                                             </span>
-                                            {entry.pricePerUnit != null && <span className="text-xs font-mono font-bold">₹{entry.pricePerUnit}</span>}
+                                            {entry.pricePerUnit != null && <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${isAdmin ? 'bg-black/15 text-black' : 'bg-[#86efac]/15 text-[#86efac]'}`}>₹{entry.pricePerUnit}</span>}
                                         </div>
-                                        {entry.message && <p className="text-sm whitespace-pre-wrap">{entry.message}</p>}
+                                        {entry.message && <p className="whitespace-pre-wrap text-sm leading-snug">{entry.message}</p>}
+                                        <span className={`mt-1 block text-right text-[10px] ${isAdmin ? 'text-black/50' : 'text-gray-500'}`}>
+                                            {entry.timestamp ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] text-gray-500">
-                                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
-                                    </span>
                                 </div>
-                            ))}
+                                )
+                            })}
                             <div ref={bottomRef} />
                         </div>
                     </ScrollArea>
@@ -724,7 +745,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             />
                             <Button
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 h-10 px-4"
+                                className="bg-[#86efac] hover:bg-[#86efac]/90 text-black h-10 px-4"
                                 disabled={!chatMessage.trim() || isSendingMessage}
                                 onClick={sendChatMessage}
                             >
@@ -737,31 +758,31 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 </div>
 
                 {/* Actions */}
-                <div className="pt-3 border-t border-[#333] space-y-3">
+                <div className="space-y-3 border-t border-[#333] pt-3">
                     {canAdminRespond && (
-                        <div className="bg-[#0D0D0D] p-3 rounded-lg border border-[#333] space-y-3">
-                            <Label className="text-xs uppercase text-gray-500">Counter Offer</Label>
+                        <div className="space-y-2 rounded-xl border border-[#333] bg-[#0D0D0D] p-3">
+                            <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Counter Offer</Label>
                             <div className="flex gap-2">
                                 <Input
                                     type="number"
-                                    placeholder="Price per unit"
-                                    className="bg-black border-[#333] h-9"
+                                    placeholder="₹ per unit"
+                                    className="h-9 w-32 border-[#333] bg-black text-white"
                                     value={counterPrice}
                                     onChange={(e) => setCounterPrice(e.target.value)}
                                 />
                                 <Input
                                     placeholder="Message (optional)"
-                                    className="bg-black border-[#333] h-9 flex-1"
+                                    className="h-9 flex-1 border-[#333] bg-black text-white"
                                     value={counterMessage}
                                     onChange={(e) => setCounterMessage(e.target.value)}
                                 />
                                 <Button
                                     size="sm"
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-[#86efac] hover:bg-[#86efac]/90 text-black"
                                     disabled={!counterPrice || isSubmitting}
                                     onClick={sendCounter}
                                 >
-                                    <Send className="w-4 h-4" />
+                                    <Send className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
@@ -769,28 +790,23 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
 
                     {canAccept && (
                         <Button
-                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
                             disabled={isSubmitting}
                             onClick={() => setIsAcceptOpen(true)}
                         >
-                            <Check className="w-4 h-4 mr-2" />
-                            Accept Deal
+                            <Check className="mr-2 h-4 w-4" />
+                            Accept Deal · ₹{liveTotal.toLocaleString()}
                         </Button>
-                    )}
-
-                    {detail.status === 'countered' && (
-                        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
-                            Wholesaler is replying in chat. You can counter again or accept to confirm the order.
-                        </div>
                     )}
 
                     {canReject && (
                         <Button
-                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                            variant="outline"
+                            className="w-full border-[#444] bg-transparent text-gray-400 hover:bg-red-600/10 hover:text-red-400 hover:border-red-600/40"
                             disabled={isSubmitting}
                             onClick={() => setIsRejectOpen(true)}
                         >
-                            <X className="w-4 h-4 mr-2" /> Reject
+                            <X className="mr-2 h-4 w-4" /> Reject
                         </Button>
                     )}
                 </div>
