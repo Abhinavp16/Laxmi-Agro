@@ -30,6 +30,18 @@ function testAdminNegotiationSearch() {
   );
 }
 
+function testCategoryListTotal() {
+  const source = readSource('src/controllers/categoryController.js');
+  assert.ok(
+    source.includes('formatPaginationResponse(categoriesWithCounts, total, page, limit)'),
+    'category list must report the real total, not the page length',
+  );
+  assert.ok(
+    source.includes('paginate(req.query.page, req.query.limit, 500)'),
+    'category list must allow management-size pages',
+  );
+}
+
 function testReviewSearchFields() {
   const source = readSource('src/controllers/admin/reviewController.js');
   assert.ok(source.includes('{ name:'), 'review search must query names');
@@ -339,6 +351,7 @@ async function run() {
   testAnalyticsConversionWindow();
   testAdminNegotiationSearch();
   testReviewSearchFields();
+  testCategoryListTotal();
   console.log('Production critical regression tests passed');
 }
 

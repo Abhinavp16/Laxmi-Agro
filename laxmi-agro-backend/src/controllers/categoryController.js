@@ -93,7 +93,8 @@ async function resolveCompanyId(value) {
 exports.getCategories = async (req, res, next) => {
   try {
     const { parent, active, search, company, brand } = req.query;
-    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    // Management UIs fetch the whole tree at once; docs are small.
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit, 500);
 
     const query = {};
 
@@ -146,7 +147,7 @@ exports.getCategories = async (req, res, next) => {
 
     res.json({
       success: true,
-      ...formatPaginationResponse(categoriesWithCounts, categoriesWithCounts.length, page, limit),
+      ...formatPaginationResponse(categoriesWithCounts, total, page, limit),
     });
   } catch (error) {
     next(error);
