@@ -823,10 +823,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   SliverToBoxAdapter(child: _trustBadgesStrip()),
                   if (_productLabels.isNotEmpty)
                     SliverToBoxAdapter(child: _productLabelsSection()),
-                  if (negEnabled)
-                    SliverToBoxAdapter(
-                      child: _negotiateCard(name, price, wsPrice, minWsQty, t),
-                    ),
                   SliverToBoxAdapter(child: _descSection(desc, t)),
                   SliverToBoxAdapter(child: _allImagesSection(name, t)),
                   SliverToBoxAdapter(child: _videoSection(t)),
@@ -1372,12 +1368,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ),
           if (price != null) ...[
             const SizedBox(height: 4),
-            // For wholesalers, show customer price first
+            // For wholesalers, show Suggested Selling Price first (was Customer Price)
             if (isWholesaler) ...[
               Row(
                 children: [
                   Text(
-                    '${t('Customer Price')}: ',
+                    '${t('Suggested Selling Price')}: ',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -1397,11 +1393,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               const SizedBox(height: 2),
             ],
-            // Show the main price (wholesale price for wholesalers, customer price for customers)
+            // Show the main price (Your Dealer Price for wholesalers, Special Price for buyers)
             Row(
               children: [
                 Text(
-                  '${t('Special Price')}: ',
+                  isWholesaler ? '${t('Your Dealer Price')}: ' : '${t('Special Price')}: ',
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -1409,7 +1405,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                 ),
                 Text(
-                  '₹${_fmt(isWholesaler && wsPrice != null ? wsPrice : price)}',
+                  '₹${_fmt(isWholesaler && wsPrice != null ? wsPrice : price)}${isWholesaler ? '/${_quantityUnitLabel()}' : ''}',
                   style: GoogleFonts.outfit(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -2203,7 +2199,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   Icon(Icons.request_quote_outlined, size: 18, color: _violet),
                   const SizedBox(width: 8),
                   Text(
-                    t('Start Negotiation'),
+                    t('Send Requirement'),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -3214,7 +3210,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       const Icon(Icons.chat_rounded, size: 20),
                       const SizedBox(width: 10),
                       Text(
-                        t('Send Negotiation Request'),
+                        t('Send to Deal Desk'),
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -3406,6 +3402,59 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ],
                 ),
               ),
+            if (isWholesaler)
+              GestureDetector(
+                onTap: inStock
+                    ? () => _openNegotiateSheet(name, price, wsPrice, minQty, t)
+                    : null,
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: inStock ? _blue : _txtMuted,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: inStock
+                        ? [
+                            BoxShadow(
+                              color: _blue.withOpacity(0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.send_rounded, size: 20, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              t('Send Requirement'),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Only Laxmi Agro can confirm the deal',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.85),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (!isWholesaler)
             Row(
               children: [
                 Expanded(
@@ -3622,8 +3671,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         ? (wsPrice is int ? wsPrice.toDouble() : (wsPrice as num).toDouble())
         : rp * 0.85;
     final minQ = minQty is int ? minQty : 10;
-    int step = 0;
-    int qty = 1;
+    int step = 1;
+    // Use quantity already selected on product page — don't ask twice.
+    int qty = _quantity >= minQ ? _quantity : minQ;
     double target = wp;
     final qtyCtrl = TextEditingController(text: '$qty');
     final priceCtrl = TextEditingController(text: _fmt(target));
@@ -3979,7 +4029,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('Set Your Price'),
+                    t('Your Expected Price'),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -4043,49 +4093,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [0.80, 0.85, 0.90].map((f) {
-            final v = rp * f;
-            final sel = (target - v).abs() < 1;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  onPrice(v);
-                  ctrl.text = _fmt(v);
-                },
-                child: Container(
-                  margin: EdgeInsets.only(right: f == 0.90 ? 0 : 8),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: sel ? _blue.withOpacity(0.08) : _bg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? _blue : _border),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '₹${_fmt(v)}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: sel ? _blue : _txt,
-                        ),
-                      ),
-                      Text(
-                        '${((1 - f) * 100).round()}% ${t('off')}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: sel ? _blue : _txtSec,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
         if (target > 0 && target < rp) ...[
           const SizedBox(height: 14),
           Container(
@@ -4161,7 +4168,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   child: Center(
                     child: Text(
-                      t('Review Quote'),
+                      t('Review Requirement'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -4209,7 +4216,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('Review Quote'),
+                    t('Review Requirement'),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -4242,7 +4249,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               _divider(),
               _reviewLine(t('Quantity'), '$qty ${t('units')}'),
               _divider(),
-              _reviewLine(t('Your Price'), '₹${_fmt(target)}/${t('unit')}'),
+              _reviewLine(t('Your Expected Price'), '₹${_fmt(target)}/${t('unit')}'),
               _divider(),
               _reviewLine(
                 t('Retail Price'),
