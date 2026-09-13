@@ -14,7 +14,10 @@ laxmi-agro-admin/tests/*.png
 .local-*.err.log
 veepee-app
 **/uploads
-# Environment secrets - defense in depth (nested rules exist too)
+# Planning spec (markdown only, not part of app builds)
+LAXMI AGRO/
+"LAXMI AGRO/"
+*.rar
 **/.env
 **/.env.*
 !**/.env.example

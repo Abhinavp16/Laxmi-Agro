@@ -207,12 +207,12 @@ export default function NegotiationsPage() {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500">Pending</Badge>
-            case 'accepted': return <Badge variant="outline" className="text-green-500 border-green-500">Accepted</Badge>
-            case 'converted': return <Badge variant="outline" className="text-emerald-400 border-emerald-400">Converted</Badge>
-            case 'rejected': return <Badge variant="outline" className="text-red-500 border-red-500">Rejected</Badge>
-            case 'countered': return <Badge variant="outline" className="text-blue-500 border-blue-500">Countered</Badge>
-            case 'expired': return <Badge variant="outline" className="text-gray-500 border-gray-500">Expired</Badge>
+            case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500">Requirement Sent</Badge>
+            case 'accepted': return <Badge variant="outline" className="text-green-500 border-green-500">Order Created</Badge>
+            case 'converted': return <Badge variant="outline" className="text-emerald-400 border-emerald-400">Order Created</Badge>
+            case 'rejected': return <Badge variant="outline" className="text-red-500 border-red-500">Requirement Declined</Badge>
+            case 'countered': return <Badge variant="outline" className="text-blue-500 border-blue-500">New Price Sent</Badge>
+            case 'expired': return <Badge variant="outline" className="text-gray-500 border-gray-500">Requirement Expired</Badge>
             default: return <Badge variant="outline" className="text-gray-500 border-gray-500">{status}</Badge>
         }
     }
@@ -606,7 +606,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const canAccept = canAdminRespond
     const canReject = detail.status === 'pending' || detail.status === 'countered'
     const canChat = !['rejected', 'expired'].includes(detail.status)
-    const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number } | null
+    const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number; trackingNumber?: string; courierName?: string } | null
     const orderTotal = detail.finalTotalPrice ?? detail.currentTotalPrice ?? 0
     const livePrice = detail.currentPricePerUnit ?? detail.requestedPricePerUnit ?? 0
     const liveTotal = detail.currentTotalPrice ?? (detail.requestedQuantity * (detail.requestedPricePerUnit ?? 0))
@@ -666,7 +666,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     </div>
                 </div>
 
-                {/* Converted order chip */}
+                {/* Order Created chip + tracking mirror */}
                 {orderObj && (
                     <button
                         type="button"
@@ -675,9 +675,9 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     >
                         <Package className="h-5 w-5 shrink-0 text-emerald-600" />
                         <span>
-                            <span className="block text-sm font-semibold text-emerald-800">Order {orderObj.orderNumber} confirmed</span>
+                            <span className="block text-sm font-semibold text-emerald-800">Order Created · {orderObj.orderNumber}</span>
                             <span className="block text-xs text-emerald-700 capitalize">
-                                {orderObj.status?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · tap to view
+                                {(orderObj.status ?? 'pending_payment')?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · {(orderObj.trackingNumber ?? '') ? `LR ${orderObj.trackingNumber}${orderObj.courierName ? ` · ${orderObj.courierName}` : ''} · ` : ''}tap to track
                             </span>
                         </span>
                     </button>
@@ -694,10 +694,10 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                                 const isAdmin = entry.by === 'admin'
                                 const actionLabel = entry.action === 'message'
                                     ? actorDisplayName(entry)
-                                    : entry.action === 'requested' ? 'Requested'
-                                    : entry.action === 'countered' ? `Counter · ${actorDisplayName(entry)}`
-                                    : entry.action === 'accepted' ? `Accepted · ${actorDisplayName(entry)}`
-                                    : entry.action === 'rejected' ? `Rejected · ${actorDisplayName(entry)}`
+                                    : entry.action === 'requested' ? 'Requirement Sent'
+                                    : entry.action === 'countered' ? `New Price from Laxmi Agro · ${actorDisplayName(entry)}`
+                                    : entry.action === 'accepted' ? `Accepted by Laxmi Agro · ${actorDisplayName(entry)}`
+                                    : entry.action === 'rejected' ? `Declined · ${actorDisplayName(entry)}`
                                     : entry.action
                                 return (
                                 <div key={idx} className={`flex flex-col gap-0.5 ${isAdmin ? 'items-end' : 'items-start'}`}>
@@ -761,7 +761,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 <div className="space-y-3 border-t border-slate-200 pt-3">
                     {canAdminRespond && (
                         <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                            <Label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Counter Offer</Label>
+                            <Label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Send Counter Price</Label>
                             <div className="flex gap-2">
                                 <Input
                                     type="number"
@@ -795,7 +795,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             onClick={() => setIsAcceptOpen(true)}
                         >
                             <Check className="mr-2 h-4 w-4" />
-                            Accept Deal · ₹{liveTotal.toLocaleString()}
+                            Accept Deal & Create Order · ₹{liveTotal.toLocaleString()}
                         </Button>
                     )}
 
@@ -840,10 +840,10 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
                 <DialogContent className="border-slate-200 bg-white text-slate-900 max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Accept &amp; confirm order</DialogTitle>
+                        <DialogTitle>Accept Deal & Create Order</DialogTitle>
                         <DialogDescription className="text-slate-500">
                             {detail.requestedQuantity} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
-                            This creates a pending-payment order in the wholesaler&apos;s history.
+                            This will create a pending-payment order using the terms shown. The dealer cannot accept or create the order.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3">
