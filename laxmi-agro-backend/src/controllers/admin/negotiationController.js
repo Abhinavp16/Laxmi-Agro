@@ -131,7 +131,7 @@ exports.getNegotiationById = async (req, res, next) => {
     const negotiation = await Negotiation.findById(req.params.id)
       .populate('wholesalerId', 'name email phone address businessInfo')
       .populate('history.actorId', 'name username email')
-      .populate('orderId', 'orderNumber status total');
+      .populate('orderId', 'orderNumber status total statusHistory trackingNumber courierName shippedAt deliveredAt shippingAddress');
 
     if (!negotiation) {
       throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
@@ -209,8 +209,8 @@ exports.sendMessage = async (req, res, next) => {
     });
 
     await notifyWholesaler(negotiation.wholesalerId, {
-      title: 'New message on your negotiation',
-      body: `Admin: ${message.trim().slice(0, 120)}`,
+      title: 'New message on your requirement',
+      body: `Laxmi Agro: ${message.trim().slice(0, 120)}`,
     }, {
       type: 'negotiation_update',
       negotiationId: negotiation._id.toString(),
@@ -289,10 +289,10 @@ exports.rejectNegotiation = async (req, res, next) => {
     // Send push notification to user
     try {
       await notificationService.sendToUser(negotiation.wholesalerId, {
-        title: 'Negotiation Declined',
+        title: 'Requirement Declined',
         body: reason
-          ? `Your negotiation for ${negotiation.productSnapshot.name} was declined: ${reason}`
-          : `Your negotiation for ${negotiation.productSnapshot.name} was declined.`,
+          ? `Laxmi Agro could not confirm requirement for ${negotiation.productSnapshot.name}: ${reason}`
+          : `Laxmi Agro could not confirm requirement for ${negotiation.productSnapshot.name}. Open it to view the reason.`,
       }, {
         type: 'negotiation_rejected',
         negotiationId: negotiation._id.toString(),
@@ -358,8 +358,8 @@ exports.counterNegotiation = async (req, res, next) => {
     // Send push notification to user
     try {
       await notificationService.sendToUser(negotiation.wholesalerId, {
-        title: 'New Counter Offer',
-        body: `Admin counter-offered ₹${pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
+        title: 'New Price from Laxmi Agro',
+        body: `Laxmi Agro shared a new price ₹${pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
       }, {
         type: 'negotiation_countered',
         negotiationId: negotiation._id.toString(),

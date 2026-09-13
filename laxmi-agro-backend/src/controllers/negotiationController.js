@@ -17,7 +17,7 @@ exports.getMyNegotiations = async (req, res, next) => {
 
     const [negotiations, total] = await Promise.all([
       Negotiation.find(query)
-        .populate('orderId', 'orderNumber status total')
+        .populate('orderId', 'orderNumber status total statusHistory trackingNumber courierName shippedAt deliveredAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -141,7 +141,7 @@ exports.getNegotiationById = async (req, res, next) => {
       wholesalerId: req.user._id,
     })
       .populate('history.actorId', 'name username')
-      .populate('orderId', 'orderNumber status total');
+      .populate('orderId', 'orderNumber status total statusHistory trackingNumber courierName shippedAt deliveredAt shippingAddress');
 
     if (!negotiation) {
       throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');

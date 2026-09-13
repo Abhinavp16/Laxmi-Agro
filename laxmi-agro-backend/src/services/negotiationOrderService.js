@@ -284,8 +284,8 @@ async function runPostConversionEffects({ negotiation, order, actor, product, wh
 
   if (wholesaler) {
     await notifyWholesaler(wholesaler._id, {
-      title: 'Negotiation Accepted! ✅',
-      body: `Your negotiated price for ${negotiation.productSnapshot.name} was confirmed at ₹${negotiation.finalPricePerUnit}/unit. Order ${order.orderNumber} confirmed.`,
+      title: 'Order Created! ✅',
+      body: `Laxmi Agro accepted your requirement for ${negotiation.productSnapshot.name} at ₹${negotiation.finalPricePerUnit}/unit. Order ${order.orderNumber} is ready to view.`,
     }, {
       type: 'negotiation_accepted',
       negotiationId: negotiation._id.toString(),

@@ -272,8 +272,8 @@ exports.counterNegotiation = async (req, res, next) => {
 
     await recordAudit({ actorId: req.user._id, action: 'negotiation.countered', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: req.body.pricePerUnit } });
     await notifyWholesaler(negotiation.wholesalerId, {
-      title: 'New Counter Offer',
-      body: `We counter-offered ₹${req.body.pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
+      title: 'New Price from Laxmi Agro',
+      body: `Laxmi Agro shared a new price ₹${req.body.pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
     }, { type: 'negotiation_countered', negotiationId: negotiation._id.toString() });
 
     res.json({ success: true, message: 'Counter offer sent', data: { status: negotiation.status, currentPricePerUnit: negotiation.currentPricePerUnit } });
