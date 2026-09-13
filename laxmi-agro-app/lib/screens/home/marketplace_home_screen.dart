@@ -1739,6 +1739,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   List<Widget> get _bodyPages {
     if (_isWholesaler) {
+      // Planned wholesaler nav: Home, Search, Categories, Deal Desk, Profile.
+      // Cart removed for wholesalers (orders via Send Requirement + Deal Desk).
+      // Search tab kept for now; full removal + Orders/Dealer Club tabs in Phase 5.
       return [
         _buildHomeContent(),
         _buildSearchContent(),
@@ -1746,7 +1749,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           onSearchTap: () => setState(() => _selectedNavIndex = 1),
           initialCategoryName: _requestedCategoryName,
         ),
-        _buildCartContent(),
         _buildNegotiationsContent(),
         _buildProfileContent(),
       ];
@@ -1847,14 +1849,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   _buildCategorySection(),
                   const SizedBox(height: 8),
                   _buildProductsSection(
-                    ref
-                        .read(localeProvider.notifier)
-                        .translate('Popular Products'),
+                    _isWholesaler
+                        ? ref
+                            .read(localeProvider.notifier)
+                            .translate('Fast-Moving Products')
+                        : ref
+                            .read(localeProvider.notifier)
+                            .translate('Popular Products'),
                     true,
                   ),
                   const SizedBox(height: 8),
                   _buildProductsSection(
-                    ref.read(localeProvider.notifier).translate('Hot Deals'),
+                    _isWholesaler
+                        ? ref
+                            .read(localeProvider.notifier)
+                            .translate('Dealer Schemes')
+                        : ref.read(localeProvider.notifier).translate('Hot Deals'),
                     false,
                   ),
                   const SizedBox(height: 8),
@@ -4185,7 +4195,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       setState(() => _selectedNavIndex = index);
     }
 
-    if (_isWholesaler && index == 4) {
+    if (_isWholesaler && index == 3) {
       _fetchNegotiations();
     }
   }
@@ -8496,13 +8506,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       t('Categories'),
                       2,
                     ),
-                    _buildCartNavItem(3),
                     _buildNavItem(
-                      HugeIcons.strokeRoundedHandGrip,
-                      t('Negotiate'),
-                      4,
+                      HugeIcons.strokeRoundedBriefcase01,
+                      t('Deal Desk'),
+                      3,
                     ),
-                    _buildNavItem(HugeIcons.strokeRoundedUser, t('Profile'), 5),
+                    _buildNavItem(HugeIcons.strokeRoundedUser, t('Profile'), 4),
                   ]
                 : [
                     _buildNavItem(HugeIcons.strokeRoundedHome01, t('Home'), 0),
