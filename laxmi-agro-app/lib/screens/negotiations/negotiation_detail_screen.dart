@@ -533,7 +533,7 @@ class _NegotiationDetailScreenState
     final approvedBy = n['approvedBy'] as Map<String, dynamic>?;
     final approvedByLabel = approvedBy == null
         ? null
-        : 'Accepted by ${(approvedBy['role'] == 'staff' ? 'Staff' : 'Admin')}${approvedBy['name'] != null && (approvedBy['name'] as String).isNotEmpty ? ' ${approvedBy['name']}' : ''}';
+        : 'Accepted by Laxmi Agro${approvedBy['name'] != null && (approvedBy['name'] as String).isNotEmpty ? ' · ${approvedBy['name']}' : ''}';
 
     return Column(
       children: [
@@ -699,6 +699,12 @@ class _NegotiationDetailScreenState
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _buildOrderTrackingCard(
+                    orderRef is Map
+                        ? Map<String, dynamic>.from(orderRef as Map)
+                        : null,
+                  ),
                 ],
                 const SizedBox(height: 20),
 
@@ -752,6 +758,115 @@ class _NegotiationDetailScreenState
     );
   }
 
+  Widget _buildOrderTrackingCard(Map<String, dynamic>? order) {
+    if (order == null) return const SizedBox.shrink();
+    final status = (order['status'] ?? 'pending_payment').toString();
+    final tracking = (order['trackingNumber'] ?? '').toString();
+    final courier = (order['courierName'] ?? '').toString();
+    final history = (order['statusHistory'] as List?) ?? [];
+    String label(String s) {
+      switch (s) {
+        case 'pending_payment':
+          return 'Payment Pending';
+        case 'payment_uploaded':
+          return 'Payment Verification Pending';
+        case 'payment_verified':
+          return 'Payment Verified';
+        case 'processing':
+          return 'Packing';
+        case 'shipped':
+          return 'Dispatched';
+        case 'delivered':
+          return 'Delivered';
+        case 'cancelled':
+          return 'Cancelled';
+        default:
+          return s;
+      }
+    }
+
+    const stages = [
+      'pending_payment',
+      'payment_verified',
+      'processing',
+      'shipped',
+      'delivered',
+    ];
+    int currentIdx = stages.indexOf(status);
+    // payment_uploaded maps to step 0 pending visually
+    if (status == 'payment_uploaded') currentIdx = 0;
+    if (currentIdx < 0) currentIdx = 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_rounded, size: 18, color: primaryBlue),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Order ${order['orderNumber'] ?? ''} · ${label(status)}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: List.generate(stages.length, (i) {
+              final done = i <= currentIdx;
+              return Expanded(
+                child: Container(
+                  height: 6,
+                  margin: EdgeInsets.only(right: i == stages.length - 1 ? 0 : 4),
+                  decoration: BoxDecoration(
+                    color: done ? greenAccent : borderLight,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          if (tracking.isNotEmpty || courier.isNotEmpty)
+            Text(
+              'LR: ${tracking.isNotEmpty ? tracking : '-'}${courier.isNotEmpty ? ' · $courier' : ''}',
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: slateBlue),
+            ),
+          if (history.isNotEmpty)
+            ...history.reversed.take(3).map((h) {
+              final m = (h as Map?)?.cast<String, dynamic>() ?? {};
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '• ${label((m['status'] ?? '').toString())}',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: textMuted),
+                ),
+              );
+            }),
+          const SizedBox(height: 4),
+          Text(
+            'Live status from your order. Open full order for payment & dispatch details.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusCard(
     String status,
     dynamic currentPrice,
@@ -766,25 +881,35 @@ class _NegotiationDetailScreenState
     switch (status) {
       case 'pending':
         statusColor = textMuted;
-        statusLabel = 'Pending Review';
+        statusLabel = 'Requirement Sent';
         statusIcon = Icons.hourglass_empty_rounded;
         break;
       case 'countered':
         statusColor = amberAccent;
         statusLabel = currentOfferBy == 'admin'
-            ? 'Admin Counter Offer'
+            ? 'New Price from Laxmi Agro'
             : 'Your Counter Offer';
         statusIcon = Icons.swap_horiz_rounded;
         break;
       case 'accepted':
         statusColor = greenAccent;
-        statusLabel = 'Accepted';
+        statusLabel = 'Order Created';
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'converted':
+        statusColor = greenAccent;
+        statusLabel = 'Order Created';
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'rejected':
         statusColor = redAccent;
-        statusLabel = 'Rejected';
+        statusLabel = 'Requirement Declined';
         statusIcon = Icons.cancel_rounded;
+        break;
+      case 'expired':
+        statusColor = textMuted;
+        statusLabel = 'Requirement Expired';
+        statusIcon = Icons.info_outline;
         break;
       default:
         statusColor = textMuted;
@@ -892,24 +1017,24 @@ class _NegotiationDetailScreenState
       case 'requested':
         dotColor = primaryBlue;
         dotIcon = Icons.send_rounded;
-        actionLabel = 'Negotiation Requested';
+        actionLabel = 'Requirement Sent';
         break;
       case 'countered':
         dotColor = amberAccent;
         dotIcon = Icons.swap_horiz_rounded;
         actionLabel = by == 'admin'
-            ? 'Admin Counter Offer'
+            ? 'New Price from Laxmi Agro'
             : 'Your Counter Offer';
         break;
       case 'accepted':
         dotColor = greenAccent;
         dotIcon = Icons.check_circle_rounded;
-        actionLabel = by == 'admin' ? 'Accepted by Admin' : 'You Accepted';
+        actionLabel = by == 'admin' ? 'Accepted by Laxmi Agro' : 'You Accepted';
         break;
       case 'rejected':
         dotColor = redAccent;
         dotIcon = Icons.cancel_rounded;
-        actionLabel = by == 'admin' ? 'Rejected by Admin' : 'You Cancelled';
+        actionLabel = by == 'admin' ? 'Declined by Laxmi Agro' : 'You Cancelled';
         break;
       default:
         dotColor = textMuted;
@@ -1227,7 +1352,7 @@ class _NegotiationDetailScreenState
           onPressed: _proceedToOrder,
           icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
           label: Text(
-            'Proceed to Order',
+            'View Details',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w700,

@@ -292,37 +292,37 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     switch (status) {
       case 'pending':
         return {
-          'label': 'PENDING',
+          'label': 'REQUIREMENT SENT',
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'countered':
         return {
-          'label': 'COUNTER-OFFER',
+          'label': 'NEW PRICE RECEIVED',
           'color': const Color(0xFFF59E0B),
           'bg': const Color(0xFFFEF3C7),
         };
       case 'accepted':
         return {
-          'label': 'ACCEPTED',
+          'label': 'ORDER CREATED',
           'color': const Color(0xFF16A34A),
           'bg': const Color(0xFFDCFCE7),
         };
       case 'rejected':
         return {
-          'label': 'REJECTED',
+          'label': 'REQUIREMENT DECLINED',
           'color': const Color(0xFFDC2626),
           'bg': const Color(0xFFFEE2E2),
         };
       case 'expired':
         return {
-          'label': 'EXPIRED',
+          'label': 'REQUIREMENT EXPIRED',
           'color': const Color(0xFF9CA3AF),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'converted':
         return {
-          'label': 'CONVERTED',
+          'label': 'ORDER CREATED',
           'color': const Color(0xFF7C3AED),
           'bg': const Color(0xFFF3E8FF),
         };
@@ -530,7 +530,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Your Price:',
+                                  'Your Expected Price:',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     color: slateBlue,
@@ -553,7 +553,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               children: [
                                 Text(
                                   status == 'countered' && currentOfferBy == 'admin'
-                                      ? 'Counter:'
+                                      ? 'New Price from Laxmi Agro:'
                                       : 'Current:',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
@@ -608,6 +608,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                         canPay,
                         negotiationId,
                         hasOrder,
+                        negotiation['orderId']?.toString(),
                       ),
                     ],
                   ),
@@ -626,6 +627,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     bool canPay,
     String negotiationId,
     bool hasOrder,
+    String? orderId,
   ) {
     String label;
     String style;
@@ -641,7 +643,13 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       label = 'View Order';
       style = 'primary';
       icon = Icons.local_shipping_outlined;
-      onTap = () => context.push('/previous-orders');
+      onTap = () {
+        if (orderId != null && orderId.isNotEmpty && orderId != 'null') {
+          context.push('/tracking/$orderId');
+        } else {
+          context.push('/previous-orders');
+        }
+      };
     } else if (status == 'countered' && currentOfferBy == 'admin') {
       label = 'Reply in Chat';
       style = 'primary';
@@ -649,18 +657,18 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       onTap = openDetail;
     } else if (status == 'accepted' && canPay) {
       // Legacy rows accepted before order auto-creation.
-      label = 'Proceed to Order';
+      label = 'View Details';
       style = 'primary';
       icon = Icons.account_balance_wallet_rounded;
       onTap = openDetail;
     } else if (status == 'pending') {
-      label = 'Under Review';
+      label = 'Requirement Sent';
       style = 'disabled';
     } else if (status == 'rejected') {
-      label = 'Rejected';
+      label = 'Requirement Declined';
       style = 'disabled';
     } else if (status == 'expired') {
-      label = 'Expired';
+      label = 'Requirement Expired';
       style = 'disabled';
     } else {
       label = 'View Details';
