@@ -86,9 +86,8 @@ export default function CategoriesPage() {
         if (s === 'all') return 'all'
         return 'parents'
     })
-    // Status filter: dim (inactive) cards are old merged categories kept
-    // for rollback. They stay clickable for management but hide from app.
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+    // Inactive (retired merge leftovers) are hidden everywhere here -
+    // they stay in the database but have no use in this view.
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -214,10 +213,8 @@ export default function CategoriesPage() {
               : scope === 'subs'
                 ? allSubcategories
                 : categories
-        if (statusFilter === 'active') return scoped.filter((c) => c.isActive !== false)
-        if (statusFilter === 'inactive') return scoped.filter((c) => c.isActive === false)
-        return scoped
-    }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories, statusFilter])
+        return scoped.filter((c) => c.isActive !== false)
+    }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories])
 
     function handleCategoryClick(category: Category) {
         // Parent (no parent ref): drill into its subcategories in-place
@@ -1028,9 +1025,9 @@ export default function CategoriesPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-1 rounded-lg border border-[#333] bg-[#161616] p-1 text-sm">
                     {([
-                        { key: 'parents', label: `Categories (${parentCategories.length})` },
-                        { key: 'subs', label: `Subcategories (${allSubcategories.length})` },
-                        { key: 'all', label: `All (${categories.length})` },
+                        { key: 'parents', label: `Categories (${parentCategories.filter((c) => c.isActive !== false).length})` },
+                        { key: 'subs', label: `Subcategories (${allSubcategories.filter((c) => c.isActive !== false).length})` },
+                        { key: 'all', label: `All (${categories.filter((c) => c.isActive !== false).length})` },
                     ] as const).map((tab) => (
                         <button
                             key={tab.key}
@@ -1041,26 +1038,6 @@ export default function CategoriesPage() {
                             }}
                             className={`rounded-md px-3 py-1.5 transition-colors ${
                                 !selectedParentId && scope === tab.key
-                                    ? 'bg-[#86efac] font-semibold text-black'
-                                    : 'text-gray-400 hover:text-white'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-[#333] bg-[#161616] p-1 text-sm">
-                    {([
-                        { key: 'all', label: 'All status' },
-                        { key: 'active', label: 'Active' },
-                        { key: 'inactive', label: 'Inactive' },
-                    ] as const).map((tab) => (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            onClick={() => setStatusFilter(tab.key)}
-                            className={`rounded-md px-3 py-1.5 transition-colors ${
-                                statusFilter === tab.key
                                     ? 'bg-[#86efac] font-semibold text-black'
                                     : 'text-gray-400 hover:text-white'
                             }`}
