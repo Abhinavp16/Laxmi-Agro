@@ -25,6 +25,7 @@
     "migrate:aluminium-cable": "node scripts/mergeAluminiumCable.js",
     "migrate:jhatka": "node scripts/mergeJhatka.js",
     "migrate:split-mourya-openwells": "node scripts/splitMouryaOpenwells.js",
+    "migrate:carve-hp-subs": "node scripts/carveCrowdedHpSubs.js",
     "payments:remove-razorpay": "CONFIRM_RAZORPAY_CLEANUP=1 node src/scripts/removeRazorpayData.js",
     "diagnose:ios-push": "node src/scripts/diagnoseIosPush.js",
     "media:audit-private": "node src/scripts/auditPrivateMediaMigration.js",
