@@ -359,7 +359,7 @@ export default function SettingsPage() {
                             <CardTitle className="flex items-center gap-2 text-white">
                                 <MessageCircle className="h-5 w-5 text-[#86efac]" /> WhatsApp Checkout
                             </CardTitle>
-                            <CardDescription>These settings control the live order flow used by cart checkout, buy now, and negotiation checkout.</CardDescription>
+                            <CardDescription>These settings control the live order flow used by cart checkout, buy now, and requirement orders.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="rounded-lg border border-[#2f4f39] bg-[#132117] p-4 text-sm text-[#c9f6d8]">
@@ -392,8 +392,8 @@ export default function SettingsPage() {
                                     render={({ field }) => (
                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
                                             <div className="space-y-0.5">
-                                                <FormLabel className="text-base text-white">Allow Negotiation Checkout</FormLabel>
-                                                <FormDescription>Lets accepted wholesaler negotiations continue through the same WhatsApp checkout flow.</FormDescription>
+                                                <FormLabel className="text-base text-white">Allow Requirement Orders</FormLabel>
+                                                <FormDescription>Lets admin-accepted dealer requirements create orders through the same WhatsApp checkout flow.</FormDescription>
                                             </div>
                                             <FormControl>
                                                 <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
@@ -445,7 +445,7 @@ export default function SettingsPage() {
                                     name="negotiationExpiryDays"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Negotiation Expiry (Days)</FormLabel>
+                                            <FormLabel className="text-white">Requirement Expiry (Days)</FormLabel>
                                             <FormControl>
                                                 <Input type="number" className="border-[#333] bg-[#0D0D0D] text-white" {...field} />
                                             </FormControl>
@@ -475,8 +475,8 @@ export default function SettingsPage() {
                                     render={({ field }) => (
                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border border-[#333] p-4">
                                             <div className="space-y-0.5">
-                                                <FormLabel className="text-base text-white">Enable Negotiations</FormLabel>
-                                                <FormDescription>Controls whether wholesaler negotiation is available at all.</FormDescription>
+                                                <FormLabel className="text-base text-white">Enable Requirements</FormLabel>
+                                                <FormDescription>Controls whether dealer requirements are available at all.</FormDescription>
                                             </div>
                                             <FormControl>
                                                 <Switch checked={field.value !== false} onCheckedChange={field.onChange} />

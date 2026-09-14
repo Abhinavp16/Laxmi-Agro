@@ -176,7 +176,7 @@ export default function NegotiationsPage() {
                 setTotalNegotiations(pagination.total || items.length)
                 setHasMore((pagination.page || 1) < (pagination.totalPages || 1))
             } else {
-                toast.error("Failed to fetch negotiations")
+                toast.error("Failed to fetch requirements")
             }
         } catch (error) {
             console.error(error)
@@ -221,8 +221,8 @@ export default function NegotiationsPage() {
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Negotiations</h1>
-                    <p className="text-gray-400 text-sm">{totalNegotiations > 0 && `(${totalNegotiations} negotiations)`}</p>
+                    <h1 className="text-3xl font-bold text-white">Deal Desk</h1>
+                    <p className="text-gray-400 text-sm">{totalNegotiations > 0 && `(${totalNegotiations} requirements)`}</p>
                 </div>
             </div>
 
@@ -232,7 +232,7 @@ export default function NegotiationsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                         type="text"
-                        placeholder="Search negotiations..."
+                        placeholder="Search requirements..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 bg-[#161616] border-[#333] text-white placeholder:text-gray-500 focus-visible:ring-[#86efac]"
@@ -270,7 +270,7 @@ export default function NegotiationsPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                         </div>
                     ) : negotiations.length === 0 ? (
-                        <div className="text-center text-gray-500 py-10">No negotiations found</div>
+                        <div className="text-center text-gray-500 py-10">No requirements found</div>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -458,7 +458,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
         }
         handledActionAt.current = lastAction.at
         if (lastAction.kind === 'negotiation-accepted') {
-            toast.success("Negotiation accepted — order confirmed")
+            toast.success("Deal accepted — order created")
         }
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchDetail(true)
@@ -513,7 +513,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     async function sendCounter() {
         const price = Number(counterPrice)
         if (!price || price <= 0) {
-            toast.error("Enter a valid counter price")
+            toast.error("Enter a valid unit price")
             return
         }
         setIsSubmitting(true)
@@ -524,7 +524,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             })
             const data = await res.json().catch(() => ({}))
             if (res.ok) {
-                toast.success("Counter offer sent")
+                toast.success("Counter price sent")
                 setCounterPrice("")
                 setCounterMessage("")
                 await fetchDetail()
@@ -545,7 +545,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             const res = await apiFetch(`/admin/negotiations/${negotiationId}/accept`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    message: "Accepted by admin",
+                    message: "Accepted by Laxmi Agro",
                     shippingAddress: address,
                     customerNote: customerNote || undefined,
                 }),
@@ -553,8 +553,8 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             const data = await res.json().catch(() => ({}))
             if (res.ok) {
                 toast.success(data?.data?.orderNumber
-                    ? `Order ${data.data.orderNumber} confirmed`
-                    : "Negotiation accepted — order confirmed")
+                    ? `Deal accepted. Order ${data.data.orderNumber} was created and the dealer was notified.`
+                    : "Deal accepted — order created")
                 setIsAcceptOpen(false)
                 await fetchDetail()
                 onChanged()
@@ -577,7 +577,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             })
             const data = await res.json().catch(() => ({}))
             if (res.ok) {
-                toast.success("Negotiation rejected")
+                toast.success("Requirement declined")
                 setIsRejectOpen(false)
                 setRejectReason("")
                 await fetchDetail()
@@ -610,12 +610,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const orderTotal = detail.finalTotalPrice ?? detail.currentTotalPrice ?? 0
     const livePrice = detail.currentPricePerUnit ?? detail.requestedPricePerUnit ?? 0
     const liveTotal = detail.currentTotalPrice ?? (detail.requestedQuantity * (detail.requestedPricePerUnit ?? 0))
-    const liveByLabel = detail.currentOfferBy === 'admin' ? 'Admin' : 'Wholesaler'
+    const liveByLabel = detail.currentOfferBy === 'admin' ? 'Laxmi Agro' : 'Dealer'
 
     return (
         <>
             <SheetHeader>
-                <SheetTitle className="text-slate-900">Negotiation Details</SheetTitle>
+                <SheetTitle className="text-slate-900">Requirement Details</SheetTitle>
                 <SheetDescription className="text-slate-500">
                     {detail.negotiationNumber} · {detail.productSnapshot?.name}
                 </SheetDescription>
@@ -753,7 +753,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             </Button>
                         </div>
                     ) : (
-                        <p className="pt-2 text-center text-xs text-slate-400">This negotiation is closed.</p>
+                        <p className="pt-2 text-center text-xs text-slate-400">This requirement is closed.</p>
                     )}
                 </div>
 
@@ -816,9 +816,9 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
                 <DialogContent className="border-slate-200 bg-white text-slate-900">
                     <DialogHeader>
-                        <DialogTitle>Reject negotiation?</DialogTitle>
+                        <DialogTitle>Reject requirement?</DialogTitle>
                         <DialogDescription className="text-slate-500">
-                            The wholesaler will be notified with your reason.
+                            The dealer will be notified with your reason.
                         </DialogDescription>
                     </DialogHeader>
                     <Textarea

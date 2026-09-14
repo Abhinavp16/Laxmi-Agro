@@ -107,9 +107,9 @@ export function DashboardMetrics() {
       iconClass: "bg-sky-50 text-sky-600",
     },
     {
-      label: "Negotiations",
+      label: "Open Requirements",
       value: (overview?.activeNegotiations ?? 0).toLocaleString(),
-      detail: "Active requests",
+      detail: "Active requirements",
       Icon: Handshake,
       valueClass: "text-amber-600",
       iconClass: "bg-amber-50 text-amber-600",

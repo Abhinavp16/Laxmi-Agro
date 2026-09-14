@@ -75,8 +75,8 @@ const adminNavGroups: NavGroup[] = [
     label: "Operations",
     items: [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
-      { href: "/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
-      { href: "/negotiation-settings", label: "NEGOTIATION SETTINGS", icon: Settings01Icon },
+      { href: "/negotiations", label: "DEAL DESK", icon: Message01Icon },
+      { href: "/negotiation-settings", label: "DEAL SETTINGS", icon: Settings01Icon },
       { href: "/staff-management", label: "MEMBERS", icon: UserGroupIcon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
       { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },
@@ -355,7 +355,7 @@ const staffNavGroups: NavGroup[] = [
     items: [
       { href: "/staff/products", label: "PRODUCTS", icon: Package01Icon },
       { href: "/staff/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
-      { href: "/staff/negotiations", label: "NEGOTIATIONS", icon: Message01Icon },
+      { href: "/staff/negotiations", label: "DEAL DESK", icon: Message01Icon },
     ],
   },
 ]
