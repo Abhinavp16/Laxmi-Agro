@@ -123,6 +123,9 @@ export default function CategoriesPage() {
     const [subcategoryNameHindi, setSubcategoryNameHindi] = useState("")
     const [subcategoryDescription, setSubcategoryDescription] = useState("")
     const [subcategoryOrder, setSubcategoryOrder] = useState("0")
+    const [subcategoryImageUrl, setSubcategoryImageUrl] = useState("")
+    const [subcategoryImagePublicId, setSubcategoryImagePublicId] = useState("")
+    const [isUploadingSubcategoryImage, setIsUploadingSubcategoryImage] = useState(false)
     const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false)
     const [editingSubcategory, setEditingSubcategory] = useState<Category | null>(null)
     
@@ -424,6 +427,7 @@ export default function CategoriesPage() {
                 name: subcategoryName.trim(),
                 nameHindi: subcategoryNameHindi.trim() || undefined,
                 description: subcategoryDescription.trim() || undefined,
+                image: subcategoryImageUrl.trim() ? { url: subcategoryImageUrl.trim(), publicId: subcategoryImagePublicId || undefined } : undefined,
                 company: editingCategory.company instanceof Object 
                     ? editingCategory.company._id 
                     : editingCategory.company,
@@ -451,6 +455,8 @@ export default function CategoriesPage() {
             setSubcategoryNameHindi("")
             setSubcategoryDescription("")
             setSubcategoryOrder("0")
+            setSubcategoryImageUrl("")
+            setSubcategoryImagePublicId("")
             setEditingSubcategory(null)
             setIsSubcategoryDialogOpen(false)
             fetchCategories()
@@ -485,6 +491,8 @@ export default function CategoriesPage() {
         setSubcategoryNameHindi(subcategory.nameHindi || "")
         setSubcategoryDescription(subcategory.description || "")
         setSubcategoryOrder(String(subcategory.order || 0))
+        setSubcategoryImageUrl(subcategory.image?.url || "")
+        setSubcategoryImagePublicId(subcategory.image?.publicId || "")
         setIsSubcategoryDialogOpen(true)
     }
 
@@ -494,7 +502,43 @@ export default function CategoriesPage() {
         setSubcategoryNameHindi("")
         setSubcategoryDescription("")
         setSubcategoryOrder("0")
+        setSubcategoryImageUrl("")
+        setSubcategoryImagePublicId("")
         setIsSubcategoryDialogOpen(true)
+    }
+
+    async function handleSubcategoryImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setIsUploadingSubcategoryImage(true)
+        const formData = new FormData()
+        formData.append('image', file)
+
+        try {
+            const response = await apiFetch('/upload/image?folder=categories', {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.message || 'Upload failed')
+            }
+
+            const data = await response.json()
+            if (data.success && data.data) {
+                setSubcategoryImageUrl(data.data.url)
+                setSubcategoryImagePublicId(data.data.publicId)
+                toast.success('Image uploaded successfully')
+            }
+        } catch (error: any) {
+            console.error('Upload error:', error)
+            toast.error(error.message || 'Failed to upload image')
+        } finally {
+            setIsUploadingSubcategoryImage(false)
+            e.target.value = ''
+        }
     }
 
     async function convertMissingHindiNames() {
@@ -617,8 +661,12 @@ export default function CategoriesPage() {
     }
 
     // Setup sensors for drag and drop
+    // distance constraint: plain clicks (e.g. edit/delete buttons)
+    // must not start a drag and swallow the click.
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 6 },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -757,13 +805,17 @@ export default function CategoriesPage() {
                     isDragging ? 'opacity-50 ring-2 ring-[#86efac] shadow-lg shadow-[#86efac]/20' : 'hover:border-[#86efac]/50'
                 } ${category.isActive ? '' : 'opacity-60'}`}
             >
-                {/* Drag Handle - Top bar with card number and controls */}
+                {/* Drag Handle - Top bar with card number and controls.
+                    Edit/delete buttons live OUTSIDE the sortable listeners
+                    so drag never swallows their clicks. */}
                 <div
-                    {...attributes}
-                    {...listeners}
-                    className="w-full h-12 px-4 py-0 cursor-grab active:cursor-grabbing flex items-center justify-between bg-blue-600/20 hover:bg-blue-600/30 transition-colors duration-200 border-b border-blue-500/50 group"
+                    className="w-full h-12 px-4 py-0 flex items-center justify-between bg-blue-600/20 hover:bg-blue-600/30 transition-colors duration-200 border-b border-blue-500/50 group"
                 >
-                    <div className="flex items-center gap-3">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="flex flex-1 items-center gap-3 cursor-grab active:cursor-grabbing touch-none"
+                    >
                         <span className="text-white font-bold text-sm">#{index + 1}</span>
                     </div>
                     <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
@@ -1467,6 +1519,42 @@ export default function CategoriesPage() {
                                 onChange={(e) => setSubcategoryDescription(e.target.value)}
                                 className="bg-[#0D0D0D] border-[#333] text-white min-h-[60px]"
                             />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-white mb-2 block">
+                                Subcategory Image
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <label className="flex h-20 flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#333] bg-[#0D0D0D] transition-colors hover:bg-[#1a1a1a]">
+                                    <div className="flex flex-col items-center justify-center py-3">
+                                        {isUploadingSubcategoryImage ? (
+                                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                        ) : (
+                                            <>
+                                                <Upload className="mb-1 h-5 w-5 text-gray-400" />
+                                                <p className="text-xs text-gray-400">
+                                                    <span className="text-[#86efac]">Click to upload</span> — auto WebP
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={handleSubcategoryImageUpload}
+                                        disabled={isUploadingSubcategoryImage}
+                                    />
+                                </label>
+                                {subcategoryImageUrl && (
+                                    <img
+                                        src={subcategoryImageUrl}
+                                        alt="Subcategory preview"
+                                        className="h-20 w-20 shrink-0 rounded-lg border border-[#333] bg-[#0D0D0D] object-cover"
+                                    />
+                                )}
+                            </div>
                         </div>
 
                         <div>
