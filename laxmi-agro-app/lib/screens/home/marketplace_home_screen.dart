@@ -12,6 +12,8 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../core/providers/locale_provider.dart';
 import '../../core/config/api_config.dart';
@@ -685,6 +687,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     'tag': item['tag']?.toString() ?? '',
                     'imageUrl': _resolveBannerImageUrl(
                       item['imageUrl']?.toString() ?? '',
+                    ),
+                    'mediaType': item['mediaType']?.toString() ?? 'image',
+                    'videoUrl': _resolveBannerImageUrl(
+                      item['videoUrl']?.toString() ?? '',
                     ),
                     'linkUrl': item['linkUrl']?.toString() ?? '',
                     'buttonText': item['buttonText']?.toString() ?? '',
@@ -5804,9 +5810,45 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             physics: const ClampingScrollPhysics(),
             onPageChanged: (index) {
               setState(() => _currentCarouselIndex = index);
+              // Pause auto-rotate while a video slide is visible.
+              final current = _heroBanners[index];
+              final currentMedia = (current['mediaType'] ?? 'image').toString();
+              if (currentMedia != 'image' &&
+                  (current['videoUrl'] ?? '').toString().isNotEmpty) {
+                _heroAutoRotateTimer?.cancel();
+              } else if (_heroBanners.length > 1 &&
+                  _heroAutoRotateTimer?.isActive != true) {
+                _startAutoRotate();
+              }
             },
             itemBuilder: (context, index) {
               final item = _heroBanners[index];
+              final mediaType = (item['mediaType'] ?? 'image').toString();
+              final videoUrl = (item['videoUrl'] ?? '').toString();
+              if ((mediaType == 'video_upload' || mediaType == 'youtube') &&
+                  videoUrl.isNotEmpty) {
+                final linkUrl = item['linkUrl']?.toString() ?? '';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: mediaType == 'youtube'
+                      ? _HeroYoutubeSlide(
+                          videoUrl: videoUrl,
+                          posterUrl:
+                              (item['imageUrl'] ?? '').toString(),
+                          linkUrl: linkUrl,
+                          isActive: _currentCarouselIndex == index,
+                          onOpenLink: () => _handleBannerTap(linkUrl),
+                        )
+                      : _HeroVideoSlide(
+                          videoUrl: videoUrl,
+                          posterUrl:
+                              (item['imageUrl'] ?? '').toString(),
+                          linkUrl: linkUrl,
+                          isActive: _currentCarouselIndex == index,
+                          onOpenLink: () => _handleBannerTap(linkUrl),
+                        ),
+                );
+              }
               final hasImage = (item['imageUrl'] ?? '').toString().isNotEmpty;
               final linkUrl = item['linkUrl']?.toString() ?? '';
               return Padding(
@@ -9167,3 +9209,346 @@ class _StarburstPainter extends CustomPainter {
   @override
   bool shouldRepaint(_StarburstPainter oldDelegate) => false;
 }
+
+/// Inline muted-autoplay video slide for hero video_upload banners.
+/// Button + link only: the whole slide opens the link, mute toggle is separate.
+class _HeroVideoSlide extends StatefulWidget {
+  final String videoUrl;
+  final String posterUrl;
+  final String linkUrl;
+  final bool isActive;
+  final VoidCallback onOpenLink;
+  const _HeroVideoSlide({
+    required this.videoUrl,
+    required this.posterUrl,
+    required this.linkUrl,
+    required this.isActive,
+    required this.onOpenLink,
+  });
+
+  @override
+  State<_HeroVideoSlide> createState() => _HeroVideoSlideState();
+}
+
+class _HeroVideoSlideState extends State<_HeroVideoSlide> {
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _hasError = false;
+  bool _muted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then(
+        (_) {
+          if (!mounted) return;
+          setState(() => _initialized = true);
+          if (widget.isActive) _controller?.play();
+        },
+        onError: (_) {
+          if (!mounted) return;
+          setState(() => _hasError = true);
+        },
+      );
+  }
+
+  @override
+  void didUpdateWidget(_HeroVideoSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_initialized) return;
+    if (widget.isActive) {
+      _controller?.play();
+    } else {
+      _controller?.pause();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onOpenLink,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          color: Colors.black,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_initialized && _controller != null)
+              FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _controller!.value.size.width,
+                  height: _controller!.value.size.height,
+                  child: VideoPlayer(_controller!),
+                ),
+              )
+            else if (widget.posterUrl.isNotEmpty && !_hasError)
+              CachedNetworkImage(
+                imageUrl: widget.posterUrl,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(color: Colors.black),
+              ),
+            if (!_initialized && !_hasError)
+              const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            // Bottom gradient for button legibility (no title/desc).
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.55),
+                  ],
+                ),
+              ),
+            ),
+            // Play button overlay -> opens link.
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  size: 34,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+            ),
+            // Mute toggle (does not navigate).
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: GestureDetector(
+                onTap: () async {
+                  final next = !_muted;
+                  await _controller?.setVolume(next ? 0 : 1);
+                  if (mounted) setState(() => _muted = next);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _muted
+                        ? Icons.volume_off_rounded
+                        : Icons.volume_up_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _heroYoutubeId(String url) {
+  final match = RegExp(
+    r'(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})',
+    caseSensitive: false,
+  ).firstMatch(url.trim());
+  return match?.group(1) ?? '';
+}
+
+/// Inline YouTube slide for hero youtube banners.
+/// Thumbnail-first (autoplay policies): tap plays muted inline.
+class _HeroYoutubeSlide extends StatefulWidget {
+  final String videoUrl;
+  final String posterUrl;
+  final String linkUrl;
+  final bool isActive;
+  final VoidCallback onOpenLink;
+  const _HeroYoutubeSlide({
+    required this.videoUrl,
+    required this.posterUrl,
+    required this.linkUrl,
+    required this.isActive,
+    required this.onOpenLink,
+  });
+
+  @override
+  State<_HeroYoutubeSlide> createState() => _HeroYoutubeSlideState();
+}
+
+class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
+  YoutubePlayerController? _controller;
+  bool _playing = false;
+
+  String get _videoId => _heroYoutubeId(widget.videoUrl);
+
+  String get _thumbnail {
+    if (widget.posterUrl.isNotEmpty) return widget.posterUrl;
+    if (_videoId.isNotEmpty) {
+      return 'https://i.ytimg.com/vi/$_videoId/hqdefault.jpg';
+    }
+    return '';
+  }
+
+  @override
+  void didUpdateWidget(_HeroYoutubeSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive && _playing) {
+      _controller?.pause();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _startInline() {
+    if (_videoId.isEmpty) {
+      widget.onOpenLink();
+      return;
+    }
+    _controller ??= YoutubePlayerController(
+      initialVideoId: _videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: true,
+        loop: true,
+        enableCaption: false,
+      ),
+    );
+    setState(() => _playing = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        color: Colors.black,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_playing && _controller != null)
+            YoutubePlayer(
+              controller: _controller!,
+              showVideoProgressIndicator: true,
+              progressIndicatorColor: const Color(0xFF2563EB),
+            )
+          else ...[
+            if (_thumbnail.isNotEmpty)
+              GestureDetector(
+                onTap: _startInline,
+                child: CachedNetworkImage(
+                  imageUrl: _thumbnail,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) =>
+                      Container(color: Colors.black),
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.55),
+                  ],
+                ),
+              ),
+            ),
+            // Play button overlay -> starts inline playback.
+            Center(
+              child: GestureDetector(
+                onTap: _startInline,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    size: 34,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ),
+            ),
+            // Link button -> opens linked product/brand/category.
+            Positioned(
+              left: 16,
+              bottom: 14,
+              child: GestureDetector(
+                onTap: widget.onOpenLink,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Text(
+                    'Shop Now',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

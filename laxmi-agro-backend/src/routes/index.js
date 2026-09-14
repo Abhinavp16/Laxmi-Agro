@@ -285,6 +285,8 @@ router.get('/settings/banners', async (req, res, next) => {
       .map((banner) => ({
         ...(typeof banner?.toObject === 'function' ? banner.toObject() : banner),
         imageUrl: normalizeMediaUrl(banner?.imageUrl, req),
+        videoUrl: normalizeMediaUrl(banner?.videoUrl, req),
+        mediaType: banner?.mediaType || 'image',
       }))
       .filter(b => b.isActive !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));

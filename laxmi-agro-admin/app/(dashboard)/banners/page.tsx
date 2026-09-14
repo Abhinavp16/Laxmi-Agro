@@ -92,6 +92,8 @@ interface Banner {
     subtitle: string
     tag: string
     imageUrl: string
+    mediaType: 'image' | 'video_upload' | 'youtube'
+    videoUrl: string
     linkUrl: string
     linkType: BannerLinkType
     linkedProductId: string
@@ -133,12 +135,25 @@ function inferLinkedCategoryId(linkUrl: unknown) {
     return match?.[1] || ""
 }
 
+function extractYoutubeId(url: unknown) {
+    const value = String(url || "").trim()
+    const match = value.match(/(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
+    return match?.[1] || ""
+}
+
+function youtubeThumbnailUrl(url: unknown) {
+    const id = extractYoutubeId(url)
+    return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : ""
+}
+
 function createEmptyBanner(order: number): Banner {
     return {
         title: "",
         subtitle: "",
         tag: "",
         imageUrl: "",
+        mediaType: "image",
+        videoUrl: "",
         linkUrl: "",
         linkType: "url",
         linkedProductId: "",
@@ -167,6 +182,8 @@ function normalizeBanner(banner: any, index: number): Banner {
         subtitle: String(banner?.subtitle || ""),
         tag: String(banner?.tag || ""),
         imageUrl: String(banner?.imageUrl || ""),
+        mediaType: (banner?.mediaType === "video_upload" || banner?.mediaType === "youtube") ? banner.mediaType : "image",
+        videoUrl: String(banner?.videoUrl || ""),
         linkUrl: String(banner?.linkUrl || (
             linkType === "product" ? buildProductLink(linkedProductId) :
             linkType === "brand" ? buildBrandLink(linkedBrandId) :
@@ -337,6 +354,51 @@ export default function BannersPage() {
         }
     }
 
+    async function handleBannerVideoUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'hero' | 'promo', index: number) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (file.size > 25 * 1024 * 1024) {
+            toast.error("Video too large. Maximum size: 25MB")
+            e.target.value = ''
+            return
+        }
+
+        setUploadingIndex({ type, index })
+
+        const formData = new FormData()
+        formData.append('video', file)
+
+        try {
+            const token = localStorage.getItem('accessToken')
+            const res = await fetch(buildApiUrl('/upload/video?folder=banners'), {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+
+            const data = await res.json()
+            if (res.ok && data.success) {
+                if (type === 'hero') {
+                    updateHeroBanner(index, 'videoUrl', data.data.url)
+                } else {
+                    updatePromoBanner(index, 'videoUrl', data.data.url)
+                }
+                toast.success("Video uploaded successfully")
+            } else {
+                toast.error(data.message || "Video upload failed")
+            }
+        } catch (error) {
+            toast.error("Error uploading video")
+        } finally {
+            setUploadingIndex(null)
+            // Reset the input value so the same file can be uploaded again if needed
+            e.target.value = ''
+        }
+    }
+
     useEffect(() => {
         fetchBanners()
         loadProductOptions()
@@ -483,6 +545,23 @@ export default function BannersPage() {
     }
 
     async function saveHeroBanners() {
+        for (let i = 0; i < heroBanners.length; i++) {
+            const banner = heroBanners[i]
+            if (banner.mediaType !== 'image') {
+                if (!banner.videoUrl.trim()) {
+                    toast.error(`Banner ${i + 1}: add a video (upload or YouTube link) or switch back to Image`)
+                    return
+                }
+                if (banner.mediaType === 'youtube' && !extractYoutubeId(banner.videoUrl)) {
+                    toast.error(`Banner ${i + 1}: YouTube link looks invalid`)
+                    return
+                }
+                if (!banner.imageUrl.trim()) {
+                    toast.error(`Banner ${i + 1}: poster image is required for video banners`)
+                    return
+                }
+            }
+        }
         setIsSavingHero(true)
         try {
             const res = await apiFetch('/admin/settings', {
@@ -542,13 +621,17 @@ export default function BannersPage() {
     ) {
         const isUploading = uploadingIndex?.type === type && uploadingIndex?.index === index
         const selectedProduct = availableProducts.find((product) => product._id === banner.linkedProductId)
+        // Video banners (hero only): button + link only, no title/desc overlay.
+        const isVideo = type === 'hero' && banner.mediaType !== 'image'
 
         return (
             <div key={index} className="border border-[#333] rounded-lg p-4 space-y-4 bg-[#0D0D0D]">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                         <GripVertical className="h-4 w-4 text-[#555]" />
-                        <span className="text-sm font-medium text-white">Banner {index + 1}</span>
+                        <span className="text-sm font-medium text-white">
+                            Banner {index + 1}{isVideo ? (banner.mediaType === 'youtube' ? ' · Video (YouTube)' : ' · Video') : ''}
+                        </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
@@ -569,9 +652,26 @@ export default function BannersPage() {
                 </div>
 
                 <div className="flex flex-col gap-4 md:flex-row">
-                    {/* Image Preview */}
+                    {/* Media Preview */}
                     <div className="relative flex h-40 w-full items-center justify-center overflow-hidden rounded-md border border-[#333] bg-[#161616] md:h-32 md:w-48 md:flex-shrink-0">
-                        {banner.imageUrl ? (
+                        {isVideo && banner.mediaType === 'video_upload' && banner.videoUrl ? (
+                            <video
+                                src={resolveBannerPreviewUrl(banner.videoUrl)}
+                                className="w-full h-full object-cover"
+                                muted
+                                playsInline
+                                preload="metadata"
+                            />
+                        ) : isVideo && banner.mediaType === 'youtube' && youtubeThumbnailUrl(banner.videoUrl) ? (
+                            <img
+                                src={youtubeThumbnailUrl(banner.videoUrl)}
+                                alt="YouTube preview"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://placehold.co/600x400/161616/white?text=Invalid+Video';
+                                }}
+                            />
+                        ) : banner.imageUrl ? (
                             <img
                                 src={resolveBannerPreviewUrl(banner.imageUrl)}
                                 alt="Preview"
@@ -583,7 +683,7 @@ export default function BannersPage() {
                         ) : (
                             <div className="flex flex-col items-center gap-1 text-[#555]">
                                 <ImageIcon className="h-8 w-8" />
-                                <span className="text-[10px]">No Image</span>
+                                <span className="text-[10px]">{isVideo ? 'No Video' : 'No Image'}</span>
                             </div>
                         )}
 
@@ -595,6 +695,24 @@ export default function BannersPage() {
                     </div>
 
                     <div className="flex-1 space-y-3 min-w-0">
+                        {type === 'hero' && (
+                            <div>
+                                <label className="text-xs text-[#919191] mb-1 block">Media Type</label>
+                                <select
+                                    className="h-10 w-full rounded-md border border-[#333] bg-[#161616] px-3 text-sm text-white sm:w-64"
+                                    value={banner.mediaType}
+                                    onChange={(e) => updateFn(index, 'mediaType', e.target.value)}
+                                >
+                                    <option value="image">Image</option>
+                                    <option value="video_upload">Video (upload MP4)</option>
+                                    <option value="youtube">Video (YouTube link)</option>
+                                </select>
+                                {isVideo && (
+                                    <p className="text-[10px] text-[#777] mt-1">Video banners show only a play button + link. No title, subtitle or button text.</p>
+                                )}
+                            </div>
+                        )}
+                        {!isVideo && (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label className="text-xs text-[#919191] mb-1 block">Title *</label>
@@ -615,6 +733,8 @@ export default function BannersPage() {
                                 />
                             </div>
                         </div>
+                        )}
+                        {!isVideo && (
                         <div>
                             <label className="text-xs text-[#919191] mb-1 block">Subtitle</label>
                             <Input
@@ -624,9 +744,51 @@ export default function BannersPage() {
                                 onChange={(e) => updateFn(index, 'subtitle', e.target.value)}
                             />
                         </div>
+                        )}
+                        {isVideo && banner.mediaType === 'video_upload' && (
+                        <div>
+                            <label className="text-xs text-[#919191] mb-1 block">Banner Video (MP4/WebM/MOV, max 25MB)</label>
+                            <input
+                                type="file"
+                                id={`upload-video-${type}-${index}`}
+                                className="hidden"
+                                accept="video/mp4,video/webm,video/quicktime"
+                                onChange={(e) => handleBannerVideoUpload(e, type, index)}
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] flex items-center justify-center gap-2 h-10"
+                                onClick={() => document.getElementById(`upload-video-${type}-${index}`)?.click()}
+                                disabled={isUploading}
+                            >
+                                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                <span className="text-sm">
+                                    {banner.videoUrl ? "Change Video" : "Upload Video"}
+                                </span>
+                            </Button>
+                            {banner.videoUrl && (
+                                <p className="text-[10px] text-[#555] mt-1 break-all">{banner.videoUrl}</p>
+                            )}
+                        </div>
+                        )}
+                        {isVideo && banner.mediaType === 'youtube' && (
+                        <div>
+                            <label className="text-xs text-[#919191] mb-1 block">YouTube Link</label>
+                            <Input
+                                className="bg-[#161616] border-[#333] text-white text-sm"
+                                placeholder="e.g. https://www.youtube.com/watch?v=..."
+                                value={banner.videoUrl}
+                                onChange={(e) => updateFn(index, 'videoUrl', e.target.value)}
+                            />
+                            {banner.videoUrl && !youtubeThumbnailUrl(banner.videoUrl) && (
+                                <p className="text-[10px] text-red-400 mt-1">That YouTube link looks invalid.</p>
+                            )}
+                        </div>
+                        )}
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                                <label className="text-xs text-[#919191] mb-1 block">Banner Image</label>
+                                <label className="text-xs text-[#919191] mb-1 block">{isVideo ? 'Poster Image (required)' : 'Banner Image'}</label>
                                 <input
                                     type="file"
                                     id={`upload-${type}-${index}`}
@@ -757,7 +919,8 @@ export default function BannersPage() {
                             </div>
                         </div>
 
-                        {/* Button and Icon Customization */}
+                        {/* Button and Icon Customization (image banners only) */}
+                        {!isVideo && (
                         <div className="grid grid-cols-1 gap-3 pt-2 border-t border-[#333] sm:grid-cols-2">
                             <div>
                                 <label className="text-xs text-[#919191] mb-1 block">Button Text</label>
@@ -795,6 +958,7 @@ export default function BannersPage() {
                                 <p className="text-[10px] text-[#555] mt-1">Select an icon for the button. Only top 4 suggested by default.</p>
                             </div>
                         </div>
+                        )}
                     </div>
                 </div>
             </div>

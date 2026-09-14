@@ -417,10 +417,16 @@ const adminValidation = {
       maintenanceMode: Joi.boolean(),
     }),
     heroBanners: Joi.array().items(Joi.object({
-      title: Joi.string().required(),
+      title: Joi.string().allow('', null),
       subtitle: Joi.string().allow('', null),
       tag: Joi.string().allow('', null),
       imageUrl: Joi.string().allow('', null),
+      mediaType: Joi.string().valid('image', 'video_upload', 'youtube').default('image'),
+      videoUrl: Joi.when('mediaType', {
+        is: Joi.valid('video_upload', 'youtube'),
+        then: Joi.string().required(),
+        otherwise: Joi.string().allow('', null),
+      }),
       linkUrl: Joi.string().allow('', null),
       buttonText: Joi.string().allow('', null),
       buttonIcon: Joi.string().allow('', null),

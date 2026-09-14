@@ -59,10 +59,17 @@ const settingsSchema = new mongoose.Schema({
   },
 
   heroBanners: [{
-    title: { type: String, required: true },
+    title: { type: String, default: '' },
     subtitle: String,
     tag: String,
     imageUrl: String,
+    // Video banners (hero only): button + link only, no title/desc overlay.
+    mediaType: {
+      type: String,
+      enum: ['image', 'video_upload', 'youtube'],
+      default: 'image',
+    },
+    videoUrl: String,
     linkUrl: String,
     buttonText: { type: String, default: 'Shop Now' },
     buttonIcon: { type: String, default: 'ArrowRight' },
