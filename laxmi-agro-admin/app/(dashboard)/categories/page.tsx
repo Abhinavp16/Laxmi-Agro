@@ -818,7 +818,11 @@ export default function CategoriesPage() {
                     >
                         <span className="text-white font-bold text-sm">#{index + 1}</span>
                     </div>
-                    <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
+                    <div
+                        className="flex gap-1"
+                        onClick={(event) => event.stopPropagation()}
+                        onPointerDown={(event) => event.stopPropagation()}
+                    >
                         <Button 
                             size="icon" 
                             variant="ghost" 
