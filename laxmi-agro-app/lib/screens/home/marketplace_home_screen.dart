@@ -9331,22 +9331,6 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
                 ),
               ),
             ),
-            // Play button overlay -> opens link.
-            Center(
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  size: 34,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-            ),
             // Mute toggle (does not navigate).
             Positioned(
               right: 12,
@@ -9497,25 +9481,6 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
                     Colors.transparent,
                     Colors.black.withOpacity(0.55),
                   ],
-                ),
-              ),
-            ),
-            // Play button overlay -> starts inline playback.
-            Center(
-              child: GestureDetector(
-                onTap: _startInline,
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    size: 34,
-                    color: Color(0xFF2563EB),
-                  ),
                 ),
               ),
             ),
