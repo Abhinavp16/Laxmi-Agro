@@ -284,9 +284,15 @@ export default function CategoriesPage() {
         setImagePublicId("")
         setParentId("none")
         setCompanyId(companies[0]?._id || "")
-        setOrder("0")
+        // New categories go AFTER existing cards, not to the front.
+        setOrder(String(maxCategoryOrder(parentCategories) + 1))
         setIsActive(true)
         setIsDialogOpen(true)
+    }
+
+    // Highest saved order in a list - new items append after it.
+    function maxCategoryOrder(list: Category[]) {
+        return list.reduce((max, c) => Math.max(max, Number(c.order) || 0), 0)
     }
 
     function openEditDialog(category: Category) {
@@ -501,7 +507,11 @@ export default function CategoriesPage() {
         setSubcategoryName("")
         setSubcategoryNameHindi("")
         setSubcategoryDescription("")
-        setSubcategoryOrder("0")
+        // New subcategories go after existing sibling cards.
+        const siblings = editingCategory
+            ? categories.filter(c => c.parent?._id === editingCategory._id)
+            : allSubcategories
+        setSubcategoryOrder(String(maxCategoryOrder(siblings) + 1))
         setSubcategoryImageUrl("")
         setSubcategoryImagePublicId("")
         setIsSubcategoryDialogOpen(true)
@@ -588,31 +598,33 @@ export default function CategoriesPage() {
     }
 
     // Drag and Drop Reorder Handler
+    // NOTE: reorder within the CURRENTLY VISIBLE scope only (parents,
+    // subs, or all). Reordering the full mixed array scrambled saved
+    // orders across scopes, so #N badges never matched Display Order.
     async function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event
 
         if (!over || active.id === over.id) return
 
-        // Find indices in the current categories array
-        const oldIndex = categories.findIndex(c => c._id === active.id)
-        const newIndex = categories.findIndex(c => c._id === over.id)
+        const visible = visibleCategories
+        const oldIndex = visible.findIndex(c => c._id === active.id)
+        const newIndex = visible.findIndex(c => c._id === over.id)
 
         if (oldIndex === -1 || newIndex === -1) return
 
-        // Reorder locally first (optimistic update)
-        const newCategories = arrayMove(categories, oldIndex, newIndex)
-        
-        // Assign sequential order numbers starting from 1
-        const updates = newCategories.map((cat, index) => ({
+        const moved = arrayMove(visible, oldIndex, newIndex)
+
+        // Assign sequential order numbers starting from 1 (backend requires >= 1)
+        const updates = moved.map((cat, index) => ({
             categoryId: cat._id,
             order: index + 1,
         }))
 
-        // Update UI immediately
-        setCategories(newCategories.map((cat, index) => ({
-            ...cat,
-            order: index + 1,
-        })))
+        // Optimistic update for the moved ids only
+        const orderById = new Map(updates.map(u => [u.categoryId, u.order] as const))
+        setCategories(prev => prev.map(cat =>
+            orderById.has(cat._id) ? { ...cat, order: orderById.get(cat._id)! } : cat
+        ))
 
         // Send to backend
         try {
@@ -627,6 +639,7 @@ export default function CategoriesPage() {
             }
 
             toast.success("Categories reordered successfully")
+            fetchCategories(1, true)
         } catch (error: any) {
             console.error("Reorder error:", error)
             toast.error(error.message || "Failed to reorder categories")
@@ -1329,6 +1342,11 @@ export default function CategoriesPage() {
                                     onChange={(e) => setOrder(e.target.value)}
                                     className="bg-[#0D0D0D] border-[#333] text-white"
                                 />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {editingCategory
+                                        ? `Currently #${visibleCategories.findIndex(c => c._id === editingCategory._id) + 1} of ${visibleCategories.length} in this view. Lower numbers show first; dragging cards updates this number.`
+                                        : "New categories appear after existing cards. Lower numbers show first."}
+                                </p>
                             </div>
                             <div className="flex-1">
                                 <label className="text-sm font-medium text-white mb-2 block">
@@ -1572,6 +1590,9 @@ export default function CategoriesPage() {
                                 onChange={(e) => setSubcategoryOrder(e.target.value)}
                                 className="bg-[#0D0D0D] border-[#333] text-white"
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                                New subcategories appear after existing ones. Lower numbers show first.
+                            </p>
                         </div>
                     </div>
 
