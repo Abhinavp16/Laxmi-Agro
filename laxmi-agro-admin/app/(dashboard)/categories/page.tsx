@@ -86,6 +86,9 @@ export default function CategoriesPage() {
         if (s === 'all') return 'all'
         return 'parents'
     })
+    // Status filter: dim (inactive) cards are old merged categories kept
+    // for rollback. They stay clickable for management but hide from app.
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -204,11 +207,17 @@ export default function CategoriesPage() {
 
     const visibleCategories = useMemo(() => {
         // Drill-down takes precedence: show subs of selected parent
-        if (selectedParentId) return subcategoriesOfSelected
-        if (scope === 'parents') return parentCategories
-        if (scope === 'subs') return allSubcategories
-        return categories
-    }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories])
+        const scoped = selectedParentId
+            ? subcategoriesOfSelected
+            : scope === 'parents'
+              ? parentCategories
+              : scope === 'subs'
+                ? allSubcategories
+                : categories
+        if (statusFilter === 'active') return scoped.filter((c) => c.isActive !== false)
+        if (statusFilter === 'inactive') return scoped.filter((c) => c.isActive === false)
+        return scoped
+    }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories, statusFilter])
 
     function handleCategoryClick(category: Category) {
         // Parent (no parent ref): drill into its subcategories in-place
@@ -502,14 +511,14 @@ export default function CategoriesPage() {
         setIsSubcategoryDialogOpen(true)
     }
 
-    function openAddSubcategoryDialog() {
+    function openAddSubcategoryDialog(parent: Category | null = editingCategory) {
         setEditingSubcategory(null)
         setSubcategoryName("")
         setSubcategoryNameHindi("")
         setSubcategoryDescription("")
         // New subcategories go after existing sibling cards.
-        const siblings = editingCategory
-            ? categories.filter(c => c.parent?._id === editingCategory._id)
+        const siblings = parent
+            ? categories.filter(c => c.parent?._id === parent._id)
             : allSubcategories
         setSubcategoryOrder(String(maxCategoryOrder(siblings) + 1))
         setSubcategoryImageUrl("")
@@ -814,6 +823,7 @@ export default function CategoriesPage() {
                 ref={setNodeRef}
                 style={style}
                 onClick={() => !isDragging && handleCategoryClick(category)}
+                title={category.isActive ? undefined : "Inactive: hidden from app & website, kept for records. Click to manage or reactivate."}
                 className={`relative bg-[#161616] rounded-xl overflow-hidden transition-all cursor-pointer border border-[#333] ${
                     isDragging ? 'opacity-50 ring-2 ring-[#86efac] shadow-lg shadow-[#86efac]/20' : 'hover:border-[#86efac]/50'
                 } ${category.isActive ? '' : 'opacity-60'}`}
@@ -885,6 +895,9 @@ export default function CategoriesPage() {
                         }`}>
                             {category.isActive ? 'Active' : 'Inactive'}
                         </span>
+                        {!category.isActive && (
+                            <span className="text-gray-500">Hidden from app</span>
+                        )}
                         <span className="flex items-center gap-1 text-gray-400">
                             <Package className="h-3 w-3" />
                             {category.productCount}
@@ -1036,6 +1049,26 @@ export default function CategoriesPage() {
                         </button>
                     ))}
                 </div>
+                <div className="flex items-center gap-1 rounded-lg border border-[#333] bg-[#161616] p-1 text-sm">
+                    {([
+                        { key: 'all', label: 'All status' },
+                        { key: 'active', label: 'Active' },
+                        { key: 'inactive', label: 'Inactive' },
+                    ] as const).map((tab) => (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => setStatusFilter(tab.key)}
+                            className={`rounded-md px-3 py-1.5 transition-colors ${
+                                statusFilter === tab.key
+                                    ? 'bg-[#86efac] font-semibold text-black'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
                 {selectedParent ? (
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                         <span>Categories</span>
@@ -1046,12 +1079,7 @@ export default function CategoriesPage() {
                             size="sm"
                             onClick={() => {
                                 setEditingCategory(selectedParent)
-                                setSubcategoryName("")
-                                setSubcategoryNameHindi("")
-                                setSubcategoryDescription("")
-                                setSubcategoryOrder("0")
-                                setEditingSubcategory(null)
-                                setIsSubcategoryDialogOpen(true)
+                                openAddSubcategoryDialog(selectedParent)
                             }}
                             className="ml-2 h-8 bg-[#86efac] text-black hover:bg-[#86efac]/90"
                         >
@@ -1079,12 +1107,7 @@ export default function CategoriesPage() {
                             type="button"
                             onClick={() => {
                                 setEditingCategory(selectedParent)
-                                setSubcategoryName("")
-                                setSubcategoryNameHindi("")
-                                setSubcategoryDescription("")
-                                setSubcategoryOrder("0")
-                                setEditingSubcategory(null)
-                                setIsSubcategoryDialogOpen(true)
+                                openAddSubcategoryDialog(selectedParent)
                             }}
                             className="mt-4 bg-[#86efac] text-black hover:bg-[#86efac]/90"
                         >
