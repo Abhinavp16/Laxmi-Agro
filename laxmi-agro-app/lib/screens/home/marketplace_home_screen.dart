@@ -810,19 +810,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
   }
 
+  void _goToNextHeroSlide() {
+    if (_carouselController.hasClients && _heroBanners.length > 1) {
+      final next = (_currentCarouselIndex + 1) % _heroBanners.length;
+      _carouselController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   void _startAutoRotate() {
     _heroAutoRotateTimer?.cancel();
     _promoAutoRotateTimer?.cancel();
     if (_heroBanners.length > 1) {
       _heroAutoRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (_carouselController.hasClients) {
-          final next = (_currentCarouselIndex + 1) % _heroBanners.length;
-          _carouselController.animateToPage(
-            next,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-          );
-        }
+        _goToNextHeroSlide();
       });
     }
     if (_promoBanners.length > 1) {
@@ -5838,6 +5842,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           linkUrl: linkUrl,
                           isActive: _currentCarouselIndex == index,
                           onOpenLink: () => _handleBannerTap(linkUrl),
+                          onVideoComplete: () => _goToNextHeroSlide(),
                         )
                       : _HeroVideoSlide(
                           videoUrl: videoUrl,
@@ -5846,6 +5851,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           linkUrl: linkUrl,
                           isActive: _currentCarouselIndex == index,
                           onOpenLink: () => _handleBannerTap(linkUrl),
+                          onVideoComplete: () => _goToNextHeroSlide(),
                         ),
                 );
               }
@@ -9218,12 +9224,14 @@ class _HeroVideoSlide extends StatefulWidget {
   final String linkUrl;
   final bool isActive;
   final VoidCallback onOpenLink;
+  final VoidCallback onVideoComplete;
   const _HeroVideoSlide({
     required this.videoUrl,
     required this.posterUrl,
     required this.linkUrl,
     required this.isActive,
     required this.onOpenLink,
+    required this.onVideoComplete,
   });
 
   @override
@@ -9235,18 +9243,20 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
   bool _initialized = false;
   bool _hasError = false;
   bool _muted = true;
+  bool _notifiedComplete = false;
 
   @override
   void initState() {
     super.initState();
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..setLooping(true)
+      ..setLooping(false)
       ..setVolume(0)
+      ..addListener(_onTick)
       ..initialize().then(
         (_) {
           if (!mounted) return;
           setState(() => _initialized = true);
-          if (widget.isActive) _controller?.play();
+          _playIfActive();
         },
         onError: (_) {
           if (!mounted) return;
@@ -9255,11 +9265,38 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
       );
   }
 
+  void _onTick() {
+    final controller = _controller;
+    if (controller == null || !_initialized || _notifiedComplete) return;
+    final duration = controller.value.duration;
+    final position = controller.value.position;
+    if (duration > Duration.zero &&
+        position >= duration - const Duration(milliseconds: 300)) {
+      _notifiedComplete = true;
+      widget.onVideoComplete();
+    }
+  }
+
+  void _playIfActive() {
+    if (!mounted || !_initialized || _hasError) return;
+    if (widget.isActive) {
+      _controller?.play();
+    }
+  }
+
+  void _replay() {
+    _notifiedComplete = false;
+    _controller?.seekTo(Duration.zero);
+    _controller?.play();
+  }
+
   @override
   void didUpdateWidget(_HeroVideoSlide oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_initialized) return;
-    if (widget.isActive) {
+    if (widget.isActive && !oldWidget.isActive) {
+      _replay();
+    } else if (widget.isActive) {
       _controller?.play();
     } else {
       _controller?.pause();
@@ -9380,12 +9417,14 @@ class _HeroYoutubeSlide extends StatefulWidget {
   final String linkUrl;
   final bool isActive;
   final VoidCallback onOpenLink;
+  final VoidCallback onVideoComplete;
   const _HeroYoutubeSlide({
     required this.videoUrl,
     required this.posterUrl,
     required this.linkUrl,
     required this.isActive,
     required this.onOpenLink,
+    required this.onVideoComplete,
   });
 
   @override
@@ -9460,6 +9499,7 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
               controller: _controller!,
               showVideoProgressIndicator: true,
               progressIndicatorColor: const Color(0xFF2563EB),
+              onEnded: (_) => widget.onVideoComplete(),
             )
           else ...[
             if (_thumbnail.isNotEmpty)
