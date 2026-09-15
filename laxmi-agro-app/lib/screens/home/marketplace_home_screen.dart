@@ -143,6 +143,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   // Reviews state
   List<Map<String, dynamic>> _dynamicReviews = [];
   bool _isLoadingReviews = true;
+
+  // Dealer home sections (wholesalers only)
+  List<Map<String, dynamic>> _homeOrders = [];
+  bool _isLoadingHomeOrders = false;
+  List<Map<String, dynamic>> _scheduledChanges = [];
+  bool _isLoadingScheduledChanges = false;
+  String? _repeatingOrderId;
   Timer? _guestAuthPromptTimer;
   bool _isGuestAuthDialogVisible = false;
 
@@ -166,6 +173,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       ref.read(cartProvider.notifier).fetchCart();
       _startAutoRotate();
       _initGuestAuthPromptFlow();
+      _fetchNegotiations();
+      _fetchHomeOrders();
+      _fetchScheduledChanges();
     });
   }
 
@@ -484,6 +494,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           _products = fetched.isEmpty ? [] : fetched;
           _isLoadingProducts = false;
         });
+        // Backfill scheduled-change cards from loaded products when the
+        // dedicated endpoint is unavailable (backend not deployed yet).
+        if (_isWholesaler && _scheduledChanges.isEmpty && mounted) {
+          setState(_deriveScheduledFromProducts);
+        }
       } else {
         debugPrint('🔴 [PRODUCTS] ERROR: Unexpected status code: ${response.statusCode}');
       }
@@ -853,6 +868,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       _fetchOffers(),
       _fetchNotificationCount(),
       _fetchNegotiations(),
+      _fetchHomeOrders(),
+      _fetchScheduledChanges(),
       ref.read(authProvider.notifier).fetchCurrentUser(),
     ]);
   }
@@ -1851,13 +1868,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   _buildHomeSearchBar(),
                   const SizedBox(height: 8),
                   _buildCarousel(),
-                  const SizedBox(height: 16),
-                  if (!kHideOfferCouponUi) _buildOfferSection(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
+                  if (_isWholesaler) ...[
+                    _buildScheduledChanges(),
+                    const SizedBox(height: 12),
+                  ],
+                  if (!kHideOfferCouponUi && !_isWholesaler)
+                    _buildOfferSection(),
+                  if (!_isWholesaler) const SizedBox(height: 8),
                   _buildBrandsSection(),
                   const SizedBox(height: 8),
                   _buildCategorySection(),
                   const SizedBox(height: 8),
+                  if (_isWholesaler) ...[
+                    _buildContinueDeals(),
+                    const SizedBox(height: 8),
+                    _buildTrackHomeOrders(),
+                    _buildRepeatHomeOrders(),
+                    const SizedBox(height: 8),
+                  ],
                   _buildProductsSection(
                     _isWholesaler
                         ? ref
@@ -1880,13 +1909,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   const SizedBox(height: 8),
                   _buildTrustStrip(),
                   const SizedBox(height: 32),
-                  if (_promoBanners.isNotEmpty) ...[
+                  if (_promoBanners.isNotEmpty && !_isWholesaler) ...[
                     _buildPromoBannerCarousel(),
                     const SizedBox(height: 32),
                   ],
-                  _buildWhyBuySection(),
-                  const SizedBox(height: 32),
-                  _buildReviewSection(),
+                  if (!_isWholesaler) ...[
+                    _buildWhyBuySection(),
+                    const SizedBox(height: 32),
+                    _buildReviewSection(),
+                  ],
                   const SizedBox(height: 100),
                 ],
               ),
@@ -4239,8 +4270,168 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_negotiationTab == 0) {
+  // ---- Dealer home: recent orders for track + repeat ----
+  Future<void> _fetchHomeOrders() async {
+    if (!_isWholesaler) return;
+    if (mounted) setState(() => _isLoadingHomeOrders = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.get(
+        '/orders',
+        queryParameters: {'page': 1, 'limit': 10},
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List items = response.data['data'] ?? [];
+        setState(() {
+          _homeOrders = items.cast<Map<String, dynamic>>();
+          _isLoadingHomeOrders = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingHomeOrders = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingHomeOrders = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _activeHomeOrders => _homeOrders
+      .where(
+        (o) => !['delivered', 'cancelled'].contains(o['status']),
+      )
+      .take(3)
+      .toList();
+
+  List<Map<String, dynamic>> get _repeatableHomeOrders => _homeOrders
+      .where(
+        (o) => o['status'] == 'delivered' && o['orderType'] == 'wholesale',
+      )
+      .take(3)
+      .toList();
+
+  List<Map<String, dynamic>> get _openHomeDeals => _negotiations
+      .where((n) => ['pending', 'countered'].contains(n['status']))
+      .take(3)
+      .toList();
+
+  // ---- Dealer home: upcoming scheduled price changes ----
+  // Primary: GET /products/scheduled-changes (needs backend deploy).
+  // Fallback: derive from already-loaded home products so cards work
+  // even when the endpoint is missing on the server.
+  Future<void> _fetchScheduledChanges() async {
+    if (!_isWholesaler) return;
+    if (mounted) setState(() => _isLoadingScheduledChanges = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.get('/products/scheduled-changes');
+      if (!mounted) return;
+      if (response.statusCode == 200 &&
+          response.data['success'] == true) {
+        final List items = response.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          setState(() {
+            _scheduledChanges = items.cast<Map<String, dynamic>>();
+            _isLoadingScheduledChanges = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {
+      // Endpoint missing (backend not deployed) or offline: fall through.
+    }
+    _deriveScheduledFromProducts();
+    if (mounted) setState(() => _isLoadingScheduledChanges = false);
+  }
+
+  void _deriveScheduledFromProducts() {
+    final derived = <Map<String, dynamic>>[];
+    for (final product in _products) {
+      final pending = product['pendingPriceChange'];
+      if (pending is! Map<String, dynamic>) continue;
+      final effectiveAt = DateTime.tryParse(
+        (pending['effectiveAt'] ?? '').toString(),
+      );
+      if (effectiveAt == null ||
+          !effectiveAt.isAfter(DateTime.now())) {
+        continue;
+      }
+      derived.add({
+        'id': (product['id'] ?? '').toString(),
+        'name': (product['name'] ?? '').toString(),
+        'image': (product['image'] ?? '').toString(),
+        'currentPrice': pending['currentPrice'] ?? product['price'] ?? 0,
+        'newPrice': pending['newPrice'] ?? 0,
+        'effectiveAt': effectiveAt.toIso8601String(),
+      });
+    }
+    derived.sort((a, b) => (a['effectiveAt'] as String)
+        .compareTo(b['effectiveAt'] as String));
+    _scheduledChanges = derived.take(10).toList();
+  }
+
+  // ---- Dealer home: repeat a delivered wholesale order as a requirement ----
+  Future<void> _repeatRequirement(Map<String, dynamic> order) async {
+    final items =
+        (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    if (items.isEmpty) return;
+    final first = items.first;
+    final productId = (first['productId'] ?? '').toString();
+    if (productId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product unavailable for repeat')),
+      );
+      return;
+    }
+    setState(() => _repeatingOrderId = (order['id'] ?? '').toString());
+    try {
+      final api = ref.read(apiClientProvider);
+      final productRes = await api.get('/products/$productId');
+      final productData = Map<String, dynamic>.from(
+        productRes.data['data'] ?? {},
+      );
+      final wsPrice =
+          productData['wholesalePrice'] ?? first['pricePerUnit'] ?? 0;
+      final quantity = (first['quantity'] as num?)?.toInt() ?? 1;
+      final createRes = await api.post(
+        '/negotiations',
+        data: {
+          'productId': productId,
+          'quantity': quantity,
+          'pricePerUnit': wsPrice,
+          'message': 'Repeat requirement',
+        },
+      );
+      if (!mounted) return;
+      if ((createRes.statusCode == 200 || createRes.statusCode == 201) &&
+          createRes.data['success'] == true) {
+        final negotiationId =
+            (createRes.data['data']?['id'] ?? '').toString();
+        if (negotiationId.isNotEmpty) {
+          await context.push('/negotiation-detail/$negotiationId');
+          _fetchNegotiations();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              (createRes.data['message'] ?? 'Could not repeat requirement')
+                  .toString(),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not repeat requirement')),
+      );
+    } finally {
+      if (mounted) setState(() => _repeatingOrderId = null);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredNegotiations {    if (_negotiationTab == 0) {
       // Active tab - pending and countered negotiations
       return _negotiations
           .where((n) => ['pending', 'countered'].contains(n['status']))
@@ -6877,6 +7068,530 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return NumberFormatter.formatLakhs(val);
   }
 
+  // ============ Dealer home sections (wholesalers only) ============
+
+  String _dealerDealLabel(String status, String currentOfferBy) {
+    if (status == 'countered' && currentOfferBy == 'admin') {
+      return 'New Price Received';
+    }
+    return 'Requirement Sent';
+  }
+
+  String _dealerOrderStage(String status) {
+    switch (status) {
+      case 'pending_payment':
+        return 'Payment Pending';
+      case 'payment_uploaded':
+        return 'Verification Pending';
+      case 'payment_verified':
+        return 'Payment Verified';
+      case 'processing':
+        return 'Packing';
+      case 'shipped':
+        return 'Dispatched';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status.replaceAll('_', ' ');
+    }
+  }
+
+  Color _dealerStageColor(String status) {
+    switch (status) {
+      case 'payment_verified':
+      case 'delivered':
+        return const Color(0xFF16A34A);
+      case 'cancelled':
+        return const Color(0xFFDC2626);
+      case 'shipped':
+      case 'processing':
+        return primaryBlue;
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  Widget _dealerSectionHeader(
+    String title,
+    String actionLabel,
+    VoidCallback onTap,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          GestureDetector(
+            onTap: onTap,
+            child: Text(
+              actionLabel,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dealerCard({required Widget child, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildScheduledChanges() {
+    if (_isLoadingScheduledChanges && _scheduledChanges.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (_scheduledChanges.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF59E0B).withOpacity(0.14),
+            const Color(0xFFFBBF24).withOpacity(0.06),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: _ScheduledStripCarousel(
+        items: _scheduledChanges,
+        onOpen: (productId) => context.push('/product/$productId'),
+      ),
+    );
+  }
+
+  Widget _buildContinueDeals() {
+    final deals = _openHomeDeals;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _dealerSectionHeader(
+          'Continue Deal Chat',
+          'Deal Desk',
+          () => _selectNavIndex(3),
+        ),
+        if (_isNegotiationsLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: SizedBox(
+              height: 120,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          )
+        else if (deals.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _dealerCard(
+              onTap: () => _selectNavIndex(2),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.handshake_outlined,
+                      color: primaryBlue,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No open deals — browse the catalogue to send your first requirement',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 148,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: deals.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final deal = deals[index];
+                final product =
+                    deal['product'] as Map<String, dynamic>? ?? {};
+                final status = (deal['status'] ?? 'pending').toString();
+                final offerBy =
+                    (deal['currentOfferBy'] ?? '').toString();
+                final total = deal['currentTotalPrice'] ??
+                    deal['requestedTotalPrice'] ??
+                    0;
+                final imageUrl = (product['image'] ?? '').toString();
+                final isCounter =
+                    status == 'countered' && offerBy == 'admin';
+                return SizedBox(
+                  width: 250,
+                  child: _dealerCard(
+                    onTap: () async {
+                      final id = (deal['id'] ?? deal['_id'] ?? '')
+                          .toString();
+                      if (id.isEmpty) return;
+                      await context.push('/negotiation-detail/$id');
+                      _fetchNegotiations();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: imageUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        width: 56,
+                                        height: 56,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            Container(
+                                          width: 56,
+                                          height: 56,
+                                          color: backgroundWhite,
+                                          child: const Icon(
+                                            Icons.handshake_outlined,
+                                            color: textMuted,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          color: primaryBlue
+                                              .withOpacity(0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.handshake_outlined,
+                                          color: primaryBlue,
+                                          size: 24,
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      (deal['negotiationNumber'] ?? '')
+                                          .toString(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: textMuted,
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (product['name'] ?? 'Requirement')
+                                          .toString(),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: textPrimary,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Qty ${deal['requestedQuantity'] ?? ''} · ₹${_formatPrice(total)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: primaryBlue,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (isCounter
+                                          ? const Color(0xFFF59E0B)
+                                          : textMuted)
+                                      .withOpacity(0.12),
+                                  borderRadius:
+                                      BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  _dealerDealLabel(status, offerBy),
+                                  maxLines: 1,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                    color: isCounter
+                                        ? const Color(0xFFF59E0B)
+                                        : textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTrackHomeOrders() {
+    final orders = _activeHomeOrders;
+    if (_isLoadingHomeOrders || orders.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _dealerSectionHeader(
+          'Track Active Orders',
+          'All Orders',
+          () => context.push('/previous-orders'),
+        ),
+        ...orders.map(
+          (order) {
+            final orderId = (order['id'] ?? '').toString();
+            final status = (order['status'] ?? '').toString();
+            final stageColor = _dealerStageColor(status);
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: _dealerCard(
+                onTap: orderId.isEmpty
+                    ? null
+                    : () => context.push('/tracking/$orderId'),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: stageColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.local_shipping_outlined,
+                          color: stageColor,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Order ${(order['orderNumber'] ?? '').toString()}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_dealerOrderStage(status)} · ₹${_formatPrice(order['total'])}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: textMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRepeatHomeOrders() {
+    final orders = _repeatableHomeOrders;
+    if (_isLoadingHomeOrders || orders.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _dealerSectionHeader(
+          'Repeat Requirement',
+          'All Orders',
+          () => context.push('/previous-orders'),
+        ),
+        ...orders.map(
+          (order) {
+            final items =
+                (order['items'] as List?)?.cast<Map<String, dynamic>>() ??
+                    [];
+            final first = items.isNotEmpty ? items.first : {};
+            final orderId = (order['id'] ?? '').toString();
+            final isRepeating = _repeatingOrderId == orderId;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: _dealerCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${(first['name'] ?? 'Order').toString()} × ${first['quantity'] ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Order ${(order['orderNumber'] ?? '').toString()} · ₹${_formatPrice(order['total'])}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: isRepeating
+                            ? null
+                            : () => _repeatRequirement(order),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primaryBlue,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: isRepeating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Repeat',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   // Checkout state for cart address + coupon
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -7724,7 +8439,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return Column(
       children: [
         SizedBox(
-          height: 160,
+          height: 104,
           child: PageView.builder(
             controller: _promoBannerController,
             itemCount: _promoBanners.length,
@@ -9214,6 +9929,301 @@ class _StarburstPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StarburstPainter oldDelegate) => false;
+}
+
+/// Urgency tint shared by price-change UI: calm blue from 6h out,
+/// amber under 6h, red under 1h. Discrete zones, no muddy mid-blends.
+Color pulseAccentFor(DateTime? effectiveAt) {
+  const primaryBlue = Color(0xFF1E40AF);
+  if (effectiveAt == null) return primaryBlue;
+  final remain = effectiveAt.difference(DateTime.now());
+  if (remain.isNegative || remain.inMinutes < 60) {
+    return const Color(0xFFDC2626);
+  }
+  if (remain.inHours < 6) return const Color(0xFFF59E0B);
+  return primaryBlue;
+}
+
+String changeCountdownFor(DateTime effectiveAt) {
+  final diff = effectiveAt.difference(DateTime.now());
+  if (diff.isNegative) return 'Applying soon';
+  if (diff.inHours >= 1) {
+    final mins = diff.inMinutes % 60;
+    final when = mins > 0
+        ? '${diff.inHours}h ${mins}m'
+        : '${diff.inHours}h';
+    return 'New price effective in $when';
+  }
+  final mins = diff.inMinutes;
+  return mins > 0
+      ? 'New price effective in ${mins}m'
+      : 'Applying soon';
+}
+
+/// Compact auto-scrolling price-change strip carousel.
+class _ScheduledStripCarousel extends StatefulWidget {
+  final List<Map<String, dynamic>> items;
+  final void Function(String productId) onOpen;
+  const _ScheduledStripCarousel({
+    required this.items,
+    required this.onOpen,
+  });
+
+  @override
+  State<_ScheduledStripCarousel> createState() =>
+      _ScheduledStripCarouselState();
+}
+
+class _ScheduledStripCarouselState
+    extends State<_ScheduledStripCarousel> {
+  final PageController _controller = PageController();
+  Timer? _timer;
+  int _index = 0;
+
+  static const Color _primaryBlue = Color(0xFF1E40AF);
+  static const Color _surfaceWhite = Color(0xFFFFFFFF);
+  static const Color _textPrimary = Color(0xFF0F172A);
+  static const Color _textMuted = Color(0xFF64748B);
+
+  String _fmt(dynamic price) {
+    if (price == null) return '0';
+    final val =
+        (price is int) ? price.toDouble() : (price as num).toDouble();
+    return NumberFormatter.formatLakhs(val);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.items.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!_controller.hasClients) return;
+        final next = (_index + 1) % widget.items.length;
+        _controller.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 104,
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: widget.items.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (context, index) {
+              final item = widget.items[index];
+              final current =
+                  (item['currentPrice'] as num?)?.toDouble() ?? 0;
+              final next =
+                  (item['newPrice'] as num?)?.toDouble() ?? 0;
+              final dropping = next < current;
+              final effectiveAt = DateTime.tryParse(
+                (item['effectiveAt'] ?? '').toString(),
+              );
+              final productId = (item['id'] ?? '').toString();
+              final pct = current > 0
+                  ? ((next - current) / current * 100)
+                  : 0.0;
+              final accent = dropping
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFF59E0B);
+              final urgency = pulseAccentFor(effectiveAt);
+              final remain =
+                  effectiveAt?.difference(DateTime.now()) ??
+                      Duration.zero;
+              final remainLabel = effectiveAt == null
+                  ? '--'
+                  : remain.isNegative
+                      ? 'Soon'
+                      : remain.inHours >= 1
+                          ? '${remain.inHours}h ${remain.inMinutes % 60}m'
+                          : '${remain.inMinutes}m';
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: GestureDetector(
+                  onTap: productId.isEmpty
+                      ? null
+                      : () => widget.onOpen(productId),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _surfaceWhite,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: urgency.withOpacity(0.55),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: urgency.withOpacity(0.1),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: urgency.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.notifications_active_rounded,
+                            color: urgency,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                (item['name'] ?? '').toString(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: _textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      '₹${_fmt(current)} → ₹${_fmt(next)}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: accent,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
+                                    style:
+                                        GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: accent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                effectiveAt == null
+                                    ? 'Scheduled'
+                                    : changeCountdownFor(
+                                        effectiveAt),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: urgency,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: urgency.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                remainLabel,
+                                maxLines: 1,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: urgency,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              Text(
+                                'LEFT',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                  color: urgency.withOpacity(0.7),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.items.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.items.length,
+              (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 3),
+                width: _index == i ? 18 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _index == i
+                      ? _primaryBlue
+                      : _primaryBlue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// Inline muted-autoplay video slide for hero video_upload banners.
