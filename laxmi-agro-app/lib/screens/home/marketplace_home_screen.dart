@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
@@ -4382,6 +4383,36 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     derived.sort((a, b) => (a['effectiveAt'] as String)
         .compareTo(b['effectiveAt'] as String));
     _scheduledChanges = derived.take(10).toList();
+    // TODO(REMOVE-BEFORE-RELEASE): temporary debug preview so the pulse
+    // cards can be verified on-simulator without touching prod data.
+    if (_scheduledChanges.isEmpty && kDebugMode && _products.length >= 2) {
+      final now = DateTime.now();
+      num priceOf(Map<String, dynamic> p) =>
+          (p['price'] as num?) ?? 0;
+      final a = _products[0];
+      final b = _products[1];
+      final pa = priceOf(a).toDouble();
+      final pb = priceOf(b).toDouble();
+      _scheduledChanges = [
+        <String, dynamic>{
+          'id': (a['id'] ?? '').toString(),
+          'name': (a['name'] ?? '').toString(),
+          'image': (a['image'] ?? '').toString(),
+          'currentPrice': pa,
+          'newPrice': pa + 2,
+          'effectiveAt':
+              now.add(const Duration(hours: 5)).toIso8601String(),
+        },
+        <String, dynamic>{
+          'id': (b['id'] ?? '').toString(),
+          'name': (b['name'] ?? '').toString(),
+          'image': (b['image'] ?? '').toString(),
+          'currentPrice': pb,
+          'newPrice': (pb - 2) < 0 ? pb : pb - 2,
+          'effectiveAt': now.add(const Duration(days: 2)).toIso8601String(),
+        },
+      ];
+    }
   }
 
   // ---- Dealer home: repeat a delivered wholesale order as a requirement ----
@@ -7248,7 +7279,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           )
         else
           SizedBox(
-            height: 148,
+            height: 118,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -7290,13 +7321,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 child: imageUrl.isNotEmpty
                                     ? CachedNetworkImage(
                                         imageUrl: imageUrl,
-                                        width: 56,
-                                        height: 56,
+                                        width: 48,
+                                        height: 48,
                                         fit: BoxFit.cover,
                                         errorWidget: (_, __, ___) =>
                                             Container(
-                                          width: 56,
-                                          height: 56,
+                                          width: 48,
+                                          height: 48,
                                           color: backgroundWhite,
                                           child: const Icon(
                                             Icons.handshake_outlined,
@@ -7306,8 +7337,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         ),
                                       )
                                     : Container(
-                                        width: 56,
-                                        height: 56,
+                                        width: 48,
+                                        height: 48,
                                         decoration: BoxDecoration(
                                           color: primaryBlue
                                               .withOpacity(0.08),
@@ -7345,7 +7376,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     Text(
                                       (product['name'] ?? 'Requirement')
                                           .toString(),
-                                      maxLines: 2,
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style:
                                           GoogleFonts.plusJakartaSans(
@@ -7360,7 +7391,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                             ],
                           ),
-                          const Spacer(),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
