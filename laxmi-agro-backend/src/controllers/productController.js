@@ -531,3 +531,37 @@ exports.getRelatedProducts = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    List products with a scheduled (pending) price change
+// @route   GET /api/v1/products/scheduled-changes
+// @access  Private (any authenticated user; wholesale prices included)
+exports.getScheduledPriceChanges = async (req, res, next) => {
+  try {
+    const products = await Product.find({
+      status: PRODUCT_STATUS.ACTIVE,
+      priceChangeEffectiveAt: { $ne: null },
+    })
+      .select('name slug wholesalePrice pendingWholesalePrice priceChangeEffectiveAt images')
+      .sort({ priceChangeEffectiveAt: 1 })
+      .limit(10)
+      .lean();
+
+    res.json({
+      success: true,
+      data: products.map((p) => ({
+        id: p._id,
+        name: p.name,
+        slug: p.slug,
+        image: normalizeMediaUrl(
+          p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url,
+          req
+        ),
+        currentPrice: p.wholesalePrice,
+        newPrice: p.pendingWholesalePrice,
+        effectiveAt: p.priceChangeEffectiveAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};

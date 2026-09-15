@@ -540,7 +540,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   'image': imageUrl,
                   'blurHash': null,
                   'slug': item['slug']?.toString() ?? '',
-                  'count': item['productCount'] ?? 0,
+                  'count': _effectiveCategoryCount(item),
                   'order': item['order'] ?? 999,
                 };
                 debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}');
@@ -579,6 +579,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return int.tryParse(rawCount.toString()) != null
         ? int.parse(rawCount.toString()) > 0
         : true;
+  }
+
+  /// Root categories hold products in subcategories, so the effective count
+  /// includes subcategory productCounts (matches Categories tab behaviour).
+  int _effectiveCategoryCount(Map item) {
+    int total = int.tryParse(item['productCount']?.toString() ?? '') ?? 0;
+    final subs = item['subcategories'];
+    if (subs is List) {
+      for (final sub in subs) {
+        if (sub is Map) {
+          total += int.tryParse(sub['productCount']?.toString() ?? '') ?? 0;
+        }
+      }
+    }
+    return total;
   }
 
   String _normalizedCategoryKey(String value) => value.trim().toLowerCase();
@@ -7174,21 +7189,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return const SizedBox.shrink();
     }
     if (_scheduledChanges.isEmpty) return const SizedBox.shrink();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFF59E0B).withOpacity(0.14),
-            const Color(0xFFFBBF24).withOpacity(0.06),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: _ScheduledStripCarousel(
         items: _scheduledChanges,
         onOpen: (productId) => context.push('/product/$productId'),
@@ -9976,7 +9978,6 @@ class _ScheduledStripCarousel extends StatefulWidget {
 
 class _ScheduledStripCarouselState
     extends State<_ScheduledStripCarousel> {
-  final PageController _controller = PageController();
   Timer? _timer;
   int _index = 0;
 
@@ -9995,23 +9996,45 @@ class _ScheduledStripCarouselState
   @override
   void initState() {
     super.initState();
-    if (widget.items.length > 1) {
-      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-        if (!_controller.hasClients) return;
-        final next = (_index + 1) % widget.items.length;
-        _controller.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut,
-        );
-      });
+    if (widget.items.length > 1) _startAutoRotate();
+  }
+
+  void _startAutoRotate() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      _goTo(_index + 1);
+    });
+  }
+
+  void _goTo(int next) {
+    if (widget.items.isEmpty) return;
+    final len = widget.items.length;
+    setState(() => _index = ((next % len) + len) % len);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScheduledStripCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.items.isEmpty) {
+      _timer?.cancel();
+      _timer = null;
+      _index = 0;
+      return;
+    }
+    if (_index >= widget.items.length) _index = 0;
+    if (widget.items.length > 1 && _timer == null) {
+      _startAutoRotate();
+    }
+    if (widget.items.length <= 1) {
+      _timer?.cancel();
+      _timer = null;
     }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _controller.dispose();
     super.dispose();
   }
 
@@ -10021,13 +10044,81 @@ class _ScheduledStripCarouselState
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 104,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: widget.items.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, index) {
-              final item = widget.items[index];
+          height: 100,
+          child: GestureDetector(
+            onHorizontalDragEnd: (details) {
+              if (details.primaryVelocity == null) return;
+              if (details.primaryVelocity! < 0) {
+                _goTo(_index + 1);
+              } else if (details.primaryVelocity! > 0) {
+                _goTo(_index - 1);
+              }
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Farthest stacked card (peeking layer).
+                Positioned(
+                  left: 36,
+                  right: 36,
+                  top: 12,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                // Middle stacked card (peeking layer).
+                Positioned(
+                  left: 28,
+                  right: 28,
+                  top: 6,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                // Front animated card.
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  top: 0,
+                  bottom: 4,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    switchInCurve: Curves.easeInOutCubic,
+                    switchOutCurve: Curves.easeInOutCubic,
+                    transitionBuilder: (child, animation) {
+                      final slide = Tween<Offset>(
+                        begin: const Offset(0, 0.35),
+                        end: Offset.zero,
+                      ).animate(animation);
+                      final scale = Tween<double>(begin: 0.95, end: 1.0)
+                          .animate(animation);
+                      return SlideTransition(
+                        position: slide,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: scale,
+                            child: child,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Builder(
+                      key: ValueKey<int>(_index),
+                      builder: (context) {
+                        if (widget.items.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        final item = widget.items[
+                            _index % widget.items.length];
               final current =
                   (item['currentPrice'] as num?)?.toDouble() ?? 0;
               final next =
@@ -10054,9 +10145,7 @@ class _ScheduledStripCarouselState
                       : remain.inHours >= 1
                           ? '${remain.inHours}h ${remain.inMinutes % 60}m'
                           : '${remain.inMinutes}m';
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                child: GestureDetector(
+                        return GestureDetector(
                   onTap: productId.isEmpty
                       ? null
                       : () => widget.onOpen(productId),
@@ -10194,9 +10283,13 @@ class _ScheduledStripCarouselState
                       ],
                     ),
                   ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
         ),
         if (widget.items.length > 1) ...[

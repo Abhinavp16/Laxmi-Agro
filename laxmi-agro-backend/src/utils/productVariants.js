@@ -76,8 +76,8 @@ const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER,
     ? toPositiveNumber(variant?.wholesalePrice)
     : toPositiveNumber(variant?.retailPrice);
   const pendingPrice = isWholesaler
-    ? variant?.pendingWholesalePrice
-    : variant?.pendingRetailPrice;
+    ? (variant?.pendingWholesalePrice ?? product?.pendingWholesalePrice)
+    : (variant?.pendingRetailPrice ?? product?.pendingRetailPrice);
   const effectiveAt = variant?.priceChangeEffectiveAt || product?.priceChangeEffectiveAt || null;
   const scheduledAt = variant?.priceChangeScheduledAt || product?.priceChangeScheduledAt || null;
 

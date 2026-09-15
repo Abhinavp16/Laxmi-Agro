@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
-const { optionalAuth } = require('../middlewares/auth');
+const { optionalAuth, protect } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
 const { productValidation } = require('../validations');
 
@@ -9,6 +9,7 @@ router.get('/', optionalAuth, validate(productValidation.list, 'query'), product
 router.get('/categories', optionalAuth, productController.getCategories);
 router.get('/featured', optionalAuth, productController.getFeaturedProducts);
 router.get('/search', optionalAuth, validate(productValidation.search, 'query'), productController.searchProducts);
+router.get('/scheduled-changes', protect, productController.getScheduledPriceChanges);
 router.get('/:id/related', optionalAuth, productController.getRelatedProducts);
 router.get('/:slug', optionalAuth, productController.getProductBySlug);
 router.post('/:id/view', optionalAuth, productController.trackProductView);
