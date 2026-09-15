@@ -4315,7 +4315,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       .where(
         (o) => !['delivered', 'cancelled'].contains(o['status']),
       )
-      .take(3)
+      .take(2)
       .toList();
 
   List<Map<String, dynamic>> get _repeatableHomeOrders => _homeOrders
@@ -6263,7 +6263,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final t = ref.read(localeProvider.notifier).translate;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topRight,
@@ -6290,7 +6290,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     Text(
                       t('Top Brands'),
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
                         letterSpacing: -0.5,
@@ -6342,10 +6342,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
           SizedBox(
-            height: 100,
+            height: 78,
             child: _isLoadingBrands
                 ? ListView.builder(
                     scrollDirection: Axis.horizontal,
@@ -6354,7 +6354,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(right: 12),
                       child: Container(
-                        width: 168,
+                        width: 148,
                         decoration: BoxDecoration(
                           color: borderLight,
                           borderRadius: BorderRadius.circular(16),
@@ -6395,7 +6395,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             );
                           },
                           child: Container(
-                            width: 168,
+                            width: 148,
                             decoration: BoxDecoration(
                               color: surfaceWhite,
                               borderRadius: BorderRadius.circular(18),
@@ -6412,7 +6412,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               children: [
                                 // Logo area
                                 Container(
-                                  width: 68,
+                                  width: 58,
                                   height: double.infinity,
                                   decoration: BoxDecoration(
                                     color: accentColor.withOpacity(0.07),
@@ -6575,7 +6575,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final productGridColumns = isTablet ? (screenWidth >= 1000 ? 4 : 3) : 2;
     final productGridSpacing = isTablet ? 16.0 : 12.0;
     final productGridHorizontalPadding = isTablet ? 20.0 : 16.0;
-    final productGridAspectRatio = isTablet ? 0.72 : 0.52;
+    final productGridAspectRatio = isTablet ? 0.78 : 0.72;
 
     // Section colors based on requirement
     final Color gradientBase = isFeatured
@@ -10088,32 +10088,6 @@ class _ScheduledStripCarouselState
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Farthest stacked card (peeking layer).
-                Positioned(
-                  left: 36,
-                  right: 36,
-                  top: 12,
-                  bottom: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                // Middle stacked card (peeking layer).
-                Positioned(
-                  left: 28,
-                  right: 28,
-                  top: 6,
-                  bottom: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
                 // Front animated card.
                 Positioned(
                   left: 20,
