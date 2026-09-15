@@ -10,7 +10,7 @@ const {
   filterCategoriesForUser,
 } = require('../utils/categoryAccess');
 
-async function getProductCountMap(categories = [], user = null) {
+async function getProductCountMap(categories = [], user = null, activeOnly = false) {
   if (categories.length === 0) return new Map();
 
   const categoryIds = categories.map((category) => category._id).filter(Boolean);
@@ -32,13 +32,14 @@ async function getProductCountMap(categories = [], user = null) {
   if (categoryNames.length > 0 && companyIds.length > 0) {
     // Keep showing products that have not yet been migrated to categoryRef.
     filters.push({
+      $or: [{ categoryRef: null }, { categoryRef: { $exists: false } }],
       company: { $in: companyIds },
       category: { $in: categoryNames },
     });
   }
 
   const match = applyCategoryAccessToProductQuery({
-    status: { $ne: PRODUCT_STATUS.ARCHIVED },
+    status: activeOnly ? PRODUCT_STATUS.ACTIVE : { $ne: PRODUCT_STATUS.ARCHIVED },
     $or: filters,
   }, user);
   const products = await Product.find(match)
@@ -138,7 +139,11 @@ exports.getCategories = async (req, res, next) => {
     ]);
 
     const visibleCategories = filterCategoriesForUser(categories, req.user);
-    const countsByCategory = await getProductCountMap(visibleCategories, req.user);
+    const countsByCategory = await getProductCountMap(
+      visibleCategories,
+      req.user,
+      active === 'true',
+    );
     const categoriesWithCounts = visibleCategories.map((category) => ({
       ...category,
       image: normalizeImageObject(category.image, req),
@@ -631,11 +636,14 @@ exports.getCategoriesWithSubcategories = async (req, res, next) => {
 
     // Fetch root categories
     const rootCategories = await Category.find(query)
-      .populate('company', 'name slug logo')
+      .populate('company', 'name slug logo isActive')
       .sort({ order: 1, name: 1 })
       .lean();
 
-    const visibleRootCategories = filterCategoriesForUser(rootCategories, req.user);
+    const catalogRootCategories = active === 'true'
+      ? rootCategories.filter((category) => category.company?.isActive === true)
+      : rootCategories;
+    const visibleRootCategories = filterCategoriesForUser(catalogRootCategories, req.user);
     const rootCategoryIds = visibleRootCategories.map((c) => c._id);
 
     // Fetch all subcategories for these root categories
@@ -652,7 +660,11 @@ exports.getCategoriesWithSubcategories = async (req, res, next) => {
 
     // Get product counts for all categories (root + subcategories)
     const allCategories = [...visibleRootCategories, ...visibleSubcategories];
-    const countsByCategory = await getProductCountMap(allCategories, req.user);
+    const countsByCategory = await getProductCountMap(
+      allCategories,
+      req.user,
+      active === 'true',
+    );
 
     // Build nested structure
     const subcategoriesByParent = new Map();
@@ -678,6 +690,14 @@ exports.getCategoriesWithSubcategories = async (req, res, next) => {
       name: category.name,
       nameHindi: category.nameHindi,
       slug: category.slug,
+      company: category.company
+        ? {
+            id: category.company._id,
+            name: category.company.name,
+            slug: category.company.slug,
+            logo: normalizeImageObject(category.company.logo, req),
+          }
+        : null,
       order: category.order,
       image: normalizeImageObject(category.image, req),
       productCount: countsByCategory.get(String(category._id)) ?? 0,

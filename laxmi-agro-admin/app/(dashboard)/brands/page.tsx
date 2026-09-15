@@ -1,7 +1,26 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2, Building2, Loader2, ImageIcon, LayoutGrid, List, Upload, Search, Tag } from "@/components/hugeicons"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Plus, Pencil, Trash2, Building2, Loader2, ImageIcon, LayoutGrid, List, Upload, Search, Tag, GripVertical, FolderTree } from "@/components/hugeicons"
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core"
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    rectSortingStrategy,
+    useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,10 +49,12 @@ interface Company {
     slug: string
     logo?: { url?: string; publicId?: string }
     description?: string
+    order: number
     createdAt: string
 }
 
 export default function BrandsPage() {
+    const router = useRouter()
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -49,6 +70,10 @@ export default function BrandsPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalBrands, setTotalBrands] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+    const [loadedSearchQuery, setLoadedSearchQuery] = useState("")
+    const [isReordering, setIsReordering] = useState(false)
+    const fetchGeneration = useRef(0)
+    const reorderInFlight = useRef(false)
 
     // Form state
     const [name, setName] = useState("")
@@ -57,12 +82,13 @@ export default function BrandsPage() {
     const [logoPublicId, setLogoPublicId] = useState("")
     const [previewImageUrl, setPreviewImageUrl] = useState("")
     const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    )
 
-    useEffect(() => {
-        fetchCompanies(1, true)
-    }, [])
-
-    async function fetchCompanies(pageNum: number = 1, reset: boolean = false) {
+    const fetchCompanies = useCallback(async (pageNum: number = 1, reset: boolean = false, requestedSearch: string = "") => {
+        const requestGeneration = ++fetchGeneration.current
         if (reset) {
             setIsLoading(true)
             setPage(1)
@@ -73,12 +99,13 @@ export default function BrandsPage() {
         try {
             const params = new URLSearchParams()
             params.append('page', pageNum.toString())
-            params.append('limit', '20')
-            if (searchQuery.trim()) {
-                params.append('search', searchQuery.trim())
+            params.append('limit', '500')
+            if (requestedSearch.trim()) {
+                params.append('search', requestedSearch.trim())
             }
 
             const res = await apiFetch(`/companies?${params.toString()}`, { skipAuth: true })
+            if (requestGeneration !== fetchGeneration.current) return
             if (res.ok) {
                 const data = await res.json()
                 const items = data.data || []
@@ -93,28 +120,36 @@ export default function BrandsPage() {
                 setTotalPages(pagination.totalPages || 1)
                 setTotalBrands(pagination.total || items.length)
                 setHasMore((pagination.page || 1) < (pagination.totalPages || 1))
+                setLoadedSearchQuery(requestedSearch.trim())
             }
         } catch (error) {
             console.error("Failed to fetch companies:", error)
             toast.error("Failed to load brands")
         } finally {
-            setIsLoading(false)
-            setIsLoadingMore(false)
+            if (requestGeneration === fetchGeneration.current) {
+                setIsLoading(false)
+                setIsLoadingMore(false)
+            }
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => fetchCompanies(1, true, ""), 0)
+        return () => window.clearTimeout(timeout)
+    }, [fetchCompanies])
 
     const handleSearch = useCallback((e: React.FormEvent) => {
         e.preventDefault()
-        fetchCompanies(1, true)
-    }, [searchQuery])
+        fetchCompanies(1, true, searchQuery)
+    }, [fetchCompanies, searchQuery])
 
     const loadMore = useCallback(() => {
         if (hasMore && !isLoadingMore) {
             const nextPage = page + 1
             setPage(nextPage)
-            fetchCompanies(nextPage, false)
+            fetchCompanies(nextPage, false, loadedSearchQuery)
         }
-    }, [hasMore, isLoadingMore, page])
+    }, [fetchCompanies, hasMore, isLoadingMore, loadedSearchQuery, page])
 
     function openCreateDialog() {
         setEditingCompany(null)
@@ -200,7 +235,7 @@ export default function BrandsPage() {
 
             toast.success(editingCompany ? "Brand updated successfully" : "Brand created successfully")
             setIsDialogOpen(false)
-            fetchCompanies()
+            fetchCompanies(1, true, loadedSearchQuery)
         } catch (error: any) {
             toast.error(error.message || "Failed to save brand")
         } finally {
@@ -221,10 +256,168 @@ export default function BrandsPage() {
 
             toast.success("Brand deleted successfully")
             setDeleteConfirmId(null)
-            fetchCompanies()
+            fetchCompanies(1, true, loadedSearchQuery)
         } catch (error: any) {
             toast.error(error.message || "Failed to delete brand")
         }
+    }
+
+    const canReorder = !searchQuery.trim() && !loadedSearchQuery && !hasMore && companies.length === totalBrands && !isReordering
+
+    function openBrandCategories(company: Company) {
+        router.push(`/categories?company=${encodeURIComponent(company._id)}`)
+    }
+
+    async function handleDragEnd(event: DragEndEvent) {
+        if (!canReorder || reorderInFlight.current) return
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+
+        const oldIndex = companies.findIndex((company) => company._id === active.id)
+        const newIndex = companies.findIndex((company) => company._id === over.id)
+        if (oldIndex === -1 || newIndex === -1) return
+
+        const moved = arrayMove(companies, oldIndex, newIndex).map((company, index) => ({
+            ...company,
+            order: index + 1,
+        }))
+        setCompanies(moved)
+        reorderInFlight.current = true
+        setIsReordering(true)
+
+        try {
+            const res = await apiFetch('/companies/reorder', {
+                method: 'POST',
+                body: JSON.stringify({
+                    updates: moved.map((company) => ({
+                        companyId: company._id,
+                        order: company.order,
+                    })),
+                }),
+            })
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || 'Failed to reorder brands')
+            }
+            toast.success('Brands reordered successfully')
+        } catch (error: any) {
+            console.error('Brand reorder error:', error)
+            toast.error(error.message || 'Failed to reorder brands')
+            fetchCompanies(1, true, "")
+        } finally {
+            reorderInFlight.current = false
+            setIsReordering(false)
+        }
+    }
+
+    function SortableBrandRow({ company, index }: { company: Company; index: number }) {
+        const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+            id: company._id,
+            disabled: !canReorder,
+        })
+        const style = { transform: CSS.Transform.toString(transform), transition }
+
+        return (
+            <TableRow
+                ref={setNodeRef}
+                style={style}
+                onClick={() => !isDragging && openBrandCategories(company)}
+                className={`cursor-pointer border-[#333] transition-colors ${
+                    isDragging ? 'bg-[#86efac]/10 ring-2 ring-[#86efac]' : 'hover:bg-[#1A1A1A]'
+                }`}
+            >
+                <TableCell
+                    {...attributes}
+                    {...listeners}
+                    onClick={(event) => event.stopPropagation()}
+                    className={canReorder ? 'touch-none cursor-grab text-gray-400 active:cursor-grabbing' : 'text-gray-600'}
+                >
+                    <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4" />
+                        <span className="font-bold text-[#86efac]">#{index + 1}</span>
+                    </div>
+                </TableCell>
+                <TableCell>
+                    {company.logo?.url ? (
+                        <img src={company.logo.url} alt={company.name} className="h-10 w-10 rounded-lg bg-[#0D0D0D] object-cover" />
+                    ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0D0D0D]">
+                            <Building2 className="h-5 w-5 text-gray-500" />
+                        </div>
+                    )}
+                </TableCell>
+                <TableCell className="font-medium text-white">{company.name}</TableCell>
+                <TableCell className="text-gray-400">{company.slug}</TableCell>
+                <TableCell className="max-w-[200px] truncate text-gray-400">{company.description || '-'}</TableCell>
+                <TableCell className="text-right">
+                    <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-400 hover:text-blue-300" onClick={() => openEditDialog(company)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:bg-red-400/10 hover:text-red-300" onClick={() => setDeleteConfirmId(company._id)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </TableCell>
+            </TableRow>
+        )
+    }
+
+    function SortableBrandCard({ company, index }: { company: Company; index: number }) {
+        const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+            id: company._id,
+            disabled: !canReorder,
+        })
+        const style = { transform: CSS.Transform.toString(transform), transition }
+
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                onClick={() => !isDragging && openBrandCategories(company)}
+                className={`relative cursor-pointer overflow-hidden rounded-xl border border-[#333] bg-[#161616] transition-all ${
+                    isDragging ? 'opacity-50 ring-2 ring-[#86efac]' : 'hover:border-[#86efac]/50'
+                }`}
+            >
+                <div className="flex h-12 items-center justify-between border-b border-blue-500/50 bg-blue-600/20 px-4 transition-colors hover:bg-blue-600/30">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        onClick={(event) => event.stopPropagation()}
+                        className={`flex flex-1 items-center gap-3 ${canReorder ? 'cursor-grab active:cursor-grabbing touch-none' : 'text-gray-500'}`}
+                    >
+                        <GripVertical className="h-4 w-4" />
+                        <span className="text-sm font-bold text-white">#{index + 1}</span>
+                    </div>
+                    <div className="flex gap-1" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-300 hover:bg-blue-400/20 hover:text-blue-200" onClick={() => openEditDialog(company)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-400/20 hover:text-red-300" onClick={() => setDeleteConfirmId(company._id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                </div>
+                <div className="space-y-3 p-4">
+                    {company.logo?.url ? (
+                        <img src={company.logo.url} alt={company.name} className="h-16 w-16 rounded-xl bg-[#0D0D0D] object-cover" />
+                    ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#0D0D0D]">
+                            <Building2 className="h-8 w-8 text-gray-500" />
+                        </div>
+                    )}
+                    <div>
+                        <h3 className="text-lg font-semibold text-white">{company.name}</h3>
+                        <p className="text-sm text-gray-500">/{company.slug}</p>
+                    </div>
+                    {company.description && <p className="line-clamp-2 text-sm text-gray-400">{company.description}</p>}
+                    <div className="flex items-center gap-2 border-t border-[#333] pt-3 text-xs font-medium text-[#86efac]">
+                        <FolderTree className="h-4 w-4" />
+                        View categories
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -289,7 +482,7 @@ export default function BrandsPage() {
                         variant="ghost"
                         onClick={() => {
                             setSearchQuery("")
-                            fetchCompanies(1, true)
+                            fetchCompanies(1, true, "")
                         }}
                         className="text-gray-400 hover:text-white"
                     >
@@ -309,116 +502,45 @@ export default function BrandsPage() {
                     <p>No brands found</p>
                     <p className="text-sm">Create your first brand to get started</p>
                 </div>
-            ) : viewMode === 'list' ? (
-                /* List View */
-                <div className="bg-[#161616] rounded-xl border border-[#333] overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-[#333] hover:bg-transparent">
-                                <TableHead className="text-gray-400">Logo</TableHead>
-                                <TableHead className="text-gray-400">Name</TableHead>
-                                <TableHead className="text-gray-400">Slug</TableHead>
-                                <TableHead className="text-gray-400">Description</TableHead>
-                                <TableHead className="text-gray-400 text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {companies.map((company) => (
-                                <TableRow key={company._id} className="border-[#333]">
-                                    <TableCell>
-                                        {company.logo?.url ? (
-                                            <img 
-                                                src={company.logo.url} 
-                                                alt={company.name}
-                                                className="w-10 h-10 rounded-lg object-cover bg-[#0D0D0D]"
-                                            />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-[#0D0D0D] flex items-center justify-center">
-                                                <Building2 className="h-5 w-5 text-gray-500" />
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="font-medium text-white">
-                                        {company.name}
-                                    </TableCell>
-                                    <TableCell className="text-gray-400">
-                                        {company.slug}
-                                    </TableCell>
-                                    <TableCell className="text-gray-400 max-w-[200px] truncate">
-                                        {company.description || "-"}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-8 w-8 text-blue-400 hover:text-blue-300"
-                                                onClick={() => openEditDialog(company)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                                onClick={() => setDeleteConfirmId(company._id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
             ) : (
-                /* Card View */
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {companies.map((company) => (
-                        <div 
-                            key={company._id} 
-                            className="bg-[#161616] rounded-xl border border-[#333] p-4 hover:border-[#444] transition-colors"
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                {company.logo?.url ? (
-                                    <img 
-                                        src={company.logo.url} 
-                                        alt={company.name}
-                                        className="w-16 h-16 rounded-xl object-cover bg-[#0D0D0D]"
-                                    />
-                                ) : (
-                                    <div className="w-16 h-16 rounded-xl bg-[#0D0D0D] flex items-center justify-center">
-                                        <Building2 className="h-8 w-8 text-gray-500" />
-                                    </div>
-                                )}
-                                <div className="flex gap-1">
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 text-blue-400 hover:text-blue-300"
-                                        onClick={() => openEditDialog(company)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                        onClick={() => setDeleteConfirmId(company._id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext
+                        items={companies.map((company) => company._id)}
+                        strategy={viewMode === 'list' ? verticalListSortingStrategy : rectSortingStrategy}
+                    >
+                        {viewMode === 'list' ? (
+                            <div className="overflow-hidden rounded-xl border border-[#333] bg-[#161616]">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-[#333] hover:bg-transparent">
+                                            <TableHead className="text-gray-400">Order</TableHead>
+                                            <TableHead className="text-gray-400">Logo</TableHead>
+                                            <TableHead className="text-gray-400">Name</TableHead>
+                                            <TableHead className="text-gray-400">Slug</TableHead>
+                                            <TableHead className="text-gray-400">Description</TableHead>
+                                            <TableHead className="text-right text-gray-400">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {companies.map((company, index) => (
+                                            <SortableBrandRow key={company._id} company={company} index={index} />
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
-                            <h3 className="font-semibold text-white text-lg mb-1">{company.name}</h3>
-                            <p className="text-gray-500 text-sm mb-2">/{company.slug}</p>
-                            {company.description && (
-                                <p className="text-gray-400 text-sm line-clamp-2">{company.description}</p>
-                            )}
-                        </div>
-                    ))}
-                </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {companies.map((company, index) => (
+                                    <SortableBrandCard key={company._id} company={company} index={index} />
+                                ))}
+                            </div>
+                        )}
+                    </SortableContext>
+                </DndContext>
+            )}
+
+            {!canReorder && companies.length > 0 && (
+                <p className="text-xs text-gray-500">Clear the search and load all brands to rearrange them.</p>
             )}
 
             {/* Create/Edit Dialog */}

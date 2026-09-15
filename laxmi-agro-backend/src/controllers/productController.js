@@ -52,7 +52,7 @@ const isTrueQuery = (value) => value === true || value === 'true';
 exports.getProducts = async (req, res, next) => {
   try {
     console.log('Raw req.query:', req.query);
-    const { category, brand, minPrice, maxPrice, inStock, featured, hot, sort, subcategory } = req.query;
+    const { categoryId, category, brand, minPrice, maxPrice, inStock, featured, hot, sort, subcategory } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
     const userRole = req.user?.role || 'guest';
 
@@ -63,8 +63,29 @@ exports.getProducts = async (req, res, next) => {
     // Price filter based on user role
     const priceField = userRole === 'wholesaler' ? 'wholesalePrice' : 'retailPrice';
     
-    // Subcategory takes precedence over category
-    if (subcategory) {
+    // Resolve the category so unmigrated name-linked products stay scoped to
+    // the correct company instead of colliding with another brand.
+    if (categoryId) {
+      const categoryDoc = await Category.findById(categoryId)
+        .select('name slug company')
+        .lean();
+      if (!categoryDoc) {
+        return res.json({
+          success: true,
+          ...formatPaginationResponse([], 0, page, limit),
+        });
+      }
+      query.$or = [
+        { categoryRef: categoryDoc._id },
+        {
+          $and: [
+            { $or: [{ categoryRef: null }, { categoryRef: { $exists: false } }] },
+            { company: categoryDoc.company },
+            { category: { $in: [categoryDoc.name, categoryDoc.slug].filter(Boolean) } },
+          ],
+        },
+      ];
+    } else if (subcategory) {
       // For subcategory, find the Category document first by slug
       const Category = require('../models/Category');
       const subcatDoc = await Category.findOne({ slug: subcategory }).lean();
@@ -108,9 +129,14 @@ exports.getProducts = async (req, res, next) => {
       }).select('_id');
       const companyIds = matchingCompanies.map(c => c._id);
       
-      query.$or = [
-        { brand: { $regex: new RegExp(brand, 'i') } },
-        { company: { $in: companyIds } }
+      query.$and = [
+        ...(Array.isArray(query.$and) ? query.$and : []),
+        {
+          $or: [
+            { brand: { $regex: new RegExp(brand, 'i') } },
+            { company: { $in: companyIds } },
+          ],
+        },
       ];
     }
     

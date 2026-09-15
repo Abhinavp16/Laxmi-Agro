@@ -179,7 +179,7 @@ exports.getHomeCatalog = async (req, res, next) => {
       Company.find({
         ...visibleBrandQuery,
         name: { $ne: GENERAL_PRODUCTS_NAME },
-      }).sort({ name: 1 }).lean(),
+      }).sort({ order: 1, name: 1 }).lean(),
       generalBrand
         ? Category.find({
             ...visibleCategoryQuery,
@@ -208,7 +208,7 @@ exports.getBrands = async (req, res, next) => {
     const rawBrands = await Company.find({
       ...visibleBrandQuery,
       name: { $ne: GENERAL_PRODUCTS_NAME },
-    }).sort({ name: 1 }).lean();
+    }).sort({ order: 1, name: 1 }).lean();
     const brands = await attachVisibleProductCounts(rawBrands);
     res.json({ success: true, data: brands.map(mapBrand) });
   } catch (error) {

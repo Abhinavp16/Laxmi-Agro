@@ -125,6 +125,7 @@ const productValidation = {
   list: Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20),
+    categoryId: Joi.string().hex().length(24).allow('', null),
     category: Joi.string().allow('', null),
     subcategory: Joi.string().allow('', null),
     brand: Joi.string().allow('', null),

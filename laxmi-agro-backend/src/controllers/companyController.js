@@ -6,7 +6,7 @@ const { PRODUCT_STATUS } = require('../utils/constants');
 exports.getAllCompanies = async (req, res, next) => {
   try {
     const { active, search } = req.query;
-    const { page, limit, skip } = paginate(req.query.page, req.query.limit);
+    const { page, limit, skip } = paginate(req.query.page, req.query.limit, 500);
 
     const query = {};
     if (active !== undefined) {
@@ -19,7 +19,7 @@ exports.getAllCompanies = async (req, res, next) => {
     }
 
     const [companies, total] = await Promise.all([
-      Company.find(query).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+      Company.find(query).sort({ order: 1, name: 1 }).skip(skip).limit(limit).lean(),
       Company.countDocuments(query),
     ]);
 
@@ -51,7 +51,7 @@ exports.getCompanyById = async (req, res, next) => {
 
 exports.createCompany = async (req, res, next) => {
   try {
-    const { name, description, website, logo } = req.body;
+    const { name, description, website, logo, order } = req.body;
 
     const existingCompany = await Company.findOne({ 
       name: { $regex: new RegExp(`^${name}$`, 'i') } 
@@ -61,11 +61,15 @@ exports.createCompany = async (req, res, next) => {
       throw new ConflictError('Company with this name already exists', 'COMPANY_EXISTS');
     }
 
+    const lastCompany = order === undefined
+      ? await Company.findOne().sort({ order: -1 }).select('order').lean()
+      : null;
     const company = await Company.create({
       name,
       description,
       website,
       logo,
+      order: order ?? ((lastCompany?.order || 0) + 1),
     });
 
     res.status(201).json({
@@ -80,7 +84,7 @@ exports.createCompany = async (req, res, next) => {
 
 exports.updateCompany = async (req, res, next) => {
   try {
-    const { name, description, website, logo, isActive } = req.body;
+    const { name, description, website, logo, isActive, order } = req.body;
 
     const company = await Company.findById(req.params.id);
     
@@ -104,6 +108,7 @@ exports.updateCompany = async (req, res, next) => {
     if (website !== undefined) company.website = website;
     if (logo !== undefined) company.logo = logo;
     if (isActive !== undefined) company.isActive = isActive;
+    if (order !== undefined) company.order = order;
 
     await company.save();
 
@@ -150,6 +155,55 @@ exports.deleteCompany = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Company deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.reorderCompanies = async (req, res, next) => {
+  try {
+    const { updates } = req.body;
+    const companyIds = updates.map((update) => update.companyId);
+    const [existingCount, totalCount] = await Promise.all([
+      Company.countDocuments({ _id: { $in: companyIds } }),
+      Company.countDocuments(),
+    ]);
+
+    if (existingCount !== companyIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'One or more brands no longer exist',
+      });
+    }
+    if (companyIds.length !== totalCount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reload all brands before rearranging them',
+      });
+    }
+
+    const result = await Company.bulkWrite(
+      updates.map((update) => ({
+        updateOne: {
+          filter: { _id: update.companyId },
+          update: { $set: { order: update.order } },
+        },
+      })),
+      { ordered: false },
+    );
+    const companies = await Company.find({ _id: { $in: companyIds } })
+      .sort({ order: 1, name: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      message: 'Brands reordered successfully',
+      data: {
+        updated: result.modifiedCount,
+        matched: result.matchedCount,
+        companies,
+      },
     });
   } catch (error) {
     next(error);

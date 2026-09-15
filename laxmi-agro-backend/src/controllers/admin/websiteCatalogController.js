@@ -18,8 +18,8 @@ exports.getBrands = async (req, res, next) => {
     if (req.query.search) query.name = regex(req.query.search);
 
     const brands = await Company.find(query)
-      .select('name slug logo isActive showOnWebsite productCount')
-      .sort({ name: 1 })
+      .select('name slug logo isActive showOnWebsite productCount order')
+      .sort({ order: 1, name: 1 })
       .lean();
 
     res.json({ success: true, data: brands });

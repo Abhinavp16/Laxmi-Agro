@@ -81,6 +81,8 @@ final appRouter = GoRouter(
       path: '/brand/:id',
       builder: (context, state) => CategoriesScreen(
         brandId: state.pathParameters['id'],
+        initialCategoryId: state.uri.queryParameters['categoryId'],
+        initialCategoryName: state.uri.queryParameters['category'],
         brandName:
             state.uri.queryParameters['name'] ?? state.pathParameters['id'],
       ),

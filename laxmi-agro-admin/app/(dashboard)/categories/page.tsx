@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages, GripVertical } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
@@ -77,6 +77,7 @@ type UploadStatus = 'idle' | 'converting' | 'uploading' | 'done'
 export default function CategoriesPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const companyFilter = searchParams?.get('company') || ''
     const [categories, setCategories] = useState<Category[]>([])
     // Drill-down navigation: null = top level, set = viewing subcategories of parent
     const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
@@ -91,6 +92,7 @@ export default function CategoriesPage() {
     const [companies, setCompanies] = useState<Company[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const categoryFetchGeneration = useRef(0)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -103,6 +105,9 @@ export default function CategoriesPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalCategories, setTotalCategories] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+    const [loadedSearchQuery, setLoadedSearchQuery] = useState("")
+    const [isReordering, setIsReordering] = useState(false)
+    const reorderInFlight = useRef(false)
     const [isConvertingHindi, setIsConvertingHindi] = useState(false)
 
     // Form state
@@ -136,9 +141,11 @@ export default function CategoriesPage() {
     const [selectedSubcategoryForProducts, setSelectedSubcategoryForProducts] = useState<Category | null>(null)
 
     useEffect(() => {
+        setSelectedParentId(null)
+        setCategories([])
         fetchCategories(1, true)
         fetchCompanies()
-    }, [])
+    }, [companyFilter])
 
     // Sync scope from sidebar link (?scope=subcategories)
     useEffect(() => {
@@ -191,6 +198,10 @@ export default function CategoriesPage() {
         () => categories.find((c) => c._id === selectedParentId) || null,
         [categories, selectedParentId]
     )
+    const filteredCompany = useMemo(
+        () => companies.find((company) => company._id === companyFilter) || null,
+        [companies, companyFilter]
+    )
     const subcategoriesOfSelected = useMemo(
         () => categories.filter((c) => c.parent?._id === selectedParentId),
         [categories, selectedParentId]
@@ -215,6 +226,7 @@ export default function CategoriesPage() {
                 : categories
         return scoped.filter((c) => c.isActive !== false)
     }, [selectedParentId, subcategoriesOfSelected, scope, parentCategories, allSubcategories, categories])
+    const canReorder = !searchQuery.trim() && !loadedSearchQuery && !hasMore && !isReordering
 
     function handleCategoryClick(category: Category) {
         // Parent (no parent ref): drill into its subcategories in-place
@@ -227,7 +239,8 @@ export default function CategoriesPage() {
         router.push(`/categories/${category._id}/products`)
     }
 
-    async function fetchCategories(pageNum: number = 1, reset: boolean = false) {
+    async function fetchCategories(pageNum: number = 1, reset: boolean = false, requestedSearch: string = searchQuery) {
+        const requestGeneration = ++categoryFetchGeneration.current
         if (reset) {
             setIsLoading(true)
             setPage(1)
@@ -239,11 +252,15 @@ export default function CategoriesPage() {
             const params = new URLSearchParams()
             params.append('page', pageNum.toString())
             params.append('limit', '500')
-            if (searchQuery.trim()) {
-                params.append('search', searchQuery.trim())
+            if (requestedSearch.trim()) {
+                params.append('search', requestedSearch.trim())
+            }
+            if (companyFilter) {
+                params.append('company', companyFilter)
             }
 
             const res = await apiFetch(`/categories?${params.toString()}`, { skipAuth: true })
+            if (requestGeneration !== categoryFetchGeneration.current) return
             if (res.ok) {
                 const data = await res.json()
                 const items = data.data || []
@@ -258,20 +275,28 @@ export default function CategoriesPage() {
                 setTotalPages(pagination.totalPages || 1)
                 setTotalCategories(pagination.total || items.length)
                 setHasMore((pagination.page || 1) < (pagination.totalPages || 1))
+                setLoadedSearchQuery(requestedSearch.trim())
+            } else if (reset) {
+                setCategories([])
             }
         } catch (error) {
             console.error("Failed to fetch categories:", error)
             toast.error("Failed to load categories")
+            if (reset && requestGeneration === categoryFetchGeneration.current) {
+                setCategories([])
+            }
         } finally {
-            setIsLoading(false)
-            setIsLoadingMore(false)
+            if (requestGeneration === categoryFetchGeneration.current) {
+                setIsLoading(false)
+                setIsLoadingMore(false)
+            }
         }
     }
 
     const handleSearch = useCallback((e: React.FormEvent) => {
         e.preventDefault()
         fetchCategories(1, true)
-    }, [searchQuery])
+    }, [searchQuery, companyFilter])
 
     const loadMore = useCallback(() => {
         if (hasMore && !isLoadingMore) {
@@ -279,7 +304,7 @@ export default function CategoriesPage() {
             setPage(nextPage)
             fetchCategories(nextPage, false)
         }
-    }, [hasMore, isLoadingMore, page])
+    }, [hasMore, isLoadingMore, page, searchQuery, companyFilter])
 
     function openCreateDialog() {
         setEditingCategory(null)
@@ -289,7 +314,7 @@ export default function CategoriesPage() {
         setImageUrl("")
         setImagePublicId("")
         setParentId("none")
-        setCompanyId(companies[0]?._id || "")
+        setCompanyId(companyFilter || companies[0]?._id || "")
         // New categories go AFTER existing cards, not to the front.
         setOrder(String(maxCategoryOrder(parentCategories) + 1))
         setIsActive(true)
@@ -608,6 +633,7 @@ export default function CategoriesPage() {
     // subs, or all). Reordering the full mixed array scrambled saved
     // orders across scopes, so #N badges never matched Display Order.
     async function handleDragEnd(event: DragEndEvent) {
+        if (!canReorder || reorderInFlight.current) return
         const { active, over } = event
 
         if (!over || active.id === over.id) return
@@ -631,6 +657,8 @@ export default function CategoriesPage() {
         setCategories(prev => prev.map(cat =>
             orderById.has(cat._id) ? { ...cat, order: orderById.get(cat._id)! } : cat
         ))
+        reorderInFlight.current = true
+        setIsReordering(true)
 
         // Send to backend
         try {
@@ -651,6 +679,9 @@ export default function CategoriesPage() {
             toast.error(error.message || "Failed to reorder categories")
             // Refresh to get correct state from backend
             fetchCategories(1, true)
+        } finally {
+            reorderInFlight.current = false
+            setIsReordering(false)
         }
     }
 
@@ -706,7 +737,7 @@ export default function CategoriesPage() {
             transform,
             transition,
             isDragging,
-        } = useSortable({ id: category._id })
+        } = useSortable({ id: category._id, disabled: !canReorder })
 
         const style = {
             transform: CSS.Transform.toString(transform),
@@ -725,7 +756,7 @@ export default function CategoriesPage() {
                 <TableCell
                     {...attributes}
                     {...listeners}
-                    className="text-gray-400 cursor-grab active:cursor-grabbing"
+                    className={canReorder ? "touch-none cursor-grab text-gray-400 active:cursor-grabbing" : "text-gray-600"}
                 >
                     <div className="flex items-center gap-2">
                         <GripVertical className="h-4 w-4" />
@@ -808,7 +839,7 @@ export default function CategoriesPage() {
             transform,
             transition,
             isDragging,
-        } = useSortable({ id: category._id })
+        } = useSortable({ id: category._id, disabled: !canReorder })
 
         const style = {
             transform: CSS.Transform.toString(transform),
@@ -834,7 +865,9 @@ export default function CategoriesPage() {
                     <div
                         {...attributes}
                         {...listeners}
-                        className="flex flex-1 items-center gap-3 cursor-grab active:cursor-grabbing touch-none"
+                        className={canReorder
+                            ? "flex flex-1 touch-none cursor-grab items-center gap-3 active:cursor-grabbing"
+                            : "flex flex-1 items-center gap-3 text-gray-600"}
                     >
                         <span className="text-white font-bold text-sm">#{index + 1}</span>
                     </div>
@@ -925,7 +958,11 @@ export default function CategoriesPage() {
                     <FolderTree className="h-7 w-7 shrink-0 text-[#86efac] sm:h-8 sm:w-8" />
                     <div>
                         <h1 className="text-2xl font-bold text-white sm:text-3xl">
-                            {selectedParent ? selectedParent.name : scope === 'subs' ? 'Subcategories' : 'Categories'}
+                            {selectedParent
+                                ? selectedParent.name
+                                : scope === 'subs'
+                                    ? filteredCompany ? `${filteredCompany.name} Subcategories` : 'Subcategories'
+                                    : filteredCompany ? `${filteredCompany.name} Categories` : 'Categories'}
                         </h1>
                         <p className="text-gray-400 text-sm">
                             {selectedParent
@@ -943,6 +980,15 @@ export default function CategoriesPage() {
                                 className="mt-1 text-xs text-[#86efac] hover:underline"
                             >
                                 ← Back to all categories
+                            </button>
+                        )}
+                        {!selectedParent && companyFilter && (
+                            <button
+                                type="button"
+                                onClick={() => router.push('/brands')}
+                                className="mt-1 text-xs text-[#86efac] hover:underline"
+                            >
+                                ← Back to brands
                             </button>
                         )}
                     </div>
@@ -1012,7 +1058,7 @@ export default function CategoriesPage() {
                         variant="ghost"
                         onClick={() => {
                             setSearchQuery("")
-                            fetchCategories(1, true)
+                            fetchCategories(1, true, "")
                         }}
                         className="w-full text-gray-400 hover:text-white sm:w-auto"
                     >

@@ -113,7 +113,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   List<String> _categories = [];
   List<Map<String, dynamic>> _categoryData = [];
   bool _isLoadingCategories = true;
+  final CategoriesController _categoriesController = CategoriesController();
+  int _categoryNavigationRequest = 0;
+  String? _requestedCategoryId;
   String? _requestedCategoryName;
+  String? _requestedCategoryBrandId;
 
   // Hero banners from API (top carousel)
   List<Map<String, dynamic>> _heroBanners = [];
@@ -350,15 +354,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchBrands() async {
     try {
       debugPrint('🔵 [BRANDS] Starting fetch from: ${_dio.options.baseUrl}');
-      final response = await _dio.get('/companies');
+      final response = await _dio.get(
+        '/companies',
+        queryParameters: {'active': true, 'limit': 500},
+      );
       debugPrint('🟢 [BRANDS] Response status: ${response.statusCode}');
       debugPrint('🟢 [BRANDS] Response data: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final data = response.data;
         final List<dynamic> items = data['data'] ?? data ?? [];
         debugPrint('🟢 [BRANDS] Found ${items.length} brands');
-        
+
         setState(() {
           final fetched = items
               .map<Map<String, dynamic>>(
@@ -369,6 +376,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ? item['logo']['url']?.toString() ?? ''
                       : item['logo']?.toString() ?? '',
                   'slug': item['slug']?.toString() ?? '',
+                  'order': item['order'] ?? 0,
                 },
               )
               .where(
@@ -382,9 +390,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           fetched.sort((a, b) {
             final nameA = a['name']?.toString().toUpperCase() ?? '';
             final nameB = b['name']?.toString().toUpperCase() ?? '';
-            if (nameA == 'Laxmi Agro') return -1;
-            if (nameB == 'Laxmi Agro') return 1;
-            return 0;
+            if (nameA == 'LAXMI AGRO' && nameB != 'LAXMI AGRO') return -1;
+            if (nameB == 'LAXMI AGRO' && nameA != 'LAXMI AGRO') return 1;
+            final orderA = int.tryParse(a['order']?.toString() ?? '') ?? 0;
+            final orderB = int.tryParse(b['order']?.toString() ?? '') ?? 0;
+            if (orderA != orderB) return orderA.compareTo(orderB);
+            return nameA.compareTo(nameB);
           });
 
           debugPrint('🟢 [BRANDS] Final brand count: ${fetched.length}');
@@ -393,7 +404,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           _isLoadingBrands = false;
         });
       } else {
-        debugPrint('🔴 [BRANDS] ERROR: Unexpected status code: ${response.statusCode}');
+        debugPrint(
+          '🔴 [BRANDS] ERROR: Unexpected status code: ${response.statusCode}',
+        );
       }
     } catch (e, stackTrace) {
       debugPrint('🔴 [BRANDS] ERROR: $e');
@@ -417,29 +430,33 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       debugPrint('🔵 [PRODUCTS] Starting fetch');
       debugPrint('🔵 [PRODUCTS] Base URL: ${_dio.options.baseUrl}');
       debugPrint('═══════════════════════════════════════════');
-      
+
       // Try just fetching without any parameters first
       debugPrint('🔵 [PRODUCTS] Fetching: ${_dio.options.baseUrl}/products');
       final response = await _dio.get('/products');
-      
+
       debugPrint('═══════════════════════════════════════════');
       debugPrint('🟢 [PRODUCTS] API Call Successful!');
       debugPrint('🟢 [PRODUCTS] Status Code: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final data = response.data;
-        debugPrint('🟢 [PRODUCTS] Response Keys: ${data is Map ? (data as Map).keys.toList() : 'N/A'}');
-        
+        debugPrint(
+          '🟢 [PRODUCTS] Response Keys: ${data is Map ? (data as Map).keys.toList() : 'N/A'}',
+        );
+
         final List<dynamic> items = data['data'] ?? data ?? [];
-        
+
         debugPrint('═══════════════════════════════════════════');
         debugPrint('🟢 [PRODUCTS] TOTAL ITEMS FOUND: ${items.length}');
         debugPrint('═══════════════════════════════════════════');
 
         if (items.isNotEmpty) {
-          debugPrint('🟢 [PRODUCTS] First item keys: ${items.first is Map ? (items.first as Map).keys.toList() : 'N/A'}');
+          debugPrint(
+            '🟢 [PRODUCTS] First item keys: ${items.first is Map ? (items.first as Map).keys.toList() : 'N/A'}',
+          );
         }
-        
+
         setState(() {
           final productsById = <String, Map<String, dynamic>>{};
 
@@ -463,7 +480,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 apiImage.startsWith('https://');
             final image = isValidUrl ? apiImage : _fallbackImageFor(name, cat);
             final id = item['id']?.toString() ?? item['_id']?.toString() ?? '';
-            
+
             productsById[id] = <String, dynamic>{
               'id': id,
               'name': name,
@@ -490,7 +507,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
           final fetched = productsById.values.toList();
           debugPrint('═══════════════════════════════════════════');
-          debugPrint('🟢 [PRODUCTS] FINAL STATE UPDATE: ${fetched.length} products');
+          debugPrint(
+            '🟢 [PRODUCTS] FINAL STATE UPDATE: ${fetched.length} products',
+          );
           debugPrint('═══════════════════════════════════════════');
           _products = fetched.isEmpty ? [] : fetched;
           _isLoadingProducts = false;
@@ -501,7 +520,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           setState(_deriveScheduledFromProducts);
         }
       } else {
-        debugPrint('🔴 [PRODUCTS] ERROR: Unexpected status code: ${response.statusCode}');
+        debugPrint(
+          '🔴 [PRODUCTS] ERROR: Unexpected status code: ${response.statusCode}',
+        );
       }
     } catch (e, stackTrace) {
       debugPrint('═══════════════════════════════════════════');
@@ -519,47 +540,72 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchCategories() async {
     setState(() => _isLoadingCategories = true);
     try {
-      debugPrint('🔵 [CATEGORIES] Fetching from /categories/with-subcategories endpoint');
+      debugPrint(
+        '🔵 [CATEGORIES] Fetching from /categories/with-subcategories endpoint',
+      );
       // Use the same endpoint as categories screen for consistency
-      final response = await _dio.get('/categories/with-subcategories', queryParameters: {'active': true});
+      final response = await _dio.get(
+        '/categories/with-subcategories',
+        queryParameters: {'active': true},
+      );
       debugPrint('🟢 [CATEGORIES] Response status: ${response.statusCode}');
-      
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> items = response.data['data'] ?? [];
         debugPrint('🟢 [CATEGORIES] Found ${items.length} root categories');
-        
+
         setState(() {
-          _categoryData = items
-              .map<Map<String, dynamic>>((item) {
-                final name = item['name']?.toString() ?? '';
-                final imageUrl = item['image'] is Map ? item['image']['url']?.toString() ?? '' : item['image']?.toString() ?? '';
-                final catData = {
-                  'name': name,
-                  'displayName': name,
-                  'queryName': name,
-                  'nameHindi': item['nameHindi']?.toString() ?? '',
-                  'image': imageUrl,
-                  'blurHash': null,
-                  'slug': item['slug']?.toString() ?? '',
-                  'count': _effectiveCategoryCount(item),
-                  'order': item['order'] ?? 999,
-                };
-                debugPrint('🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}');
-                return catData;
-              })
-              .where((item) => (item['name'] as String).isNotEmpty)
-              .where(_categoryHasProducts)
-              .toList()
-            ..sort((a, b) {
-              final orderA = int.tryParse(a['order']?.toString() ?? '999') ?? 999;
-              final orderB = int.tryParse(b['order']?.toString() ?? '999') ?? 999;
-              return orderA.compareTo(orderB);
-            });
+          _categoryData =
+              items
+                  .map<Map<String, dynamic>>((item) {
+                    final name = item['name']?.toString() ?? '';
+                    final imageUrl = item['image'] is Map
+                        ? item['image']['url']?.toString() ?? ''
+                        : item['image']?.toString() ?? '';
+                    final catData = {
+                      'id':
+                          item['id']?.toString() ??
+                          item['_id']?.toString() ??
+                          '',
+                      'name': name,
+                      'displayName': name,
+                      'queryName': name,
+                      'nameHindi': item['nameHindi']?.toString() ?? '',
+                      'image': imageUrl,
+                      'blurHash': null,
+                      'slug': item['slug']?.toString() ?? '',
+                      'brandId': item['company'] is Map
+                          ? item['company']['id']?.toString() ??
+                                item['company']['_id']?.toString() ??
+                                ''
+                          : '',
+                      'count': _effectiveCategoryCount(item),
+                      'order': item['order'] ?? 999,
+                    };
+                    debugPrint(
+                      '🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}',
+                    );
+                    return catData;
+                  })
+                  .where((item) => (item['name'] as String).isNotEmpty)
+                  .where(_categoryHasProducts)
+                  .toList()
+                ..sort((a, b) {
+                  final orderA =
+                      int.tryParse(a['order']?.toString() ?? '999') ?? 999;
+                  final orderB =
+                      int.tryParse(b['order']?.toString() ?? '999') ?? 999;
+                  return orderA.compareTo(orderB);
+                });
           _categories = _categoryData
               .map<String>((item) => item['name']?.toString() ?? '')
               .toList();
-          debugPrint('🟢 [CATEGORIES] Final category count: ${_categories.length}');
-          debugPrint('🟢 [CATEGORIES] Category order: ${_categoryData.map((c) => '${c['name']}(${c['order']})').join(', ')}');
+          debugPrint(
+            '🟢 [CATEGORIES] Final category count: ${_categories.length}',
+          );
+          debugPrint(
+            '🟢 [CATEGORIES] Category order: ${_categoryData.map((c) => '${c['name']}(${c['order']})').join(', ')}',
+          );
           _isLoadingCategories = false;
         });
       } else {
@@ -1790,7 +1836,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         _buildSearchContent(),
         CategoriesScreen(
           onSearchTap: () => setState(() => _selectedNavIndex = 1),
+          controller: _categoriesController,
+          navigationRequest: _categoryNavigationRequest,
+          initialCategoryId: _requestedCategoryId,
           initialCategoryName: _requestedCategoryName,
+          brandId: _requestedCategoryBrandId,
         ),
         _buildNegotiationsContent(),
         _buildProfileContent(),
@@ -1801,7 +1851,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       _buildSearchContent(),
       CategoriesScreen(
         onSearchTap: () => setState(() => _selectedNavIndex = 1),
+        controller: _categoriesController,
+        navigationRequest: _categoryNavigationRequest,
+        initialCategoryId: _requestedCategoryId,
         initialCategoryName: _requestedCategoryName,
+        brandId: _requestedCategoryBrandId,
       ),
       _buildCartContent(),
       _buildProfileContent(),
@@ -1837,6 +1891,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+
+        if (_selectedNavIndex == 2 && _categoriesController.handleBack()) {
+          return;
+        }
 
         // If not on Home tab, go back to Home tab
         if (_selectedNavIndex > 0) {
@@ -1906,20 +1964,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   _buildProductsSection(
                     _isWholesaler
                         ? ref
-                            .read(localeProvider.notifier)
-                            .translate('Fast-Moving Products')
+                              .read(localeProvider.notifier)
+                              .translate('Fast-Moving Products')
                         : ref
-                            .read(localeProvider.notifier)
-                            .translate('Popular Products'),
+                              .read(localeProvider.notifier)
+                              .translate('Popular Products'),
                     true,
                   ),
                   const SizedBox(height: 8),
                   _buildProductsSection(
                     _isWholesaler
                         ? ref
-                            .read(localeProvider.notifier)
-                            .translate('Dealer Schemes')
-                        : ref.read(localeProvider.notifier).translate('Hot Deals'),
+                              .read(localeProvider.notifier)
+                              .translate('Dealer Schemes')
+                        : ref
+                              .read(localeProvider.notifier)
+                              .translate('Hot Deals'),
                     false,
                   ),
                   const SizedBox(height: 8),
@@ -2628,7 +2688,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ],
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _selectedNavIndex = 2),
+                  onTap: () => setState(() {
+                    _categoryNavigationRequest++;
+                    _requestedCategoryId = null;
+                    _requestedCategoryName = null;
+                    _requestedCategoryBrandId = null;
+                    _selectedNavIndex = 2;
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -2680,7 +2746,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       onTap: () {
                         final name = cat['name']?.toString() ?? '';
                         setState(() {
+                          _categoryNavigationRequest++;
+                          _requestedCategoryId = cat['id']?.toString() ?? '';
                           _requestedCategoryName = name;
+                          _requestedCategoryBrandId =
+                              cat['brandId']?.toString() ?? '';
                           _selectedNavIndex = 2;
                         });
                       },
@@ -4312,16 +4382,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   List<Map<String, dynamic>> get _activeHomeOrders => _homeOrders
-      .where(
-        (o) => !['delivered', 'cancelled'].contains(o['status']),
-      )
+      .where((o) => !['delivered', 'cancelled'].contains(o['status']))
       .take(2)
       .toList();
 
   List<Map<String, dynamic>> get _repeatableHomeOrders => _homeOrders
-      .where(
-        (o) => o['status'] == 'delivered' && o['orderType'] == 'wholesale',
-      )
+      .where((o) => o['status'] == 'delivered' && o['orderType'] == 'wholesale')
       .take(3)
       .toList();
 
@@ -4341,8 +4407,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       final api = ref.read(apiClientProvider);
       final response = await api.get('/products/scheduled-changes');
       if (!mounted) return;
-      if (response.statusCode == 200 &&
-          response.data['success'] == true) {
+      if (response.statusCode == 200 && response.data['success'] == true) {
         final List items = response.data['data'] ?? [];
         if (items.isNotEmpty) {
           setState(() {
@@ -4367,8 +4432,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       final effectiveAt = DateTime.tryParse(
         (pending['effectiveAt'] ?? '').toString(),
       );
-      if (effectiveAt == null ||
-          !effectiveAt.isAfter(DateTime.now())) {
+      if (effectiveAt == null || !effectiveAt.isAfter(DateTime.now())) {
         continue;
       }
       derived.add({
@@ -4380,15 +4444,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'effectiveAt': effectiveAt.toIso8601String(),
       });
     }
-    derived.sort((a, b) => (a['effectiveAt'] as String)
-        .compareTo(b['effectiveAt'] as String));
+    derived.sort(
+      (a, b) =>
+          (a['effectiveAt'] as String).compareTo(b['effectiveAt'] as String),
+    );
     _scheduledChanges = derived.take(10).toList();
     // TODO(REMOVE-BEFORE-RELEASE): temporary debug preview so the pulse
     // cards can be verified on-simulator without touching prod data.
     if (_scheduledChanges.isEmpty && kDebugMode && _products.length >= 2) {
       final now = DateTime.now();
-      num priceOf(Map<String, dynamic> p) =>
-          (p['price'] as num?) ?? 0;
+      num priceOf(Map<String, dynamic> p) => (p['price'] as num?) ?? 0;
       final a = _products[0];
       final b = _products[1];
       final pa = priceOf(a).toDouble();
@@ -4400,8 +4465,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'image': (a['image'] ?? '').toString(),
           'currentPrice': pa,
           'newPrice': pa + 2,
-          'effectiveAt':
-              now.add(const Duration(hours: 5)).toIso8601String(),
+          'effectiveAt': now.add(const Duration(hours: 5)).toIso8601String(),
         },
         <String, dynamic>{
           'id': (b['id'] ?? '').toString(),
@@ -4417,8 +4481,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   // ---- Dealer home: repeat a delivered wholesale order as a requirement ----
   Future<void> _repeatRequirement(Map<String, dynamic> order) async {
-    final items =
-        (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final items = (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     if (items.isEmpty) return;
     final first = items.first;
     final productId = (first['productId'] ?? '').toString();
@@ -4451,8 +4514,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       if (!mounted) return;
       if ((createRes.statusCode == 200 || createRes.statusCode == 201) &&
           createRes.data['success'] == true) {
-        final negotiationId =
-            (createRes.data['data']?['id'] ?? '').toString();
+        final negotiationId = (createRes.data['data']?['id'] ?? '').toString();
         if (negotiationId.isNotEmpty) {
           await context.push('/negotiation-detail/$negotiationId');
           _fetchNegotiations();
@@ -4477,7 +4539,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredNegotiations {    if (_negotiationTab == 0) {
+  List<Map<String, dynamic>> get _filteredNegotiations {
+    if (_negotiationTab == 0) {
       // Active tab - pending and countered negotiations
       return _negotiations
           .where((n) => ['pending', 'countered'].contains(n['status']))
@@ -4886,7 +4949,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  status == 'countered' && currentOfferBy == 'admin'
+                                  status == 'countered' &&
+                                          currentOfferBy == 'admin'
                                       ? t('Counter:')
                                       : t('Current:'),
                                   style: GoogleFonts.plusJakartaSans(
@@ -5120,7 +5184,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'icon': HugeIcons.strokeRoundedShoppingCart01,
           'color': primaryBlue,
           'title': t('View Customer App'),
-          'subtitle': user?.isWholesaler == true 
+          'subtitle': user?.isWholesaler == true
               ? t('See what customers see')
               : t('Demo: See customer experience'),
           'onTap': () => context.push('/guest-app-preview'),
@@ -6074,8 +6138,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   child: mediaType == 'youtube'
                       ? _HeroYoutubeSlide(
                           videoUrl: videoUrl,
-                          posterUrl:
-                              (item['imageUrl'] ?? '').toString(),
+                          posterUrl: (item['imageUrl'] ?? '').toString(),
                           linkUrl: linkUrl,
                           isActive: _currentCarouselIndex == index,
                           onOpenLink: () => _handleBannerTap(linkUrl),
@@ -6083,8 +6146,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         )
                       : _HeroVideoSlide(
                           videoUrl: videoUrl,
-                          posterUrl:
-                              (item['imageUrl'] ?? '').toString(),
+                          posterUrl: (item['imageUrl'] ?? '').toString(),
                           linkUrl: linkUrl,
                           isActive: _currentCarouselIndex == index,
                           onOpenLink: () => _handleBannerTap(linkUrl),
@@ -6565,9 +6627,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     // Show all products - the API doesn't properly mark isFeatured/isHot
     // so we show all products in both sections for now
     final filteredProducts = _products.take(4).toList();
-    
-    debugPrint('🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Total products: ${_products.length} | Filtered: ${filteredProducts.length}');
-    
+
+    debugPrint(
+      '🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Total products: ${_products.length} | Filtered: ${filteredProducts.length}',
+    );
+
     final t = ref.read(localeProvider.notifier).translate;
     final currentLang = ref.read(localeProvider);
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -7287,23 +7351,20 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final deal = deals[index];
-                final product =
-                    deal['product'] as Map<String, dynamic>? ?? {};
+                final product = deal['product'] as Map<String, dynamic>? ?? {};
                 final status = (deal['status'] ?? 'pending').toString();
-                final offerBy =
-                    (deal['currentOfferBy'] ?? '').toString();
-                final total = deal['currentTotalPrice'] ??
+                final offerBy = (deal['currentOfferBy'] ?? '').toString();
+                final total =
+                    deal['currentTotalPrice'] ??
                     deal['requestedTotalPrice'] ??
                     0;
                 final imageUrl = (product['image'] ?? '').toString();
-                final isCounter =
-                    status == 'countered' && offerBy == 'admin';
+                final isCounter = status == 'countered' && offerBy == 'admin';
                 return SizedBox(
                   width: 250,
                   child: _dealerCard(
                     onTap: () async {
-                      final id = (deal['id'] ?? deal['_id'] ?? '')
-                          .toString();
+                      final id = (deal['id'] ?? deal['_id'] ?? '').toString();
                       if (id.isEmpty) return;
                       await context.push('/negotiation-detail/$id');
                       _fetchNegotiations();
@@ -7324,8 +7385,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         width: 48,
                                         height: 48,
                                         fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) =>
-                                            Container(
+                                        errorWidget: (_, __, ___) => Container(
                                           width: 48,
                                           height: 48,
                                           color: backgroundWhite,
@@ -7340,10 +7400,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color: primaryBlue
-                                              .withOpacity(0.08),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          color: primaryBlue.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.handshake_outlined,
@@ -7355,8 +7415,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
@@ -7364,8 +7423,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           .toString(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style:
-                                          GoogleFonts.plusJakartaSans(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
                                         color: textMuted,
@@ -7378,8 +7436,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           .toString(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style:
-                                          GoogleFonts.plusJakartaSans(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: textPrimary,
@@ -7413,12 +7470,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: (isCounter
-                                          ? const Color(0xFFF59E0B)
-                                          : textMuted)
-                                      .withOpacity(0.12),
-                                  borderRadius:
-                                      BorderRadius.circular(100),
+                                  color:
+                                      (isCounter
+                                              ? const Color(0xFFF59E0B)
+                                              : textMuted)
+                                          .withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(100),
                                 ),
                                 child: Text(
                                   _dealerDealLabel(status, offerBy),
@@ -7459,70 +7516,68 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'All Orders',
           () => context.push('/previous-orders'),
         ),
-        ...orders.map(
-          (order) {
-            final orderId = (order['id'] ?? '').toString();
-            final status = (order['status'] ?? '').toString();
-            final stageColor = _dealerStageColor(status);
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: _dealerCard(
-                onTap: orderId.isEmpty
-                    ? null
-                    : () => context.push('/tracking/$orderId'),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: stageColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.local_shipping_outlined,
-                          color: stageColor,
-                          size: 22,
-                        ),
+        ...orders.map((order) {
+          final orderId = (order['id'] ?? '').toString();
+          final status = (order['status'] ?? '').toString();
+          final stageColor = _dealerStageColor(status);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: _dealerCard(
+              onTap: orderId.isEmpty
+                  ? null
+                  : () => context.push('/tracking/$orderId'),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: stageColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Order ${(order['orderNumber'] ?? '').toString()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: textPrimary,
-                              ),
+                      child: Icon(
+                        Icons.local_shipping_outlined,
+                        color: stageColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Order ${(order['orderNumber'] ?? '').toString()}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: textPrimary,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${_dealerOrderStage(status)} · ₹${_formatPrice(order['total'])}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: textMuted,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_dealerOrderStage(status)} · ₹${_formatPrice(order['total'])}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: textMuted,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: textMuted,
-                      ),
-                    ],
-                  ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: textMuted,
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -7540,87 +7595,84 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'All Orders',
           () => context.push('/previous-orders'),
         ),
-        ...orders.map(
-          (order) {
-            final items =
-                (order['items'] as List?)?.cast<Map<String, dynamic>>() ??
-                    [];
-            final first = items.isNotEmpty ? items.first : {};
-            final orderId = (order['id'] ?? '').toString();
-            final isRepeating = _repeatingOrderId == orderId;
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: _dealerCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${(first['name'] ?? 'Order').toString()} × ${first['quantity'] ?? ''}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: textPrimary,
-                              ),
+        ...orders.map((order) {
+          final items =
+              (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          final first = items.isNotEmpty ? items.first : {};
+          final orderId = (order['id'] ?? '').toString();
+          final isRepeating = _repeatingOrderId == orderId;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: _dealerCard(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${(first['name'] ?? 'Order').toString()} × ${first['quantity'] ?? ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Order ${(order['orderNumber'] ?? '').toString()} · ₹${_formatPrice(order['total'])}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: textMuted,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Order ${(order['orderNumber'] ?? '').toString()} · ₹${_formatPrice(order['total'])}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: textMuted,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: isRepeating
-                            ? null
-                            : () => _repeatRequirement(order),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: primaryBlue,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: isRepeating
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'Repeat',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: isRepeating
+                          ? null
+                          : () => _repeatRequirement(order),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: primaryBlue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: isRepeating
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
-                        ),
+                              )
+                            : Text(
+                                'Repeat',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -9982,33 +10034,25 @@ String changeCountdownFor(DateTime effectiveAt) {
   if (diff.isNegative) return 'Applying soon';
   if (diff.inHours >= 1) {
     final mins = diff.inMinutes % 60;
-    final when = mins > 0
-        ? '${diff.inHours}h ${mins}m'
-        : '${diff.inHours}h';
+    final when = mins > 0 ? '${diff.inHours}h ${mins}m' : '${diff.inHours}h';
     return 'New price effective in $when';
   }
   final mins = diff.inMinutes;
-  return mins > 0
-      ? 'New price effective in ${mins}m'
-      : 'Applying soon';
+  return mins > 0 ? 'New price effective in ${mins}m' : 'Applying soon';
 }
 
 /// Compact auto-scrolling price-change strip carousel.
 class _ScheduledStripCarousel extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final void Function(String productId) onOpen;
-  const _ScheduledStripCarousel({
-    required this.items,
-    required this.onOpen,
-  });
+  const _ScheduledStripCarousel({required this.items, required this.onOpen});
 
   @override
   State<_ScheduledStripCarousel> createState() =>
       _ScheduledStripCarouselState();
 }
 
-class _ScheduledStripCarouselState
-    extends State<_ScheduledStripCarousel> {
+class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
   Timer? _timer;
   int _index = 0;
 
@@ -10019,8 +10063,7 @@ class _ScheduledStripCarouselState
 
   String _fmt(dynamic price) {
     if (price == null) return '0';
-    final val =
-        (price is int) ? price.toDouble() : (price as num).toDouble();
+    final val = (price is int) ? price.toDouble() : (price as num).toDouble();
     return NumberFormatter.formatLakhs(val);
   }
 
@@ -10103,16 +10146,15 @@ class _ScheduledStripCarouselState
                         begin: const Offset(0, 0.35),
                         end: Offset.zero,
                       ).animate(animation);
-                      final scale = Tween<double>(begin: 0.95, end: 1.0)
-                          .animate(animation);
+                      final scale = Tween<double>(
+                        begin: 0.95,
+                        end: 1.0,
+                      ).animate(animation);
                       return SlideTransition(
                         position: slide,
                         child: FadeTransition(
                           opacity: animation,
-                          child: ScaleTransition(
-                            scale: scale,
-                            child: child,
-                          ),
+                          child: ScaleTransition(scale: scale, child: child),
                         ),
                       );
                     },
@@ -10122,172 +10164,171 @@ class _ScheduledStripCarouselState
                         if (widget.items.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        final item = widget.items[
-                            _index % widget.items.length];
-              final current =
-                  (item['currentPrice'] as num?)?.toDouble() ?? 0;
-              final next =
-                  (item['newPrice'] as num?)?.toDouble() ?? 0;
-              final dropping = next < current;
-              final effectiveAt = DateTime.tryParse(
-                (item['effectiveAt'] ?? '').toString(),
-              );
-              final productId = (item['id'] ?? '').toString();
-              final pct = current > 0
-                  ? ((next - current) / current * 100)
-                  : 0.0;
-              final accent = dropping
-                  ? const Color(0xFF16A34A)
-                  : const Color(0xFFF59E0B);
-              final urgency = pulseAccentFor(effectiveAt);
-              final remain =
-                  effectiveAt?.difference(DateTime.now()) ??
-                      Duration.zero;
-              final remainLabel = effectiveAt == null
-                  ? '--'
-                  : remain.isNegative
-                      ? 'Soon'
-                      : remain.inHours >= 1
-                          ? '${remain.inHours}h ${remain.inMinutes % 60}m'
-                          : '${remain.inMinutes}m';
+                        final item = widget.items[_index % widget.items.length];
+                        final current =
+                            (item['currentPrice'] as num?)?.toDouble() ?? 0;
+                        final next =
+                            (item['newPrice'] as num?)?.toDouble() ?? 0;
+                        final dropping = next < current;
+                        final effectiveAt = DateTime.tryParse(
+                          (item['effectiveAt'] ?? '').toString(),
+                        );
+                        final productId = (item['id'] ?? '').toString();
+                        final pct = current > 0
+                            ? ((next - current) / current * 100)
+                            : 0.0;
+                        final accent = dropping
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFF59E0B);
+                        final urgency = pulseAccentFor(effectiveAt);
+                        final remain =
+                            effectiveAt?.difference(DateTime.now()) ??
+                            Duration.zero;
+                        final remainLabel = effectiveAt == null
+                            ? '--'
+                            : remain.isNegative
+                            ? 'Soon'
+                            : remain.inHours >= 1
+                            ? '${remain.inHours}h ${remain.inMinutes % 60}m'
+                            : '${remain.inMinutes}m';
                         return GestureDetector(
-                  onTap: productId.isEmpty
-                      ? null
-                      : () => widget.onOpen(productId),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _surfaceWhite,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: urgency.withOpacity(0.55),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: urgency.withOpacity(0.1),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: urgency.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.notifications_active_rounded,
-                            color: urgency,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                (item['name'] ?? '').toString(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: _textPrimary,
-                                  letterSpacing: -0.2,
-                                ),
+                          onTap: productId.isEmpty
+                              ? null
+                              : () => widget.onOpen(productId),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _surfaceWhite,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: urgency.withOpacity(0.55),
+                                width: 1.5,
                               ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      '₹${_fmt(current)} → ₹${_fmt(next)}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style:
-                                          GoogleFonts.plusJakartaSans(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: accent,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: urgency.withOpacity(0.1),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: urgency.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.notifications_active_rounded,
+                                    color: urgency,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        (item['name'] ?? '').toString(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: _textPrimary,
+                                          letterSpacing: -0.2,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              '₹${_fmt(current)} → ₹${_fmt(next)}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: accent,
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: accent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        effectiveAt == null
+                                            ? 'Scheduled'
+                                            : changeCountdownFor(effectiveAt),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: urgency,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
-                                    style:
-                                        GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      color: accent,
-                                    ),
+                                ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
                                   ),
-                                ],
-                              ),
-                              Text(
-                                effectiveAt == null
-                                    ? 'Scheduled'
-                                    : changeCountdownFor(
-                                        effectiveAt),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: urgency,
+                                  decoration: BoxDecoration(
+                                    color: urgency.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        remainLabel,
+                                        maxLines: 1,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: urgency,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                      Text(
+                                        'LEFT',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w800,
+                                          color: urgency.withOpacity(0.7),
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: urgency.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                remainLabel,
-                                maxLines: 1,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: urgency,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              Text(
-                                'LEFT',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w800,
-                                  color: urgency.withOpacity(0.7),
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                         );
                       },
                     ),
@@ -10305,8 +10346,7 @@ class _ScheduledStripCarouselState
               widget.items.length,
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 3),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
                 width: _index == i ? 18 : 6,
                 height: 6,
                 decoration: BoxDecoration(
@@ -10469,10 +10509,7 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.55),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
                 ),
               ),
             ),
@@ -10493,9 +10530,7 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    _muted
-                        ? Icons.volume_off_rounded
-                        : Icons.volume_up_rounded,
+                    _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                     size: 18,
                     color: Colors.white,
                   ),
@@ -10616,8 +10651,7 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
                 child: CachedNetworkImage(
                   imageUrl: _thumbnail,
                   fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) =>
-                      Container(color: Colors.black),
+                  errorWidget: (_, __, ___) => Container(color: Colors.black),
                 ),
               ),
             Container(
@@ -10625,10 +10659,7 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.55),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
                 ),
               ),
             ),
@@ -10664,4 +10695,3 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
     );
   }
 }
-
