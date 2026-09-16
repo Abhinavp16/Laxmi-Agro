@@ -1382,13 +1382,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             itemBuilder: (context, index) {
               final category = _categories[index];
               final subcategoryCount = _subcategoriesOf(category).length;
+              // Categories without subcategories open products directly,
+              // so show their product count instead of "0 subcategories".
+              final directCount = _numericValue(
+                category['directProductCount'],
+              ).toInt();
+              final count = subcategoryCount > 0
+                  ? subcategoryCount
+                  : directCount;
+              final countLabel = subcategoryCount > 0
+                  ? (subcategoryCount == 1 ? 'subcategory' : 'subcategories')
+                  : (directCount == 1 ? 'item' : 'items');
               return _buildCatalogCard(
                 name: _getDisplayCategoryName(category),
                 imageUrl: category['image']?.toString() ?? '',
-                count: subcategoryCount,
-                countLabel: subcategoryCount == 1
-                    ? 'subcategory'
-                    : 'subcategories',
+                count: count,
+                countLabel: countLabel,
                 icon: _categoryIcon(category['name']?.toString() ?? ''),
                 onTap: () => _onCategorySelected(index),
               );
