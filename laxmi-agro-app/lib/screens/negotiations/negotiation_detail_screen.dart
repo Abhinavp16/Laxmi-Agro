@@ -544,9 +544,12 @@ class _NegotiationDetailScreenState
         ? orderRef['orderNumber']?.toString() ?? ''
         : (n['orderNumber']?.toString() ?? '');
     final approvedBy = n['approvedBy'] as Map<String, dynamic>?;
+    final approvedByName = approvedBy?['name']?.toString() ?? '';
     final approvedByLabel = approvedBy == null
         ? null
-        : 'Accepted by Laxmi Agro${approvedBy['name'] != null && (approvedBy['name'] as String).isNotEmpty ? ' · ${approvedBy['name']}' : ''}';
+        : approvedByName.isNotEmpty
+        ? 'Accepted by $approvedByName'
+        : 'Accepted by Laxmi Agro';
 
     return Column(
       children: [
@@ -1012,6 +1015,23 @@ class _NegotiationDetailScreenState
     );
   }
 
+  String _entryActorName(Map<String, dynamic> entry) {
+    final actor = entry['actorId'];
+    if (actor is Map) {
+      final name =
+          actor['name']?.toString() ?? actor['username']?.toString() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+    return '';
+  }
+
+  bool _isLegacyAcceptedMessage(String message) {
+    return RegExp(
+      r'^accepted by\b',
+      caseSensitive: false,
+    ).hasMatch(message.trim());
+  }
+
   Widget _buildHistoryItem(Map<String, dynamic> entry) {
     final action = entry['action'] as String? ?? '';
     final by = entry['by'] as String? ?? '';
@@ -1019,6 +1039,7 @@ class _NegotiationDetailScreenState
     final total = entry['totalPrice'];
     final message = entry['message'] as String? ?? '';
     final timestamp = entry['timestamp'] as String? ?? '';
+    final actorName = _entryActorName(entry);
 
     String formattedTime = '';
     if (timestamp.isNotEmpty) {
@@ -1054,7 +1075,11 @@ class _NegotiationDetailScreenState
       case 'accepted':
         dotColor = greenAccent;
         dotIcon = Icons.check_circle_rounded;
-        actionLabel = by == 'admin' ? 'Accepted by Laxmi Agro' : 'You Accepted';
+        actionLabel = by == 'admin'
+            ? (actorName.isNotEmpty
+                  ? 'Accepted by $actorName'
+                  : 'Accepted by Laxmi Agro')
+            : 'You Accepted';
         break;
       case 'rejected':
         dotColor = redAccent;
@@ -1100,9 +1125,15 @@ class _NegotiationDetailScreenState
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: surfaceWhite,
+                  color: action == 'accepted'
+                      ? greenAccent.withOpacity(0.08)
+                      : surfaceWhite,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: borderLight),
+                  border: Border.all(
+                    color: action == 'accepted'
+                        ? greenAccent.withOpacity(0.35)
+                        : borderLight,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1151,7 +1182,9 @@ class _NegotiationDetailScreenState
                         ],
                       ),
                     ],
-                    if (message.isNotEmpty) ...[
+                    if (message.isNotEmpty &&
+                        !(action == 'accepted' &&
+                            _isLegacyAcceptedMessage(message))) ...[
                       const SizedBox(height: 6),
                       Text(
                         '"$message"',

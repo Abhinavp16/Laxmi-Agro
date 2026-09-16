@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, MessageSquare, Check, X, Send, Search, Package } from "@/components/hugeicons"
+import { Loader2, MessageSquare, Check, X, Send, Search, Package, CheckCircle2 } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Sheet,
@@ -116,6 +116,46 @@ const EMPTY_ADDRESS: ShippingAddress = {
     city: "",
     state: "",
     pincode: "",
+}
+
+const LEGACY_ACCEPTED_MESSAGE = /^accepted by\b/i
+
+// Stored accept messages from before name attribution (e.g. the old
+// hardcoded "Accepted by Laxmi Agro") carry no information beyond the
+// structured card, so they are hidden instead of rendered.
+function acceptNote(entry: HistoryEntry): string | null {
+    const text = (entry.message || '').trim()
+    if (!text || LEGACY_ACCEPTED_MESSAGE.test(text)) return null
+    return text
+}
+
+function AcceptCard({ name, pricePerUnit, timestamp, note }: { name: string; pricePerUnit?: number | null; timestamp?: string; note?: string | null }) {
+    return (
+        <div className="flex justify-end">
+            <div className="w-full max-w-[85%] rounded-2xl rounded-br-md border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-800">
+                        Accepted by {name}
+                    </span>
+                    {pricePerUnit != null && (
+                        <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 font-mono text-[11px] font-bold text-white">
+                            ₹{pricePerUnit}
+                        </span>
+                    )}
+                </div>
+                <p className="mt-1 text-sm font-medium text-emerald-900">
+                    Deal confirmed — order created.
+                </p>
+                {note && <p className="mt-0.5 whitespace-pre-wrap text-sm text-emerald-800">{note}</p>}
+                {timestamp && (
+                    <span className="mt-1 block text-right text-[10px] text-emerald-700/70">
+                        {new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                )}
+            </div>
+        </div>
+    )
 }
 
 function actorDisplayName(entry: HistoryEntry, dealerFallback = 'Dealer'): string {
@@ -701,12 +741,22 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     <ScrollArea className="min-h-0 flex-1 rounded-xl border border-slate-200 bg-slate-100/70 p-3 pr-4">
                         <div className="space-y-3">
                             {detail.history.map((entry, idx) => {
+                                if (entry.action === 'accepted') {
+                                    return (
+                                        <AcceptCard
+                                            key={idx}
+                                            name={actorDisplayName(entry, dealerDisplayName)}
+                                            pricePerUnit={entry.pricePerUnit}
+                                            timestamp={entry.timestamp}
+                                            note={acceptNote(entry)}
+                                        />
+                                    )
+                                }
                                 const isAdmin = entry.by === 'admin'
                                 const actionLabel = entry.action === 'message'
                                     ? actorDisplayName(entry, dealerDisplayName)
                                     : entry.action === 'requested' ? 'Requirement Sent'
                                     : entry.action === 'countered' ? `New Price · ${actorDisplayName(entry, dealerDisplayName)}`
-                                    : entry.action === 'accepted' ? `Accepted by ${actorDisplayName(entry, dealerDisplayName)}`
                                     : entry.action === 'rejected' ? `Declined · ${actorDisplayName(entry, dealerDisplayName)}`
                                     : entry.action
                                 return (
