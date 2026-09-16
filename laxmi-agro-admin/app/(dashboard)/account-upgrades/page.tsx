@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Eye, CheckCircle2, XCircle, History, ChevronDown, ChevronUp } from "@/components/hugeicons"
+import { Loader2, Eye, CheckCircle2, XCircle, History, ChevronDown, ChevronUp, User } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Dialog,
@@ -247,8 +247,8 @@ export default function AccountUpgradesPage() {
                                     <TableRow key={cust._id} className="border-[#333] hover:bg-[#1A1A1A]">
                                         <TableCell className="text-white font-medium">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center text-xs font-bold border border-[#333]">
-                                                    {cust.name.substring(0, 2).toUpperCase()}
+                                                <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center text-gray-300 border border-[#333]">
+                                                    <User className="h-4 w-4" />
                                                 </div>
                                                 <span className="text-sm">{cust.name}</span>
                                             </div>

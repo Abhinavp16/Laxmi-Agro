@@ -362,8 +362,8 @@ export default function CustomersPage() {
                                         <div key={customer._id} className="rounded-2xl border border-[#333] bg-[#0D0D0D] p-4">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-800 text-xs text-white">
-                                                        {customer.name.substring(0, 2).toUpperCase()}
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-800 text-gray-300">
+                                                        <User className="h-5 w-5" />
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-semibold text-white">{customer.name}</div>
@@ -436,8 +436,8 @@ export default function CustomersPage() {
                                             <TableRow key={customer._id} className="border-[#333] hover:bg-[#1A1A1A]">
                                                 <TableCell className="font-medium text-white">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-xs">
-                                                            {customer.name.substring(0, 2).toUpperCase()}
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-gray-300">
+                                                            <User className="h-4 w-4" />
                                                         </div>
                                                         {customer.name}
                                                     </div>
