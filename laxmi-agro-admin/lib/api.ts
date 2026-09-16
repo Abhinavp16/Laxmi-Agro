@@ -131,7 +131,29 @@ export function getUser() {
   return user ? JSON.parse(user) : null
 }
 
+// Best-effort: stop browser push for this device so a signed-out
+// browser never receives admin alerts.
+export function unregisterStoredPushToken() {
+  try {
+    const fcmToken = localStorage.getItem('adminFcmToken')
+    const accessToken = localStorage.getItem('accessToken')
+    if (fcmToken && accessToken) {
+      fetch(buildApiUrl('/notifications/unregister-token'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ fcmToken }),
+        keepalive: true,
+      }).catch(() => {})
+    }
+  } catch {}
+  localStorage.removeItem('adminFcmToken')
+}
+
 export function logout() {
+  unregisterStoredPushToken()
   localStorage.removeItem('accessToken')
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')

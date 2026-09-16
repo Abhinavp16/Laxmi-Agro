@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/generate-sw.js",
     "build": "next build",
     "dev": "next dev --webpack -p 3001",
     "lint": "eslint .",
@@ -52,6 +53,7 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
+    "firebase": "^12.19.0",
     "framer-motion": "^12.42.2",
     "input-otp": "1.4.1",
     "next": "^16.1.6",
