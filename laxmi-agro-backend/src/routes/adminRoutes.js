@@ -30,6 +30,7 @@ const adminReviewController = require('../controllers/admin/reviewController');
 const adminAccountDeletionController = require('../controllers/admin/accountDeletionController');
 const adminStaffController = require('../controllers/admin/staffController');
 const negotiationLimitController = require('../controllers/admin/negotiationLimitController');
+const adminNotificationController = require('../controllers/admin/notificationController');
 
 const { adminValidation } = require('../validations');
 
@@ -141,6 +142,11 @@ router.patch('/affiliate-codes/:id/toggle', adminAffiliateController.toggleAffil
 router.get('/affiliate-codes/:id/usage', adminAffiliateController.getAffiliateCodeUsage);
 router.get('/affiliate-codes/:id/commissions', adminAffiliateController.getAffiliateCodeCommissions);
 router.get('/affiliate-commissions', adminAffiliateController.getAffiliateCommissions);
+
+// Admin notification inbox
+router.get('/notifications', adminNotificationController.getNotifications);
+router.post('/notifications/read-all', adminNotificationController.markAllAsRead);
+router.post('/notifications/:id/read', adminNotificationController.markAsRead);
 
 // Reviews
 router.get('/reviews', adminReviewController.getAllReviews);

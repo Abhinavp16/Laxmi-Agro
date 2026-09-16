@@ -22,6 +22,7 @@ const WebsiteSettings = require('./WebsiteSettings');
 const MagicLinkToken = require('./MagicLinkToken');
 const AccountDeletionRequest = require('./AccountDeletionRequest');
 const AuditLog = require('./AuditLog');
+const AdminNotification = require('./AdminNotification');
 
 module.exports = {
   User,
@@ -48,4 +49,5 @@ module.exports = {
   MagicLinkToken,
   AccountDeletionRequest,
   AuditLog,
+  AdminNotification,
 };

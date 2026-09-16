@@ -1,4 +1,9 @@
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const logger = require('../utils/logger');
+
+// Shared Socket.IO server instance (also used for admin fan-out).
+let ioInstance = null;
 
 // Store active connections: { negotiationId: Set<socketId> }
 const activeConnections = new Map();
@@ -7,9 +12,44 @@ const activeConnections = new Map();
 const typingUsers = new Map();
 
 class NegotiationSocketService {
+  static getIO() {
+    return ioInstance;
+  }
+
   static initializeSocket(io) {
+    ioInstance = io;
     io.on('connection', (socket) => {
       logger.info(`[Socket] New connection: ${socket.id}`);
+
+      // Admin panels join the shared `admins` room for realtime
+      // notifications. Unlike negotiation rooms, this join is authenticated:
+      // the client must present a valid JWT for an active admin user.
+      socket.on('join-admin', async (data = {}) => {
+        try {
+          const token = data.token || socket.handshake.auth?.token;
+          if (!token) {
+            socket.emit('admin-join-error', { message: 'Authentication required' });
+            return;
+          }
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const user = await User.findById(decoded.userId).select('_id role isActive');
+          if (!user || !user.isActive || user.role !== 'admin') {
+            socket.emit('admin-join-error', { message: 'Admin access required' });
+            return;
+          }
+          socket.join('admins');
+          socket.adminUserId = String(user._id);
+          logger.info(`[Socket] Admin ${user._id} joined admins room`);
+          socket.emit('admin-joined', { at: new Date() });
+        } catch (err) {
+          socket.emit('admin-join-error', { message: 'Invalid or expired token' });
+        }
+      });
+
+      socket.on('leave-admin', () => {
+        socket.leave('admins');
+        socket.adminUserId = null;
+      });
 
       // User joins a negotiation chat room
       socket.on('join-negotiation', (data) => {
