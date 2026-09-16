@@ -58,8 +58,7 @@ const categorySchema = new mongoose.Schema({
   timestamps: true,
 });
 
-categorySchema.index({ company: 1, name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
-categorySchema.index({ company: 1, slug: 1 }, { unique: true });
+  categorySchema.index({ company: 1, slug: 1 }, { unique: true });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1, order: 1 });
 categorySchema.index({ showOnWebsite: 1 });

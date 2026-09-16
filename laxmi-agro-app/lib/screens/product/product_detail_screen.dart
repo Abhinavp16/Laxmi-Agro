@@ -1395,24 +1395,38 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             ],
             // Show the main price (Your Dealer Price for wholesalers, Special Price for buyers)
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  isWholesaler ? '${t('Your Dealer Price')}: ' : '${t('Special Price')}: ',
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: _txtSec,
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: _txtSec,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: isWholesaler
+                              ? '${t('Your Dealer Price')}: '
+                              : '${t('Special Price')}: ',
+                        ),
+                        TextSpan(
+                          text:
+                              '₹${_fmt(isWholesaler && wsPrice != null ? wsPrice : price)}${isWholesaler ? '/${_quantityUnitLabel()}' : ''}',
+                          style: GoogleFonts.outfit(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: isWholesaler
+                                ? _specialAmountWholesale
+                                : _blue,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                Text(
-                  '₹${_fmt(isWholesaler && wsPrice != null ? wsPrice : price)}${isWholesaler ? '/${_quantityUnitLabel()}' : ''}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: isWholesaler ? _specialAmountWholesale : _blue,
-                  ),
-                ),
-                const Spacer(),
+                if (disc > 0) const SizedBox(width: 8),
                 if (disc > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -2812,7 +2826,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                           onTap: () {
                                             // Check guest mode
                                             if (ref.read(guestModeProvider)) {
-                                              _showGuestModePopup('Add to Cart disabled in demo mode');
+                                              _showGuestModePopup(
+                                                'Add to Cart disabled in demo mode',
+                                              );
                                               return;
                                             }
 
@@ -3426,7 +3442,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.send_rounded, size: 20, color: Colors.white),
+                        const Icon(
+                          Icons.send_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 8),
                         Column(
                           mainAxisSize: MainAxisSize.min,
@@ -3455,166 +3475,175 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 ),
               ),
             if (!isWholesaler)
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: inStock && !_addedToCart
-                        ? () {
-                            // Check guest mode
-                            if (ref.read(guestModeProvider)) {
-                              _showGuestModePopup('Add to Cart disabled in demo mode');
-                              return;
-                            }
-
-                            final img = _images.isNotEmpty ? _images[0] : null;
-                            ref
-                                .read(cartProvider.notifier)
-                                .addItem(
-                                  productId: widget.productId,
-                                  name: name,
-                                  image: img,
-                                  price: (price is int)
-                                      ? price.toDouble()
-                                      : (price as num?)?.toDouble() ?? 0,
-                                  mrp: (mrp is int)
-                                      ? mrp.toDouble()
-                                      : (mrp as num?)?.toDouble(),
-                                  minWholesaleQuantity: minQty is num
-                                      ? minQty.toInt()
-                                      : int.tryParse(
-                                              minQty?.toString() ?? '',
-                                            ) ??
-                                            1,
-                                  quantity: _quantity,
-                                  stock: stock is int ? stock : 99,
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: inStock && !_addedToCart
+                          ? () {
+                              // Check guest mode
+                              if (ref.read(guestModeProvider)) {
+                                _showGuestModePopup(
+                                  'Add to Cart disabled in demo mode',
                                 );
-                            _trackEvent('cart_add');
-                            setState(() => _addedToCart = true);
-                            _cartBounce.forward().then(
-                              (_) => _cartBounce.reverse(),
-                            );
-                            Future.delayed(const Duration(seconds: 2), () {
-                              if (mounted) setState(() => _addedToCart = false);
-                            });
-                          }
-                        : null,
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _addedToCart
-                                  ? Icons.check_rounded
-                                  : Icons.shopping_cart_outlined,
-                              size: 22,
-                              color: _txt,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              t('Add to Cart'),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                return;
+                              }
+
+                              final img = _images.isNotEmpty
+                                  ? _images[0]
+                                  : null;
+                              ref
+                                  .read(cartProvider.notifier)
+                                  .addItem(
+                                    productId: widget.productId,
+                                    name: name,
+                                    image: img,
+                                    price: (price is int)
+                                        ? price.toDouble()
+                                        : (price as num?)?.toDouble() ?? 0,
+                                    mrp: (mrp is int)
+                                        ? mrp.toDouble()
+                                        : (mrp as num?)?.toDouble(),
+                                    minWholesaleQuantity: minQty is num
+                                        ? minQty.toInt()
+                                        : int.tryParse(
+                                                minQty?.toString() ?? '',
+                                              ) ??
+                                              1,
+                                    quantity: _quantity,
+                                    stock: stock is int ? stock : 99,
+                                  );
+                              _trackEvent('cart_add');
+                              setState(() => _addedToCart = true);
+                              _cartBounce.forward().then(
+                                (_) => _cartBounce.reverse(),
+                              );
+                              Future.delayed(const Duration(seconds: 2), () {
+                                if (mounted)
+                                  setState(() => _addedToCart = false);
+                              });
+                            }
+                          : null,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: _card,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _addedToCart
+                                    ? Icons.check_rounded
+                                    : Icons.shopping_cart_outlined,
+                                size: 22,
                                 color: _txt,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                t('Add to Cart'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: _txt,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: inStock && !_isBuyNowLoading
-                        ? () async {
-                            // Check guest mode
-                            if (ref.read(guestModeProvider)) {
-                              _showGuestModePopup('Buy Now disabled in demo mode');
-                              return;
-                            }
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: inStock && !_isBuyNowLoading
+                          ? () async {
+                              // Check guest mode
+                              if (ref.read(guestModeProvider)) {
+                                _showGuestModePopup(
+                                  'Buy Now disabled in demo mode',
+                                );
+                                return;
+                              }
 
-                            setState(() => _isBuyNowLoading = true);
-                            try {
-                              final img = _images.isNotEmpty
-                                  ? _images[0]
-                                  : null;
-                              final productPrice = (price is int)
-                                  ? price.toDouble()
-                                  : (price as num?)?.toDouble() ?? 0;
-                              final productMrp = (mrp is int)
-                                  ? mrp.toDouble()
-                                  : (mrp as num?)?.toDouble();
-                              final productStock = stock is int ? stock : 99;
+                              setState(() => _isBuyNowLoading = true);
+                              try {
+                                final img = _images.isNotEmpty
+                                    ? _images[0]
+                                    : null;
+                                final productPrice = (price is int)
+                                    ? price.toDouble()
+                                    : (price as num?)?.toDouble() ?? 0;
+                                final productMrp = (mrp is int)
+                                    ? mrp.toDouble()
+                                    : (mrp as num?)?.toDouble();
+                                final productStock = stock is int ? stock : 99;
 
-                              if (!mounted) return;
-                              context.push(
-                                '/buy-now',
-                                extra: {
-                                  'productId': widget.productId,
-                                  'productName': name,
-                                  'productImage': img,
-                                  'price': productPrice,
-                                  'mrp': productMrp,
-                                  'quantity': _quantity,
-                                  'stock': productStock,
-                                },
-                              );
-                            } finally {
-                              if (mounted) {
-                                setState(() => _isBuyNowLoading = false);
+                                if (!mounted) return;
+                                context.push(
+                                  '/buy-now',
+                                  extra: {
+                                    'productId': widget.productId,
+                                    'productName': name,
+                                    'productImage': img,
+                                    'price': productPrice,
+                                    'mrp': productMrp,
+                                    'quantity': _quantity,
+                                    'stock': productStock,
+                                  },
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isBuyNowLoading = false);
+                                }
                               }
                             }
-                          }
-                        : null,
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: inStock && !_isBuyNowLoading ? _blue : _txtMuted,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: inStock
-                            ? [
-                                BoxShadow(
-                                  color: _blue.withOpacity(0.25),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                          : null,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: inStock && !_isBuyNowLoading
+                              ? _blue
+                              : _txtMuted,
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: inStock
+                              ? [
+                                  BoxShadow(
+                                    color: _blue.withOpacity(0.25),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: _isBuyNowLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  t('Buy Now'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: _isBuyNowLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                t('Buy Now'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
@@ -4249,7 +4278,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               _divider(),
               _reviewLine(t('Quantity'), '$qty ${t('units')}'),
               _divider(),
-              _reviewLine(t('Your Expected Price'), '₹${_fmt(target)}/${t('unit')}'),
+              _reviewLine(
+                t('Your Expected Price'),
+                '₹${_fmt(target)}/${t('unit')}',
+              ),
               _divider(),
               _reviewLine(
                 t('Retail Price'),

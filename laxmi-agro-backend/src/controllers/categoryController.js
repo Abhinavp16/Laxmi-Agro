@@ -213,16 +213,19 @@ exports.createCategory = async (req, res, next) => {
       });
     }
 
-    // Check if category with same name exists inside this brand.
+    // Check if category with same name exists under the same parent
+    // category inside this brand (siblings only — HP names like "3 HP"
+    // repeat across categories by design).
     const existingCategory = await Category.findOne({ 
       company: companyId,
+      parent: parent || null,
       name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });
     
     if (existingCategory) {
       return res.status(400).json({
         success: false,
-        message: 'Category with this name already exists for this brand',
+        message: 'Category with this name already exists under the same parent category',
       });
     }
 
@@ -287,10 +290,14 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
 
-    // Check for duplicate name in same brand (excluding current category)
+    // Check for duplicate name under the same parent category
+    // (excluding current category). Siblings only — HP names like "3 HP"
+    // repeat across categories by design.
     if ((name && name !== category.name) || String(nextCompanyId) !== String(category.company)) {
+      const effectiveParent = parent !== undefined ? (parent || null) : category.parent;
       const existingCategory = await Category.findOne({ 
         company: nextCompanyId,
+        parent: effectiveParent,
         name: { $regex: new RegExp(`^${(name || category.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         _id: { $ne: req.params.id }
       });
@@ -298,7 +305,7 @@ exports.updateCategory = async (req, res, next) => {
       if (existingCategory) {
         return res.status(400).json({
           success: false,
-          message: 'Category with this name already exists for this brand',
+          message: 'Category with this name already exists under the same parent category',
         });
       }
     }
