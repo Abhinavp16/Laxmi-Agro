@@ -10,6 +10,7 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
 import '../../widgets/pending_price_change_notice.dart';
+import '../../widgets/product_image_placeholder.dart';
 
 enum _CatalogStage { categories, subcategories, products }
 
@@ -641,6 +642,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
             'name': name,
             'nameHindi': item['nameHindi']?.toString() ?? '',
+            'category': item['category']?.toString() ?? '',
             'price': item['price'] ?? item['retailPrice'] ?? 0,
             'mrp': item['mrp'] ?? 0,
             'image': ApiConfig.normalizeMediaUrl(
@@ -748,6 +750,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
             'name': name,
             'nameHindi': item['nameHindi']?.toString() ?? '',
+            'category': item['category']?.toString() ?? '',
             'price': item['price'] ?? item['retailPrice'] ?? 0,
             'mrp': item['mrp'] ?? 0,
             'image': ApiConfig.normalizeMediaUrl(
@@ -1883,20 +1886,20 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         ? CachedNetworkImage(
                             imageUrl: product['image'],
                             fit: BoxFit.contain,
-                            placeholder: (_, __) =>
-                                Container(color: const Color(0xFFF1F5F9)),
-                            errorWidget: (_, __, ___) => Container(
-                              color: const Color(0xFFF1F5F9),
-                              child: const Center(
-                                child: Icon(Icons.image, color: textMuted),
-                              ),
+                            placeholder: (_, __) => ProductImagePlaceholder(
+                              category: product['category']?.toString() ?? '',
+                              name: product['name']?.toString() ?? '',
                             ),
+                            errorWidget: (_, __, ___) =>
+                                ProductImagePlaceholder(
+                                  category:
+                                      product['category']?.toString() ?? '',
+                                  name: product['name']?.toString() ?? '',
+                                ),
                           )
-                        : Container(
-                            color: const Color(0xFFF1F5F9),
-                            child: const Center(
-                              child: Icon(Icons.image, color: textMuted),
-                            ),
+                        : ProductImagePlaceholder(
+                            category: product['category']?.toString() ?? '',
+                            name: product['name']?.toString() ?? '',
                           ),
                     if (discount > 0)
                       Positioned(
@@ -2036,22 +2039,30 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       ), // Significantly reduced gap to move price up
                       Row(
                         children: [
-                          Text(
-                            '₹${_formatPrice(product['price'])}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: textPrimary,
+                          Flexible(
+                            child: Text(
+                              '₹${_formatPrice(product['price'])}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (hasMrp) ...[
                             const SizedBox(width: 4),
-                            Text(
-                              '₹${_formatPrice(product['mrp'])}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                color: const Color(0xFFEF4444),
-                                decoration: TextDecoration.lineThrough,
+                            Flexible(
+                              child: Text(
+                                '₹${_formatPrice(product['mrp'])}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  color: const Color(0xFFEF4444),
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

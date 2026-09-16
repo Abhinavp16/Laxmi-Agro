@@ -135,6 +135,25 @@ class ProductImagePlaceholder extends StatelessWidget {
         icon: Icons.water_drop_rounded,
         label: 'Irrigation',
       );
+    } else if (key.contains('elbow') ||
+        key.contains('socket') ||
+        key.contains('tee') ||
+        key.contains('nipple') ||
+        key.contains('union') ||
+        key.contains('bend') ||
+        key.contains('cross') ||
+        key.contains('flange') ||
+        key.contains('valve') ||
+        key.contains('coupler') ||
+        key.contains('reducer') ||
+        key.contains('fitting') ||
+        key.contains('check nut')) {
+      return _PlaceholderConfig(
+        gradientColors: [const Color(0xFF334155), const Color(0xFF64748B)],
+        accentColor: const Color(0xFF94A3B8),
+        icon: Icons.plumbing_rounded,
+        label: 'GI Fitting',
+      );
     } else if (key.contains('wire') || key.contains('cable')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF312E81), const Color(0xFF4338CA)],
