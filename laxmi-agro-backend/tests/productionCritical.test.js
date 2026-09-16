@@ -308,14 +308,11 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
     );
 
     configure('countered', 'admin');
-    await assert.rejects(
-      acceptNegotiationAndCreateOrder({
-        ...request,
-        actor: { id: ids.actor, role: 'staff', name: 'Test Staff' },
-        minimumPrice: 95,
-      }),
-      (error) => error.code === 'STAFF_NEGOTIATION_PRICE_LIMIT',
-    );
+    const staffResult = await acceptNegotiationAndCreateOrder({
+      ...request,
+      actor: { id: ids.actor, role: 'staff', name: 'Test Staff' },
+    });
+    assert.strictEqual(staffResult.alreadyConverted, false);
 
     sideEffectCount = 0;
     const concurrent = configure('countered', 'admin');

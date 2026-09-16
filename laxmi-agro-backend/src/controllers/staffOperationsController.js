@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Category = require('../models/Category');
-const { Payment, Order, Negotiation, Settings, Product } = require('../models');
+const { Payment, Order, Negotiation, Product } = require('../models');
 const { NotFoundError, BadRequestError, ForbiddenError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PAYMENT_STATUS, ORDER_STATUS, NEGOTIATION_STATUS, NEGOTIATION_ACTIONS, PRODUCT_STATUS } = require('../utils/constants');
@@ -13,14 +13,6 @@ async function notifyWholesaler(userId, notification, data) {
   } catch (error) {
     console.error('Failed to send staff negotiation notification:', error.message);
   }
-}
-
-async function getStaffLimit(productId) {
-  const settings = await Settings.getSettings();
-  const limit = (settings.staffNegotiationMinPrices || []).find(
-    (entry) => String(entry.productId) === String(productId)
-  );
-  return limit ? Number(limit.minPrice) : null;
 }
 
 exports.getProducts = async (req, res, next) => {
@@ -156,17 +148,14 @@ exports.getNegotiations = async (req, res, next) => {
       ];
     }
 
-    const [records, total, settings] = await Promise.all([
+    const [records, total] = await Promise.all([
       Negotiation.find(query).populate('wholesalerId', 'name email phone businessInfo.businessName').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Negotiation.countDocuments(query),
-      Settings.getSettings(),
     ]);
-    const limits = new Map((settings.staffNegotiationMinPrices || []).map((entry) => [String(entry.productId), Number(entry.minPrice)]));
 
     const data = records.map((record) => ({
       ...record,
       isExpired: new Date(record.expiresAt) <= now,
-      staffMinPrice: limits.get(String(record.productId)) ?? null,
     }));
 
     res.json({ success: true, ...formatPaginationResponse(data, total, page, limit) });
@@ -181,25 +170,21 @@ exports.getNegotiationById = async (req, res, next) => {
       .populate('wholesalerId', 'name email phone businessInfo.businessName');
     if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
 
-    const limit = await getStaffLimit(negotiation.productId);
     res.json({
       success: true,
-      data: { ...negotiation.toObject(), isExpired: negotiation.expiresAt <= new Date(), staffMinPrice: limit },
+      data: { ...negotiation.toObject(), isExpired: negotiation.expiresAt <= new Date() },
     });
   } catch (error) {
     next(error);
   }
 };
 
-function assertStaffNegotiationAction(negotiation, minPrice) {
+function assertStaffNegotiationAction(negotiation) {
   if (negotiation.expiresAt <= new Date()) {
     throw new ForbiddenError('Expired negotiations can only be continued by a full admin', 'NEGOTIATION_EXPIRED');
   }
   if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
     throw new BadRequestError('Cannot act in the current negotiation status', 'INVALID_NEGOTIATION_STATUS');
-  }
-  if (minPrice === null) {
-    throw new ForbiddenError('A full admin must set this product’s staff minimum price first', 'STAFF_NEGOTIATION_LIMIT_NOT_CONFIGURED');
   }
 }
 
@@ -207,11 +192,7 @@ exports.acceptNegotiation = async (req, res, next) => {
   try {
     const negotiation = await Negotiation.findById(req.params.id);
     if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    const minPrice = await getStaffLimit(negotiation.productId);
-    assertStaffNegotiationAction(negotiation, minPrice);
-    if (Number(negotiation.currentPricePerUnit) < minPrice) {
-      throw new ForbiddenError(`Staff cannot accept below the configured minimum price of ₹${minPrice}`, 'STAFF_NEGOTIATION_PRICE_LIMIT');
-    }
+    assertStaffNegotiationAction(negotiation);
 
     const staffName = req.user.name || req.user.username || 'Staff';
     const { acceptNegotiationAndCreateOrder } = require('../services/negotiationOrderService');
@@ -221,7 +202,6 @@ exports.acceptNegotiation = async (req, res, next) => {
       message: req.body.message,
       shippingAddress: req.body.shippingAddress,
       customerNote: req.body.customerNote,
-      minimumPrice: minPrice,
       io: req.app.locals.io,
     });
 
@@ -239,11 +219,7 @@ exports.counterNegotiation = async (req, res, next) => {
   try {
     const negotiation = await Negotiation.findById(req.params.id);
     if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    const minPrice = await getStaffLimit(negotiation.productId);
-    assertStaffNegotiationAction(negotiation, minPrice);
-    if (Number(req.body.pricePerUnit) < minPrice) {
-      throw new ForbiddenError(`Staff cannot offer below the configured minimum price of ₹${minPrice}`, 'STAFF_NEGOTIATION_PRICE_LIMIT');
-    }
+    assertStaffNegotiationAction(negotiation);
 
     const totalPrice = negotiation.requestedQuantity * req.body.pricePerUnit;
     negotiation.history.push({

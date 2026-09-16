@@ -82,7 +82,6 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/negotiations", label: "DEAL DESK", icon: Message01Icon },
-      { href: "/negotiation-settings", label: "DEAL SETTINGS", icon: Settings01Icon },
       { href: "/staff-management", label: "MEMBERS", icon: UserGroupIcon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
       { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },

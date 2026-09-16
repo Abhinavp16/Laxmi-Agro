@@ -76,7 +76,6 @@ async function acceptNegotiationAndCreateOrder({
   message,
   shippingAddress: bodyAddress,
   customerNote,
-  minimumPrice = null,
   io,
 }) {
   const negotiation = await Negotiation.findById(negotiationId);
@@ -137,13 +136,6 @@ async function acceptNegotiationAndCreateOrder({
       { $set: { status: NEGOTIATION_STATUS.EXPIRED } },
     );
     throw new BadRequestError('Negotiation has expired', 'NEGOTIATION_EXPIRED');
-  }
-
-  if (actor.role === 'staff' && Number(negotiation.currentPricePerUnit) < Number(minimumPrice)) {
-    throw new ForbiddenError(
-      `Staff cannot accept below the configured minimum price of ₹${minimumPrice}`,
-      'STAFF_NEGOTIATION_PRICE_LIMIT',
-    );
   }
 
   const product = await Product.findById(negotiation.productId);
