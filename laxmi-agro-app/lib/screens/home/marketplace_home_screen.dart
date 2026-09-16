@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
@@ -4449,34 +4448,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           (a['effectiveAt'] as String).compareTo(b['effectiveAt'] as String),
     );
     _scheduledChanges = derived.take(10).toList();
-    // TODO(REMOVE-BEFORE-RELEASE): temporary debug preview so the pulse
-    // cards can be verified on-simulator without touching prod data.
-    if (_scheduledChanges.isEmpty && kDebugMode && _products.length >= 2) {
-      final now = DateTime.now();
-      num priceOf(Map<String, dynamic> p) => (p['price'] as num?) ?? 0;
-      final a = _products[0];
-      final b = _products[1];
-      final pa = priceOf(a).toDouble();
-      final pb = priceOf(b).toDouble();
-      _scheduledChanges = [
-        <String, dynamic>{
-          'id': (a['id'] ?? '').toString(),
-          'name': (a['name'] ?? '').toString(),
-          'image': (a['image'] ?? '').toString(),
-          'currentPrice': pa,
-          'newPrice': pa + 2,
-          'effectiveAt': now.add(const Duration(hours: 5)).toIso8601String(),
-        },
-        <String, dynamic>{
-          'id': (b['id'] ?? '').toString(),
-          'name': (b['name'] ?? '').toString(),
-          'image': (b['image'] ?? '').toString(),
-          'currentPrice': pb,
-          'newPrice': (pb - 2) < 0 ? pb : pb - 2,
-          'effectiveAt': now.add(const Duration(days: 2)).toIso8601String(),
-        },
-      ];
-    }
   }
 
   // ---- Dealer home: repeat a delivered wholesale order as a requirement ----
@@ -4616,7 +4587,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           color: backgroundWhite,
           child: Text(
-            t('Negotiations'),
+            t('Deal Desk'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 20,
               fontWeight: FontWeight.w800,
