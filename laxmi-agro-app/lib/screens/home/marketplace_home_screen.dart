@@ -5085,7 +5085,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 700;
     final profileMaxWidth = isTablet ? 760.0 : double.infinity;
-    final profileHeaderHeight = isTablet ? 340.0 : 370.0;
     final profileAvatarSize = isTablet ? 108.0 : 100.0;
     final quickStatSize = isTablet ? 128.0 : 100.0;
 
@@ -5181,57 +5180,58 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           // Premium Profile Header
           Stack(
             children: [
-              // Gradient Background with decorative shapes
-              Container(
-                height: profileHeaderHeight,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF8B5CF6), // Vibrant Purple
-                      Color(0xFF6366F1), // Indigo
-                      Color(0xFF4F46E5), // Deeper Indigo
+              // Gradient Background with decorative shapes (fills header content)
+              Positioned.fill(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF8B5CF6), // Vibrant Purple
+                        Color(0xFF6366F1), // Indigo
+                        Color(0xFF4F46E5), // Deeper Indigo
+                      ],
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Decorative Circle 1
+                      Positioned(
+                        top: -50,
+                        right: -50,
+                        child: Container(
+                          width: 200,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                      ),
+                      // Decorative Circle 2
+                      Positioned(
+                        bottom: 40,
+                        left: -30,
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.05),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                child: Stack(
-                  children: [
-                    // Decorative Circle 1
-                    Positioned(
-                      top: -50,
-                      right: -50,
-                      child: Container(
-                        width: 200,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                    ),
-                    // Decorative Circle 2
-                    Positioned(
-                      bottom: 40,
-                      left: -30,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.05),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
 
               // Header Content
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.only(top: 40, bottom: 40),
+                padding: const EdgeInsets.only(top: 40, bottom: 56),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: profileMaxWidth),

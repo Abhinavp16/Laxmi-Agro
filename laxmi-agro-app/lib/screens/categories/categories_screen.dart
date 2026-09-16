@@ -1367,39 +1367,46 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.72,
-            ),
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final subcategoryCount = _subcategoriesOf(category).length;
-              // Categories without subcategories open products directly,
-              // so show their product count instead of "0 subcategories".
-              final directCount = _numericValue(
-                category['directProductCount'],
-              ).toInt();
-              final count = subcategoryCount > 0
-                  ? subcategoryCount
-                  : directCount;
-              final countLabel = subcategoryCount > 0
-                  ? (subcategoryCount == 1 ? 'subcategory' : 'subcategories')
-                  : (directCount == 1 ? 'item' : 'items');
-              return _buildCatalogCard(
-                name: _getDisplayCategoryName(category),
-                imageUrl: category['image']?.toString() ?? '',
-                count: count,
-                countLabel: countLabel,
-                icon: _categoryIcon(category['name']?.toString() ?? ''),
-                onTap: () => _onCategorySelected(index),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final catalogColumns = constraints.maxWidth >= 700 ? 3 : 2;
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: catalogColumns,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.72,
+                ),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final subcategoryCount = _subcategoriesOf(category).length;
+                  // Categories without subcategories open products directly,
+                  // so show their product count instead of "0 subcategories".
+                  final directCount = _numericValue(
+                    category['directProductCount'],
+                  ).toInt();
+                  final count = subcategoryCount > 0
+                      ? subcategoryCount
+                      : directCount;
+                  final countLabel = subcategoryCount > 0
+                      ? (subcategoryCount == 1
+                            ? 'subcategory'
+                            : 'subcategories')
+                      : (directCount == 1 ? 'item' : 'items');
+                  return _buildCatalogCard(
+                    name: _getDisplayCategoryName(category),
+                    imageUrl: category['image']?.toString() ?? '',
+                    count: count,
+                    countLabel: countLabel,
+                    icon: _categoryIcon(category['name']?.toString() ?? ''),
+                    onTap: () => _onCategorySelected(index),
+                  );
+                },
               );
             },
           ),
@@ -1591,46 +1598,51 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.72,
-            ),
-            itemCount: subcategories.length + (hasDirectProducts ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (hasDirectProducts && index == 0) {
-                return _buildCatalogCard(
-                  name: 'Other Products',
-                  imageUrl: category['image']?.toString() ?? '',
-                  count: directProductCount,
-                  countLabel: 'items',
-                  icon: Icons.inventory_2_outlined,
-                  onTap: () {
-                    setState(() {
-                      _selectedSubcategory = null;
-                      _stage = _CatalogStage.products;
-                      _showingDirectCategoryProducts = true;
-                    });
-                    _fetchProductsForCategory(category);
-                  },
-                );
-              }
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final catalogColumns = constraints.maxWidth >= 700 ? 3 : 2;
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: catalogColumns,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.72,
+                ),
+                itemCount: subcategories.length + (hasDirectProducts ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (hasDirectProducts && index == 0) {
+                    return _buildCatalogCard(
+                      name: 'Other Products',
+                      imageUrl: category['image']?.toString() ?? '',
+                      count: directProductCount,
+                      countLabel: 'items',
+                      icon: Icons.inventory_2_outlined,
+                      onTap: () {
+                        setState(() {
+                          _selectedSubcategory = null;
+                          _stage = _CatalogStage.products;
+                          _showingDirectCategoryProducts = true;
+                        });
+                        _fetchProductsForCategory(category);
+                      },
+                    );
+                  }
 
-              final subcategoryIndex = index - (hasDirectProducts ? 1 : 0);
-              final subcategory = subcategories[subcategoryIndex];
-              return _buildCatalogCard(
-                name: subcategory['name']?.toString() ?? '',
-                imageUrl: subcategory['image']?.toString() ?? '',
-                count: _numericValue(subcategory['productCount']).toInt(),
-                countLabel: 'items',
-                icon: Icons.category_rounded,
-                onTap: () => _onSubcategorySelected(subcategory),
+                  final subcategoryIndex = index - (hasDirectProducts ? 1 : 0);
+                  final subcategory = subcategories[subcategoryIndex];
+                  return _buildCatalogCard(
+                    name: subcategory['name']?.toString() ?? '',
+                    imageUrl: subcategory['image']?.toString() ?? '',
+                    count: _numericValue(subcategory['productCount']).toInt(),
+                    countLabel: 'items',
+                    icon: Icons.category_rounded,
+                    onTap: () => _onSubcategorySelected(subcategory),
+                  );
+                },
               );
             },
           ),
