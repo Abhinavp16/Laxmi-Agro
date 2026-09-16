@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -36,6 +38,7 @@ class _NegotiationDetailScreenState
   final Map<String, bool> _readReceipts = {}; // { messageId: isRead }
   final _counterMessageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _offlinePollTimer;
   final NegotiationSocketService _socketService = NegotiationSocketService();
   int _detailRequestSequence = 0;
   bool _refreshAfterInitialLoad = false;
@@ -57,6 +60,12 @@ class _NegotiationDetailScreenState
     super.initState();
     _fetchDetail();
     _initializeSocket();
+    // Polling fallback while the realtime socket is disconnected, so admin
+    // messages still appear without a manual refresh.
+    _offlinePollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      if (!_socketService.isConnected) _refreshFromSocket();
+    });
   }
 
   void _initializeSocket() {
@@ -134,6 +143,8 @@ class _NegotiationDetailScreenState
 
   @override
   void dispose() {
+    _offlinePollTimer?.cancel();
+    _offlinePollTimer = null;
     _counterMessageController.dispose();
     _scrollController.dispose();
 
@@ -170,7 +181,9 @@ class _NegotiationDetailScreenState
           _negotiation = response.data['data'];
           final history = (_negotiation?['history'] as List?) ?? const [];
           final confirmedMessageIds = history
-              .map((entry) => entry is Map ? entry['messageId']?.toString() : null)
+              .map(
+                (entry) => entry is Map ? entry['messageId']?.toString() : null,
+              )
               .whereType<String>()
               .toSet();
           _optimisticMessages.removeWhere(
@@ -810,7 +823,11 @@ class _NegotiationDetailScreenState
         children: [
           Row(
             children: [
-              const Icon(Icons.receipt_long_rounded, size: 18, color: primaryBlue),
+              const Icon(
+                Icons.receipt_long_rounded,
+                size: 18,
+                color: primaryBlue,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -831,7 +848,9 @@ class _NegotiationDetailScreenState
               return Expanded(
                 child: Container(
                   height: 6,
-                  margin: EdgeInsets.only(right: i == stages.length - 1 ? 0 : 4),
+                  margin: EdgeInsets.only(
+                    right: i == stages.length - 1 ? 0 : 4,
+                  ),
                   decoration: BoxDecoration(
                     color: done ? greenAccent : borderLight,
                     borderRadius: BorderRadius.circular(100),
@@ -844,7 +863,10 @@ class _NegotiationDetailScreenState
           if (tracking.isNotEmpty || courier.isNotEmpty)
             Text(
               'LR: ${tracking.isNotEmpty ? tracking : '-'}${courier.isNotEmpty ? ' · $courier' : ''}',
-              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: slateBlue),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: slateBlue,
+              ),
             ),
           if (history.isNotEmpty)
             ...history.reversed.take(3).map((h) {
@@ -853,7 +875,10 @@ class _NegotiationDetailScreenState
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '• ${label((m['status'] ?? '').toString())}',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: textMuted),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: textMuted,
+                  ),
                 ),
               );
             }),
@@ -1034,7 +1059,9 @@ class _NegotiationDetailScreenState
       case 'rejected':
         dotColor = redAccent;
         dotIcon = Icons.cancel_rounded;
-        actionLabel = by == 'admin' ? 'Declined by Laxmi Agro' : 'You Cancelled';
+        actionLabel = by == 'admin'
+            ? 'Declined by Laxmi Agro'
+            : 'You Cancelled';
         break;
       default:
         dotColor = textMuted;

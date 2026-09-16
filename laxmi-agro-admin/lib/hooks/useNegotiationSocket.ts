@@ -29,7 +29,8 @@ export function useNegotiationSocket(
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 10,
+      // No reconnectionAttempts cap: retries continue indefinitely with the
+      // backoff above, so temporary network loss self-heals.
     });
 
     socket.on('connect', () => {

@@ -118,11 +118,11 @@ const EMPTY_ADDRESS: ShippingAddress = {
     pincode: "",
 }
 
-function actorDisplayName(entry: HistoryEntry): string {
+function actorDisplayName(entry: HistoryEntry, dealerFallback = 'Dealer'): string {
     if (typeof entry.actorId === 'object' && entry.actorId) {
         return entry.actorId.name || entry.actorId.username || entry.actorId.email || 'Staff'
     }
-    if (entry.by === 'wholesaler') return 'Wholesaler'
+    if (entry.by === 'wholesaler') return dealerFallback
     return entry.actorRole === 'staff' ? 'Staff' : 'Admin'
 }
 
@@ -486,6 +486,15 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }, [detail?.history?.length])
 
+    // Polling fallback while the realtime socket is disconnected.
+    useEffect(() => {
+        if (isConnected) return
+        const timer = window.setInterval(() => {
+            fetchDetail(true)
+        }, 15000)
+        return () => window.clearInterval(timer)
+    }, [isConnected, fetchDetail])
+
     async function sendChatMessage() {
         const text = chatMessage.trim()
         if (!text || isSendingMessage) return
@@ -545,7 +554,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             const res = await apiFetch(`/admin/negotiations/${negotiationId}/accept`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    message: "Accepted by Laxmi Agro",
+                    message: `Accepted by ${currentUser?.name || 'Laxmi Agro'}`,
                     shippingAddress: address,
                     customerNote: customerNote || undefined,
                 }),
@@ -611,6 +620,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const livePrice = detail.currentPricePerUnit ?? detail.requestedPricePerUnit ?? 0
     const liveTotal = detail.currentTotalPrice ?? (detail.requestedQuantity * (detail.requestedPricePerUnit ?? 0))
     const liveByLabel = detail.currentOfferBy === 'admin' ? 'Laxmi Agro' : 'Dealer'
+    const dealerDisplayName = detail.wholesalerId?.businessInfo?.businessName || detail.wholesalerId?.name || 'Dealer'
 
     return (
         <>
@@ -629,7 +639,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     </span>
                     {detail.approvedBy && (
                         <span className="text-slate-500">
-                            Approved by {detail.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · {detail.approvedBy.name}
+                            Accepted by {detail.approvedBy.name}
                         </span>
                     )}
                     <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium ${isConnected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
@@ -670,14 +680,14 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 {orderObj && (
                     <button
                         type="button"
-                        onClick={() => router.push(`/orders?search=${encodeURIComponent(orderObj.orderNumber)}`)}
+                        onClick={() => router.push(`/orders?orderId=${encodeURIComponent(orderObj._id)}`)}
                         className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-left transition-colors hover:bg-emerald-100"
                     >
                         <Package className="h-5 w-5 shrink-0 text-emerald-600" />
                         <span>
                             <span className="block text-sm font-semibold text-emerald-800">Order Created · {orderObj.orderNumber}</span>
                             <span className="block text-xs text-emerald-700 capitalize">
-                                {(orderObj.status ?? 'pending_payment')?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · {(orderObj.trackingNumber ?? '') ? `LR ${orderObj.trackingNumber}${orderObj.courierName ? ` · ${orderObj.courierName}` : ''} · ` : ''}tap to track
+                                {(orderObj.status ?? 'pending_payment')?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · {(orderObj.trackingNumber ?? '') ? `LR ${orderObj.trackingNumber}${orderObj.courierName ? ` · ${orderObj.courierName}` : ''} · ` : ''}tap to open order
                             </span>
                         </span>
                     </button>
@@ -693,23 +703,23 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             {detail.history.map((entry, idx) => {
                                 const isAdmin = entry.by === 'admin'
                                 const actionLabel = entry.action === 'message'
-                                    ? actorDisplayName(entry)
+                                    ? actorDisplayName(entry, dealerDisplayName)
                                     : entry.action === 'requested' ? 'Requirement Sent'
-                                    : entry.action === 'countered' ? `New Price from Laxmi Agro · ${actorDisplayName(entry)}`
-                                    : entry.action === 'accepted' ? `Accepted by Laxmi Agro · ${actorDisplayName(entry)}`
-                                    : entry.action === 'rejected' ? `Declined · ${actorDisplayName(entry)}`
+                                    : entry.action === 'countered' ? `New Price · ${actorDisplayName(entry, dealerDisplayName)}`
+                                    : entry.action === 'accepted' ? `Accepted by ${actorDisplayName(entry, dealerDisplayName)}`
+                                    : entry.action === 'rejected' ? `Declined · ${actorDisplayName(entry, dealerDisplayName)}`
                                     : entry.action
                                 return (
                                 <div key={idx} className={`flex flex-col gap-0.5 ${isAdmin ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[85%] px-3 py-2 shadow-sm ${isAdmin ? 'rounded-2xl rounded-br-md bg-blue-600 text-white' : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white text-slate-800'}`}>
+                                    <div className={`max-w-[85%] px-3 py-2 shadow-sm ${isAdmin ? 'rounded-2xl rounded-br-md bg-emerald-600 text-white' : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white text-slate-800'}`}>
                                         <div className="mb-0.5 flex items-center justify-between gap-3">
-                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${isAdmin ? 'text-blue-100' : 'text-blue-600'}`}>
+                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${isAdmin ? 'text-emerald-100' : 'text-blue-600'}`}>
                                                 {actionLabel}
                                             </span>
                                             {entry.pricePerUnit != null && <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${isAdmin ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>₹{entry.pricePerUnit}</span>}
                                         </div>
                                         {entry.message && <p className="whitespace-pre-wrap text-sm leading-snug">{entry.message}</p>}
-                                        <span className={`mt-1 block text-right text-[10px] ${isAdmin ? 'text-blue-100/70' : 'text-slate-400'}`}>
+                                        <span className={`mt-1 block text-right text-[10px] ${isAdmin ? 'text-emerald-100/70' : 'text-slate-400'}`}>
                                             {entry.timestamp ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                                         </span>
                                     </div>

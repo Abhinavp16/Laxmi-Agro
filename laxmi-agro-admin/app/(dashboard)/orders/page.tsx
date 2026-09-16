@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
     Table,
@@ -76,11 +76,25 @@ export default function OrdersPage() {
     const filteredUserId = searchParams.get("userId")?.trim() || ""
     const filteredCustomerName = searchParams.get("customerName")?.trim() || ""
     const searchFromUrl = searchParams.get("search")?.trim() || ""
+    const orderIdFromUrl = searchParams.get("orderId")?.trim() || ""
+    const consumedOrderId = useRef("")
 
     useEffect(() => {
         setSearchQuery(searchFromUrl)
         void fetchOrders(1, true, searchFromUrl)
     }, [filteredUserId, searchFromUrl])
+
+    // Deep link (e.g. from deal chat): open the order dialog directly.
+    // The param is consumed so a refresh lands on the list instead.
+    useEffect(() => {
+        if (!orderIdFromUrl || consumedOrderId.current === orderIdFromUrl) return
+        consumedOrderId.current = orderIdFromUrl
+        const params = new URLSearchParams(searchParams.toString())
+        params.delete("orderId")
+        const query = params.toString()
+        router.replace(query ? `${pathname}?${query}` : pathname)
+        void fetchOrderDetails(orderIdFromUrl)
+    }, [orderIdFromUrl, pathname, router, searchParams])
 
     async function fetchOrders(
         pageNum: number = 1,
