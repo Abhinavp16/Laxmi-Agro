@@ -15,6 +15,7 @@ import {
   Menu01Icon,
   Message01Icon,
   Moon01Icon,
+  Notification01Icon,
   Package01Icon,
   Settings01Icon,
   StarIcon,
@@ -30,6 +31,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import { useMemo, useSyncExternalStore } from "react"
+import { unregisterStoredPushToken } from "@/lib/api"
+import { useAdminNotifications } from "@/lib/hooks/useAdminNotifications"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
@@ -59,7 +62,10 @@ type NavGroup = {
 const adminNavGroups: NavGroup[] = [
   {
     label: "Workspace",
-    items: [{ href: "/", label: "DASHBOARD", icon: DashboardSquare01Icon }],
+    items: [
+      { href: "/", label: "DASHBOARD", icon: DashboardSquare01Icon },
+      { href: "/notifications", label: "NOTIFICATIONS", icon: Notification01Icon, matches: ["/notifications"] },
+    ],
   },
   {
     label: "Catalog",
@@ -140,6 +146,7 @@ function useAdminSidebarState() {
   const pageTitle = useMemo(() => getAdminPageTitle(pathname), [pathname])
 
   const handleLogout = () => {
+    unregisterStoredPushToken()
     localStorage.removeItem("accessToken")
     localStorage.removeItem("refreshToken")
     localStorage.removeItem("user")
@@ -196,6 +203,7 @@ function SidebarNavContent({
   handleLogout: () => void
   closeOnNavigate?: boolean
 }) {
+  const { unreadCount } = useAdminNotifications()
   const renderLink = (item: NavItem) => {
     const link = (
       <Link
@@ -205,7 +213,12 @@ function SidebarNavContent({
         <span className="flex shrink-0 items-center justify-center">
           <SidebarIcon icon={item.icon} />
         </span>
-        <span className="min-w-0 break-words">{item.label}</span>
+        <span className="min-w-0 flex-1 break-words">{item.label}</span>
+        {item.href === "/notifications" && unreadCount > 0 && (
+          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold tracking-normal text-white">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </Link>
     )
 
