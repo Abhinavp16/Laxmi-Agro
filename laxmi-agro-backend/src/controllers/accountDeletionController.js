@@ -1,6 +1,7 @@
 const { User, AccountDeletionRequest } = require('../models');
 const { BadRequestError, NotFoundError } = require('../utils/errors');
 const { createRequestForUser } = require('../services/accountDeletionService');
+const { notifyAdmins } = require('../services/adminNotificationService');
 
 const serializeRequest = (request) => ({
   id: request._id,
@@ -32,6 +33,18 @@ exports.requestMyAccountDeletion = async (req, res, next) => {
       user: req.user,
       source: 'app',
     });
+
+    if (!alreadyPending) {
+      notifyAdmins({
+        type: 'account_deletion_requested',
+        severity: 'warning',
+        title: 'Account deletion requested',
+        body: `${req.user?.name || 'A user'} (${req.user?.phone || 'no phone'}) requested account deletion.`,
+        link: '/account-deletion-requests',
+        actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+        metadata: { requestId: String(request._id), userId: String(req.user._id) },
+      });
+    }
 
     res.status(alreadyPending ? 200 : 201).json({
       success: true,
@@ -92,7 +105,16 @@ exports.requestDeletionFromWebsite = async (req, res, next) => {
 
     // Return the same response when no active account matches to avoid account enumeration.
     if (user) {
-      await createRequestForUser({ user, source: 'website' });
+      const { request } = await createRequestForUser({ user, source: 'website' });
+      notifyAdmins({
+        type: 'account_deletion_requested',
+        severity: 'warning',
+        title: 'Account deletion requested (website)',
+        body: `${user.name || 'A user'} (${user.phone || 'no phone'}) requested account deletion via the website.`,
+        link: '/account-deletion-requests',
+        actor: { id: user._id, name: user.name, role: user.role },
+        metadata: { requestId: String(request._id), userId: String(user._id), source: 'website' },
+      });
     }
 
     res.status(202).json({

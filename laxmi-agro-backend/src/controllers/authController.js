@@ -10,6 +10,7 @@ const { USER_ROLES, AUTH_PROVIDERS } = require('../utils/constants');
 const { sanitizeUser } = require('../utils/helpers');
 const { recordAudit } = require('../services/auditService');
 const { currentLegalAcceptance } = require('../config/legalAcceptance');
+const { notifyAdmins } = require('../services/adminNotificationService');
 
 const DEFAULT_ADMIN_EMAILS = 'abhinavpandey12201@gmail.com,mayurkhatwani5@gmail.com';
 const STAFF_SESSION_MS = 6 * 60 * 60 * 1000;
@@ -137,6 +138,15 @@ exports.registerWholesaler = async (req, res, next) => {
     });
 
     const tokens = await generateTokens(user._id, req.headers['user-agent']);
+
+    notifyAdmins({
+      type: 'wholesaler_application',
+      title: 'New wholesaler registration',
+      body: `${name} (${businessName || phone}) registered as a wholesaler.`,
+      link: '/account-upgrades',
+      actor: { id: user._id, name, role: user.role },
+      metadata: { userId: String(user._id), businessName, phone },
+    });
 
     res.status(201).json({
       success: true,
@@ -572,6 +582,16 @@ exports.convertToWholesaler = async (req, res, next) => {
     user.phone = phone || user.phone;
 
     await user.save();
+
+    notifyAdmins({
+      type: 'wholesaler_application',
+      severity: 'warning',
+      title: 'Wholesaler verification pending',
+      body: `${user.name} (${businessName || user.phone}) submitted business proofs for verification.`,
+      link: '/account-upgrades',
+      actor: { id: user._id, name: user.name, role: user.role },
+      metadata: { userId: String(user._id), businessName },
+    });
 
     res.json({
       success: true,

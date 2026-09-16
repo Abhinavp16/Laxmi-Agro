@@ -5,6 +5,7 @@ const { PAYMENT_STATUS, ORDER_STATUS } = require('../../utils/constants');
 const notificationService = require('../../services/notificationService');
 const { creditAffiliateCommissionForOrder } = require('../../services/affiliateCommissionService');
 const { recordAudit } = require('../../services/auditService');
+const { maybeNotifyLowStock } = require('../../services/adminNotificationService');
 
 exports.getPayments = async (req, res, next) => {
   try {
@@ -97,6 +98,8 @@ exports.verifyPayment = async (req, res, next) => {
           reason: `Order ${order.orderNumber} – payment verified, stock deducted`,
           performedBy: req.user._id,
         });
+
+        maybeNotifyLowStock(result);
       }
 
       order.addStatusHistory(ORDER_STATUS.PROCESSING, 'Order auto-confirmed after payment verification', req.user._id);

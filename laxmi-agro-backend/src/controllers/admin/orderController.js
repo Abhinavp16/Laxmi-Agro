@@ -4,6 +4,7 @@ const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { recordAudit } = require('../../services/auditService');
+const { maybeNotifyLowStock } = require('../../services/adminNotificationService');
 
 exports.getOrders = async (req, res, next) => {
   try {
@@ -148,6 +149,8 @@ exports.updateOrderStatus = async (req, res, next) => {
           reason: `Order ${order.orderNumber} confirmed`,
           performedBy: req.user._id,
         });
+
+        maybeNotifyLowStock(result);
       }
     }
 

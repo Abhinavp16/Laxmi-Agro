@@ -12,6 +12,7 @@ const {
   buildVariantSnapshot,
   getVariantDisplayName,
 } = require('../utils/productVariants');
+const { notifyAdmins } = require('../services/adminNotificationService');
 
 const cartItemKey = (productId, variantId) => `${productId}:${variantId || 'default'}`;
 
@@ -719,6 +720,17 @@ exports.createOrderFromCart = async (req, res, next) => {
       }
     }
 
+    if (order) {
+      notifyAdmins({
+        type: 'order_created',
+        title: `New order ${order.orderNumber || ''}`.trim(),
+        body: `${req.user?.name || 'A customer'} placed an order of ₹${total}.`,
+        link: '/orders',
+        actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+        metadata: { orderId: String(order._id), orderNumber: order.orderNumber, total },
+      });
+    }
+
     const orderMessage = buildCheckoutCaption({
       orderNumber: order?.orderNumber || null,
       user: req.user,
@@ -863,6 +875,15 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
       await negotiation.save();
 
       await Product.findByIdAndUpdate(product._id, { $inc: { orderCount: 1 } });
+
+      notifyAdmins({
+        type: 'order_created',
+        title: `New wholesale order ${order.orderNumber || ''}`.trim(),
+        body: `${req.user?.name || 'A wholesaler'} checked out deal ${negotiation.negotiationNumber} for ₹${total}.`,
+        link: '/orders',
+        actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+        metadata: { orderId: String(order._id), orderNumber: order.orderNumber, negotiationId: String(negotiation._id), total },
+      });
     }
 
     const orderMessage = buildCheckoutCaption({

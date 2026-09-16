@@ -6,6 +6,7 @@ const {
   getVariantById,
   getPriceForUser,
 } = require('../utils/productVariants');
+const { notifyAdmins } = require('../services/adminNotificationService');
 
 exports.getMyNegotiations = async (req, res, next) => {
   try {
@@ -119,6 +120,15 @@ exports.createNegotiation = async (req, res, next) => {
 
     await Product.findByIdAndUpdate(productId, { $inc: { negotiationCount: 1 } });
 
+    notifyAdmins({
+      type: 'negotiation_created',
+      title: `New deal request ${negotiation.negotiationNumber}`,
+      body: `${req.user?.name || 'A wholesaler'} requested ${quantity} × ${product.name} at ₹${pricePerUnit}/unit.`,
+      link: '/negotiations',
+      actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+      metadata: { negotiationId: String(negotiation._id), negotiationNumber: negotiation.negotiationNumber, productId: String(productId), quantity },
+    });
+
     res.status(201).json({
       success: true,
       message: 'Negotiation request submitted',
@@ -216,6 +226,16 @@ exports.sendMessage = async (req, res, next) => {
         messageId: messageEntry.messageId,
       });
     }
+
+    notifyAdmins({
+      type: 'negotiation_message',
+      title: `New message in ${negotiation.negotiationNumber || 'deal'}`,
+      body: `${req.user?.name || 'Wholesaler'}: ${message.trim().slice(0, 120)}`,
+      link: '/negotiations',
+      actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+      metadata: { negotiationId: String(negotiation._id), negotiationNumber: negotiation.negotiationNumber },
+      push: false,
+    });
 
     res.json({
       success: true,

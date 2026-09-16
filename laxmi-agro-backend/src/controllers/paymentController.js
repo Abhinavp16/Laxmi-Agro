@@ -3,6 +3,7 @@ const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('../utils/constants');
 const { v4: uuidv4 } = require('uuid');
 const { saveBuffer } = require('../config/storage');
+const { notifyAdmins } = require('../services/adminNotificationService');
 
 exports.getUpiDetails = async (req, res, next) => {
   try {
@@ -77,7 +78,14 @@ exports.uploadScreenshot = async (req, res, next) => {
     order.addStatusHistory(ORDER_STATUS.PAYMENT_UPLOADED, 'Payment screenshot uploaded');
     await order.save();
 
-    // TODO: Notify admin
+    notifyAdmins({
+      type: 'payment_submitted',
+      title: `Payment proof for ${order.orderNumber || 'order'}`,
+      body: `${req.user?.name || 'A customer'} uploaded a payment screenshot of ₹${order.total}.`,
+      link: '/orders',
+      actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
+      metadata: { orderId: String(order._id), orderNumber: order.orderNumber, paymentId: String(payment._id), amount: order.total },
+    });
 
     res.json({
       success: true,
