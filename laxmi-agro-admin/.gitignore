@@ -7,6 +7,9 @@
 /.next/
 /out/
 
+# generated service worker (rebuilt by scripts/generate-sw.js on prebuild)
+/public/sw.js
+
 # production
 /build
 

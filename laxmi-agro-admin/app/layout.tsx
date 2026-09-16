@@ -3,14 +3,25 @@ import { Outfit } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { PwaRegister } from '@/components/pwa-register'
 import './globals.css'
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+
+export const viewport = {
+  themeColor: '#15803d',
+}
 
 export const metadata: Metadata = {
   title: 'Laxmi Agro Enterprises Admin',
   description: 'Laxmi Agro Enterprises Admin Dashboard - Manage products, orders, and negotiations',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Laxmi Admin',
+  },
   robots: {
     index: false,
     follow: false,
@@ -26,11 +37,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/icon.svg',
+    apple: '/apple-touch-icon.png',
   },
 }
 
@@ -43,6 +59,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} ${outfit.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <PwaRegister />
           {children}
           <Toaster richColors position="top-right" />
           <Analytics />
