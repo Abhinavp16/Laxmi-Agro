@@ -214,6 +214,22 @@ export default function CategoriesPage() {
         }
         return map
     }, [categories])
+    const subcategoryProductCountByParent = useMemo(() => {
+        const map = new Map<string, number>()
+        for (const category of categories) {
+            const parentId = category.parent?._id
+            if (parentId) {
+                map.set(parentId, (map.get(parentId) || 0) + category.productCount)
+            }
+        }
+        return map
+    }, [categories])
+
+    function getDisplayedProductCount(category: Category) {
+        return category.productCount + (category.parent?._id
+            ? 0
+            : subcategoryProductCountByParent.get(category._id) || 0)
+    }
 
     const visibleCategories = useMemo(() => {
         // Drill-down takes precedence: show subs of selected parent
@@ -231,6 +247,11 @@ export default function CategoriesPage() {
     function handleCategoryClick(category: Category) {
         // Parent (no parent ref): drill into its subcategories in-place
         if (!category.parent?._id) {
+            const subcategoryCount = subcategoryCountByParent.get(category._id) || 0
+            if (subcategoryCount === 0 && category.productCount > 0) {
+                router.push(`/categories/${category._id}/products`)
+                return
+            }
             setSelectedParentId(category._id)
             setScope('parents')
             return
@@ -796,7 +817,7 @@ export default function CategoriesPage() {
                 <TableCell>
                     <span className="flex items-center gap-1 text-gray-400">
                         <Package className="h-3 w-3" />
-                        {category.productCount}
+                        {getDisplayedProductCount(category)}
                     </span>
                 </TableCell>
                 <TableCell>
@@ -930,7 +951,7 @@ export default function CategoriesPage() {
                         )}
                         <span className="flex items-center gap-1 text-gray-400">
                             <Package className="h-3 w-3" />
-                            {category.productCount}
+                            {getDisplayedProductCount(category)}
                         </span>
                         {!category.parent?._id && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 font-medium text-blue-300">

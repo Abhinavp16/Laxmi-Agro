@@ -4,11 +4,35 @@ const Company = require('../models/Company');
 const { transliterateToHindi } = require('../services/hindiTransliterationService');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
+
 const { normalizeImageObject } = require('../utils/mediaUrls');
 const {
   applyCategoryAccessToProductQuery,
   filterCategoriesForUser,
 } = require('../utils/categoryAccess');
+
+async function getDescendantCategoryIds(rootId) {
+  const descendantIds = [];
+  const visitedIds = new Set([String(rootId)]);
+  let parentIds = [rootId];
+
+  while (parentIds.length > 0) {
+    const children = await Category.find({ parent: { $in: parentIds } })
+      .select('_id')
+      .lean();
+    parentIds = children
+      .map((child) => child._id)
+      .filter((id) => {
+        const key = String(id);
+        if (visitedIds.has(key)) return false;
+        visitedIds.add(key);
+        return true;
+      });
+    descendantIds.push(...parentIds);
+  }
+
+  return descendantIds;
+}
 
 async function getProductCountMap(categories = [], user = null, activeOnly = false) {
   if (categories.length === 0) return new Map();
@@ -231,11 +255,17 @@ exports.createCategory = async (req, res, next) => {
 
     // If parent is specified, verify it exists
     if (parent) {
-      const parentCategory = await Category.findById(parent);
+      const parentCategory = await Category.findById(parent).select('company');
       if (!parentCategory) {
         return res.status(400).json({
           success: false,
           message: 'Parent category not found',
+        });
+      }
+      if (String(parentCategory.company) !== String(companyId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parent category must belong to the same brand',
         });
       }
     }
@@ -289,6 +319,7 @@ exports.updateCategory = async (req, res, next) => {
         message: 'Brand is required for category',
       });
     }
+    const companyChanged = String(nextCompanyId) !== String(previousCompanyId);
 
     // Check for duplicate name under the same parent category
     // (excluding current category). Siblings only — HP names like "3 HP"
@@ -318,16 +349,27 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
 
-    // If parent is specified, verify it exists
-    if (parent) {
-      const parentCategory = await Category.findById(parent);
+    // A category and its parent must always remain in the same brand.
+    const effectiveParentId = parent !== undefined ? (parent || null) : category.parent;
+    if (effectiveParentId) {
+      const parentCategory = await Category.findById(effectiveParentId).select('company');
       if (!parentCategory) {
         return res.status(400).json({
           success: false,
           message: 'Parent category not found',
         });
       }
+      if (String(parentCategory.company) !== String(nextCompanyId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parent category must belong to the same brand',
+        });
+      }
     }
+
+    const descendantCategoryIds = companyChanged
+      ? await getDescendantCategoryIds(category._id)
+      : [];
 
     category = await Category.findByIdAndUpdate(
       req.params.id,
@@ -369,6 +411,19 @@ exports.updateCategory = async (req, res, next) => {
         },
       },
     );
+
+    if (descendantCategoryIds.length > 0) {
+      await Promise.all([
+        Category.updateMany(
+          { _id: { $in: descendantCategoryIds } },
+          { $set: { company: nextCompanyId } },
+        ),
+        Product.updateMany(
+          { categoryRef: { $in: descendantCategoryIds } },
+          { $set: { company: nextCompanyId } },
+        ),
+      ]);
+    }
 
     res.json({
       success: true,

@@ -42,6 +42,32 @@ function testCategoryListTotal() {
   );
 }
 
+function testCategoryBrandHierarchyIntegrity() {
+  const categoryController = readSource('src/controllers/categoryController.js');
+  assert.ok(
+    categoryController.includes('Parent category must belong to the same brand'),
+    'category writes must reject cross-brand parent relationships',
+  );
+  assert.ok(
+    categoryController.includes('getDescendantCategoryIds(category._id)'),
+    'moving a category between brands must collect its descendants',
+  );
+  assert.ok(
+    categoryController.includes("{ categoryRef: { $in: descendantCategoryIds } }"),
+    'moving a category between brands must move descendant products',
+  );
+
+  const categoryPage = readSource('../laxmi-agro-admin/app/(dashboard)/categories/page.tsx');
+  assert.ok(
+    categoryPage.includes('subcategoryCount === 0 && category.productCount > 0'),
+    'a root category with direct products must open its products',
+  );
+  assert.ok(
+    categoryPage.includes('subcategoryProductCountByParent.get(category._id)'),
+    'root category cards must include products assigned to their subcategories',
+  );
+}
+
 function testReviewSearchFields() {
   const source = readSource('src/controllers/admin/reviewController.js');
   assert.ok(source.includes('{ name:'), 'review search must query names');
@@ -349,6 +375,7 @@ async function run() {
   testAdminNegotiationSearch();
   testReviewSearchFields();
   testCategoryListTotal();
+  testCategoryBrandHierarchyIntegrity();
   console.log('Production critical regression tests passed');
 }
 
