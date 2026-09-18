@@ -14,6 +14,7 @@
     "seed:all-subs": "node scripts/seedAllSubcategories.js",
     "seed:gi-full": "node scripts/seedGiFullList.js",
     "catalog:pdf": "node src/scripts/importPdfCatalog.js",
+    "catalog:cpvc": "node src/scripts/importCpvcCatalog.js",
     "products:remove-variants": "node src/scripts/removeProductVariants.js",
     "products:clean-names": "node src/scripts/cleanProductNames.js",
     "products:split-pump-categories": "node src/scripts/splitPumpCategories.js",
