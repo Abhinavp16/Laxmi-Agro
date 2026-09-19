@@ -22,6 +22,7 @@ const uploadRoutes = require('./uploadRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const websiteCatalogController = require('../controllers/websiteCatalogController');
 const accountDeletionController = require('../controllers/accountDeletionController');
+const settingsController = require('../controllers/settingsController');
 const validate = require('../middlewares/validate');
 const { authValidation } = require('../validations');
 const { orderWhatsAppNumber } = require('../config/publicBusiness');
@@ -277,6 +278,8 @@ router.get('/health', async (req, res) => {
 });
 
 // Public endpoint for hero banners, promo banners & whatsapp (no auth required)
+router.get('/settings/mobile-app', settingsController.getMobileAppSettings);
+
 router.get('/settings/banners', async (req, res, next) => {
   try {
     const { Settings } = require('../models');

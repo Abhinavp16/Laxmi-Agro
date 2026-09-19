@@ -1,9 +1,12 @@
 const { Settings } = require('../../models');
+const { mobilePlatformSettingsSchemas } = require('../../validations');
+const { ValidationError } = require('../../utils/errors');
 
 exports.getSettings = async (req, res, next) => {
   try {
     const settings = await Settings.getSettings();
 
+    res.set('Cache-Control', 'no-store');
     res.json({
       success: true,
       data: settings,
@@ -33,6 +36,7 @@ exports.updateSettings = async (req, res, next) => {
       'negotiationExpiryDays',
       'lowStockThreshold',
       'features',
+      'mobileApp',
       'heroBanners',
       'promoBanners',
       'socialLinks',
@@ -45,9 +49,39 @@ exports.updateSettings = async (req, res, next) => {
     ];
 
     for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
+      if (field !== 'mobileApp' && req.body[field] !== undefined) {
         settings[field] = req.body[field];
       }
+    }
+
+    if (req.body.mobileApp) {
+      const currentMobileApp = settings.mobileApp?.toObject?.() || settings.mobileApp || {};
+      const mobileAppUpdates = {};
+
+      for (const [platform, update] of Object.entries(req.body.mobileApp)) {
+        const platformSchema = mobilePlatformSettingsSchemas[platform];
+        if (!platformSchema) {
+          throw new ValidationError(`Unsupported mobile platform: ${platform}`);
+        }
+        const mergedPlatform = {
+          ...(currentMobileApp[platform] || {}),
+          ...update,
+        };
+        const { error, value } = platformSchema.validate(mergedPlatform, {
+          abortEarly: false,
+        });
+
+        if (error) {
+          throw new ValidationError('Validation failed', error.details.map((detail) => ({
+            field: `mobileApp.${platform}.${detail.path.join('.')}`,
+            message: detail.message,
+          })));
+        }
+
+        mobileAppUpdates[platform] = value;
+      }
+
+      settings.mobileApp = { ...currentMobileApp, ...mobileAppUpdates };
     }
 
     settings.checkout = {

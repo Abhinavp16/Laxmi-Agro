@@ -110,7 +110,11 @@ router.get('/analytics/potential-customers', adminAnalyticsController.getPotenti
 
 // Settings
 router.get('/settings', adminSettingsController.getSettings);
-router.put('/settings', validate(adminValidation.updateSettings), adminSettingsController.updateSettings);
+router.put(
+  '/settings',
+  validate(adminValidation.updateSettings, 'body', { stripUnknown: false }),
+  adminSettingsController.updateSettings
+);
 router.get('/website-settings', websiteSettingsController.getWebsiteSettings);
 router.put('/website-settings', validate(adminValidation.updateWebsiteSettings), websiteSettingsController.updateWebsiteSettings);
 router.get('/website-catalog/brands', websiteCatalogController.getBrands);

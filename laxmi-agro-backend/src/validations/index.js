@@ -24,6 +24,40 @@ const discountRuleSchema = Joi.object({
   maxDiscountAmount: Joi.number().min(0).allow('', null),
 });
 
+const mobilePlatformSettingsSchema = (storeUrl) => Joi.object({
+  enabled: Joi.boolean(),
+  latestVersion: Joi.when('enabled', {
+    is: true,
+    then: Joi.string().trim().min(1).required(),
+    otherwise: Joi.string().trim().allow(''),
+  }),
+  latestBuildNumber: Joi.when('enabled', {
+    is: true,
+    then: Joi.number().integer().positive().required(),
+    otherwise: Joi.number().integer().min(0),
+  }),
+  storeUrl: Joi.when('enabled', {
+    is: true,
+    then: Joi.string().trim().valid(storeUrl).required(),
+    otherwise: Joi.string().trim().valid(storeUrl),
+  }),
+  title: Joi.when('enabled', {
+    is: true,
+    then: Joi.string().trim().min(1).max(200).required(),
+    otherwise: Joi.string().trim().allow('').max(200),
+  }),
+  message: Joi.when('enabled', {
+    is: true,
+    then: Joi.string().trim().min(1).max(1000).required(),
+    otherwise: Joi.string().trim().allow('').max(1000),
+  }),
+}).unknown(false);
+
+const mobilePlatformSettingsSchemas = {
+  android: mobilePlatformSettingsSchema('https://play.google.com/store/apps/details?id=com.laxmiagro.app'),
+  ios: mobilePlatformSettingsSchema('https://apps.apple.com/in/app/laxmi-agro/id6804305521'),
+};
+
 const legalAcceptanceSchema = {
   termsAccepted: Joi.boolean().valid(true).required(),
   privacyPolicyAccepted: Joi.boolean().valid(true).required(),
@@ -138,9 +172,11 @@ const productValidation = {
   }),
 
   search: Joi.object({
-    q: Joi.string().allow('', null),
+    q: Joi.string().trim().allow('', null),
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20),
+    categoryId: Joi.string().hex().length(24).allow('', null),
+    brandId: Joi.string().hex().length(24).allow('', null),
     category: Joi.string().allow('', null),
     brand: Joi.string().allow('', null),
   }),
@@ -413,6 +449,10 @@ const adminValidation = {
       guestCheckout: Joi.boolean(),
       maintenanceMode: Joi.boolean(),
     }),
+    mobileApp: Joi.object({
+      android: mobilePlatformSettingsSchemas.android,
+      ios: mobilePlatformSettingsSchemas.ios,
+    }).unknown(false),
     heroBanners: Joi.array().items(Joi.object({
       title: Joi.string().allow('', null),
       subtitle: Joi.string().allow('', null),
@@ -605,4 +645,5 @@ module.exports = {
   negotiationValidation,
   orderValidation,
   adminValidation,
+  mobilePlatformSettingsSchemas,
 };

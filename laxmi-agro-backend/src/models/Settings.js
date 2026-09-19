@@ -1,5 +1,24 @@
 const mongoose = require('mongoose');
 
+const mandatoryUpdateMessage = 'A new version of Laxmi Agro is required. Please update the app to continue.';
+
+const mobilePlatformSchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: false },
+  latestVersion: { type: String, trim: true, maxlength: 50, default: '' },
+  latestBuildNumber: { type: Number, min: 0, default: 0 },
+  storeUrl: {
+    type: String,
+    trim: true,
+    required: true,
+    enum: [
+      'https://play.google.com/store/apps/details?id=com.laxmiagro.app',
+      'https://apps.apple.com/in/app/laxmi-agro/id6804305521',
+    ],
+  },
+  title: { type: String, trim: true, maxlength: 200, default: 'Update Required' },
+  message: { type: String, trim: true, maxlength: 1000, default: mandatoryUpdateMessage },
+}, { _id: false });
+
 const settingsSchema = new mongoose.Schema({
   _id: {
     type: String,
@@ -44,6 +63,21 @@ const settingsSchema = new mongoose.Schema({
     negotiationsEnabled: { type: Boolean, default: true },
     guestCheckout: { type: Boolean, default: false },
     maintenanceMode: { type: Boolean, default: false },
+  },
+
+  mobileApp: {
+    android: {
+      type: mobilePlatformSchema,
+      default: () => ({
+        storeUrl: 'https://play.google.com/store/apps/details?id=com.laxmiagro.app',
+      }),
+    },
+    ios: {
+      type: mobilePlatformSchema,
+      default: () => ({
+        storeUrl: 'https://apps.apple.com/in/app/laxmi-agro/id6804305521',
+      }),
+    },
   },
 
   heroBanners: [{
