@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/public_business_config.dart';
@@ -23,6 +24,13 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   static const Color borderLight = Color(0xFFE2E8F0);
 
   int _expandedFaq = -1;
+  late final Future<PackageInfo> _packageInfo;
+
+  @override
+  void initState() {
+    super.initState();
+    _packageInfo = PackageInfo.fromPlatform();
+  }
 
   final List<Map<String, String>> _faqs = [
     {
@@ -554,9 +562,17 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Version 1.0.0',
-            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: textMuted),
+          FutureBuilder<PackageInfo>(
+            future: _packageInfo,
+            builder: (context, snapshot) => Text(
+              snapshot.hasData
+                  ? 'Version ${snapshot.data!.version}'
+                  : 'Version',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: textMuted,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Text(
