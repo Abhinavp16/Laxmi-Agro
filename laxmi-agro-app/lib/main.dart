@@ -8,7 +8,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/navigation/app_navigator_key.dart';
 import 'core/providers/auth_provider.dart';
+import 'core/providers/app_update_provider.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/app_lifecycle_service.dart';
@@ -50,17 +52,18 @@ class _NotificationBootstrap extends ConsumerStatefulWidget {
       _NotificationBootstrapState();
 }
 
-class _NotificationBootstrapState
-    extends ConsumerState<_NotificationBootstrap> {
+class _NotificationBootstrapState extends ConsumerState<_NotificationBootstrap>
+    with WidgetsBindingObserver {
   ProviderSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
-    
+
     // ✓ NEW: Initialize app lifecycle observer for token refresh on resume
     AppLifecycleService().initialize();
-    
+    WidgetsBinding.instance.addObserver(this);
+
     _authSubscription = ref.listenManual<AuthState>(authProvider, (
       previous,
       next,
@@ -70,19 +73,21 @@ class _NotificationBootstrapState
       );
 
       final justAuthenticated =
-          next.isAuthenticated && previous?.isAuthenticated != true;
+          previous != null &&
+          next.isAuthenticated &&
+          previous.isAuthenticated != true;
       if (justAuthenticated) {
         unawaited(_registerNotificationsForAuthenticatedUser());
       }
     }, fireImmediately: true);
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await ref.read(notificationServiceProvider).initialize();
-      } catch (error) {
-        debugPrint('[Notifications] Initialization skipped: $error');
-      }
-    });
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final context = appNavigatorKey.currentContext;
+    if (context == null) return;
+    unawaited(ref.read(appUpdateControllerProvider).checkAndShow(context));
   }
 
   Future<void> _registerNotificationsForAuthenticatedUser() async {
@@ -97,7 +102,8 @@ class _NotificationBootstrapState
   void dispose() {
     // ✓ NEW: Dispose app lifecycle observer
     AppLifecycleService().dispose();
-    
+    WidgetsBinding.instance.removeObserver(this);
+
     _authSubscription?.close();
     super.dispose();
   }

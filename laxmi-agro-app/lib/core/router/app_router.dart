@@ -29,8 +29,10 @@ import '../../screens/profile/account_privacy_screen.dart';
 import '../../screens/onboarding/permissions_onboarding_screen.dart';
 import '../../screens/profile/guest_app_preview_screen.dart';
 import '../config/feature_flags.dart';
+import '../navigation/app_navigator_key.dart';
 
 final appRouter = GoRouter(
+  navigatorKey: appNavigatorKey,
   initialLocation: '/',
   debugLogDiagnostics: true,
   routes: [

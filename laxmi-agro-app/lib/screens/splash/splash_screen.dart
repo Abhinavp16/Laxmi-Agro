@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/app_update_provider.dart';
 import '../../core/services/notification_navigation_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/services/storage_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -25,6 +27,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Wait minimum splash time, but also ensure auth check has completed
     await Future.delayed(const Duration(seconds: 2));
 
+    if (!mounted) return;
+    final updateRequired = await ref
+        .read(appUpdateControllerProvider)
+        .checkAndShow(context, isInitialCheck: true);
+    if (!mounted || updateRequired) return;
+
     // Wait for auth loading to finish (max 3 more seconds)
     for (int i = 0; i < 30; i++) {
       if (!mounted) return;
@@ -35,6 +43,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     if (!mounted) return;
     final authState = ref.read(authProvider);
+
+    try {
+      await ref.read(notificationServiceProvider).initialize();
+    } catch (error) {
+      debugPrint('[Notifications] Initialization skipped: $error');
+    }
+    if (!mounted) return;
 
     debugPrint(
       '[Splash] Auth check done: isAuthenticated=${authState.isAuthenticated}, user=${authState.user?.name}',

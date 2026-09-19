@@ -1,0 +1,60 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:laxmi_agro/core/models/app_update_config.dart';
+import 'package:laxmi_agro/core/navigation/app_navigator_key.dart';
+import 'package:laxmi_agro/core/providers/app_update_provider.dart';
+import 'package:laxmi_agro/core/services/app_update_service.dart';
+
+class _FakeUpdateGateway implements AppUpdateGateway {
+  final List<AppUpdateCheckResult> results = [];
+
+  @override
+  Future<AppUpdateCheckResult> checkForMandatoryUpdate() async {
+    return results.removeAt(0);
+  }
+
+  @override
+  Future<bool> openStore(Uri storeUri) async => true;
+}
+
+void main() {
+  testWidgets(
+    'active gate survives navigation and confirmed disable releases it',
+    (tester) async {
+      final gateway = _FakeUpdateGateway();
+      final requirement = AppUpdateRequirement(
+        currentVersion: '1.0.6',
+        latestVersion: '1.0.7',
+        storeUri: AppUpdateService.androidStoreUri,
+        title: 'Update Required',
+        message: 'Please update to continue.',
+      );
+      gateway.results.add(AppUpdateCheckResult.success(requirement));
+      final controller = AppUpdateController(gateway);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: appNavigatorKey,
+          home: const Scaffold(body: Text('Home')),
+        ),
+      );
+
+      await controller.checkAndShow(
+        appNavigatorKey.currentContext!,
+        isInitialCheck: true,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Update Required'), findsOneWidget);
+
+      appNavigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Update Required'), findsOneWidget);
+
+      gateway.results.add(const AppUpdateCheckResult.success(null));
+      await controller.checkAndShow(appNavigatorKey.currentContext!);
+      await tester.pumpAndSettle();
+      expect(find.text('Update Required'), findsNothing);
+      expect(find.text('Home'), findsOneWidget);
+    },
+  );
+}
