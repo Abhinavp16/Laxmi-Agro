@@ -137,9 +137,22 @@ class _AddressesScreenState extends State<AddressesScreen> {
       pincode: payload['pincode'] ?? '',
     );
 
-    await ShippingAddressService.upsertAddress(address);
-    await ShippingAddressService.setSelectedAddressId(address.id);
-    await _load();
+    try {
+      await ShippingAddressService.upsertAddress(address);
+      await ShippingAddressService.setSelectedAddressId(address.id);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_slotLabel(slot)} address saved')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save address. Please try again.'),
+        ),
+      );
+    }
   }
 
   Widget _field(

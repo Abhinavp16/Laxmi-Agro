@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ShippingAddress {
@@ -93,6 +94,10 @@ class ShippingAddressService {
   static const _selectedAddressIdKey = 'selected_shipping_address_id';
   static const slotPrimary = 'primary';
   static const slotSecondary = 'secondary';
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   static bool _isValidSlot(String slot) =>
       slot == slotPrimary || slot == slotSecondary;
@@ -141,8 +146,26 @@ class ShippingAddressService {
 
   static Future<List<ShippingAddress>> getAddresses() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_addressesKey);
+    String? secureRaw;
+    try {
+      secureRaw = await _secureStorage.read(key: _addressesKey);
+    } catch (_) {
+      // SharedPreferences remains a functional fallback if secure storage fails.
+    }
+    final localRaw = prefs.getString(_addressesKey);
+    final raw = secureRaw ?? localRaw;
     if (raw == null || raw.isEmpty) return [];
+
+    if (secureRaw == null && localRaw != null) {
+      try {
+        await _secureStorage.write(key: _addressesKey, value: localRaw);
+        await prefs.remove(_addressesKey);
+      } catch (_) {
+        // Migration can be retried on a later read.
+      }
+    } else if (secureRaw != null && localRaw != null) {
+      await prefs.remove(_addressesKey);
+    }
 
     final parsed = jsonDecode(raw);
     if (parsed is! List) return [];
@@ -162,24 +185,43 @@ class ShippingAddressService {
 
   static Future<void> _setAddresses(List<ShippingAddress> addresses) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _addressesKey,
-      jsonEncode(addresses.map((e) => e.toJson()).toList()),
-    );
+    final encoded = jsonEncode(addresses.map((e) => e.toJson()).toList());
+    await _secureStorage.write(key: _addressesKey, value: encoded);
+    await prefs.remove(_addressesKey);
   }
 
   static Future<String?> getSelectedAddressId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_selectedAddressIdKey);
+    String? secureId;
+    try {
+      secureId = await _secureStorage.read(key: _selectedAddressIdKey);
+    } catch (_) {
+      // SharedPreferences remains a functional fallback if secure storage fails.
+    }
+    final localId = prefs.getString(_selectedAddressIdKey);
+    final id = secureId ?? localId;
+    if (secureId == null && localId != null) {
+      try {
+        await _secureStorage.write(key: _selectedAddressIdKey, value: localId);
+        await prefs.remove(_selectedAddressIdKey);
+      } catch (_) {
+        // Migration can be retried on a later read.
+      }
+    } else if (secureId != null && localId != null) {
+      await prefs.remove(_selectedAddressIdKey);
+    }
+    return id;
   }
 
   static Future<void> setSelectedAddressId(String? id) async {
     final prefs = await SharedPreferences.getInstance();
     if (id == null || id.isEmpty) {
       await prefs.remove(_selectedAddressIdKey);
+      await _secureStorage.delete(key: _selectedAddressIdKey);
       return;
     }
-    await prefs.setString(_selectedAddressIdKey, id);
+    await _secureStorage.write(key: _selectedAddressIdKey, value: id);
+    await prefs.remove(_selectedAddressIdKey);
   }
 
   static Future<ShippingAddress?> getSelectedAddress() async {
@@ -232,5 +274,13 @@ class ShippingAddressService {
       prefs.remove(_addressesKey),
       prefs.remove(_selectedAddressIdKey),
     ]);
+    try {
+      await Future.wait([
+        _secureStorage.delete(key: _addressesKey),
+        _secureStorage.delete(key: _selectedAddressIdKey),
+      ]);
+    } catch (_) {
+      // Local address data has still been cleared.
+    }
   }
 }
