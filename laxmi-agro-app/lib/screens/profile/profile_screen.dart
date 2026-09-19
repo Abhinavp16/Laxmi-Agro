@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/models/user_model.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -153,7 +154,15 @@ class ProfileScreen extends ConsumerWidget {
                     icon: HugeIcons.strokeRoundedShoppingCart01,
                     title: 'View Customer App',
                     subtitle: 'See what customers see',
-                    onTap: () => context.push('/guest-app-preview'),
+                    onTap: () async {
+                      ref.read(guestModeProvider.notifier).enableGuestMode();
+                      try {
+                        await context.push('/guest-app-preview');
+                      } finally {
+                        await Future<void>.delayed(Duration.zero);
+                        ref.read(guestModeProvider.notifier).disableGuestMode();
+                      }
+                    },
                   ),
                 ],
               ),

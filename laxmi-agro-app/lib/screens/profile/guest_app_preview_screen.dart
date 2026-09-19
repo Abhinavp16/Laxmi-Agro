@@ -1,65 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../../core/providers/guest_mode_provider.dart';
 import '../home/marketplace_home_screen.dart';
 
-class GuestAppPreviewScreen extends ConsumerStatefulWidget {
+class GuestAppPreviewScreen extends StatelessWidget {
   const GuestAppPreviewScreen({super.key});
 
   @override
-  ConsumerState<GuestAppPreviewScreen> createState() =>
-      _GuestAppPreviewScreenState();
-}
-
-class _GuestAppPreviewScreenState extends ConsumerState<GuestAppPreviewScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Enable guest mode when entering this screen
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(guestModeProvider.notifier).enableGuestMode();
-    });
-  }
-
-  @override
-  void dispose() {
-    // Disable guest mode when leaving this screen
-    ref.read(guestModeProvider.notifier).disableGuestMode();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Disable guest mode when leaving this screen
-        ref.read(guestModeProvider.notifier).disableGuestMode();
-        return true;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            // Main app content in guest mode
-            const MarketplaceHomeScreen(),
-            // Guest mode header banner
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _GuestModeBanner(
-                onClose: () {
-                  ref.read(guestModeProvider.notifier).disableGuestMode();
-                  context.pop();
-                },
-              ),
-            ),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Main app content in guest mode
+          const MarketplaceHomeScreen(),
+          // Guest mode header banner
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _GuestModeBanner(onClose: context.pop),
+          ),
+        ],
       ),
     );
   }
