@@ -16,13 +16,46 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, Save, Building2, User, Upload, MessageCircle, MapPin, Settings2 } from "@/components/hugeicons"
+import { AlertTriangle, Loader2, Save, Building2, User, Upload, MessageCircle, MapPin, Phone, Settings2 } from "@/components/hugeicons"
 import { toast } from "sonner"
 import { apiFetch, buildApiUrl, getUser } from "@/lib/api"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { FormSkeleton } from "@/components/ui/skeleton"
+
+const ANDROID_STORE_URL = "https://play.google.com/store/apps/details?id=com.laxmiagro.app"
+const IOS_STORE_URL = "https://apps.apple.com/in/app/laxmi-agro/id6804305521"
+
+const mobilePlatformSchema = (expectedStoreUrl: string) => z.object({
+    enabled: z.boolean(),
+    latestVersion: z.string().trim(),
+    latestBuildNumber: z.coerce.number().int().nonnegative("Build number cannot be negative"),
+    storeUrl: z.string().trim().url("Enter a valid store URL").or(z.literal("")).refine((value) => !value || value.startsWith("https://"), "Store URL must use HTTPS"),
+    title: z.string().trim().max(200, "Title cannot exceed 200 characters"),
+    message: z.string().trim().max(1000, "Message cannot exceed 1000 characters"),
+}).superRefine((platform, context) => {
+    if (platform.storeUrl && platform.storeUrl !== expectedStoreUrl) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["storeUrl"], message: "Store URL must match the official app listing" })
+    }
+    if (!platform.enabled) return
+
+    if (!platform.latestVersion) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["latestVersion"], message: "Version is required when updates are enabled" })
+    }
+    if (platform.latestBuildNumber < 1) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["latestBuildNumber"], message: "Build number must be positive when updates are enabled" })
+    }
+    if (!platform.storeUrl) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["storeUrl"], message: "Store URL is required when updates are enabled" })
+    }
+    if (!platform.title) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["title"], message: "Title is required when updates are enabled" })
+    }
+    if (!platform.message) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["message"], message: "Message is required when updates are enabled" })
+    }
+})
 
 const settingsSchema = z.object({
     businessName: z.string().optional(),
@@ -58,7 +91,20 @@ const settingsSchema = z.object({
         createOrderBeforeRedirect: z.boolean().optional(),
         allowNegotiationCheckout: z.boolean().optional(),
     }).optional(),
+    mobileApp: z.object({
+        android: mobilePlatformSchema(ANDROID_STORE_URL),
+        ios: mobilePlatformSchema(IOS_STORE_URL),
+    }),
 }).passthrough()
+
+const mobilePlatformDefaults = (storeUrl: string) => ({
+    enabled: false,
+    latestVersion: "",
+    latestBuildNumber: 0,
+    storeUrl,
+    title: "Update Required",
+    message: "A new version of Laxmi Agro is required. Please update the app to continue.",
+})
 
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
@@ -101,6 +147,10 @@ export default function SettingsPage() {
                 createOrderBeforeRedirect: true,
                 allowNegotiationCheckout: true,
             },
+            mobileApp: {
+                android: mobilePlatformDefaults(ANDROID_STORE_URL),
+                ios: mobilePlatformDefaults(IOS_STORE_URL),
+            },
         }
     })
 
@@ -129,6 +179,16 @@ export default function SettingsPage() {
                         ...(data.data.checkout || {}),
                         mode: data.data.checkout?.mode || "whatsapp",
                     },
+                    mobileApp: {
+                        android: {
+                            ...form.getValues("mobileApp.android"),
+                            ...(data.data.mobileApp?.android || {}),
+                        },
+                        ios: {
+                            ...form.getValues("mobileApp.ios"),
+                            ...(data.data.mobileApp?.ios || {}),
+                        },
+                    },
                 })
             }
         } catch (error) {
@@ -141,15 +201,68 @@ export default function SettingsPage() {
     async function onSubmit(values: z.infer<typeof settingsSchema>) {
         setIsSaving(true)
         try {
-            const payload = {
-                ...values,
+            const payload: Record<string, unknown> = {
+                businessName: values.businessName,
+                businessEmail: values.businessEmail,
+                businessPhone: values.businessPhone,
+                businessAddress: values.businessAddress,
+                upiId: values.upiId,
+                upiDisplayName: values.upiDisplayName,
+                minOrderAmount: values.minOrderAmount,
+                defaultBulkMinQuantity: values.defaultBulkMinQuantity,
+                negotiationExpiryDays: values.negotiationExpiryDays,
+                lowStockThreshold: values.lowStockThreshold,
+                bankName: values.bankName,
+                bankAccountNumber: values.bankAccountNumber,
+                bankIfscCode: values.bankIfscCode,
+                bankAccountHolderName: values.bankAccountHolderName,
+                bankTransferEnabled: values.bankTransferEnabled,
+                features: {
+                    negotiationsEnabled: values.features?.negotiationsEnabled,
+                    guestCheckout: values.features?.guestCheckout,
+                    maintenanceMode: values.features?.maintenanceMode,
+                },
+                socialLinks: {
+                    whatsapp: values.socialLinks?.whatsapp,
+                    instagram: values.socialLinks?.instagram,
+                    facebook: values.socialLinks?.facebook,
+                },
                 checkout: {
-                    ...values.checkout,
                     mode: "whatsapp",
+                    orderWhatsappNumber: values.checkout?.orderWhatsappNumber,
                     requireLoginForCheckout: true,
                     createOrderBeforeRedirect: true,
+                    allowNegotiationCheckout: values.checkout?.allowNegotiationCheckout,
                 },
             }
+
+            const dirtyMobileApp = form.formState.dirtyFields.mobileApp
+            const mobileApp: Record<string, unknown> = {}
+            const mobileFields = ["enabled", "latestVersion", "latestBuildNumber", "storeUrl", "title", "message"] as const
+            const changedPlatformFields = (
+                platform: typeof values.mobileApp.android,
+                dirtyFields: Record<string, unknown> | undefined,
+            ) => {
+                if (!dirtyFields) return null
+                if (dirtyFields.enabled && platform.enabled) return platform
+
+                const update: Record<string, unknown> = {}
+                for (const field of mobileFields) {
+                    if (dirtyFields[field]) update[field] = platform[field]
+                }
+                return Object.keys(update).length > 0 ? update : null
+            }
+            const androidUpdate = changedPlatformFields(
+                values.mobileApp.android,
+                dirtyMobileApp?.android as Record<string, unknown> | undefined,
+            )
+            const iosUpdate = changedPlatformFields(
+                values.mobileApp.ios,
+                dirtyMobileApp?.ios as Record<string, unknown> | undefined,
+            )
+            if (androidUpdate) mobileApp.android = androidUpdate
+            if (iosUpdate) mobileApp.ios = iosUpdate
+            if (Object.keys(mobileApp).length > 0) payload.mobileApp = mobileApp
 
             const res = await apiFetch("/admin/settings", {
                 method: "PUT",
@@ -158,6 +271,7 @@ export default function SettingsPage() {
 
             if (res.ok) {
                 toast.success("Settings updated successfully")
+                form.reset(values)
             } else {
                 const err = await res.json()
                 toast.error(err.message || "Failed to update settings")
@@ -401,6 +515,130 @@ export default function SettingsPage() {
                                         </FormItem>
                                     )}
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-[#333] bg-[#161616]">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-white">
+                                <Phone className="h-5 w-5 text-[#86efac]" /> Mobile App Updates
+                            </CardTitle>
+                            <CardDescription>Require Android or iOS users on an older build to install the latest app version.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            <div className="flex gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                                <div>
+                                    <p className="font-semibold">Enabling this blocks access to the app.</p>
+                                    <p className="mt-1 text-amber-100/80">Users below the configured build number cannot continue until they update. Verify the version, build number, and store URL before saving.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-5 lg:grid-cols-2">
+                                {(["android", "ios"] as const).map((platform) => {
+                                    const platformLabel = platform === "android" ? "Android" : "iOS"
+
+                                    return (
+                                        <section key={platform} className="space-y-4 rounded-xl border border-[#333] bg-[#0D0D0D] p-4 sm:p-5">
+                                            <FormField
+                                                control={form.control}
+                                                name={`mobileApp.${platform}.enabled`}
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center justify-between gap-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel className="text-base text-white">{platformLabel}</FormLabel>
+                                                            <FormDescription>Require the latest {platformLabel} build.</FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Switch
+                                                                checked={field.value}
+                                                                onCheckedChange={(checked) => {
+                                                                    if (!checked || window.confirm(`Enable mandatory ${platformLabel} updates? Users on older builds will be blocked until they update.`)) {
+                                                                        field.onChange(checked)
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`mobileApp.${platform}.latestVersion`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Latest Version</FormLabel>
+                                                            <FormControl>
+                                                                <Input className="border-[#333] bg-[#161616] text-white" placeholder="e.g. 1.2.0" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`mobileApp.${platform}.latestBuildNumber`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Latest Build Number</FormLabel>
+                                                            <FormControl>
+                                                                <Input type="number" min="0" step="1" className="border-[#333] bg-[#161616] text-white" {...field} />
+                                                            </FormControl>
+                                                            <FormDescription>Must increase across every {platformLabel} release.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <FormField
+                                                control={form.control}
+                                                name={`mobileApp.${platform}.storeUrl`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Store URL</FormLabel>
+                                                        <FormControl>
+                                                            <Input readOnly type="url" className="border-[#333] bg-[#161616] text-white" {...field} />
+                                                        </FormControl>
+                                                        <FormDescription>Locked to the official {platformLabel} store listing.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name={`mobileApp.${platform}.title`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Update Prompt Title</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="border-[#333] bg-[#161616] text-white" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name={`mobileApp.${platform}.message`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Update Prompt Message</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea className="min-h-[96px] border-[#333] bg-[#161616] text-white" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </section>
+                                    )
+                                })}
                             </div>
                         </CardContent>
                     </Card>
