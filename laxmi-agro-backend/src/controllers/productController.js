@@ -15,6 +15,12 @@ const {
   filterCategoriesForUser,
   isCategoryExcludedForUser,
 } = require('../utils/categoryAccess');
+const {
+  buildCategoryScopeCondition,
+  categoryMatchesTerm,
+  collectCategoryScope,
+  pruneCategoriesWithInaccessibleAncestors,
+} = require('../services/productSearchService');
 
 const formatProductCard = (product, userRole, req) => {
   const pricing = getPriceForUser(product, userRole);
@@ -381,54 +387,102 @@ exports.getFeaturedProducts = async (req, res, next) => {
 
 exports.searchProducts = async (req, res, next) => {
   try {
-    const { q, category, brand } = req.query;
+    const { q, categoryId, brandId, category, brand } = req.query;
     const { page, limit, skip } = paginate(req.query.page, req.query.limit);
     const userRole = req.user?.role || 'guest';
 
-    console.log('Search request - q:', q, 'category:', category, 'brand:', brand);
-
-    // Build base query
     const query = { status: PRODUCT_STATUS.ACTIVE };
-
-    // Use $and if we have multiple major conditions (q, category, brand)
     const andConditions = [];
+    const normalizedQuery = String(q || '').trim();
+    const terms = normalizedQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const needsCompanyCatalog = Boolean(brandId) || Boolean(brand) || terms.length > 0;
+    const [allCategories, allCompanies] = await Promise.all([
+      Category.find({}).select('_id name nameHindi slug parent company isActive').lean(),
+      needsCompanyCatalog
+        ? Company.find({ isActive: true }).select('_id name slug').lean()
+        : [],
+    ]);
+    const accessibleCategories = pruneCategoriesWithInaccessibleAncestors(
+      allCategories,
+      filterCategoriesForUser(
+        allCategories.filter((categoryItem) => categoryItem.isActive !== false),
+        req.user,
+      ),
+    );
+    const accessibleCategoryIds = new Set(
+      accessibleCategories.map((categoryItem) => String(categoryItem._id)),
+    );
+    const inaccessibleCategories = allCategories.filter(
+      (categoryItem) => !accessibleCategoryIds.has(String(categoryItem._id)),
+    );
 
-    // Search query condition
-    if (q && q.trim().length > 0) {
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const words = escaped.trim().split(/\s+/).filter(Boolean);
-      const regexPattern = words.map(w => `(?=.*${w})`).join('') + '.*';
-      const regex = new RegExp(regexPattern, 'i');
-
+    for (const term of terms) {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+      const companyIds = allCompanies
+        .filter((company) => [company.name, company.slug]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(term)))
+        .map((company) => company._id);
+      const categoryIds = new Set();
+      const categoryScopeById = new Map();
+      for (const matched of accessibleCategories.filter((item) => categoryMatchesTerm(item, term))) {
+        for (const scoped of collectCategoryScope(accessibleCategories, matched._id)) {
+          categoryIds.add(scoped._id);
+          categoryScopeById.set(String(scoped._id), scoped);
+        }
+      }
+      const categoryScope = [...categoryScopeById.values()];
       andConditions.push({
         $or: [
           { name: regex },
+          { nameHindi: regex },
           { description: regex },
           { shortDescription: regex },
           { category: regex },
-          { tags: { $in: [new RegExp(escaped, 'i')] } },
+          { brand: regex },
+          { tags: { $in: [regex] } },
           { sku: regex },
-        ]
+          ...(companyIds.length > 0 ? [{ company: { $in: companyIds } }] : []),
+          ...(categoryIds.size > 0
+            ? [buildCategoryScopeCondition(categoryScope)]
+            : []),
+        ],
       });
     }
 
-    // Category condition
-    if (category) {
-      andConditions.push({ category: { $regex: new RegExp(category, 'i') } });
+    if (categoryId) {
+      const scope = collectCategoryScope(accessibleCategories, categoryId);
+      andConditions.push(buildCategoryScopeCondition(scope));
+    } else if (category) {
+      const escaped = category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      andConditions.push({ category: { $regex: new RegExp(escaped, 'i') } });
     }
-    
-    // Brand condition (checks both product.brand and product.company)
-    if (brand) {
-      const matchingCompanies = await Company.find({
-        name: { $regex: new RegExp(brand, 'i') }
-      }).select('_id');
-      const companyIds = matchingCompanies.map(c => c._id);
-      
+
+    if (brandId) {
+      const company = allCompanies.find((item) => String(item._id) === String(brandId));
+      const legacyBrandValues = [company?.name, company?.slug].filter(Boolean);
       andConditions.push({
         $or: [
-          { brand: { $regex: new RegExp(brand, 'i') } },
-          { company: { $in: companyIds } }
-        ]
+          { company: brandId },
+          ...legacyBrandValues.map((value) => ({
+            brand: { $regex: new RegExp(`^${String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          })),
+        ],
+      });
+    } else if (brand) {
+      const normalizedBrand = brand.toLowerCase();
+      const companyIds = allCompanies
+        .filter((company) => [company.name, company.slug]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedBrand)))
+        .map((company) => company._id);
+      const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      andConditions.push({
+        $or: [
+          { brand: { $regex: new RegExp(escaped, 'i') } },
+          { company: { $in: companyIds } },
+        ],
       });
     }
 
@@ -437,14 +491,18 @@ exports.searchProducts = async (req, res, next) => {
     }
 
     applyCategoryAccessToProductQuery(query, req.user);
-
-    console.log('Final search query:', JSON.stringify(query));
+    if (inaccessibleCategories.length > 0) {
+      query.$nor = [
+        ...(query.$nor || []),
+        buildCategoryScopeCondition(inaccessibleCategories),
+      ];
+    }
 
     const [products, total] = await Promise.all([
       Product.find(query)
         .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company')
         .populate('company', 'name')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
