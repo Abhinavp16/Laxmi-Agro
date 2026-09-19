@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
@@ -52,7 +53,9 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedAddresses();
+    if (!ref.read(guestModeProvider)) {
+      _loadSavedAddresses();
+    }
   }
 
   Future<void> _loadSavedAddresses() async {
@@ -107,6 +110,33 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(guestModeProvider)) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          leading: IconButton(
+            onPressed: () => context.pop(),
+            icon: const Icon(Icons.arrow_back_ios_new),
+          ),
+          title: const Text('Customer Preview'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(
+              'Buy Now is disabled in customer preview mode. Your wholesaler account remains unchanged.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFf8fafc),
       body: Column(
@@ -961,6 +991,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   }
 
   Future<void> _proceedToCheckout() async {
+    if (ref.read(guestModeProvider)) return;
     if (!_canProceed()) return;
     if (!ref.read(authProvider).isAuthenticated) {
       await _showLoginRequiredPopup();

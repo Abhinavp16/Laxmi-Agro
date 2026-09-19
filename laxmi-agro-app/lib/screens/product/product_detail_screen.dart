@@ -71,6 +71,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         ..interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
+              if (ref.read(guestModeProvider)) {
+                options.headers.remove('Authorization');
+                return handler.next(options);
+              }
               final token = await StorageService.getAccessToken();
               if (token != null) {
                 options.headers['Authorization'] = 'Bearer $token';
@@ -127,7 +131,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   int _minimumQuantity([Map<String, dynamic>? product]) {
-    if (ref.read(authProvider).user?.isWholesaler != true) return 1;
+    if (!ref.read(effectiveIsWholesalerProvider)) return 1;
     final configured =
         product?['minWholesaleQuantity'] ?? _product?['minWholesaleQuantity'];
     final quantity = configured is num
@@ -380,7 +384,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   Future<void> _trackView() async {
     try {
-      final token = await StorageService.getAccessToken();
+      final token = ref.read(guestModeProvider)
+          ? null
+          : await StorageService.getAccessToken();
       await _dio.post(
         '/products/${widget.productId}/view',
         data: {'source': 'direct'},
@@ -393,7 +399,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   Future<void> _trackEvent(String event) async {
     try {
-      final token = await StorageService.getAccessToken();
+      final token = ref.read(guestModeProvider)
+          ? null
+          : await StorageService.getAccessToken();
       await _dio.post(
         '/products/${widget.productId}/event',
         data: {'event': event, 'source': 'direct'},
@@ -771,7 +779,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         _product!['shortDescription']?.toString() ??
         '';
     final sku = _product!['sku']?.toString() ?? '';
-    final price = _product!['price'] ?? _product!['retailPrice'];
+    final isWholesaler = ref.watch(effectiveIsWholesalerProvider);
+    final price = isWholesaler
+        ? _product!['price'] ?? _product!['wholesalePrice']
+        : _product!['retailPrice'] ?? _product!['price'];
     final customerPrice = _product!['retailPrice'] ?? _product!['price'];
     final mrp = _product!['mrp'];
     final wsPrice = _product!['wholesalePrice'];
@@ -779,7 +790,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final minWsQty = _minimumQuantity(_product);
     final stock = _product!['stock'] ?? 0;
     final inStock = (stock is int ? stock : 0) > 0;
-    final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
     final negEnabled = _product!['negotiationEnabled'] == true && isWholesaler;
     final bottomContentInset = inStock ? 185.0 : 120.0;
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -909,7 +919,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   final p = _product;
                   if (p == null) return;
                   final pName = p['name']?.toString() ?? 'Product';
-                  final pPrice = p['price'] ?? p['retailPrice'];
+                  final pPrice = ref.read(guestModeProvider)
+                      ? p['retailPrice'] ?? p['price']
+                      : p['price'] ?? p['retailPrice'];
                   final shareText =
                       'Check out $pName'
                       '${pPrice != null ? ' - ₹${_fmt(pPrice)}' : ''}'
@@ -918,19 +930,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 }),
                 Builder(
                   builder: (ctx) {
-                    final isFav = ref
-                        .watch(wishlistProvider)
-                        .contains(widget.productId);
+                    final isCustomerPreview = ref.watch(guestModeProvider);
+                    final isFav =
+                        !isCustomerPreview &&
+                        ref.watch(wishlistProvider).contains(widget.productId);
                     return _circleBtn(
                       isFav ? Icons.favorite : Icons.favorite_border,
                       () {
+                        if (isCustomerPreview) {
+                          _showGuestModePopup(
+                            'Wishlist disabled in preview mode',
+                          );
+                          return;
+                        }
                         final p = _product;
                         if (p == null) return;
                         final item = WishlistItem(
                           productId: widget.productId,
                           name: p['name']?.toString() ?? '',
                           image: _images.isNotEmpty ? _images.first : null,
-                          price: (p['price'] ?? 0).toDouble(),
+                          price: (p['retailPrice'] ?? p['price'] ?? 0)
+                              .toDouble(),
                           mrp: p['mrp'] != null
                               ? (p['mrp'] as num).toDouble()
                               : null,
@@ -2581,7 +2601,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   itemCount: _relatedProducts.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final item = _relatedProducts[index];
+                    final item = Map<String, dynamic>.from(
+                      _relatedProducts[index] as Map,
+                    );
                     final pid =
                         item['id']?.toString() ?? item['_id']?.toString() ?? '';
                     final img =
@@ -2599,7 +2621,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         ? nameHindi
                         : nameEnglish;
 
-                    final price = item['price'] ?? 0;
+                    final price = catalogPriceForAudience(
+                      item,
+                      isCustomerPreview: ref.read(guestModeProvider),
+                    );
                     final mrp = item['mrp'] ?? 0;
                     final hasMrp =
                         mrp != null && mrp != price && (mrp as num) > 0;
@@ -3299,7 +3324,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     String Function(String) t,
   ) {
     final unitLabel = _quantityUnitLabel();
-    final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
+    final isWholesaler = ref.watch(effectiveIsWholesalerProvider);
     final minimumQuantity = minQty is num
         ? minQty.toInt()
         : int.tryParse(minQty?.toString() ?? '') ?? 1;
@@ -3519,8 +3544,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 (_) => _cartBounce.reverse(),
                               );
                               Future.delayed(const Duration(seconds: 2), () {
-                                if (mounted)
+                                if (mounted) {
                                   setState(() => _addedToCart = false);
+                                }
                               });
                             }
                           : null,

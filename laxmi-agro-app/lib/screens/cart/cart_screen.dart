@@ -10,6 +10,7 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
@@ -36,7 +37,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshCartAndValidate();
+      if (!ref.read(guestModeProvider)) {
+        _refreshCartAndValidate();
+      }
     });
   }
 
@@ -127,6 +130,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Future<void> _proceedToCheckout() async {
+    if (ref.read(guestModeProvider)) {
+      _showCustomerPreviewMessage();
+      return;
+    }
     final cart = ref.read(cartProvider);
     if (cart.items.isEmpty) return;
     if (!ref.read(authProvider).isAuthenticated) {
@@ -548,6 +555,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(guestModeProvider)) {
+      return _buildCustomerPreviewCart();
+    }
     final cart = ref.watch(cartProvider);
 
     return Scaffold(
@@ -981,6 +991,71 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildCustomerPreviewCart() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+        ),
+        title: Text(
+          'Customer Cart Preview',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.shopping_cart_outlined,
+                size: 68,
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Shopping is disabled in preview mode',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your wholesaler cart is private and remains unchanged.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomerPreviewMessage() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Checkout is disabled in customer preview mode.'),
+      ),
     );
   }
 
