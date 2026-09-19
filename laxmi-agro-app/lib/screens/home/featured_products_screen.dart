@@ -8,6 +8,8 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
+import '../../core/services/storage_service.dart';
 import '../../widgets/pending_price_change_notice.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
@@ -35,13 +37,29 @@ class _FeaturedProductsScreenState
   static const Color textMuted = Color(0xFF64748B);
   static const Color borderLight = Color(0xFFF1F5F9);
 
-  late final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-    ),
-  );
+  late final Dio _dio =
+      Dio(
+          BaseOptions(
+            baseUrl: ApiConfig.baseUrl,
+            connectTimeout: ApiConfig.connectTimeout,
+            receiveTimeout: ApiConfig.receiveTimeout,
+          ),
+        )
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              if (ref.read(guestModeProvider)) {
+                options.headers.remove('Authorization');
+                return handler.next(options);
+              }
+              final token = await StorageService.getAccessToken();
+              if (token != null) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+              return handler.next(options);
+            },
+          ),
+        );
 
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = true;
@@ -60,68 +78,68 @@ class _FeaturedProductsScreenState
         _error = null;
       });
 
-      // Fetch all products without query parameters
-      final response = await _dio.get('/products');
-
-      if (response.statusCode == 200) {
+      final items = <dynamic>[];
+      var page = 1;
+      var hasNext = true;
+      while (hasNext) {
+        final response = await _dio.get(
+          '/products',
+          queryParameters: {
+            if (widget.brandName != null) 'brand': widget.brandName,
+            if (widget.brandName == null && widget.isHotDeals) 'hot': true,
+            if (widget.brandName == null && !widget.isHotDeals)
+              'featured': true,
+            'page': page,
+            'limit': 50,
+          },
+        );
+        if (response.statusCode != 200) break;
         final data = response.data;
-        final List<dynamic> items = data['data'] ?? data ?? [];
+        items.addAll(List<dynamic>.from(data['data'] ?? const []));
+        hasNext = data['pagination']?['hasNext'] == true;
+        page++;
+      }
 
-        // Filter based on widget configuration
-        final filtered = items.where((item) {
-          // Filter by brand if specified
-          if (widget.brandName != null) {
-            final brand = (item['brand'] ?? item['brandName'] ?? '').toString();
-            final name = (item['name'] ?? '').toString();
-            debugPrint(
-              'Filtering by brand: ${widget.brandName} | Item brand: $brand | Item name: $name',
-            );
-            return brand.toLowerCase() == widget.brandName!.toLowerCase();
-          }
-          // Filter hot deals
-          if (widget.isHotDeals) {
-            return item['isHot'] == true;
-          }
-          // Filter featured products
-          return item['isFeatured'] == true;
-        }).toList();
+      final products = items.map<Map<String, dynamic>>((item) {
+        final name = item['name']?.toString() ?? '';
+        final cat = (item['category'] ?? item['categoryName'] ?? '').toString();
 
-        final products = filtered.map<Map<String, dynamic>>((item) {
-          final name = item['name']?.toString() ?? '';
-          final cat = (item['category'] ?? item['categoryName'] ?? '')
-              .toString();
+        // Try every possible image field the backend might use (robust version from home screen)
+        String apiImage =
+            (item['primaryImage'] ??
+                    item['image'] ??
+                    item['imageUrl'] ??
+                    item['photo'] ??
+                    item['thumbnail'] ??
+                    item['img'] ??
+                    '')
+                .toString()
+                .trim();
 
-          // Try every possible image field the backend might use (robust version from home screen)
-          String apiImage =
-              (item['primaryImage'] ??
-                      item['image'] ??
-                      item['imageUrl'] ??
-                      item['photo'] ??
-                      item['thumbnail'] ??
-                      item['img'] ??
-                      '')
-                  .toString()
-                  .trim();
+        apiImage = ApiConfig.normalizeMediaUrl(apiImage);
 
-          apiImage = ApiConfig.normalizeMediaUrl(apiImage);
+        return <String, dynamic>{
+          'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+          'name': name,
+          'category': cat,
+          'price': catalogPriceForAudience(
+            Map<String, dynamic>.from(item as Map),
+            isCustomerPreview: ref.read(guestModeProvider),
+          ),
+          'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
+          'image': apiImage,
+          'pendingPriceChange': item['pendingPriceChange'],
+        };
+      }).toList();
 
-          return <String, dynamic>{
-            'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
-            'name': name,
-            'category': cat,
-            'price': item['price'] ?? item['retailPrice'] ?? 0,
-            'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
-            'image': apiImage,
-            'pendingPriceChange': item['pendingPriceChange'],
-          };
-        }).toList();
-
+      if (mounted) {
         setState(() {
           _products = products;
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;

@@ -38,6 +38,7 @@ import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/utils/product_search.dart';
 
 class MarketplaceHomeScreen extends ConsumerStatefulWidget {
   final int? initialTab;
@@ -75,6 +76,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ..interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
+              if (ref.read(guestModeProvider)) {
+                options.headers.remove('Authorization');
+                return handler.next(options);
+              }
               final token = await StorageService.getAccessToken();
               if (token != null) {
                 options.headers['Authorization'] = 'Bearer $token';
@@ -96,21 +101,29 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   // State for dynamic data
   List<Map<String, dynamic>> _brands = [];
   List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _featuredProducts = [];
+  List<Map<String, dynamic>> _hotProducts = [];
   bool _isLoadingBrands = true;
   bool _isLoadingProducts = true;
 
   // Search state
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
+  bool _isLoadingMoreSearch = false;
+  bool _searchHasNext = false;
+  int _searchPage = 0;
+  int _searchRequestGeneration = 0;
+  CancelToken? _searchCancelToken;
+  String? _searchError;
   String _searchQuery = '';
   Timer? _searchDebounce;
   final List<String> _recentSearches = ['Seed Drill', 'Tractor parts'];
 
   // Filter state
-  String? _selectedFilterCategory;
-  String? _selectedFilterBrand;
-  List<String> _categories = [];
+  String? _selectedFilterCategoryId;
+  String? _selectedFilterBrandId;
   List<Map<String, dynamic>> _categoryData = [];
+  List<Map<String, dynamic>> _searchCategoryData = [];
   bool _isLoadingCategories = true;
   final CategoriesController _categoriesController = CategoriesController();
   int _categoryNavigationRequest = 0;
@@ -160,6 +173,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   @override
   void initState() {
     super.initState();
+    final isCustomerPreview = ref.read(guestModeProvider);
     _selectedNavIndex = widget.initialTab ?? 0;
     _fetchBrands();
     _fetchProducts();
@@ -167,14 +181,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _fetchPromoBanners();
     _fetchOffers();
     _fetchReviews();
-    _loadSavedShippingAddresses();
-    _initNotifications();
-    _fetchNotificationCount();
+    if (!isCustomerPreview) {
+      _loadSavedShippingAddresses();
+      _initNotifications();
+      _fetchNotificationCount();
+    }
 
     // Fetch cart from server so it persists across app restarts
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyInitialSearchRouteState();
-      ref.read(cartProvider.notifier).fetchCart();
+      if (!ref.read(guestModeProvider)) {
+        ref.read(cartProvider.notifier).fetchCart();
+      }
       _startAutoRotate();
       _initGuestAuthPromptFlow();
       _fetchNegotiations();
@@ -333,6 +351,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchReviews() async {
     try {
       final response = await _dio.get('/reviews');
+      if (!mounted) return;
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         setState(() {
@@ -344,6 +363,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching reviews: $e');
+      if (!mounted) return;
       setState(() {
         _isLoadingReviews = false;
       });
@@ -357,6 +377,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         '/companies',
         queryParameters: {'active': true, 'limit': 500},
       );
+      if (!mounted) return;
       debugPrint('🟢 [BRANDS] Response status: ${response.statusCode}');
       debugPrint('🟢 [BRANDS] Response data: ${response.data}');
 
@@ -410,6 +431,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     } catch (e, stackTrace) {
       debugPrint('🔴 [BRANDS] ERROR: $e');
       debugPrint('🔴 [BRANDS] Stack trace: $stackTrace');
+      if (!mounted) return;
       setState(() {
         _brands = [];
         _isLoadingBrands = false;
@@ -423,6 +445,58 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return ''; // ProductImagePlaceholder handles the display
   }
 
+  List<Map<String, dynamic>> _mapProductItems(List<dynamic> items) {
+    final productsById = <String, Map<String, dynamic>>{};
+    for (final rawItem in items.whereType<Map>()) {
+      final item = Map<String, dynamic>.from(rawItem);
+      final name = item['name']?.toString() ?? '';
+      final category = (item['category'] ?? item['categoryName'] ?? '')
+          .toString();
+      String image =
+          (item['primaryImage'] ??
+                  item['image'] ??
+                  item['imageUrl'] ??
+                  item['photo'] ??
+                  item['thumbnail'] ??
+                  item['img'] ??
+                  '')
+              .toString()
+              .trim();
+      image = ApiConfig.normalizeMediaUrl(image);
+      final hasValidImage =
+          image.startsWith('http://') || image.startsWith('https://');
+      final id = item['id']?.toString() ?? item['_id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+
+      productsById[id] = <String, dynamic>{
+        'id': id,
+        'name': name,
+        'nameHindi': item['nameHindi']?.toString() ?? '',
+        'category': category,
+        'brand': item['brand']?.toString() ?? '',
+        'price': catalogPriceForAudience(
+          item,
+          isCustomerPreview: ref.read(guestModeProvider),
+        ),
+        'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
+        'image': hasValidImage ? image : _fallbackImageFor(name, category),
+        'blurHash': item['primaryBlurHash'] ?? item['blurHash'] ?? '',
+        'isFeatured': item['isFeatured'] == true,
+        'isHot': item['isHot'] == true,
+        'isNew': item['isNew'] == true,
+        'inStock': item['inStock'] != false,
+        'discount': 0,
+        'rating': item['rating'] ?? 4.5,
+        'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
+        'purchaseCountMin': item['purchaseCountMin'] ?? 0,
+        'purchaseCountMax': item['purchaseCountMax'] ?? 0,
+        'minWholesaleQuantity': item['minWholesaleQuantity'],
+        'pendingPriceChange': item['pendingPriceChange'],
+      };
+    }
+    return productsById.values.toList();
+  }
+
   Future<void> _fetchProducts() async {
     try {
       debugPrint('═══════════════════════════════════════════');
@@ -430,9 +504,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       debugPrint('🔵 [PRODUCTS] Base URL: ${_dio.options.baseUrl}');
       debugPrint('═══════════════════════════════════════════');
 
-      // Try just fetching without any parameters first
       debugPrint('🔵 [PRODUCTS] Fetching: ${_dio.options.baseUrl}/products');
-      final response = await _dio.get('/products');
+      final responses = await Future.wait([
+        _dio.get('/products'),
+        _dio.get('/products', queryParameters: {'featured': true, 'limit': 6}),
+        _dio.get('/products', queryParameters: {'hot': true, 'limit': 6}),
+      ]);
+      if (!mounted) return;
+      final response = responses[0];
 
       debugPrint('═══════════════════════════════════════════');
       debugPrint('🟢 [PRODUCTS] API Call Successful!');
@@ -445,6 +524,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         );
 
         final List<dynamic> items = data['data'] ?? data ?? [];
+        final List<dynamic> featuredItems =
+            responses[1].data['data'] ?? const [];
+        final List<dynamic> hotItems = responses[2].data['data'] ?? const [];
 
         debugPrint('═══════════════════════════════════════════');
         debugPrint('🟢 [PRODUCTS] TOTAL ITEMS FOUND: ${items.length}');
@@ -457,60 +539,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         }
 
         setState(() {
-          final productsById = <String, Map<String, dynamic>>{};
-
-          for (final item in items) {
-            final name = item['name']?.toString() ?? '';
-            final cat = (item['category'] ?? item['categoryName'] ?? '')
-                .toString();
-            String apiImage =
-                (item['primaryImage'] ??
-                        item['image'] ??
-                        item['imageUrl'] ??
-                        item['photo'] ??
-                        item['thumbnail'] ??
-                        item['img'] ??
-                        '')
-                    .toString()
-                    .trim();
-            apiImage = ApiConfig.normalizeMediaUrl(apiImage);
-            final isValidUrl =
-                apiImage.startsWith('http://') ||
-                apiImage.startsWith('https://');
-            final image = isValidUrl ? apiImage : _fallbackImageFor(name, cat);
-            final id = item['id']?.toString() ?? item['_id']?.toString() ?? '';
-
-            productsById[id] = <String, dynamic>{
-              'id': id,
-              'name': name,
-              'nameHindi': item['nameHindi']?.toString() ?? '',
-              'category': cat,
-              'brand': item['brand']?.toString() ?? '',
-              'price': item['price'] ?? item['retailPrice'] ?? 0,
-              'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
-              'image': image,
-              'blurHash': item['primaryBlurHash'] ?? item['blurHash'] ?? '',
-              'isFeatured': item['isFeatured'] == true,
-              'isHot': item['isHot'] == true,
-              'isNew': item['isNew'] == true,
-              'inStock': item['inStock'] != false,
-              'discount': 0,
-              'rating': item['rating'] ?? 4.5,
-              'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
-              'purchaseCountMin': item['purchaseCountMin'] ?? 0,
-              'purchaseCountMax': item['purchaseCountMax'] ?? 0,
-              'minWholesaleQuantity': item['minWholesaleQuantity'],
-              'pendingPriceChange': item['pendingPriceChange'],
-            };
-          }
-
-          final fetched = productsById.values.toList();
+          final fetched = _mapProductItems(items);
           debugPrint('═══════════════════════════════════════════');
           debugPrint(
             '🟢 [PRODUCTS] FINAL STATE UPDATE: ${fetched.length} products',
           );
           debugPrint('═══════════════════════════════════════════');
           _products = fetched.isEmpty ? [] : fetched;
+          _featuredProducts = _mapProductItems(featuredItems);
+          _hotProducts = _mapProductItems(hotItems);
           _isLoadingProducts = false;
         });
         // Backfill scheduled-change cards from loaded products when the
@@ -529,8 +566,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       debugPrint('🔴 [PRODUCTS] Error: $e');
       debugPrint('🔴 [PRODUCTS] Stack trace: $stackTrace');
       debugPrint('═══════════════════════════════════════════');
+      if (!mounted) return;
       setState(() {
         _products = [];
+        _featuredProducts = [];
+        _hotProducts = [];
         _isLoadingProducts = false;
       });
     }
@@ -547,60 +587,56 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         '/categories/with-subcategories',
         queryParameters: {'active': true},
       );
+      if (!mounted) return;
       debugPrint('🟢 [CATEGORIES] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> items = response.data['data'] ?? [];
         debugPrint('🟢 [CATEGORIES] Found ${items.length} root categories');
+        final mappedCategories =
+            items
+                .map<Map<String, dynamic>>((item) {
+                  final name = item['name']?.toString() ?? '';
+                  final imageUrl = item['image'] is Map
+                      ? item['image']['url']?.toString() ?? ''
+                      : item['image']?.toString() ?? '';
+                  return {
+                    'id':
+                        item['id']?.toString() ?? item['_id']?.toString() ?? '',
+                    'name': name,
+                    'displayName': name,
+                    'queryName': name,
+                    'nameHindi': item['nameHindi']?.toString() ?? '',
+                    'image': imageUrl,
+                    'blurHash': null,
+                    'slug': item['slug']?.toString() ?? '',
+                    'brandId': item['company'] is Map
+                        ? item['company']['id']?.toString() ??
+                              item['company']['_id']?.toString() ??
+                              ''
+                        : '',
+                    'brandName': item['company'] is Map
+                        ? item['company']['name']?.toString() ?? ''
+                        : '',
+                    'count': _effectiveCategoryCount(item),
+                    'order': item['order'] ?? 999,
+                  };
+                })
+                .where((item) => (item['name'] as String).isNotEmpty)
+                .toList()
+              ..sort((a, b) {
+                final orderA =
+                    int.tryParse(a['order']?.toString() ?? '999') ?? 999;
+                final orderB =
+                    int.tryParse(b['order']?.toString() ?? '999') ?? 999;
+                return orderA.compareTo(orderB);
+              });
 
         setState(() {
-          _categoryData =
-              items
-                  .map<Map<String, dynamic>>((item) {
-                    final name = item['name']?.toString() ?? '';
-                    final imageUrl = item['image'] is Map
-                        ? item['image']['url']?.toString() ?? ''
-                        : item['image']?.toString() ?? '';
-                    final catData = {
-                      'id':
-                          item['id']?.toString() ??
-                          item['_id']?.toString() ??
-                          '',
-                      'name': name,
-                      'displayName': name,
-                      'queryName': name,
-                      'nameHindi': item['nameHindi']?.toString() ?? '',
-                      'image': imageUrl,
-                      'blurHash': null,
-                      'slug': item['slug']?.toString() ?? '',
-                      'brandId': item['company'] is Map
-                          ? item['company']['id']?.toString() ??
-                                item['company']['_id']?.toString() ??
-                                ''
-                          : '',
-                      'count': _effectiveCategoryCount(item),
-                      'order': item['order'] ?? 999,
-                    };
-                    debugPrint(
-                      '🟢 [CATEGORIES] Category: $name | Count: ${catData['count']} | Order: ${catData['order']}',
-                    );
-                    return catData;
-                  })
-                  .where((item) => (item['name'] as String).isNotEmpty)
-                  .where(_categoryHasProducts)
-                  .toList()
-                ..sort((a, b) {
-                  final orderA =
-                      int.tryParse(a['order']?.toString() ?? '999') ?? 999;
-                  final orderB =
-                      int.tryParse(b['order']?.toString() ?? '999') ?? 999;
-                  return orderA.compareTo(orderB);
-                });
-          _categories = _categoryData
-              .map<String>((item) => item['name']?.toString() ?? '')
-              .toList();
+          _searchCategoryData = mappedCategories;
+          _categoryData = mappedCategories.where(_categoryHasProducts).toList();
           debugPrint(
-            '🟢 [CATEGORIES] Final category count: ${_categories.length}',
+            '🟢 [CATEGORIES] Final category count: ${_categoryData.length}',
           );
           debugPrint(
             '🟢 [CATEGORIES] Category order: ${_categoryData.map((c) => '${c['name']}(${c['order']})').join(', ')}',
@@ -614,6 +650,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     } catch (e, stackTrace) {
       debugPrint('🔴 [CATEGORIES] ERROR: $e');
       debugPrint('🔴 [CATEGORIES] Stack trace: $stackTrace');
+      if (!mounted) return;
       setState(() => _isLoadingCategories = false);
     }
   }
@@ -748,6 +785,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchPromoBanners() async {
     try {
       final response = await _dio.get('/settings/banners');
+      if (!mounted) return;
       if (response.statusCode == 200) {
         final data = response.data['data'] ?? {};
         final List<dynamic> heroItems = data['heroBanners'] ?? [];
@@ -798,10 +836,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     } catch (e) {
       debugPrint('Error fetching banners: $e');
     } finally {
-      setState(() {
-        _isLoadingHeroBanners = false;
-        _isLoadingPromoBanners = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingHeroBanners = false;
+          _isLoadingPromoBanners = false;
+        });
+      }
     }
   }
 
@@ -810,7 +850,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       final auth = ref.read(authProvider);
       String targetGroup;
 
-      if (auth.isAuthenticated) {
+      if (ref.read(guestModeProvider)) {
+        targetGroup = 'buyer';
+      } else if (auth.isAuthenticated) {
         // User is logged in - use their role
         targetGroup = auth.user?.role ?? 'buyer';
       } else {
@@ -822,6 +864,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         '/offers',
         queryParameters: {'targetGroup': targetGroup},
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final List<dynamic> items = response.data['data'] ?? [];
@@ -847,15 +890,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching offers: $e');
+      if (!mounted) return;
       setState(() => _isLoadingOffers = false);
       // For guest users, try fetching buyer offers as fallback
       final auth = ref.read(authProvider);
-      if (!auth.isAuthenticated) {
+      if (ref.read(guestModeProvider) || !auth.isAuthenticated) {
         try {
           final response = await _dio.get(
             '/offers',
             queryParameters: {'targetGroup': 'buyer'},
           );
+          if (!mounted) return;
           if (response.statusCode == 200) {
             final List<dynamic> items = response.data['data'] ?? [];
             if (items.isNotEmpty && mounted) {
@@ -921,84 +966,174 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Future<void> _handleRefresh() async {
     debugPrint('Pull to refresh triggered...');
+    final isCustomerPreview = ref.read(guestModeProvider);
     await Future.wait([
       _fetchBrands(),
       _fetchProducts(),
       _fetchCategories(),
       _fetchPromoBanners(),
       _fetchOffers(),
-      _fetchNotificationCount(),
+      if (!isCustomerPreview) _fetchNotificationCount(),
       _fetchNegotiations(),
       _fetchHomeOrders(),
       _fetchScheduledChanges(),
-      ref.read(authProvider.notifier).fetchCurrentUser(),
+      if (!isCustomerPreview)
+        ref.read(authProvider.notifier).fetchCurrentUser(),
     ]);
   }
 
-  Future<void> _searchProducts(String query) async {
-    if (query.trim().isEmpty &&
-        _selectedFilterCategory == null &&
-        _selectedFilterBrand == null) {
+  ProductSearchCriteria get _activeSearchCriteria => ProductSearchCriteria(
+    query: _searchQuery,
+    categoryId: _selectedFilterCategoryId,
+    brandId: _selectedFilterBrandId,
+  );
+
+  bool get _hasActiveProductSearch => _activeSearchCriteria.isActive;
+
+  void _invalidateSearchRequests() {
+    _searchRequestGeneration++;
+    _searchCancelToken?.cancel('Search criteria changed');
+    _searchCancelToken = null;
+  }
+
+  Map<String, dynamic> _mapSearchProduct(dynamic raw) {
+    final item = Map<String, dynamic>.from(raw as Map);
+    return <String, dynamic>{
+      'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
+      'name': item['name']?.toString() ?? '',
+      'nameHindi': item['nameHindi']?.toString() ?? '',
+      'brand': item['brand']?.toString() ?? '',
+      'category': item['category']?.toString() ?? '',
+      'price': catalogPriceForAudience(
+        item,
+        isCustomerPreview: ref.read(guestModeProvider),
+      ),
+      'originalPrice': item['mrp'] ?? 0,
+      'image': ApiConfig.normalizeMediaUrl(
+        item['primaryImage']?.toString() ?? '',
+      ),
+      'blurHash':
+          item['primaryBlurHash']?.toString() ??
+          item['blurHash']?.toString() ??
+          '',
+      'inStock': item['inStock'] == true,
+      'shortDescription': item['shortDescription']?.toString() ?? '',
+      'rating': item['rating'],
+      'purchaseCountMin': item['purchaseCountMin'] ?? 0,
+      'purchaseCountMax': item['purchaseCountMax'] ?? 0,
+      'minWholesaleQuantity': item['minWholesaleQuantity'],
+      'pendingPriceChange': item['pendingPriceChange'],
+    };
+  }
+
+  Future<void> _searchProducts(
+    String query, {
+    int page = 1,
+    bool append = false,
+  }) async {
+    final criteria = ProductSearchCriteria(
+      query: query,
+      categoryId: _selectedFilterCategoryId,
+      brandId: _selectedFilterBrandId,
+    );
+    if (!criteria.isActive) {
+      _invalidateSearchRequests();
+      if (!mounted) return;
       setState(() {
         _searchResults = [];
         _isSearching = false;
+        _isLoadingMoreSearch = false;
+        _searchHasNext = false;
+        _searchPage = 0;
+        _searchError = null;
         _searchQuery = '';
       });
       return;
     }
-    setState(() {
-      _isSearching = true;
-      _searchQuery = query;
-    });
-    try {
-      final params = <String, dynamic>{};
-      if (query.trim().isNotEmpty) params['q'] = query;
-      if (_selectedFilterCategory != null) {
-        params['category'] = _selectedFilterCategory;
-      }
-      if (_selectedFilterBrand != null) params['brand'] = _selectedFilterBrand;
 
-      final endpoint = query.trim().isNotEmpty
-          ? '/products/search'
-          : '/products';
-      final response = await _dio.get(endpoint, queryParameters: params);
-      if (response.statusCode == 200) {
-        final List<dynamic> items = response.data['data'] ?? [];
-        setState(() {
-          _searchResults = items
-              .map<Map<String, dynamic>>(
-                (item) => <String, dynamic>{
-                  'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
-                  'name': item['name']?.toString() ?? '',
-                  'nameHindi': item['nameHindi']?.toString() ?? '',
-                  'brand': item['brand']?.toString() ?? '',
-                  'price': item['price'] ?? item['retailPrice'] ?? 0,
-                  'originalPrice': item['mrp'] ?? 0,
-                  'image': ApiConfig.normalizeMediaUrl(
-                    item['primaryImage']?.toString() ?? '',
-                  ),
-                  'blurHash':
-                      item['primaryBlurHash']?.toString() ??
-                      item['blurHash']?.toString() ??
-                      '',
-                  'inStock': item['inStock'] == true,
-                  'shortDescription':
-                      item['shortDescription']?.toString() ?? '',
-                },
-              )
-              .toList();
-          _isSearching = false;
-        });
+    if (append && (_isLoadingMoreSearch || !_searchHasNext)) return;
+
+    late final int generation;
+    if (append) {
+      generation = _searchRequestGeneration;
+      setState(() => _isLoadingMoreSearch = true);
+    } else {
+      generation = ++_searchRequestGeneration;
+      _searchCancelToken?.cancel('New search started');
+      setState(() {
+        _isSearching = true;
+        _isLoadingMoreSearch = false;
+        _searchResults = [];
+        _searchQuery = query;
+        _searchError = null;
+      });
+    }
+
+    final cancelToken = CancelToken();
+    _searchCancelToken = cancelToken;
+    try {
+      final response = await _dio.get(
+        '/products/search',
+        queryParameters: criteria.toQueryParameters(page: page, limit: 20),
+        cancelToken: cancelToken,
+      );
+      if (!mounted || generation != _searchRequestGeneration) return;
+      final resultPage = ProductSearchPage.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+      final mapped = resultPage.items.map(_mapSearchProduct).toList();
+      setState(() {
+        _searchResults = append
+            ? mergeSearchItems(_searchResults, mapped)
+            : mapped;
+        _searchPage = resultPage.page;
+        _searchHasNext = resultPage.hasNext;
+        _isSearching = false;
+        _isLoadingMoreSearch = false;
+        _searchError = null;
+      });
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error) ||
+          !mounted ||
+          generation != _searchRequestGeneration) {
+        return;
       }
-    } catch (e) {
-      debugPrint('Search error: $e');
-      setState(() => _isSearching = false);
+      setState(() {
+        _isSearching = false;
+        _isLoadingMoreSearch = false;
+        _searchError = 'Unable to load products. Please try again.';
+      });
+      if (append) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load more products.')),
+        );
+      }
+    } catch (error) {
+      debugPrint('Search error: $error');
+      if (!mounted || generation != _searchRequestGeneration) return;
+      setState(() {
+        _isSearching = false;
+        _isLoadingMoreSearch = false;
+        _searchError = 'Unable to load products. Please try again.';
+      });
+      if (append) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load more products.')),
+        );
+      }
     }
   }
 
+  void _loadMoreSearchResults() {
+    if (!_hasActiveProductSearch || !_searchHasNext || _isLoadingMoreSearch) {
+      return;
+    }
+    _searchProducts(_searchQuery, page: _searchPage + 1, append: true);
+  }
+
   void _showFilterSheet() {
-    String? tempCategory = _selectedFilterCategory;
-    String? tempBrand = _selectedFilterBrand;
+    String? tempCategoryId = _selectedFilterCategoryId;
+    String? tempBrandId = _selectedFilterBrandId;
     final t = ref.read(localeProvider.notifier).translate;
 
     showModalBottomSheet(
@@ -1007,6 +1142,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
+          final availableCategories = tempBrandId == null
+              ? _searchCategoryData
+              : _searchCategoryData
+                    .where(
+                      (category) =>
+                          category['brandId']?.toString() == tempBrandId,
+                    )
+                    .toList();
           return Container(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.65,
@@ -1045,8 +1188,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       GestureDetector(
                         onTap: () {
                           setSheetState(() {
-                            tempCategory = null;
-                            tempBrand = null;
+                            tempCategoryId = null;
+                            tempBrandId = null;
                           });
                         },
                         child: Text(
@@ -1081,12 +1224,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _categories.map((cat) {
-                            final selected = tempCategory == cat;
+                          children: availableCategories.map((category) {
+                            final id = category['id']?.toString() ?? '';
+                            final brandId =
+                                category['brandId']?.toString() ?? '';
+                            final selected = tempCategoryId == id;
+                            final categoryLabel = _getDisplayCategoryName(
+                              category,
+                            );
+                            final brandLabel =
+                                category['brandName']?.toString() ?? '';
                             return GestureDetector(
-                              onTap: () => setSheetState(
-                                () => tempCategory = selected ? null : cat,
-                              ),
+                              onTap: () => setSheetState(() {
+                                tempCategoryId = selected ? null : id;
+                                if (!selected && brandId.isNotEmpty) {
+                                  tempBrandId = brandId;
+                                }
+                              }),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
@@ -1110,7 +1264,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       : null,
                                 ),
                                 child: Text(
-                                  _getDisplayCategoryNameByKey(cat),
+                                  tempBrandId == null && brandLabel.isNotEmpty
+                                      ? '$categoryLabel · $brandLabel'
+                                      : categoryLabel,
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -1138,12 +1294,27 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: _brands.map((brand) {
-                            final name = brand['name'] as String;
-                            final selected = tempBrand == name;
+                            final id = brand['id']?.toString() ?? '';
+                            final name = brand['name']?.toString() ?? '';
+                            final selected = tempBrandId == id;
                             return GestureDetector(
-                              onTap: () => setSheetState(
-                                () => tempBrand = selected ? null : name,
-                              ),
+                              onTap: () => setSheetState(() {
+                                tempBrandId = selected ? null : id;
+                                if (tempCategoryId != null) {
+                                  final selectedCategory = _searchCategoryData
+                                      .where(
+                                        (category) =>
+                                            category['id']?.toString() ==
+                                            tempCategoryId,
+                                      )
+                                      .firstOrNull;
+                                  if (selectedCategory?['brandId']
+                                          ?.toString() !=
+                                      tempBrandId) {
+                                    tempCategoryId = null;
+                                  }
+                                }
+                              }),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
@@ -1194,11 +1365,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         setState(() {
-                          _selectedFilterCategory = tempCategory;
-                          _selectedFilterBrand = tempBrand;
+                          _selectedFilterCategoryId = tempCategoryId;
+                          _selectedFilterBrandId = tempBrandId;
                         });
                         Navigator.pop(ctx);
-                        _searchProducts(_searchQuery);
+                        _searchProducts(_searchController.text);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryBlue,
@@ -1227,12 +1398,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Future<void> _fetchNotificationCount() async {
+    if (ref.read(guestModeProvider)) return;
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.get(
         '/notifications/my',
         queryParameters: {'limit': 1},
       );
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
           _unreadCount = response.data['unreadCount'] ?? 0;
@@ -1246,6 +1419,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _fetchNotifications([
     void Function(void Function())? dialogSetter,
   ]) async {
+    if (ref.read(guestModeProvider)) return;
     final update = dialogSetter ?? setState;
     update(() => _isLoadingNotifications = true);
     try {
@@ -1289,6 +1463,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _markNotificationsRead([
     void Function(void Function())? dialogSetter,
   ]) async {
+    if (ref.read(guestModeProvider)) return;
     try {
       final api = ref.read(apiClientProvider);
       await api.post('/notifications/mark-read', data: {});
@@ -1304,6 +1479,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   void _showNotificationPopup() {
+    if (ref.read(guestModeProvider)) {
+      _showGuestModePopup('Notifications hidden in preview mode');
+      return;
+    }
     _isLoadingNotifications = true;
     _dialogSetter = null;
     final t = ref.read(localeProvider.notifier).translate;
@@ -1754,6 +1933,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     _searchDebounce?.cancel();
+    _searchRequestGeneration++;
+    _searchCancelToken?.cancel('Search screen disposed');
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _addr1Ctrl.dispose();
@@ -1766,8 +1947,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   bool get _isWholesaler {
-    final auth = ref.read(authProvider);
-    return auth.user?.isWholesaler == true;
+    return ref.read(effectiveIsWholesalerProvider);
   }
 
   String _getDisplayName(Map<String, dynamic> product, String currentLang) {
@@ -1865,6 +2045,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget build(BuildContext context) {
     // Watch auth to rebuild when role changes
     ref.watch(authProvider);
+    ref.watch(effectiveIsWholesalerProvider);
+    final isCustomerPreview = ref.watch(guestModeProvider);
 
     // Listen for role changes (e.g., from buyer to wholesaler after approval)
     // to refresh the offers and other role-dependent data without manual refresh.
@@ -1887,7 +2069,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       _selectedNavIndex = 0;
     }
     return PopScope(
-      canPop: false,
+      canPop: isCustomerPreview,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
@@ -2494,6 +2676,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     required String title,
     required String rule,
   }) async {
+    if (ref.read(guestModeProvider)) {
+      await _showGuestModePopup('Offers are read-only in preview mode');
+      return;
+    }
     final user = ref.read(authProvider).user;
     final userKey = user?.id.isNotEmpty == true
         ? user!.id
@@ -2900,12 +3086,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     focusNode: _searchFocusNode,
                     onChanged: (value) {
                       _searchDebounce?.cancel();
+                      _invalidateSearchRequests();
+                      setState(() {
+                        _searchQuery = value;
+                        _searchError = null;
+                      });
                       if (value.trim().isEmpty) {
-                        setState(() {
-                          _searchResults = [];
-                          _isSearching = false;
-                          _searchQuery = '';
-                        });
+                        if (_selectedFilterCategoryId != null ||
+                            _selectedFilterBrandId != null) {
+                          _searchProducts('');
+                        } else {
+                          setState(() {
+                            _searchResults = [];
+                            _isSearching = false;
+                            _searchHasNext = false;
+                          });
+                        }
                         return;
                       }
                       _searchDebounce = Timer(
@@ -2932,7 +3128,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     ),
                   ),
                 ),
-                if (_searchQuery.isNotEmpty)
+                if (_searchController.text.isNotEmpty)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -2947,14 +3143,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               HugeIcon(
                                 icon: HugeIcons.strokeRoundedFilterHorizontal,
                                 color:
-                                    (_selectedFilterCategory != null ||
-                                        _selectedFilterBrand != null)
+                                    (_selectedFilterCategoryId != null ||
+                                        _selectedFilterBrandId != null)
                                     ? primaryBlue
                                     : textMuted,
                                 size: 22,
                               ),
-                              if (_selectedFilterCategory != null ||
-                                  _selectedFilterBrand != null)
+                              if (_selectedFilterCategoryId != null ||
+                                  _selectedFilterBrandId != null)
                                 Positioned(
                                   top: -2,
                                   right: -4,
@@ -2973,12 +3169,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       GestureDetector(
                         onTap: () {
+                          _searchDebounce?.cancel();
+                          _invalidateSearchRequests();
                           _searchController.clear();
                           setState(() {
-                            _searchResults = [];
-                            _isSearching = false;
                             _searchQuery = '';
+                            _searchError = null;
                           });
+                          if (_selectedFilterCategoryId != null ||
+                              _selectedFilterBrandId != null) {
+                            _searchProducts('');
+                          } else {
+                            setState(() {
+                              _searchResults = [];
+                              _isSearching = false;
+                              _searchHasNext = false;
+                            });
+                          }
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -3009,14 +3216,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           HugeIcon(
                             icon: HugeIcons.strokeRoundedFilterHorizontal,
                             color:
-                                (_selectedFilterCategory != null ||
-                                    _selectedFilterBrand != null)
+                                (_selectedFilterCategoryId != null ||
+                                    _selectedFilterBrandId != null)
                                 ? primaryBlue
                                 : textMuted,
                             size: 22,
                           ),
-                          if (_selectedFilterCategory != null ||
-                              _selectedFilterBrand != null)
+                          if (_selectedFilterCategoryId != null ||
+                              _selectedFilterBrandId != null)
                             Positioned(
                               top: -2,
                               right: -4,
@@ -3039,12 +3246,33 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ),
         // Content
         Expanded(
-          child: _isSearching
+          child: _isSearching && _searchResults.isEmpty
               ? const Center(
                   child: CircularProgressIndicator(color: primaryBlue),
                 )
-              : _searchQuery.isNotEmpty
-              ? _searchResults.isEmpty
+              : _hasActiveProductSearch
+              ? _searchError != null && _searchResults.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _searchError!,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                color: textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () =>
+                                  _searchProducts(_searchController.text),
+                              child: Text(t('Retry')),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _searchResults.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -3065,7 +3293,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              t('Try a different search term'),
+                              t(
+                                _searchQuery.trim().isEmpty
+                                    ? 'Try changing your filters'
+                                    : 'Try a different search term',
+                              ),
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 13,
                                 color: textMuted,
@@ -3074,11 +3306,32 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, index) =>
-                            _buildSuggestionCard(_searchResults[index]),
+                    : NotificationListener<ScrollNotification>(
+                        onNotification: (notification) {
+                          if (notification.metrics.extentAfter < 320) {
+                            _loadMoreSearchResults();
+                          }
+                          return false;
+                        },
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                          itemCount:
+                              _searchResults.length +
+                              (_isLoadingMoreSearch ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _searchResults.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: primaryBlue,
+                                  ),
+                                ),
+                              );
+                            }
+                            return _buildSuggestionCard(_searchResults[index]);
+                          },
+                        ),
                       )
               : SingleChildScrollView(
                   child: Column(
@@ -3551,6 +3804,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildCartContent() {
+    if (ref.watch(guestModeProvider)) {
+      return _buildCustomerPreviewCart();
+    }
     final cart = ref.watch(cartProvider);
     final t = ref.read(localeProvider.notifier).translate;
     final hasActiveCoupon = _hasActiveAppliedCoupon(cart);
@@ -4311,6 +4567,57 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  Widget _buildCustomerPreviewCart() {
+    final t = ref.read(localeProvider.notifier).translate;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: primaryBlue.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedShoppingCart01,
+                  color: primaryBlue,
+                  size: 38,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              t('Customer cart preview'),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              t(
+                'Shopping is disabled in preview mode. Your wholesaler cart remains unchanged.',
+              ),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                height: 1.5,
+                color: textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   int _negotiationTab = 0;
   bool _isNegotiationsLoading = false;
   bool _isFetchingNegotiations = false;
@@ -4327,6 +4634,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Future<void> _fetchNegotiations() async {
+    if (!_isWholesaler) return;
     if (_isFetchingNegotiations) return;
 
     _isFetchingNegotiations = true;
@@ -5079,6 +5387,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildProfileContent() {
+    if (ref.watch(guestModeProvider)) {
+      return _buildCustomerPreviewProfile();
+    }
     final t = ref.read(localeProvider.notifier).translate;
     final user = ref.watch(authProvider).user;
     final isGuest = user == null;
@@ -5148,16 +5459,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'subtitle': null,
           'onTap': () => context.push('/my-coupons'),
         },
-      if (user?.isWholesaler == true || user != null)
+      if (user?.isWholesaler == true)
         {
           'type': 'setting',
           'icon': HugeIcons.strokeRoundedShoppingCart01,
           'color': primaryBlue,
           'title': t('View Customer App'),
-          'subtitle': user?.isWholesaler == true
-              ? t('See what customers see')
-              : t('Demo: See customer experience'),
-          'onTap': () => context.push('/guest-app-preview'),
+          'subtitle': t('See what customers see'),
+          'onTap': () async {
+            ref.read(guestModeProvider.notifier).enableGuestMode();
+            try {
+              await context.push('/guest-app-preview');
+            } finally {
+              await Future<void>.delayed(Duration.zero);
+              ref.read(guestModeProvider.notifier).disableGuestMode();
+            }
+          },
         },
       if (user?.role != 'wholesaler')
         {
@@ -5621,6 +5938,69 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerPreviewProfile() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE0E7FF),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedUser,
+                  color: primaryBlue,
+                  size: 42,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Guest Customer',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This read-only profile shows the guest customer experience without exposing or changing your wholesaler account.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                height: 1.5,
+                color: textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () {
+                context.pop();
+              },
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Exit Customer Preview'),
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -6281,10 +6661,27 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (linkUrl.startsWith('/product/')) {
       context.push(linkUrl);
     } else if (linkUrl.startsWith('/category/')) {
-      final catName = linkUrl.replaceFirst('/category/', '');
+      final categoryKey = Uri.decodeComponent(
+        linkUrl.replaceFirst('/category/', ''),
+      ).toLowerCase();
+      Map<String, dynamic>? matchedCategory;
+      for (final category in _searchCategoryData) {
+        final keys = [
+          category['id'],
+          category['name'],
+          category['slug'],
+          category['queryName'],
+        ].map((value) => value?.toString().toLowerCase());
+        if (keys.contains(categoryKey)) {
+          matchedCategory = category;
+          break;
+        }
+      }
+      if (matchedCategory == null) return;
       setState(() {
-        _selectedFilterCategory = catName;
-        _isSearching = true;
+        _selectedFilterCategoryId = matchedCategory!['id']?.toString();
+        _selectedFilterBrandId = matchedCategory['brandId']?.toString();
+        _selectedNavIndex = 1;
       });
       _searchProducts('');
     } else if (linkUrl.startsWith('http')) {
@@ -6341,7 +6738,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ],
                 ),
                 GestureDetector(
-                  onTap: () => context.push('/brands'),
+                  onTap: () => setState(() => _selectedNavIndex = 2),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -6595,12 +6992,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildProductsSection(String title, bool isFeatured) {
-    // Show all products - the API doesn't properly mark isFeatured/isHot
-    // so we show all products in both sections for now
-    final filteredProducts = _products.take(4).toList();
+    final sectionProducts = isFeatured ? _featuredProducts : _hotProducts;
+    final filteredProducts = sectionProducts.take(4).toList();
 
     debugPrint(
-      '🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Total products: ${_products.length} | Filtered: ${filteredProducts.length}',
+      '🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Available: ${sectionProducts.length} | Displayed: ${filteredProducts.length}',
     );
 
     final t = ref.read(localeProvider.notifier).translate;
@@ -7056,6 +7452,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       GestureDetector(
                         onTap: () {
+                          if (ref.read(guestModeProvider)) {
+                            _showGuestModePopup(
+                              'Add to Cart disabled in preview mode',
+                            );
+                            return;
+                          }
                           final configuredMinimum =
                               product['minWholesaleQuantity'];
                           final minimumWholesaleQuantity =
@@ -9356,6 +9758,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildCartNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
     final cart = ref.watch(cartProvider);
+    final itemCount = ref.watch(guestModeProvider) ? 0 : cart.itemCount;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _selectedNavIndex = index),
@@ -9384,7 +9787,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       size: 24,
                     ),
                   ),
-                  if (cart.itemCount > 0)
+                  if (itemCount > 0)
                     Positioned(
                       right: -8,
                       top: -6,
@@ -9399,7 +9802,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           minHeight: 18,
                         ),
                         child: Text(
-                          '${cart.itemCount}',
+                          '$itemCount',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
