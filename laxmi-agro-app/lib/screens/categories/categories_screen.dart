@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/providers/guest_mode_provider.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
@@ -70,6 +71,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ..interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
+              if (ref.read(guestModeProvider)) {
+                options.headers.remove('Authorization');
+                return handler.next(options);
+              }
               final token = await StorageService.getAccessToken();
               if (token != null) {
                 options.headers['Authorization'] = 'Bearer $token';
@@ -643,7 +648,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             'name': name,
             'nameHindi': item['nameHindi']?.toString() ?? '',
             'category': item['category']?.toString() ?? '',
-            'price': item['price'] ?? item['retailPrice'] ?? 0,
+            'price': catalogPriceForAudience(
+              Map<String, dynamic>.from(item as Map),
+              isCustomerPreview: ref.read(guestModeProvider),
+            ),
             'mrp': item['mrp'] ?? 0,
             'image': ApiConfig.normalizeMediaUrl(
               item['primaryImage']?.toString() ?? '',
@@ -751,7 +759,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             'name': name,
             'nameHindi': item['nameHindi']?.toString() ?? '',
             'category': item['category']?.toString() ?? '',
-            'price': item['price'] ?? item['retailPrice'] ?? 0,
+            'price': catalogPriceForAudience(
+              Map<String, dynamic>.from(item as Map),
+              isCustomerPreview: ref.read(guestModeProvider),
+            ),
             'mrp': item['mrp'] ?? 0,
             'image': ApiConfig.normalizeMediaUrl(
               item['primaryImage']?.toString() ?? '',
