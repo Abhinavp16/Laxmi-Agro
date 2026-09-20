@@ -38,6 +38,7 @@ import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/product_search.dart';
 
 class MarketplaceHomeScreen extends ConsumerStatefulWidget {
@@ -4838,48 +4839,64 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         .toList();
   }
 
-  Map<String, dynamic> _getNegStatusDisplay(String status) {
+  Map<String, dynamic> _getNegStatusDisplay(
+    String status,
+    Map<String, dynamic> negotiation,
+  ) {
     final t = ref.read(localeProvider.notifier).translate;
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
     switch (status) {
       case 'pending':
         return {
-          'label': t('PENDING'),
+          'label': orderStatusLabel == null
+              ? t('PENDING')
+              : t(orderStatusLabel).toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'countered':
         return {
-          'label': t('COUNTER-OFFER'),
+          'label': orderStatusLabel == null
+              ? t('COUNTER-OFFER')
+              : t(orderStatusLabel).toUpperCase(),
           'color': const Color(0xFFF59E0B),
           'bg': const Color(0xFFFEF3C7),
         };
       case 'accepted':
         return {
-          'label': t('ACCEPTED'),
+          'label': t(
+            orderStatusLabel ?? 'Accepted · Order Pending',
+          ).toUpperCase(),
           'color': const Color(0xFF16A34A),
           'bg': const Color(0xFFDCFCE7),
         };
       case 'rejected':
         return {
-          'label': t('REJECTED'),
+          'label': orderStatusLabel == null
+              ? t('REJECTED')
+              : t(orderStatusLabel).toUpperCase(),
           'color': const Color(0xFFDC2626),
           'bg': const Color(0xFFFEE2E2),
         };
       case 'expired':
         return {
-          'label': t('EXPIRED'),
+          'label': orderStatusLabel == null
+              ? t('EXPIRED')
+              : t(orderStatusLabel).toUpperCase(),
           'color': const Color(0xFF9CA3AF),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'converted':
         return {
-          'label': t('CONVERTED'),
+          'label': t(orderStatusLabel ?? 'Order Created').toUpperCase(),
           'color': const Color(0xFF7C3AED),
           'bg': const Color(0xFFF3E8FF),
         };
       default:
         return {
-          'label': status.toUpperCase(),
+          'label': orderStatusLabel == null
+              ? status.toUpperCase()
+              : t(orderStatusLabel).toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
@@ -5004,7 +5021,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildNegotiationCard(Map<String, dynamic> negotiation) {
     final t = ref.read(localeProvider.notifier).translate;
     final status = negotiation['status'] as String? ?? 'pending';
-    final statusDisplay = _getNegStatusDisplay(status);
+    final statusDisplay = _getNegStatusDisplay(status, negotiation);
     final product = negotiation['product'] as Map<String, dynamic>? ?? {};
     final productName = product['name'] as String? ?? t('Unknown Product');
     final imageUrl = product['image'] as String? ?? '';

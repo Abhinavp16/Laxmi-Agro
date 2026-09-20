@@ -118,6 +118,18 @@ const EMPTY_ADDRESS: ShippingAddress = {
     pincode: "",
 }
 
+const REQUIRED_ADDRESS_FIELDS: (keyof ShippingAddress)[] = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'pincode']
+
+function isAddressComplete(address: ShippingAddress): boolean {
+    return REQUIRED_ADDRESS_FIELDS.every((field) => String(address[field] || '').trim())
+}
+
+function statusLabel(status: string): string {
+    if (status === 'accepted') return 'Accepted · Order Pending'
+    if (status === 'converted') return 'Order Created'
+    return status
+}
+
 const LEGACY_ACCEPTED_MESSAGE = /^accepted by\b/i
 
 // Stored accept messages from before name attribution (e.g. the old
@@ -129,7 +141,7 @@ function acceptNote(entry: HistoryEntry): string | null {
     return text
 }
 
-function AcceptCard({ name, pricePerUnit, timestamp, note }: { name: string; pricePerUnit?: number | null; timestamp?: string; note?: string | null }) {
+function AcceptCard({ name, pricePerUnit, timestamp, note, orderCreated }: { name: string; pricePerUnit?: number | null; timestamp?: string; note?: string | null; orderCreated: boolean }) {
     return (
         <div className="flex justify-end">
             <div className="w-full max-w-[85%] rounded-2xl rounded-br-md border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
@@ -145,7 +157,7 @@ function AcceptCard({ name, pricePerUnit, timestamp, note }: { name: string; pri
                     )}
                 </div>
                 <p className="mt-1 text-sm font-medium text-emerald-900">
-                    Deal confirmed — order created.
+                    {orderCreated ? 'Deal confirmed · order created.' : 'Deal accepted · order pending.'}
                 </p>
                 {note && <p className="mt-0.5 whitespace-pre-wrap text-sm text-emerald-800">{note}</p>}
                 {timestamp && (
@@ -248,7 +260,7 @@ export default function NegotiationsPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500">Requirement Sent</Badge>
-            case 'accepted': return <Badge variant="outline" className="text-green-500 border-green-500">Order Created</Badge>
+            case 'accepted': return <Badge variant="outline" className="text-amber-400 border-amber-400">Accepted · Order Pending</Badge>
             case 'converted': return <Badge variant="outline" className="text-emerald-400 border-emerald-400">Order Created</Badge>
             case 'rejected': return <Badge variant="outline" className="text-red-500 border-red-500">Requirement Declined</Badge>
             case 'countered': return <Badge variant="outline" className="text-blue-500 border-blue-500">New Price Sent</Badge>
@@ -589,6 +601,10 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     }
 
     async function confirmAccept() {
+        if (!isAddressComplete(address)) {
+            toast.error("Enter the full shipping address before creating the order")
+            return
+        }
         setIsSubmitting(true)
         try {
             const res = await apiFetch(`/admin/negotiations/${negotiationId}/accept`, {
@@ -600,10 +616,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 }),
             })
             const data = await res.json().catch(() => ({}))
-            if (res.ok) {
-                toast.success(data?.data?.orderNumber
-                    ? `Deal accepted. Order ${data.data.orderNumber} was created and the dealer was notified.`
-                    : "Deal accepted — order created")
+            if (res.ok && (!data?.data?.orderId || !data?.data?.orderNumber)) {
+                toast.error("The request completed, but no valid order reference was returned. Refresh and verify the order before retrying.")
+                await fetchDetail()
+                onChanged()
+            } else if (res.ok) {
+                toast.success(`Deal accepted. Order ${data.data.orderNumber} was created and the dealer was notified.`)
                 setIsAcceptOpen(false)
                 await fetchDetail()
                 onChanged()
@@ -652,10 +670,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const canAdminRespond =
         (detail.status === 'pending' || detail.status === 'countered') &&
         !detail.orderId
-    const canAccept = canAdminRespond
+    const canCreateMissingOrder = detail.status === 'accepted' && !detail.orderId
+    const canAccept = canAdminRespond || canCreateMissingOrder
     const canReject = detail.status === 'pending' || detail.status === 'countered'
     const canChat = !['rejected', 'expired'].includes(detail.status)
     const orderObj = (detail.orderId && typeof detail.orderId === 'object' ? detail.orderId : null) as { _id: string; orderNumber: string; status: string; total: number; trackingNumber?: string; courierName?: string } | null
+    const orderReference = orderObj?._id || (typeof detail.orderId === 'string' ? detail.orderId : null)
     const orderTotal = detail.finalTotalPrice ?? detail.currentTotalPrice ?? 0
     const livePrice = detail.currentPricePerUnit ?? detail.requestedPricePerUnit ?? 0
     const liveTotal = detail.currentTotalPrice ?? (detail.requestedQuantity * (detail.requestedPricePerUnit ?? 0))
@@ -675,7 +695,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 </SheetDescription>
                 <div className="flex items-center gap-2 pt-2 text-xs">
                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-medium capitalize ${statusColor(detail.status)}`}>
-                        {detail.status}
+                        {statusLabel(detail.status)}
                     </span>
                     {detail.approvedBy && (
                         <span className="text-slate-500">
@@ -717,18 +737,18 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 </div>
 
                 {/* Order Created chip + tracking mirror */}
-                {orderObj && (
+                {orderReference && (
                     <button
                         type="button"
-                        onClick={() => router.push(`/orders?orderId=${encodeURIComponent(orderObj._id)}`)}
+                        onClick={() => router.push(`/orders?orderId=${encodeURIComponent(orderReference)}`)}
                         className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-left transition-colors hover:bg-emerald-100"
                     >
                         <Package className="h-5 w-5 shrink-0 text-emerald-600" />
                         <span>
-                            <span className="block text-sm font-semibold text-emerald-800">Order Created · {orderObj.orderNumber}</span>
-                            <span className="block text-xs text-emerald-700 capitalize">
+                            <span className="block text-sm font-semibold text-emerald-800">Order Created{orderObj?.orderNumber ? ` · ${orderObj.orderNumber}` : ''}</span>
+                            {orderObj ? <span className="block text-xs text-emerald-700 capitalize">
                                 {(orderObj.status ?? 'pending_payment')?.replace(/_/g, ' ')} · ₹{(orderObj.total ?? orderTotal).toLocaleString()} · {(orderObj.trackingNumber ?? '') ? `LR ${orderObj.trackingNumber}${orderObj.courierName ? ` · ${orderObj.courierName}` : ''} · ` : ''}tap to open order
-                            </span>
+                            </span> : <span className="block text-xs text-emerald-700">Tap to open order</span>}
                         </span>
                     </button>
                 )}
@@ -749,6 +769,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                                             pricePerUnit={entry.pricePerUnit}
                                             timestamp={entry.timestamp}
                                             note={acceptNote(entry)}
+                                            orderCreated={detail.status === 'converted' && Boolean(detail.orderId)}
                                         />
                                     )
                                 }
@@ -855,7 +876,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             onClick={() => setIsAcceptOpen(true)}
                         >
                             <Check className="mr-2 h-4 w-4" />
-                            Accept Deal & Create Order · ₹{liveTotal.toLocaleString()}
+                            {canCreateMissingOrder ? 'Create Missing Order' : `Accept Deal & Create Order · ₹${liveTotal.toLocaleString()}`}
                         </Button>
                     )}
 
@@ -900,7 +921,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
             <Dialog open={isAcceptOpen} onOpenChange={setIsAcceptOpen}>
                 <DialogContent className="border-slate-200 bg-white text-slate-900 max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Accept Deal & Create Order</DialogTitle>
+                        <DialogTitle>{canCreateMissingOrder ? 'Create Missing Order' : 'Accept Deal & Create Order'}</DialogTitle>
                         <DialogDescription className="text-slate-500">
                             {detail.requestedQuantity} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
                             This will create a pending-payment order using the terms shown. The dealer cannot accept or create the order.
@@ -909,15 +930,15 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">Full name *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.fullName} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, fullName: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.fullName} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, fullName: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">Phone *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.phone} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, phone: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.phone} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, phone: e.target.value }) }} />
                         </div>
                         <div className="col-span-2">
                             <Label className="text-xs text-slate-500">Address line 1 *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.addressLine1} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine1: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.addressLine1} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, addressLine1: e.target.value }) }} />
                         </div>
                         <div className="col-span-2">
                             <Label className="text-xs text-slate-500">Address line 2</Label>
@@ -925,15 +946,15 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                         </div>
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">City *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.city} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, city: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.city} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, city: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">State *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.state} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, state: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.state} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, state: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">Pincode *</Label>
-                            <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.pincode} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, pincode: e.target.value }) }} />
+                            <Input required className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={address.pincode} onChange={(e) => { setAddressTouched(true); setAddress({ ...address, pincode: e.target.value }) }} />
                         </div>
                         <div className="col-span-1">
                             <Label className="text-xs text-slate-500">Note for order</Label>
@@ -942,8 +963,8 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" className="text-slate-600" onClick={() => setIsAcceptOpen(false)}>Cancel</Button>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting} onClick={confirmAccept}>
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : `Accept · ₹${orderTotal.toLocaleString()}`}
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting || !isAddressComplete(address)} onClick={confirmAccept}>
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : canCreateMissingOrder ? 'Create Order' : `Accept · ₹${orderTotal.toLocaleString()}`}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

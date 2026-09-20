@@ -37,6 +37,7 @@ class LocaleNotifier extends StateNotifier<String> {
     'Your Expected Price': {'Hindi': 'आपकी अपेक्षित कीमत'},
     'New Price from Laxmi Agro': {'Hindi': 'लक्ष्मी एग्रो से नई कीमत'},
     'Order Created': {'Hindi': 'ऑर्डर बन गया'},
+    'Accepted · Order Pending': {'Hindi': 'स्वीकृत · ऑर्डर लंबित'},
     'View Order': {'Hindi': 'ऑर्डर देखें'},
     'Requirement Sent': {'Hindi': 'रिक्वायरमेंट भेजी गई'},
     'Fast-Moving Products': {'Hindi': 'तेज़ी से बिकने वाले उत्पाद'},

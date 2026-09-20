@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../widgets/app_image.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
 
 class NegotiationsScreen extends ConsumerStatefulWidget {
@@ -288,47 +289,51 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     );
   }
 
-  Map<String, dynamic> _getStatusDisplay(String status) {
+  Map<String, dynamic> _getStatusDisplay(
+    String status,
+    Map<String, dynamic> negotiation,
+  ) {
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
     switch (status) {
       case 'pending':
         return {
-          'label': 'REQUIREMENT SENT',
+          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT SENT',
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'countered':
         return {
-          'label': 'NEW PRICE RECEIVED',
+          'label': orderStatusLabel?.toUpperCase() ?? 'NEW PRICE RECEIVED',
           'color': const Color(0xFFF59E0B),
           'bg': const Color(0xFFFEF3C7),
         };
       case 'accepted':
         return {
-          'label': 'ORDER CREATED',
+          'label': orderStatusLabel?.toUpperCase() ?? 'ACCEPTED',
           'color': const Color(0xFF16A34A),
           'bg': const Color(0xFFDCFCE7),
         };
       case 'rejected':
         return {
-          'label': 'REQUIREMENT DECLINED',
+          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT DECLINED',
           'color': const Color(0xFFDC2626),
           'bg': const Color(0xFFFEE2E2),
         };
       case 'expired':
         return {
-          'label': 'REQUIREMENT EXPIRED',
+          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT EXPIRED',
           'color': const Color(0xFF9CA3AF),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'converted':
         return {
-          'label': 'ORDER CREATED',
+          'label': orderStatusLabel?.toUpperCase() ?? 'ORDER CREATED',
           'color': const Color(0xFF7C3AED),
           'bg': const Color(0xFFF3E8FF),
         };
       default:
         return {
-          'label': status.toUpperCase(),
+          'label': orderStatusLabel?.toUpperCase() ?? status.toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
@@ -337,7 +342,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
 
   Widget _buildNegotiationCard(Map<String, dynamic> negotiation) {
     final status = negotiation['status'] as String? ?? 'pending';
-    final statusDisplay = _getStatusDisplay(status);
+    final statusDisplay = _getStatusDisplay(status, negotiation);
     final product = negotiation['product'] as Map<String, dynamic>? ?? {};
     final productName = product['name'] as String? ?? 'Unknown Product';
     final imageUrl = product['image'] as String? ?? '';
@@ -350,7 +355,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '')
         .toString();
     final canPay = negotiation['canPay'] == true;
-    final hasOrder = negotiation['orderId'] != null &&
+    final hasOrder =
+        negotiation['orderId'] != null &&
         negotiation['orderId'].toString().isNotEmpty;
     final createdAt = negotiation['createdAt'] as String? ?? '';
 
@@ -552,7 +558,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  status == 'countered' && currentOfferBy == 'admin'
+                                  status == 'countered' &&
+                                          currentOfferBy == 'admin'
                                       ? 'New Price from Laxmi Agro:'
                                       : 'Current:',
                                   style: GoogleFonts.plusJakartaSans(

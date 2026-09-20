@@ -155,7 +155,7 @@ test('refreshes canonical chat on socket messages and accepts an admin counter',
   await expect.poll(() => detailRequests).toBe(requestsBeforeMessage + 1)
 
   await page.getByRole('button', { name: 'Accept Deal' }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: 'Accept & confirm order' })
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Accept Deal & Create Order' })
   const inputs = dialog.getByRole('textbox')
   await inputs.nth(2).fill('1 Test Road')
   await inputs.nth(4).fill('Raipur')
@@ -163,12 +163,105 @@ test('refreshes canonical chat on socket messages and accepts an admin counter',
   await inputs.nth(6).fill('492001')
   await dialog.getByRole('button', { name: 'Accept · ₹450' }).click()
 
-  await expect(page.locator('button').filter({ hasText: 'Order ORD-TEST' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Order Created · ORD-TEST/ })).toBeVisible()
   expect(acceptPayload).toMatchObject({
     shippingAddress: {
       fullName: 'Test Buyer',
       phone: '9135724680',
       addressLine1: '1 Test Road',
+      city: 'Raipur',
+      state: 'Chhattisgarh',
+      pincode: '492001',
+    },
+  })
+})
+
+test('offers recovery for a legacy accepted deal and rejects a missing order response', async ({ page }) => {
+  let acceptPayload: Record<string, unknown> | null = null
+
+  await page.addInitScript(() => {
+    localStorage.setItem('accessToken', 'test-token')
+    localStorage.setItem('user', JSON.stringify({
+      _id: '507f1f77bcf86cd799439012',
+      name: 'Test Admin',
+      role: 'admin',
+    }))
+    localStorage.setItem('loginAt', String(Date.now()))
+  })
+
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: { success: true, data: { _id: '507f1f77bcf86cd799439012', name: 'Test Admin', role: 'admin' } },
+  }))
+
+  await page.route('**/api/v1/admin/negotiations**', async (route) => {
+    const url = new URL(route.request().url())
+    if (route.request().method() === 'PUT' && url.pathname.endsWith(`/${negotiationId}/accept`)) {
+      acceptPayload = route.request().postDataJSON()
+      await route.fulfill({ json: { success: true, data: { status: 'accepted' } } })
+      return
+    }
+    if (url.pathname.endsWith(`/${negotiationId}`)) {
+      await route.fulfill({
+        json: {
+          success: true,
+          data: {
+            _id: negotiationId,
+            negotiationNumber: 'NEG-LEGACY',
+            productSnapshot: { name: 'Legacy Product', sku: 'LEGACY-1', price: 100 },
+            wholesalerId: { _id: 'buyer-1', name: 'Legacy Buyer', phone: '9135724680' },
+            requestedQuantity: 5,
+            requestedPricePerUnit: 80,
+            currentPricePerUnit: 90,
+            currentTotalPrice: 450,
+            currentOfferBy: 'admin',
+            status: 'accepted',
+            orderId: null,
+            message: '',
+            history: [],
+            createdAt: '2026-09-10T09:00:00.000Z',
+          },
+        },
+      })
+      return
+    }
+    await route.fulfill({
+      json: {
+        success: true,
+        data: [{
+          id: negotiationId,
+          negotiationNumber: 'NEG-LEGACY',
+          product: { name: 'Legacy Product', price: 100 },
+          wholesaler: { name: 'Legacy Buyer' },
+          requestedQuantity: 5,
+          requestedPricePerUnit: 80,
+          status: 'accepted',
+        }],
+        pagination: { page: 1, total: 1, totalPages: 1 },
+      },
+    })
+  })
+
+  await page.goto('/negotiations', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Accepted · Order Pending', { exact: true })).toBeVisible()
+  await page.getByRole('row').filter({ hasText: 'NEG-LEGACY' }).getByRole('button').click()
+  await page.getByRole('button', { name: 'Create Missing Order' }).click()
+
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Create Missing Order' })
+  await expect(dialog.getByRole('button', { name: 'Create Order' })).toBeDisabled()
+  const inputs = dialog.getByRole('textbox')
+  await inputs.nth(2).fill('1 Recovery Road')
+  await inputs.nth(4).fill('Raipur')
+  await inputs.nth(5).fill('Chhattisgarh')
+  await inputs.nth(6).fill('492001')
+  await dialog.getByRole('button', { name: 'Create Order' }).click()
+
+  await expect(page.getByText(/no valid order reference was returned/i)).toBeVisible()
+  await expect(dialog).toBeVisible()
+  expect(acceptPayload).toMatchObject({
+    shippingAddress: {
+      fullName: 'Legacy Buyer',
+      phone: '9135724680',
+      addressLine1: '1 Recovery Road',
       city: 'Raipur',
       state: 'Chhattisgarh',
       pincode: '492001',

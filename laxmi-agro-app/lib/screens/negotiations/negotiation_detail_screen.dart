@@ -14,6 +14,7 @@ import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../core/services/negotiation_socket_service.dart';
+import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
@@ -652,6 +653,7 @@ class _NegotiationDetailScreenState
 
                 // Current Status Card
                 _buildStatusCard(
+                  n,
                   status,
                   currentPrice,
                   currentTotal,
@@ -896,6 +898,7 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildStatusCard(
+    Map<String, dynamic> negotiation,
     String status,
     dynamic currentPrice,
     dynamic currentTotal,
@@ -905,6 +908,7 @@ class _NegotiationDetailScreenState
     Color statusColor;
     String statusLabel;
     IconData statusIcon;
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
 
     switch (status) {
       case 'pending':
@@ -921,12 +925,12 @@ class _NegotiationDetailScreenState
         break;
       case 'accepted':
         statusColor = greenAccent;
-        statusLabel = 'Order Created';
+        statusLabel = orderStatusLabel ?? 'Accepted · Order Pending';
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'converted':
         statusColor = greenAccent;
-        statusLabel = 'Order Created';
+        statusLabel = orderStatusLabel ?? 'Order Created';
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'rejected':
@@ -944,6 +948,7 @@ class _NegotiationDetailScreenState
         statusLabel = status.toUpperCase();
         statusIcon = Icons.info_outline;
     }
+    statusLabel = orderStatusLabel ?? statusLabel;
 
     return Container(
       padding: const EdgeInsets.all(16),
