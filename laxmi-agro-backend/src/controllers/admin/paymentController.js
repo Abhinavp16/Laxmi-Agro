@@ -1,4 +1,5 @@
-const { Payment, Order, Product, StockLog } = require('../../models');
+const mongoose = require('mongoose');
+const { Payment, Order } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { PAYMENT_STATUS, ORDER_STATUS } = require('../../utils/constants');
@@ -6,6 +7,7 @@ const notificationService = require('../../services/notificationService');
 const { creditAffiliateCommissionForOrder } = require('../../services/affiliateCommissionService');
 const { recordAudit } = require('../../services/auditService');
 const { maybeNotifyLowStock } = require('../../services/adminNotificationService');
+const { commitInventory } = require('../../services/orderApprovalService');
 
 exports.getPayments = async (req, res, next) => {
   try {
@@ -36,77 +38,50 @@ exports.getPayments = async (req, res, next) => {
 };
 
 exports.verifyPayment = async (req, res, next) => {
+  const session = await mongoose.startSession();
   try {
-    const payment = await Payment.findById(req.params.id);
-    if (!payment) {
-      throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
-    }
-
-    if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.HELD].includes(payment.status)) {
-      throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
-    }
-
-    payment.status = PAYMENT_STATUS.VERIFIED;
-    payment.verifiedBy = req.user._id;
-    payment.verifiedAt = new Date();
-    payment.holdReason = null;
-    payment.heldBy = null;
-    payment.heldAt = null;
-    await payment.save();
-
-    const order = await Order.findById(payment.orderId);
-    if (order) {
-      // Mark payment verified
-      order.addStatusHistory(ORDER_STATUS.PAYMENT_VERIFIED, 'Payment verified by admin', req.user._id);
-
-      // Auto-advance to PROCESSING and deduct stock
-      for (const item of order.items) {
-        const product = await Product.findById(item.productId);
-        if (!product) {
-          throw new BadRequestError(
-            `Product not found: ${item.productSnapshot?.name || item.productId}`,
-            'PRODUCT_NOT_FOUND'
-          );
-        }
-        if (product.stock < item.quantity) {
-          throw new BadRequestError(
-            `Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`,
-            'INSUFFICIENT_STOCK'
-          );
-        }
-
-        const previousStock = product.stock;
-        const result = await Product.findOneAndUpdate(
-          { _id: item.productId, stock: { $gte: item.quantity } },
-          { $inc: { stock: -item.quantity } },
-          { new: true }
-        );
-        if (!result) {
-          throw new BadRequestError(
-            `Race condition: stock changed for ${item.productSnapshot?.name}. Please retry.`,
-            'STOCK_RACE_CONDITION'
-          );
-        }
-
-        await StockLog.create({
-          productId: item.productId,
-          action: 'order_deduct',
-          quantityChange: -item.quantity,
-          previousStock,
-          newStock: result.stock,
-          orderId: order._id,
-          reason: `Order ${order.orderNumber} – payment verified, stock deducted`,
-          performedBy: req.user._id,
-        });
-
-        maybeNotifyLowStock(result);
+    let payment;
+    let order;
+    let lowStockProducts = [];
+    await session.withTransaction(async () => {
+      payment = await Payment.findById(req.params.id).session(session);
+      if (!payment) throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
+      if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.HELD].includes(payment.status)) {
+        throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
       }
 
-      order.addStatusHistory(ORDER_STATUS.PROCESSING, 'Order auto-confirmed after payment verification', req.user._id);
-      await order.save();
+      order = await Order.findById(payment.orderId).session(session);
+      if (order?.acceptanceStatus === 'pending') {
+        throw new BadRequestError('Retail order must be accepted before payment verification', 'ORDER_AWAITING_ACCEPTANCE');
+      }
 
-      await creditAffiliateCommissionForOrder(order._id);
-    }
+      payment.status = PAYMENT_STATUS.VERIFIED;
+      payment.verifiedBy = req.user._id;
+      payment.verifiedAt = new Date();
+      payment.holdReason = null;
+      payment.heldBy = null;
+      payment.heldAt = null;
+      await payment.save({ session });
+
+      if (order) {
+        order.addStatusHistory(ORDER_STATUS.PAYMENT_VERIFIED, 'Payment verified by admin', req.user._id);
+        if (order.acceptanceStatus === null) {
+          lowStockProducts = await commitInventory(
+            order,
+            req.user._id,
+            session,
+            `Order ${order.orderNumber} - payment verified, stock deducted`,
+          );
+        } else if (!order.inventoryCommittedAt) {
+          throw new BadRequestError('Accepted order inventory is not committed', 'INVENTORY_NOT_COMMITTED');
+        }
+        order.addStatusHistory(ORDER_STATUS.PROCESSING, 'Order auto-confirmed after payment verification', req.user._id);
+        await order.save({ session });
+      }
+    });
+
+    await Promise.all(lowStockProducts.map((product) => maybeNotifyLowStock(product)));
+    if (order) await creditAffiliateCommissionForOrder(order._id);
 
     // Send push notification to customer
     try {
@@ -137,6 +112,8 @@ exports.verifyPayment = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  } finally {
+    await session.endSession();
   }
 };
 

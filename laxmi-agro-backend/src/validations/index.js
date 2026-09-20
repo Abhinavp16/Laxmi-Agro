@@ -415,6 +415,10 @@ const adminValidation = {
     note: Joi.string().max(500).allow('', null),
   }),
 
+  rejectOrder: Joi.object({
+    reason: Joi.string().trim().min(1).max(500).required(),
+  }),
+
   updateWholesalerCategoryAccess: Joi.object({
     excludedCategories: Joi.array().items(Joi.string().allow('', null)).default([]),
   }),

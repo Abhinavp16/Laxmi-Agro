@@ -13,6 +13,8 @@ router.get('/products', staffOperationsController.getProducts);
 
 router.get('/orders', adminOrderController.getOrders);
 router.get('/orders/:id', adminOrderController.getOrderById);
+router.put('/orders/:id/accept', adminOrderController.acceptOrder);
+router.put('/orders/:id/reject', validate(adminValidation.rejectOrder), adminOrderController.rejectOrder);
 router.put('/orders/:id/mark-payment-complete', adminOrderController.markPaymentCompleted);
 router.put('/orders/:id/ship', validate(adminValidation.shipOrder), adminOrderController.shipOrder);
 

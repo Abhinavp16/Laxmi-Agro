@@ -576,6 +576,10 @@ exports.getMyOrders = async (req, res, next) => {
       shippingAddress: order.shippingAddress,
       customerNote: order.customerNote,
       status: order.status,
+      acceptanceStatus: order.acceptanceStatus,
+      acceptedAt: order.acceptedAt,
+      rejectedAt: order.rejectedAt,
+      rejectionReason: order.rejectionReason,
       statusHistory: order.statusHistory,
       trackingNumber: order.trackingNumber,
       courierName: order.courierName,
@@ -687,6 +691,7 @@ exports.createOrderFromCart = async (req, res, next) => {
           businessName: req.user.businessInfo?.businessName,
         },
         orderType: ORDER_TYPES.RETAIL,
+        acceptanceStatus: userRole === USER_ROLES.BUYER ? 'pending' : null,
         items: orderItems,
         subtotal,
         deliveryFee,
@@ -698,7 +703,9 @@ exports.createOrderFromCart = async (req, res, next) => {
         customerNote,
         statusHistory: [{
           status: ORDER_STATUS.PENDING_PAYMENT,
-          note: 'WhatsApp checkout initiated',
+          note: userRole === USER_ROLES.BUYER
+            ? 'Customer order submitted for approval'
+            : 'Order submitted',
         }],
         affiliateCode: resolvedAffiliateCode,
         offerCode,
@@ -721,13 +728,14 @@ exports.createOrderFromCart = async (req, res, next) => {
     }
 
     if (order) {
-      notifyAdmins({
+      await notifyAdmins({
         type: 'order_created',
         title: `New order ${order.orderNumber || ''}`.trim(),
         body: `${req.user?.name || 'A customer'} placed an order of ₹${total}.`,
         link: '/orders',
         actor: { id: req.user?._id, name: req.user?.name, role: req.user?.role },
         metadata: { orderId: String(order._id), orderNumber: order.orderNumber, total },
+        includeStaff: true,
       });
     }
 
@@ -739,9 +747,10 @@ exports.createOrderFromCart = async (req, res, next) => {
 
     const whatsappPayload = buildWhatsAppPayload(checkout.orderWhatsappNumber, orderMessage);
 
+    const requiresApproval = order?.acceptanceStatus === 'pending';
     res.status(201).json({
       success: true,
-      message: 'Proceed to WhatsApp to complete this order.',
+      message: requiresApproval ? 'Order placed. Awaiting acceptance.' : 'Order placed successfully.',
       data: {
         orderId: order?._id || null,
         orderNumber: order?.orderNumber || null,
@@ -750,6 +759,9 @@ exports.createOrderFromCart = async (req, res, next) => {
         discount,
         total,
         status: order?.status || null,
+        acceptanceStatus: order?.acceptanceStatus || null,
+        nextAction: requiresApproval ? 'await_acceptance' : 'legacy_checkout',
+        requiresWhatsapp: !requiresApproval,
         offerCode: order?.offerCode || offerCode || null,
         affiliateCode: order?.affiliateCode || resolvedAffiliateCode || null,
         discountSource: order?.discountSource || discountSource || null,

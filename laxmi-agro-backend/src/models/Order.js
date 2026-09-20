@@ -142,6 +142,19 @@ const orderSchema = new mongoose.Schema({
 
   statusHistory: [statusHistorySchema],
 
+  acceptanceStatus: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: null,
+  },
+  acceptedAt: { type: Date, default: null },
+  acceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  rejectedAt: { type: Date, default: null },
+  rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  rejectionReason: { type: String, maxlength: 500, default: null },
+  inventoryCommittedAt: { type: Date, default: null },
+  inventoryReleasedAt: { type: Date, default: null },
+
   trackingNumber: {
     type: String,
     default: null,
@@ -186,6 +199,7 @@ const orderSchema = new mongoose.Schema({
 orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ acceptanceStatus: 1, createdAt: -1 });
 orderSchema.index({ orderType: 1 });
 orderSchema.index(
   { negotiationId: 1 },

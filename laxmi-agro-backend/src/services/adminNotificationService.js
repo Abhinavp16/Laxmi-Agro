@@ -43,6 +43,7 @@ async function notifyAdmins(event = {}) {
     actor = {},
     metadata = {},
     push = true,
+    includeStaff = false,
   } = event;
 
   let record = null;
@@ -86,7 +87,7 @@ async function notifyAdmins(event = {}) {
   // Push delivery (includes web push for the installed PWA / admin tab).
   if (push) {
     try {
-      const admins = await User.find({ role: 'admin', isActive: true })
+      const admins = await User.find({ role: { $in: includeStaff ? ['admin', 'staff'] : ['admin'] }, isActive: true })
         .select('_id')
         .lean();
       const adminIds = admins.map((admin) => admin._id);

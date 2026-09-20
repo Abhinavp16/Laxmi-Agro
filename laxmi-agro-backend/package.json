@@ -40,7 +40,8 @@
     "test:critical": "node tests/productionCritical.test.js",
     "test:search": "node tests/productSearchService.test.js",
     "test:price-snapshot": "node tests/priceSnapshotWorkbook.test.js",
-    "test:mobile-app-settings": "node tests/mobileAppSettings.test.js"
+    "test:mobile-app-settings": "node tests/mobileAppSettings.test.js",
+    "test:order-approval": "node tests/orderApproval.test.js"
   },
   "keywords": [
     "ecommerce",
