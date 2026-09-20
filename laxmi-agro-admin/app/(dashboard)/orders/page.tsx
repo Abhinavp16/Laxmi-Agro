@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Eye, Truck, CheckCircle2, XCircle, Package, MapPin, Search, Trash2 } from "@/components/hugeicons"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import {
     Dialog,
@@ -32,10 +33,19 @@ interface Order {
     customerSnapshot: { name: string; email: string; phone: string }
     total: number
     status: string
+    orderType?: string
+    acceptanceStatus?: "pending" | "accepted" | "rejected" | null
+    acceptedAt?: string
+    acceptedBy?: string | { name?: string; email?: string }
+    rejectedAt?: string
+    rejectedBy?: string | { name?: string; email?: string }
+    rejectionReason?: string
+    inventoryCommittedAt?: string
+    inventoryReleasedAt?: string
     createdAt: string
     trackingNumber?: string
     courierName?: string
-    shippingAddress?: { address: string; city: string; state: string; pincode: string }
+    shippingAddress?: { address?: string; addressLine1?: string; addressLine2?: string; city: string; state: string; pincode: string }
     statusHistory?: { status: string; note?: string; timestamp: string }[]
     payment?: {
         _id: string
@@ -49,6 +59,16 @@ interface Order {
 
 function formatStatusLabel(status: string) {
     return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatActor(actor?: Order["acceptedBy"]) {
+    if (!actor) return "Unknown"
+    if (typeof actor === "string") return actor
+    return actor.name || actor.email || "Unknown"
+}
+
+function canCompletePayment(order: Order) {
+    return order.acceptanceStatus == null || order.acceptanceStatus === "accepted"
 }
 
 export default function OrdersPage() {
@@ -68,6 +88,12 @@ export default function OrdersPage() {
     const [courierName, setCourierName] = useState("")
     const [isShipping, setIsShipping] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [acceptanceFilter, setAcceptanceFilter] = useState<"all" | "pending">("all")
+    const [pendingApprovalCount, setPendingApprovalCount] = useState(0)
+    const [acceptanceAction, setAcceptanceAction] = useState<{ orderId: string; type: "accept" | "reject" } | null>(null)
+    const acceptanceActionLock = useRef(false)
+    const [rejectOrder, setRejectOrder] = useState<Order | null>(null)
+    const [rejectionReason, setRejectionReason] = useState("")
 
     const [searchQuery, setSearchQuery] = useState("")
     const [page, setPage] = useState(1)
@@ -99,7 +125,8 @@ export default function OrdersPage() {
     async function fetchOrders(
         pageNum: number = 1,
         reset: boolean = false,
-        searchOverride?: string
+        searchOverride?: string,
+        acceptanceOverride?: "all" | "pending",
     ) {
         if (reset) {
             setIsLoading(true)
@@ -119,6 +146,10 @@ export default function OrdersPage() {
             if (effectiveSearch.trim()) {
                 params.append("search", effectiveSearch.trim())
             }
+            const effectiveAcceptance = acceptanceOverride ?? acceptanceFilter
+            if (effectiveAcceptance === "pending") {
+                params.append("acceptanceStatus", "pending")
+            }
 
             const res = await apiFetch(`/admin/orders?${params.toString()}`)
             const data = await res.json()
@@ -133,6 +164,7 @@ export default function OrdersPage() {
                 }
 
                 setTotalOrders(pagination.total || items.length)
+                setPendingApprovalCount(data.approvalCounts?.pending || 0)
                 setHasMore((pagination.page || 1) < (pagination.totalPages || 1))
             } else {
                 toast.error("Failed to fetch orders")
@@ -162,9 +194,9 @@ export default function OrdersPage() {
         if (hasMore && !isLoadingMore) {
             const nextPage = page + 1
             setPage(nextPage)
-            void fetchOrders(nextPage, false, searchFromUrl)
+            void fetchOrders(nextPage, false, searchFromUrl, acceptanceFilter)
         }
-    }, [hasMore, isLoadingMore, page, searchFromUrl])
+    }, [acceptanceFilter, hasMore, isLoadingMore, page, searchFromUrl])
 
     async function fetchOrderDetails(id: string) {
         try {
@@ -269,6 +301,36 @@ export default function OrdersPage() {
         }
     }
 
+    async function updateAcceptance(order: Order, action: "accept" | "reject", reason?: string) {
+        if (acceptanceActionLock.current) return
+        if (action === "reject" && !reason?.trim()) {
+            toast.error("A rejection reason is required")
+            return
+        }
+
+        acceptanceActionLock.current = true
+        setAcceptanceAction({ orderId: order._id, type: action })
+        try {
+            const res = await apiFetch(`/admin/orders/${order._id}/${action}`, {
+                method: "PUT",
+                ...(action === "reject" ? { body: JSON.stringify({ reason: reason!.trim() }) } : {}),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.message || `Failed to ${action} order`)
+
+            toast.success(action === "accept" ? "Order accepted" : "Order rejected")
+            setRejectOrder(null)
+            setRejectionReason("")
+            await fetchOrders(1, true, searchFromUrl)
+            if (isdetailsOpen && selectedOrder?._id === order._id) await fetchOrderDetails(order._id)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : `Failed to ${action} order`)
+        } finally {
+            acceptanceActionLock.current = false
+            setAcceptanceAction(null)
+        }
+    }
+
     async function shipOrder(orderId: string) {
         if (!trackingNumber.trim() || !courierName.trim()) {
             toast.error("Please enter tracking number and courier name")
@@ -343,6 +405,8 @@ export default function OrdersPage() {
         }
     }
 
+    const displayedOrders = orders
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -388,6 +452,11 @@ export default function OrdersPage() {
                 )}
             </form>
 
+            <div className="flex flex-wrap gap-2" aria-label="Order approval filters">
+                <Button type="button" size="sm" variant={acceptanceFilter === "all" ? "default" : "outline"} className={acceptanceFilter === "all" ? "bg-[#86efac] text-black hover:bg-[#74db98]" : "border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"} onClick={() => { setAcceptanceFilter("all"); void fetchOrders(1, true, searchFromUrl, "all") }}>All Orders</Button>
+                <Button type="button" size="sm" variant={acceptanceFilter === "pending" ? "default" : "outline"} className={acceptanceFilter === "pending" ? "bg-amber-500 text-black hover:bg-amber-400" : "border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A]"} onClick={() => { setAcceptanceFilter("pending"); void fetchOrders(1, true, searchFromUrl, "pending") }}>Awaiting Approval ({pendingApprovalCount})</Button>
+            </div>
+
             {filteredUserId && (
                 <div className="flex flex-col gap-3 rounded-xl border border-[#2f4f3a] bg-[#0D0D0D] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -424,12 +493,12 @@ export default function OrdersPage() {
                         <div className="flex justify-center p-8">
                             <Loader2 className="h-8 w-8 animate-spin text-[#86efac]" />
                         </div>
-                    ) : orders.length === 0 ? (
+                    ) : displayedOrders.length === 0 ? (
                         <div className="py-10 text-center text-gray-500">No orders found</div>
                     ) : (
                         <>
                             <div className="space-y-3 md:hidden">
-                                {orders.map((order) => {
+                                {displayedOrders.map((order) => {
                                     const totalItems = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
                                     const leadItem = order.items[0]?.productSnapshot?.name || "Product"
 
@@ -448,6 +517,7 @@ export default function OrdersPage() {
                                             </div>
 
                                             <div className="mt-4 space-y-2 text-sm">
+                                                {order.acceptanceStatus === "pending" && <span className="inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-400">Awaiting Approval</span>}
                                                 <div className="text-white">{order.customerSnapshot?.name || "-"}</div>
                                                 <div className="text-xs text-gray-400">{order.customerSnapshot?.phone || "-"}</div>
                                                 <div className="text-xs text-gray-400">
@@ -461,10 +531,12 @@ export default function OrdersPage() {
                                                     <div className="text-base font-bold text-white">Rs {order.total.toLocaleString("en-IN")}</div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    {order.acceptanceStatus === "pending" && <Button size="sm" className="bg-green-600 text-white hover:bg-green-700" disabled={acceptanceAction?.orderId === order._id} onClick={() => void updateAcceptance(order, "accept")}>{acceptanceAction?.orderId === order._id && acceptanceAction.type === "accept" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Accept</Button>}
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]"
+                                                        aria-label={`View order ${order.orderNumber}`}
                                                         onClick={() => fetchOrderDetails(order._id)}
                                                     >
                                                         <Eye className="mr-2 h-4 w-4" />
@@ -502,7 +574,7 @@ export default function OrdersPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {orders.map((order) => (
+                                        {displayedOrders.map((order) => (
                                             <TableRow key={order._id} className="border-[#333] hover:bg-[#1A1A1A]">
                                                 <TableCell className="font-medium text-white">{order.orderNumber}</TableCell>
                                                 <TableCell className="font-medium text-white">{order.customerSnapshot?.name}</TableCell>
@@ -511,16 +583,19 @@ export default function OrdersPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right font-bold text-white">Rs {order.total.toLocaleString("en-IN")}</TableCell>
                                                 <TableCell className="text-center">
+                                                    {order.acceptanceStatus === "pending" && <span className="mr-2 rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-semibold uppercase text-amber-400">Awaiting Approval</span>}
                                                     <span className={`rounded-full px-2 py-1 text-xs font-medium uppercase ${getStatusColor(order.status)}`}>
                                                         {order.status.replace(/_/g, " ")}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
+                                                        {order.acceptanceStatus === "pending" && <Button size="sm" className="h-8 bg-green-600 text-white hover:bg-green-700" disabled={acceptanceAction?.orderId === order._id} onClick={() => void updateAcceptance(order, "accept")}>{acceptanceAction?.orderId === order._id && acceptanceAction.type === "accept" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept"}</Button>}
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
                                                             className="h-8 w-8 p-0 text-white hover:bg-[#333]"
+                                                            aria-label={`View order ${order.orderNumber}`}
                                                             onClick={() => fetchOrderDetails(order._id)}
                                                         >
                                                             <Eye className="h-4 w-4" />
@@ -559,6 +634,15 @@ export default function OrdersPage() {
 
                     {selectedOrder && (
                         <div className="space-y-6 overflow-y-auto pr-1 sm:pr-2">
+                            {(selectedOrder.inventoryCommittedAt || selectedOrder.inventoryReleasedAt) && <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4 text-sm"><h3 className="mb-3 font-medium">Inventory</h3><div className="space-y-1 text-gray-300">{selectedOrder.inventoryCommittedAt && <div>Committed: {new Date(selectedOrder.inventoryCommittedAt).toLocaleString("en-IN")}</div>}{selectedOrder.inventoryReleasedAt && <div>Released: {new Date(selectedOrder.inventoryReleasedAt).toLocaleString("en-IN")}</div>}</div></div>}
+                            {selectedOrder.acceptanceStatus != null && (
+                                <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-medium">Order Approval</h3><span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${selectedOrder.acceptanceStatus === "accepted" ? "bg-green-500/15 text-green-400" : selectedOrder.acceptanceStatus === "rejected" ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400"}`}>{selectedOrder.acceptanceStatus === "pending" ? "Awaiting Approval" : selectedOrder.acceptanceStatus}</span></div>
+                                    {selectedOrder.acceptanceStatus === "accepted" && <div className="mt-3 text-sm text-gray-300">Accepted by {formatActor(selectedOrder.acceptedBy)}{selectedOrder.acceptedAt ? ` on ${new Date(selectedOrder.acceptedAt).toLocaleString("en-IN")}` : ""}</div>}
+                                    {selectedOrder.acceptanceStatus === "rejected" && <div className="mt-3 space-y-1 text-sm text-gray-300"><div>Rejected by {formatActor(selectedOrder.rejectedBy)}{selectedOrder.rejectedAt ? ` on ${new Date(selectedOrder.rejectedAt).toLocaleString("en-IN")}` : ""}</div><div><span className="text-gray-400">Reason:</span> {selectedOrder.rejectionReason || "Not recorded"}</div></div>}
+                                    {selectedOrder.acceptanceStatus === "pending" && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><Button className="bg-green-600 text-white hover:bg-green-700" disabled={acceptanceAction?.orderId === selectedOrder._id} onClick={() => void updateAcceptance(selectedOrder, "accept")}>{acceptanceAction?.orderId === selectedOrder._id && acceptanceAction.type === "accept" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Accept Order</Button><Button variant="destructive" disabled={acceptanceAction?.orderId === selectedOrder._id} onClick={() => setRejectOrder(selectedOrder)}>Reject Order</Button></div>}
+                                </div>
+                            )}
                             <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
                                 <h3 className="mb-2 flex items-center gap-2 font-medium">
                                     Payment Information
@@ -617,7 +701,7 @@ export default function OrdersPage() {
                                             </div>
                                         )}
 
-                                        {selectedOrder.status === "pending_payment" && (
+                                        {selectedOrder.status === "pending_payment" && canCompletePayment(selectedOrder) && (
                                             <Button
                                                 className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
                                                 onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
@@ -631,7 +715,7 @@ export default function OrdersPage() {
                                 ) : (
                                     <div className="space-y-3">
                                         <div className="text-sm text-yellow-500">No payment information uploaded yet.</div>
-                                        {selectedOrder.status === "pending_payment" && (
+                                        {selectedOrder.status === "pending_payment" && canCompletePayment(selectedOrder) && (
                                             <Button
                                                 className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
                                                 onClick={() => handleMarkPaymentCompleted(selectedOrder._id)}
@@ -653,7 +737,7 @@ export default function OrdersPage() {
                                     <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                                         <div>
                                             <span className="block text-gray-400">Address</span>
-                                            <span>{selectedOrder.shippingAddress.address}</span>
+                                            <span>{[selectedOrder.shippingAddress.addressLine1 || selectedOrder.shippingAddress.address, selectedOrder.shippingAddress.addressLine2].filter(Boolean).join(", ")}</span>
                                         </div>
                                         <div>
                                             <span className="block text-gray-400">City</span>
@@ -754,7 +838,7 @@ export default function OrdersPage() {
                                     </Button>
                                 )}
 
-                                {!["delivered", "cancelled"].includes(selectedOrder.status) && (
+                                {selectedOrder.acceptanceStatus !== "pending" && !["shipped", "delivered", "cancelled"].includes(selectedOrder.status) && (
                                     <Button
                                         variant="destructive"
                                         onClick={() => {
@@ -771,6 +855,14 @@ export default function OrdersPage() {
                             </div>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={Boolean(rejectOrder)} onOpenChange={(open) => { if (!open && !acceptanceAction) { setRejectOrder(null); setRejectionReason("") } }}>
+                <DialogContent className="max-w-[95vw] border-[#333] bg-[#161616] text-white sm:max-w-md">
+                    <DialogHeader><DialogTitle>Reject Order</DialogTitle><DialogDescription>Provide a reason for rejecting {rejectOrder?.orderNumber}. This reason will be recorded on the order.</DialogDescription></DialogHeader>
+                    <Textarea aria-label="Rejection reason" value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} placeholder="Required rejection reason" className="border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-500" disabled={Boolean(acceptanceAction)} />
+                    <DialogFooter><Button variant="outline" className="border-[#333] bg-transparent text-white hover:bg-[#1A1A1A]" disabled={Boolean(acceptanceAction)} onClick={() => { setRejectOrder(null); setRejectionReason("") }}>Cancel</Button><Button variant="destructive" disabled={!rejectionReason.trim() || Boolean(acceptanceAction)} onClick={() => rejectOrder && void updateAcceptance(rejectOrder, "reject", rejectionReason)}>{acceptanceAction?.type === "reject" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Reject Order</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
