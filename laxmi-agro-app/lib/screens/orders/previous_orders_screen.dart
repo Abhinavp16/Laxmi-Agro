@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/customer_order_presentation.dart';
 import '../../core/utils/order_pagination.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 
@@ -86,68 +87,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     return DateFormat('MMM dd, yyyy · hh:mm a').format(parsed.toLocal());
   }
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return const Color(0xFFF59E0B);
-      case 'payment_uploaded':
-        return const Color(0xFF6366F1);
-      case 'payment_verified':
-        return const Color(0xFF3B82F6);
-      case 'processing':
-        return const Color(0xFF8B5CF6);
-      case 'shipped':
-        return const Color(0xFF0EA5E9);
-      case 'delivered':
-        return const Color(0xFF22C55E);
-      case 'cancelled':
-        return const Color(0xFFEF4444);
-      default:
-        return AppColors.gray500;
-    }
-  }
+  Color _statusColor(String status) => CustomerOrderPresentation.color(status);
 
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return 'Awaiting Payment Confirmation';
-      case 'payment_uploaded':
-        return 'Awaiting Shop Confirmation';
-      case 'payment_verified':
-        return 'Payment Confirmed';
-      case 'processing':
-        return 'Processing';
-      case 'shipped':
-        return 'Shipped';
-      case 'delivered':
-        return 'Delivered';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status.replaceAll('_', ' ');
-    }
-  }
+  String _statusLabel(String status) => CustomerOrderPresentation.label(status);
 
-  IconData _statusIcon(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return Icons.access_time_rounded;
-      case 'payment_uploaded':
-        return Icons.hourglass_top_rounded;
-      case 'payment_verified':
-        return Icons.verified_rounded;
-      case 'processing':
-        return Icons.settings_rounded;
-      case 'shipped':
-        return Icons.local_shipping_rounded;
-      case 'delivered':
-        return Icons.check_circle_rounded;
-      case 'cancelled':
-        return Icons.cancel_rounded;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
+  IconData _statusIcon(String status) => CustomerOrderPresentation.icon(status);
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +191,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
-    final status = order['status']?.toString() ?? '';
+    final fulfillmentStatus = order['status']?.toString() ?? '';
+    final status = CustomerOrderPresentation.stage(order);
     final statusColor = _statusColor(status);
     final items = order['items'] as List<dynamic>? ?? [];
     final orderNumber = order['orderNumber']?.toString() ?? '';
@@ -386,8 +331,9 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           _buildPriceBreakdown(order),
           _buildShippingAddress(order),
           _buildTrackingDetails(order),
+          _buildRejectionDetails(order),
           _buildStatusHistory(order),
-          _buildActions(order, status),
+          _buildActions(order, fulfillmentStatus),
         ],
       ),
     );
@@ -597,6 +543,25 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     );
   }
 
+  Widget _buildRejectionDetails(Map<String, dynamic> order) {
+    if (CustomerOrderPresentation.acceptanceStatus(order) != 'rejected') {
+      return const SizedBox.shrink();
+    }
+    final reason = order['rejectionReason']?.toString().trim();
+    return _infoSection(
+      icon: Icons.block_rounded,
+      title: 'Order Rejected',
+      children: [
+        Text(
+          reason == null || reason.isEmpty
+              ? 'This order was not approved. Contact support if you need more information.'
+              : reason,
+          style: _infoTextStyle(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusHistory(Map<String, dynamic> order) {
     final history = order['statusHistory'] as List<dynamic>? ?? [];
     if (history.isEmpty) return const SizedBox.shrink();
@@ -700,7 +665,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final orderId = order['id']?.toString() ?? '';
     final trackingNumber = order['trackingNumber']?.toString();
     final canShareReceipt =
-        status == 'pending_payment' || status == 'payment_uploaded';
+        CustomerOrderPresentation.acceptanceStatus(order).isEmpty &&
+        (status == 'pending_payment' || status == 'payment_uploaded');
+    final hasAcceptance = CustomerOrderPresentation.acceptanceStatus(
+      order,
+    ).isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -728,7 +697,9 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
               icon: const Icon(Icons.local_shipping_rounded, size: 17),
               label: const Text('Track Order'),
             )
-          else if (status == 'payment_verified' || status == 'processing')
+          else if (hasAcceptance ||
+              status == 'payment_verified' ||
+              status == 'processing')
             OutlinedButton.icon(
               onPressed: () => context.push('/tracking/$orderId'),
               icon: const Icon(Icons.timeline_rounded, size: 17),

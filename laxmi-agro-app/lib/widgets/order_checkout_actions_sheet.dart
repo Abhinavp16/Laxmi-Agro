@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/services/api_client.dart';
 import '../core/services/order_export_service.dart';
@@ -16,6 +17,11 @@ class OrderCheckoutActionsSheet {
     required ApiClient apiClient,
     required dynamic responseData,
   }) async {
+    if (usesInAppApprovalFlow(responseData)) {
+      await _showAwaitingApproval(context, responseData);
+      return;
+    }
+
     if (kIsWeb) {
       if (!context.mounted) return;
       await showFailure(
@@ -66,6 +72,150 @@ class OrderCheckoutActionsSheet {
       failureMessage:
           shareResult.errorMessage ??
           'We saved your order, but could not open the receipt sharing options.',
+    );
+  }
+
+  static bool usesInAppApprovalFlow(dynamic responseData) {
+    if (responseData is! Map) return false;
+    final data = responseData['data'];
+    final envelope = data is Map ? data : responseData;
+    final nextAction = envelope['nextAction'] ?? responseData['nextAction'];
+    final requiresWhatsapp =
+        envelope['requiresWhatsapp'] ?? responseData['requiresWhatsapp'];
+    return nextAction == 'await_acceptance' && requiresWhatsapp == false;
+  }
+
+  static Map<dynamic, dynamic>? _extractOrder(dynamic responseData) {
+    if (responseData is! Map) return null;
+    final data = responseData['data'];
+    final envelope = data is Map ? data : responseData;
+    final order = envelope['order'];
+    return order is Map ? order : envelope;
+  }
+
+  static Future<void> _showAwaitingApproval(
+    BuildContext context,
+    dynamic responseData,
+  ) async {
+    final order = _extractOrder(responseData);
+    final data = responseData is Map ? responseData['data'] : null;
+    final envelope = data is Map ? data : responseData;
+    final orderId =
+        (order?['id'] ??
+                order?['_id'] ??
+                (envelope is Map ? envelope['orderId'] : null))
+            ?.toString()
+            .trim() ??
+        '';
+    final orderNumber =
+        (order?['orderNumber'] ??
+                order?['number'] ??
+                (envelope is Map ? envelope['orderNumber'] : null))
+            ?.toString()
+            .trim() ??
+        '';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDCFCE7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Color(0xFF15803D),
+                  size: 38,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Order Submitted',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                'Awaiting Approval',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFD97706),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'We’ll notify you after the Laxmi Agro team reviews your order. No WhatsApp message is required.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              if (orderNumber.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    'Order $orderNumber',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 22),
+              if (orderId.isNotEmpty)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      context.push('/tracking/$orderId');
+                    },
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('View Order'),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    context.go('/home');
+                  },
+                  child: const Text('Continue Shopping'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

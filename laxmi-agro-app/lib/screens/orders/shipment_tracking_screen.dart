@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/utils/customer_order_presentation.dart';
 import '../../core/utils/number_formatter.dart';
 
 class ShipmentTrackingScreen extends ConsumerStatefulWidget {
@@ -126,101 +127,40 @@ class _ShipmentTrackingScreenState
   }
 
   String _getStatusDisplay(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return 'Pending Payment';
-      case 'payment_uploaded':
-        return 'Payment Uploaded';
-      case 'payment_verified':
-        return 'Payment Verified';
-      case 'processing':
-        return 'Processing';
-      case 'shipped':
-        return 'Shipped';
-      case 'delivered':
-        return 'Delivered';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status
-            .replaceAll('_', ' ')
-            .split(' ')
-            .map(
-              (s) =>
-                  s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
-            )
-            .join(' ');
-    }
+    return CustomerOrderPresentation.label(status);
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return Colors.orange;
-      case 'payment_uploaded':
-        return Colors.blue;
-      case 'payment_verified':
-        return Colors.green;
-      case 'processing':
-        return Colors.blue;
-      case 'shipped':
-        return Colors.purple;
-      case 'delivered':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
+  Color _getStatusColor(String status) =>
+      CustomerOrderPresentation.color(status);
+
+  IconData _getStatusIcon(String status) =>
+      CustomerOrderPresentation.icon(status);
+
+  String? _timelineTimestamp(
+    Map<String, dynamic> order,
+    List<dynamic> history,
+    String stage,
+  ) {
+    dynamic value;
+    switch (stage) {
+      case 'awaiting_acceptance':
+        value = order['createdAt'];
+      case 'accepted_awaiting_payment':
+        value = order['acceptedAt'];
+      case 'rejected':
+        value = order['rejectedAt'];
       default:
-        return AppColors.primary;
+        for (final item in history) {
+          if (item is Map && item['status'] == stage) {
+            value = item['timestamp'];
+            break;
+          }
+        }
     }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'pending_payment':
-        return Icons.payment;
-      case 'payment_uploaded':
-        return Icons.cloud_upload;
-      case 'payment_verified':
-        return Icons.check_circle;
-      case 'processing':
-        return Icons.inventory_2;
-      case 'shipped':
-        return Icons.local_shipping;
-      case 'delivered':
-        return Icons.home;
-      case 'cancelled':
-        return Icons.cancel;
-      default:
-        return Icons.info;
-    }
-  }
-
-  List<String> _getStatusTimeline(String currentStatus) {
-    final List<String> allStatuses = [
-      'pending_payment',
-      'payment_verified',
-      'processing',
-      'shipped',
-      'delivered',
-    ];
-
-    // If cancelled, show only relevant statuses
-    if (currentStatus == 'cancelled') {
-      return ['pending_payment', 'cancelled'];
-    }
-
-    // Find current status index
-    int currentIndex = allStatuses.indexOf(currentStatus);
-    if (currentIndex == -1) {
-      // If status is payment_uploaded, treat as after pending_payment
-      if (currentStatus == 'payment_uploaded') {
-        currentIndex = 1;
-      } else {
-        return allStatuses;
-      }
-    }
-
-    return allStatuses.take(currentIndex + 1).toList();
+    final parsed = value == null ? null : DateTime.tryParse(value.toString());
+    return parsed == null
+        ? null
+        : DateFormat('MMM dd, yyyy hh:mm a').format(parsed.toLocal());
   }
 
   @override
@@ -323,7 +263,7 @@ class _ShipmentTrackingScreenState
 
     final order = _order!;
     final orderNumber = order['orderNumber'] ?? '';
-    final status = order['status'] ?? 'pending_payment';
+    final status = CustomerOrderPresentation.stage(order);
     final trackingNumber = order['trackingNumber'];
     final courierName = order['courierName'];
     final shippedAt = order['shippedAt'];
@@ -333,7 +273,7 @@ class _ShipmentTrackingScreenState
 
     final statusColor = _getStatusColor(status);
     final statusDisplay = _getStatusDisplay(status);
-    final timelineStatuses = _getStatusTimeline(status);
+    final timelineStatuses = CustomerOrderPresentation.timeline(order);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -517,6 +457,47 @@ class _ShipmentTrackingScreenState
               ),
               const SizedBox(height: 16),
 
+              if (status == 'rejected')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order not approved',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF991B1B),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          order['rejectionReason']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
+                                  true
+                              ? order['rejectionReason'].toString()
+                              : 'Contact support if you need more information.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            height: 1.4,
+                            color: const Color(0xFF7F1D1D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Timeline
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -526,21 +507,9 @@ class _ShipmentTrackingScreenState
                     final s = entry.value;
                     final isLast = index == timelineStatuses.length - 1;
                     final isCompleted = true;
-                    final isCurrent = s == status;
-
-                    String subtitle = '';
-                    if (statusHistory.isNotEmpty) {
-                      final historyItem = statusHistory.firstWhere(
-                        (h) => h['status'] == s,
-                        orElse: () => null,
-                      );
-                      if (historyItem != null &&
-                          historyItem['timestamp'] != null) {
-                        subtitle = DateFormat(
-                          'MMM dd, yyyy hh:mm a',
-                        ).format(DateTime.parse(historyItem['timestamp']));
-                      }
-                    }
+                    final isCurrent = index == timelineStatuses.length - 1;
+                    final subtitle =
+                        _timelineTimestamp(order, statusHistory, s) ?? '';
 
                     return _buildTimelineItem(
                       icon: _getStatusIcon(s),

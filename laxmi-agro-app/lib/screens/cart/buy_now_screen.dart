@@ -241,7 +241,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Proceed to WhatsApp',
+                                'Submit Order',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -957,7 +957,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
         return AlertDialog(
           title: const Text('Login Required'),
           content: const Text(
-            'Login is required before placing an order. Please log in to continue with WhatsApp checkout.',
+            'Login is required before placing an order. Please log in to continue checkout.',
           ),
           actions: [
             TextButton(

@@ -41,7 +41,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     {
       'q': 'What payment methods are accepted?',
       'a':
-          'After placing an order, send the generated receipt to our shop on WhatsApp. You can pay at the shop or use the QR code, UPI, or bank details shared by our team. Your order status will update after an admin confirms the payment.',
+          'Retail orders are reviewed in the app after submission. Once accepted, complete payment at the shop or use the QR code, UPI, or bank details shared by our team. Your order status updates after payment is confirmed.',
     },
     {
       'q': 'How long does delivery take?',
