@@ -236,6 +236,9 @@ exports.acceptNegotiation = async (req, res, next) => {
         customerNote,
         io: req.app.locals.io,
       });
+    if (!order) {
+      throw new BadRequestError('Negotiation order could not be recovered. Please retry.', 'NEGOTIATION_ORDER_MISSING');
+    }
 
     res.json({
       success: true,

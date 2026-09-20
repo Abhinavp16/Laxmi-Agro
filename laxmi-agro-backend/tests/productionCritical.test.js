@@ -238,10 +238,11 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
     pincode: '492001',
   };
 
-  function configure(status, currentOfferBy = 'wholesaler', expiresAt = new Date(Date.now() + 60000)) {
-    let order = null;
+  function configure(status, currentOfferBy = 'wholesaler', expiresAt = new Date(Date.now() + 60000), options = {}) {
+    let order = options.order || null;
     let orderCreates = 0;
     let finalized = false;
+    let createdPayload = null;
     const negotiation = {
       _id: ids.negotiation,
       negotiationNumber: 'NEG-TEST',
@@ -252,9 +253,12 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
       currentOfferBy,
       currentPricePerUnit: 90,
       currentTotalPrice: 450,
+      finalPricePerUnit: options.finalPricePerUnit ?? null,
+      finalTotalPrice: options.finalTotalPrice ?? null,
       status,
       expiresAt,
-      orderId: null,
+      orderId: options.orderId || order?._id || null,
+      history: options.history || [],
     };
     const product = {
       _id: ids.product,
@@ -275,14 +279,23 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
     models.Negotiation.updateOne = async () => {
       negotiation.status = 'expired';
     };
-    models.Negotiation.findOneAndUpdate = async (_query, update) => {
-      if (finalized || !['pending', 'countered'].includes(negotiation.status) || negotiation.orderId) return null;
+    models.Negotiation.findOneAndUpdate = async (query, update) => {
+      if (update.$set.status === 'accepted' && update.$set.orderId === null) {
+        if (String(query.orderId) !== String(negotiation.orderId)) return null;
+        Object.assign(negotiation, update.$set);
+        return negotiation;
+      }
+      if (query.expiresAt && negotiation.expiresAt <= new Date()) return null;
+      if (finalized || !['pending', 'countered', 'accepted'].includes(negotiation.status) || negotiation.orderId) return null;
       finalized = true;
       Object.assign(negotiation, update.$set);
+      if (update.$push?.history) negotiation.history.push(update.$push.history);
       return negotiation;
     };
     models.Order.findOne = () => ({ lean: async () => order });
-    models.Order.findById = () => ({ lean: async () => order });
+    models.Order.findById = (id) => ({
+      lean: async () => (order && String(order._id) === String(id) ? order : null),
+    });
     models.Order.create = async (payload) => {
       if (order) {
         const duplicate = new Error('duplicate negotiation order');
@@ -290,6 +303,7 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
         throw duplicate;
       }
       orderCreates += 1;
+      createdPayload = payload;
       order = { ...payload, _id: new mongoose.Types.ObjectId(), orderNumber: 'ORD-TEST' };
       return order;
     };
@@ -297,7 +311,11 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
     models.Product.findById = async () => product;
     models.Product.findByIdAndUpdate = async () => product;
     models.User.findById = async () => wholesaler;
-    return { negotiation, getOrderCreates: () => orderCreates };
+    return {
+      negotiation,
+      getOrderCreates: () => orderCreates,
+      getCreatedPayload: () => createdPayload,
+    };
   }
 
   const request = {
@@ -341,6 +359,43 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
     assert.strictEqual(staffResult.alreadyConverted, false);
 
     sideEffectCount = 0;
+    const acceptedHistory = [{ action: 'accepted', pricePerUnit: 85, totalPrice: 425 }];
+    const legacyAccepted = configure('accepted', 'admin', new Date(Date.now() - 1000), {
+      finalPricePerUnit: 85,
+      finalTotalPrice: 425,
+      history: acceptedHistory,
+    });
+    const recoveredLegacy = await acceptNegotiationAndCreateOrder(request);
+    assert.strictEqual(recoveredLegacy.negotiation.status, 'converted');
+    assert.strictEqual(recoveredLegacy.order.items[0].pricePerUnit, 85);
+    assert.strictEqual(recoveredLegacy.order.total, 425);
+    assert.strictEqual(legacyAccepted.negotiation.history.length, 1, 'legacy recovery must not append another accepted event');
+    assert.strictEqual(legacyAccepted.getOrderCreates(), 1);
+
+    sideEffectCount = 0;
+    const danglingId = new mongoose.Types.ObjectId();
+    const dangling = configure('converted', 'admin', new Date(Date.now() - 1000), {
+      orderId: danglingId,
+      finalPricePerUnit: 80,
+      finalTotalPrice: 400,
+      history: [{ action: 'accepted', pricePerUnit: 80, totalPrice: 400 }],
+    });
+    const recoveredDangling = await acceptNegotiationAndCreateOrder(request);
+    assert.strictEqual(recoveredDangling.negotiation.status, 'converted');
+    assert.notStrictEqual(String(recoveredDangling.order._id), String(danglingId));
+    assert.strictEqual(dangling.negotiation.history.length, 1, 'dangling-link recovery must preserve accepted history');
+    assert.strictEqual(dangling.getCreatedPayload().items[0].pricePerUnit, 80);
+
+    sideEffectCount = 0;
+    const validOrder = { _id: new mongoose.Types.ObjectId(), orderNumber: 'ORD-EXISTING' };
+    const converted = configure('converted', 'admin', new Date(Date.now() - 1000), { order: validOrder });
+    const existing = await acceptNegotiationAndCreateOrder(request);
+    assert.strictEqual(existing.alreadyConverted, true);
+    assert.strictEqual(existing.order, validOrder);
+    assert.strictEqual(converted.getOrderCreates(), 0);
+    assert.strictEqual(sideEffectCount, 0, 'idempotent conversion must not repeat side effects');
+
+    sideEffectCount = 0;
     const concurrent = configure('countered', 'admin');
     const results = await Promise.all([
       acceptNegotiationAndCreateOrder(request),
@@ -365,12 +420,47 @@ async function testNegotiationAcceptanceStatesAndIdempotency() {
   }
 }
 
+async function testNegotiationOrderDeletionIsProtected() {
+  const models = require('../src/models');
+  const originalFindById = models.Order.findById;
+  const originalPaymentFindOne = models.Payment.findOne;
+  const orderController = require('../src/controllers/admin/orderController');
+  let paymentQueried = false;
+  const order = {
+    _id: new mongoose.Types.ObjectId(),
+    negotiationId: new mongoose.Types.ObjectId(),
+    status: 'cancelled',
+  };
+
+  models.Order.findById = () => ({ lean: async () => order });
+  models.Payment.findOne = () => {
+    paymentQueried = true;
+    return { lean: async () => null };
+  };
+
+  try {
+    let receivedError;
+    await orderController.deleteOrder(
+      { params: { id: String(order._id) } },
+      { json() { throw new Error('protected order must not be deleted'); } },
+      (error) => { receivedError = error; },
+    );
+    assert.strictEqual(receivedError?.code, 'NEGOTIATION_ORDER_DELETE_NOT_ALLOWED');
+    assert.match(receivedError?.message || '', /negotiations cannot be deleted/i);
+    assert.strictEqual(paymentQueried, false, 'protected deletion must stop before related records are touched');
+  } finally {
+    models.Order.findById = originalFindById;
+    models.Payment.findOne = originalPaymentFindOne;
+  }
+}
+
 async function run() {
   await testPublicHindiWriteIsRemoved();
   testNegotiationOrderIndexIsUnique();
   await testMissingSmtpFailsWithoutLoggingSecrets();
   await testMagicLinkTokenLifecycle();
   await testNegotiationAcceptanceStatesAndIdempotency();
+  await testNegotiationOrderDeletionIsProtected();
   testAnalyticsConversionWindow();
   testAdminNegotiationSearch();
   testReviewSearchFields();

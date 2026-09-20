@@ -180,10 +180,10 @@ exports.getNegotiationById = async (req, res, next) => {
 };
 
 function assertStaffNegotiationAction(negotiation) {
-  if (negotiation.expiresAt <= new Date()) {
+  if ([NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status) && negotiation.expiresAt <= new Date()) {
     throw new ForbiddenError('Expired negotiations can only be continued by a full admin', 'NEGOTIATION_EXPIRED');
   }
-  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
+  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED, NEGOTIATION_STATUS.ACCEPTED, NEGOTIATION_STATUS.CONVERTED].includes(negotiation.status)) {
     throw new BadRequestError('Cannot act in the current negotiation status', 'INVALID_NEGOTIATION_STATUS');
   }
 }
@@ -204,6 +204,9 @@ exports.acceptNegotiation = async (req, res, next) => {
       customerNote: req.body.customerNote,
       io: req.app.locals.io,
     });
+    if (!order) {
+      throw new BadRequestError('Negotiation order could not be recovered. Please retry.', 'NEGOTIATION_ORDER_MISSING');
+    }
 
     res.json({
       success: true,

@@ -78,14 +78,36 @@ async function acceptNegotiationAndCreateOrder({
   customerNote,
   io,
 }) {
-  const negotiation = await Negotiation.findById(negotiationId);
+  let negotiation = await Negotiation.findById(negotiationId);
   if (!negotiation) {
     throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
   }
 
   if (negotiation.orderId) {
     const existingOrder = await Order.findById(negotiation.orderId).lean();
-    return { negotiation, order: existingOrder, alreadyConverted: true };
+    if (existingOrder) {
+      return { negotiation, order: existingOrder, alreadyConverted: true };
+    }
+
+    const danglingOrderId = negotiation.orderId;
+    negotiation = await Negotiation.findOneAndUpdate(
+      { _id: negotiation._id, orderId: danglingOrderId },
+      { $set: { status: NEGOTIATION_STATUS.ACCEPTED, orderId: null } },
+      { new: true, runValidators: true },
+    );
+    if (!negotiation) {
+      const currentNegotiation = await Negotiation.findById(negotiationId);
+      const currentOrder = currentNegotiation?.orderId
+        ? await Order.findById(currentNegotiation.orderId).lean()
+        : null;
+      if (currentNegotiation && currentOrder) {
+        return { negotiation: currentNegotiation, order: currentOrder, alreadyConverted: true };
+      }
+      throw new ConflictError(
+        'Negotiation order link changed while it was being repaired. Review it and try again.',
+        'NEGOTIATION_ORDER_REPAIR_CONFLICT',
+      );
+    }
   }
 
   const orphanedOrder = await Order.findOne({ negotiationId: negotiation._id }).lean();
@@ -123,14 +145,14 @@ async function acceptNegotiationAndCreateOrder({
     );
   }
 
-  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED].includes(negotiation.status)) {
+  if (![NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED, NEGOTIATION_STATUS.ACCEPTED].includes(negotiation.status)) {
     throw new BadRequestError(
       'Cannot accept in the current negotiation status',
       'INVALID_NEGOTIATION_STATUS',
     );
   }
 
-  if (negotiation.expiresAt <= new Date()) {
+  if (negotiation.status !== NEGOTIATION_STATUS.ACCEPTED && negotiation.expiresAt <= new Date()) {
     await Negotiation.updateOne(
       { _id: negotiation._id, status: { $in: [NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED] } },
       { $set: { status: NEGOTIATION_STATUS.EXPIRED } },
@@ -168,7 +190,9 @@ async function acceptNegotiationAndCreateOrder({
     wholesaler,
   });
 
-  const subtotal = negotiation.currentTotalPrice;
+  const acceptedPricePerUnit = negotiation.finalPricePerUnit ?? negotiation.currentPricePerUnit;
+  const acceptedTotalPrice = negotiation.finalTotalPrice ?? negotiation.currentTotalPrice;
+  const subtotal = acceptedTotalPrice;
   const orderItems = [{
     productId: product._id,
     variantId: null,
@@ -179,8 +203,8 @@ async function acceptNegotiationAndCreateOrder({
     },
     variantSnapshot: buildVariantSnapshot(product, resolved.variant),
     quantity: negotiation.requestedQuantity,
-    pricePerUnit: negotiation.currentPricePerUnit,
-    totalPrice: negotiation.currentTotalPrice,
+    pricePerUnit: acceptedPricePerUnit,
+    totalPrice: acceptedTotalPrice,
   }];
 
   const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
@@ -231,7 +255,13 @@ async function acceptNegotiationAndCreateOrder({
     }
     const currentOrder = currentNegotiation?.orderId
       ? await Order.findById(currentNegotiation.orderId).lean()
-      : order;
+      : null;
+    if (!currentOrder) {
+      throw new ConflictError(
+        'Negotiation was converted without a recoverable order. Review it and try again.',
+        'NEGOTIATION_ORDER_MISSING',
+      );
+    }
     return {
       negotiation: currentNegotiation || negotiation,
       order: currentOrder,
@@ -299,6 +329,32 @@ async function runPostConversionEffects({ negotiation, order, actor, product, wh
 
 async function finalizeNegotiation({ negotiation, order, actor, message, recoverExisting = false }) {
   const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  const acceptedPricePerUnit = negotiation.finalPricePerUnit ?? negotiation.currentPricePerUnit;
+  const acceptedTotalPrice = negotiation.finalTotalPrice ?? negotiation.currentTotalPrice;
+  const acceptanceAlreadyRecorded = negotiation.status === NEGOTIATION_STATUS.ACCEPTED ||
+    (negotiation.history || []).some((entry) => entry.action === NEGOTIATION_ACTIONS.ACCEPTED);
+  const update = {
+    $set: {
+      status: NEGOTIATION_STATUS.CONVERTED,
+      finalPricePerUnit: acceptedPricePerUnit,
+      finalTotalPrice: acceptedTotalPrice,
+      orderId: order._id,
+    },
+  };
+  if (!acceptanceAlreadyRecorded) {
+    update.$push = {
+      history: {
+        action: NEGOTIATION_ACTIONS.ACCEPTED,
+        by: 'admin',
+        actorId: actor.id,
+        actorRole: actor.role,
+        pricePerUnit: acceptedPricePerUnit,
+        totalPrice: acceptedTotalPrice,
+        message: message || `Accepted by ${actorLabel}`,
+      },
+    };
+  }
+
   return Negotiation.findOneAndUpdate(
     {
       _id: negotiation._id,
@@ -307,27 +363,11 @@ async function finalizeNegotiation({ negotiation, order, actor, message, recover
       currentOfferBy: negotiation.currentOfferBy,
       currentPricePerUnit: negotiation.currentPricePerUnit,
       currentTotalPrice: negotiation.currentTotalPrice,
-      ...(recoverExisting ? {} : { expiresAt: { $gt: new Date() } }),
+      ...(recoverExisting || negotiation.status === NEGOTIATION_STATUS.ACCEPTED
+        ? {}
+        : { expiresAt: { $gt: new Date() } }),
     },
-    {
-      $push: {
-        history: {
-          action: NEGOTIATION_ACTIONS.ACCEPTED,
-          by: 'admin',
-          actorId: actor.id,
-          actorRole: actor.role,
-          pricePerUnit: negotiation.currentPricePerUnit,
-          totalPrice: negotiation.currentTotalPrice,
-          message: message || `Accepted by ${actorLabel}`,
-        },
-      },
-      $set: {
-        status: NEGOTIATION_STATUS.CONVERTED,
-        finalPricePerUnit: negotiation.currentPricePerUnit,
-        finalTotalPrice: negotiation.currentTotalPrice,
-        orderId: order._id,
-      },
-    },
+    update,
     { new: true, runValidators: true },
   );
 }
