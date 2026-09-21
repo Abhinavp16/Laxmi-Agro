@@ -59,7 +59,6 @@ class _NegotiationDetailScreenState
   static const Color greenAccent = Color(0xFF16A34A);
   static const Color redAccent = Color(0xFFDC2626);
   static const Color amberAccent = Color(0xFFF59E0B);
-  static const Color chatBackground = Color(0xFFEFEAE2);
   static const Color incomingBubble = Color(0xFFFFFFFF);
   static const Color outgoingBubble = Color(0xFFD9FDD3);
 
@@ -783,10 +782,6 @@ class _NegotiationDetailScreenState
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
-                  decoration: BoxDecoration(
-                    color: chatBackground,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
                   child: Column(
                     children: [
                       ...history.map((entry) {
@@ -1583,8 +1578,9 @@ class _NegotiationDetailScreenState
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
-                color: chatBackground,
+                color: backgroundWhite,
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderLight),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
