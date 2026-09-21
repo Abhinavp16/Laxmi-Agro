@@ -29,17 +29,21 @@ class NegotiationDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _NegotiationDetailScreenState
-    extends ConsumerState<NegotiationDetailScreen> {
+    extends ConsumerState<NegotiationDetailScreen>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _isActioning = false;
   String? _error;
   Map<String, dynamic>? _negotiation;
   final List<Map<String, dynamic>> _optimisticMessages = [];
-  final Map<String, bool> _typingUsers = {}; // { userId: isTyping }
+  final Map<String, String> _typingUsers = {}; // { userId: displayName }
   final Map<String, bool> _readReceipts = {}; // { messageId: isRead }
   final _counterMessageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  Timer? _offlinePollTimer;
+  Timer? _refreshTimer;
+  Timer? _localTypingTimer;
+  Timer? _remoteTypingTimer;
+  bool _isTyping = false;
   final NegotiationSocketService _socketService = NegotiationSocketService();
   int _detailRequestSequence = 0;
   bool _refreshAfterInitialLoad = false;
@@ -55,18 +59,30 @@ class _NegotiationDetailScreenState
   static const Color greenAccent = Color(0xFF16A34A);
   static const Color redAccent = Color(0xFFDC2626);
   static const Color amberAccent = Color(0xFFF59E0B);
+  static const Color chatBackground = Color(0xFFEFEAE2);
+  static const Color incomingBubble = Color(0xFFFFFFFF);
+  static const Color outgoingBubble = Color(0xFFD9FDD3);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchDetail();
     _initializeSocket();
-    // Polling fallback while the realtime socket is disconnected, so admin
-    // messages still appear without a manual refresh.
-    _offlinePollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+    // The REST response remains canonical. Keep a short fallback refresh even
+    // when Socket.IO reports connected because a stale room subscription can
+    // otherwise leave this screen unchanged until it is reopened.
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
-      if (!_socketService.isConnected) _refreshFromSocket();
+      _fetchDetail(background: true);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _fetchDetail(background: true);
+    }
   }
 
   void _initializeSocket() {
@@ -74,6 +90,9 @@ class _NegotiationDetailScreenState
 
     _socketService.onMessageReceived = (data) {
       if (data['negotiationId']?.toString() != widget.negotiationId) return;
+      if (mounted) {
+        setState(_typingUsers.clear);
+      }
       _refreshFromSocket();
     };
     _socketService.onNegotiationChanged = _refreshFromSocket;
@@ -81,7 +100,13 @@ class _NegotiationDetailScreenState
     _socketService.onUserTyping = (userId, username) {
       if (mounted) {
         setState(() {
-          _typingUsers[userId] = true;
+          _typingUsers[userId] = username.trim().isEmpty
+              ? 'Laxmi Agro'
+              : username.trim();
+        });
+        _remoteTypingTimer?.cancel();
+        _remoteTypingTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) setState(_typingUsers.clear);
         });
       }
     };
@@ -91,6 +116,13 @@ class _NegotiationDetailScreenState
         setState(() {
           _typingUsers.remove(userId);
         });
+        if (_typingUsers.isEmpty) _remoteTypingTimer?.cancel();
+      }
+    };
+
+    _socketService.onUserStatus = (userId, _, isOnline) {
+      if (!isOnline && mounted) {
+        setState(() => _typingUsers.remove(userId));
       }
     };
 
@@ -106,6 +138,7 @@ class _NegotiationDetailScreenState
       if (mounted) {
         setState(_typingUsers.clear);
       }
+      _remoteTypingTimer?.cancel();
     };
     _socketService.onReconnect = _refreshFromSocket;
 
@@ -114,6 +147,7 @@ class _NegotiationDetailScreenState
       if (mounted) {
         setState(_typingUsers.clear);
       }
+      _remoteTypingTimer?.cancel();
     };
 
     if (auth.user?.id != null) {
@@ -144,8 +178,12 @@ class _NegotiationDetailScreenState
 
   @override
   void dispose() {
-    _offlinePollTimer?.cancel();
-    _offlinePollTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    _localTypingTimer?.cancel();
+    _remoteTypingTimer?.cancel();
+    _emitStopTyping();
     _counterMessageController.dispose();
     _scrollController.dispose();
 
@@ -178,6 +216,8 @@ class _NegotiationDetailScreenState
       if (!mounted || requestSequence != _detailRequestSequence) return false;
 
       if (response.data['success'] == true) {
+        final previousHistoryLength =
+            (_negotiation?['history'] as List?)?.length ?? 0;
         setState(() {
           _negotiation = response.data['data'];
           final history = (_negotiation?['history'] as List?) ?? const [];
@@ -194,9 +234,13 @@ class _NegotiationDetailScreenState
           _isLoading = false;
         });
         _flushQueuedRefresh();
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) _scrollToBottom();
-        });
+        final currentHistoryLength =
+            (_negotiation?['history'] as List?)?.length ?? 0;
+        if (!background || currentHistoryLength > previousHistoryLength) {
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) _scrollToBottom();
+          });
+        }
         return true;
       } else {
         if (!background) {
@@ -549,7 +593,7 @@ class _NegotiationDetailScreenState
     final approvedByLabel = approvedBy == null
         ? null
         : approvedByName.isNotEmpty
-        ? 'Accepted by $approvedByName'
+        ? 'Accepted by Laxmi Agro: $approvedByName'
         : 'Accepted by Laxmi Agro';
 
     return Column(
@@ -736,29 +780,44 @@ class _NegotiationDetailScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...history.map((entry) {
-                  if (entry['action'] == 'message') {
-                    return _buildChatMessage(
-                      entry['by'] as String,
-                      entry['message'] as String,
-                      entry['timestamp'] != null
-                          ? DateFormat('h:mm a').format(
-                              DateTime.parse(entry['timestamp'] as String),
-                            )
-                          : '',
-                      entry['messageId'] as String?,
-                    );
-                  }
-                  return _buildHistoryItem(entry);
-                }),
-                ..._optimisticMessages.map(
-                  (msg) => _buildChatMessage(
-                    msg['by'] as String,
-                    msg['message'] as String,
-                    DateFormat(
-                      'h:mm a',
-                    ).format(DateTime.parse(msg['timestamp'] as String)),
-                    msg['messageId'] as String?,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
+                  decoration: BoxDecoration(
+                    color: chatBackground,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      ...history.map((entry) {
+                        if (entry['action'] == 'message') {
+                          return _buildChatMessage(
+                            entry['by'] as String,
+                            entry['message'] as String,
+                            entry['timestamp'] != null
+                                ? DateFormat('h:mm a').format(
+                                    DateTime.parse(
+                                      entry['timestamp'] as String,
+                                    ),
+                                  )
+                                : '',
+                            messageId: entry['messageId'] as String?,
+                            actorName: _entryActorName(entry),
+                          );
+                        }
+                        return _buildHistoryItem(entry);
+                      }),
+                      ..._optimisticMessages.map(
+                        (msg) => _buildChatMessage(
+                          msg['by'] as String,
+                          msg['message'] as String,
+                          DateFormat(
+                            'h:mm a',
+                          ).format(DateTime.parse(msg['timestamp'] as String)),
+                          messageId: msg['messageId'] as String?,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -1037,6 +1096,10 @@ class _NegotiationDetailScreenState
     ).hasMatch(message.trim());
   }
 
+  String _laxmiAgroActorLabel(String actorName) {
+    return actorName.isEmpty ? 'Laxmi Agro' : 'Laxmi Agro: $actorName';
+  }
+
   Widget _buildHistoryItem(Map<String, dynamic> entry) {
     final action = entry['action'] as String? ?? '';
     final by = entry['by'] as String? ?? '';
@@ -1057,248 +1120,283 @@ class _NegotiationDetailScreenState
 
     // Handle chat messages differently
     if (action == 'message') {
-      return _buildChatMessage(by, message, formattedTime);
+      return _buildChatMessage(
+        by,
+        message,
+        formattedTime,
+        actorName: actorName,
+      );
     }
 
-    Color dotColor;
-    IconData dotIcon;
+    Color accentColor;
+    IconData actionIcon;
     String actionLabel;
 
     switch (action) {
       case 'requested':
-        dotColor = primaryBlue;
-        dotIcon = Icons.send_rounded;
+        accentColor = primaryBlue;
+        actionIcon = Icons.send_rounded;
         actionLabel = 'Requirement Sent';
         break;
       case 'countered':
-        dotColor = amberAccent;
-        dotIcon = Icons.swap_horiz_rounded;
+        accentColor = amberAccent;
+        actionIcon = Icons.swap_horiz_rounded;
         actionLabel = by == 'admin'
             ? 'New Price from Laxmi Agro'
             : 'Your Counter Offer';
         break;
       case 'accepted':
-        dotColor = greenAccent;
-        dotIcon = Icons.check_circle_rounded;
+        accentColor = greenAccent;
+        actionIcon = Icons.check_circle_rounded;
         actionLabel = by == 'admin'
             ? (actorName.isNotEmpty
-                  ? 'Accepted by $actorName'
+                  ? 'Accepted by ${_laxmiAgroActorLabel(actorName)}'
                   : 'Accepted by Laxmi Agro')
             : 'You Accepted';
         break;
       case 'rejected':
-        dotColor = redAccent;
-        dotIcon = Icons.cancel_rounded;
+        accentColor = redAccent;
+        actionIcon = Icons.cancel_rounded;
         actionLabel = by == 'admin'
             ? 'Declined by Laxmi Agro'
             : 'You Cancelled';
         break;
       default:
-        dotColor = textMuted;
-        dotIcon = Icons.circle;
+        accentColor = textMuted;
+        actionIcon = Icons.circle;
         actionLabel = action;
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 0),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Timeline dot + line
-            SizedBox(
-              width: 32,
-              child: Column(
+    final isAdmin = by == 'admin';
+    return Align(
+      alignment: isAdmin ? Alignment.centerLeft : Alignment.centerRight,
+      child: FractionallySizedBox(
+        widthFactor: 0.84,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.fromLTRB(11, 9, 11, 7),
+          decoration: BoxDecoration(
+            color: isAdmin ? incomingBubble : outgoingBubble,
+            borderRadius: _chatBubbleRadius(isAdmin),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x16000000),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAdmin ? _laxmiAgroActorLabel(actorName) : 'You',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isAdmin ? primaryBlue : greenAccent,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: dotColor.withOpacity(0.12),
-                      shape: BoxShape.circle,
+                  Icon(actionIcon, size: 15, color: accentColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      actionLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: accentColor,
+                      ),
                     ),
-                    child: Icon(dotIcon, size: 14, color: dotColor),
                   ),
-                  Expanded(child: Container(width: 2, color: borderLight)),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: action == 'accepted'
-                      ? greenAccent.withOpacity(0.08)
-                      : surfaceWhite,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: action == 'accepted'
-                        ? greenAccent.withOpacity(0.35)
-                        : borderLight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (price != null) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 5,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          actionLabel,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: dotColor,
-                          ),
-                        ),
-                        if (formattedTime.isNotEmpty)
-                          Text(
-                            formattedTime,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: textMuted,
-                            ),
-                          ),
-                      ],
-                    ),
-                    if (price != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Text(
-                            '₹${NumberFormatter.formatPrice(price)}/unit',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: textPrimary,
-                            ),
-                          ),
-                          if (total != null)
-                            Text(
-                              '  •  Total: ₹${NumberFormatter.formatPrice(total)}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: slateBlue,
-                              ),
-                            ),
-                        ],
+                    Text(
+                      '₹${NumberFormatter.formatPrice(price)}/unit',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: textPrimary,
                       ),
-                    ],
-                    if (message.isNotEmpty &&
-                        !(action == 'accepted' &&
-                            _isLegacyAcceptedMessage(message))) ...[
-                      const SizedBox(height: 6),
+                    ),
+                    if (total != null)
                       Text(
-                        '"$message"',
+                        '• Total: ₹${NumberFormatter.formatPrice(total)}',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
+                          fontSize: 12,
                           color: slateBlue,
                         ),
                       ),
-                    ],
                   ],
                 ),
-              ),
-            ),
-          ],
+              ],
+              if (message.isNotEmpty &&
+                  !(action == 'accepted' &&
+                      _isLegacyAcceptedMessage(message))) ...[
+                const SizedBox(height: 5),
+                Text(
+                  message,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: textPrimary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              if (formattedTime.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    formattedTime,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      color: const Color(0xFF667781),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  BorderRadius _chatBubbleRadius(bool isAdmin) {
+    return BorderRadius.only(
+      topLeft: Radius.circular(isAdmin ? 4 : 14),
+      topRight: Radius.circular(isAdmin ? 14 : 4),
+      bottomLeft: const Radius.circular(14),
+      bottomRight: const Radius.circular(14),
     );
   }
 
   Widget _buildChatMessage(
     String by,
     String message,
-    String timestamp, [
+    String timestamp, {
     String? messageId,
-  ]) {
+    String actorName = '',
+  }) {
     final isAdmin = by == 'admin';
-    final messageColor = isAdmin ? primaryBlue : slateBlue;
-    final bgColor = isAdmin ? primaryBlue.withOpacity(0.08) : backgroundWhite;
-    final alignment = isAdmin
-        ? CrossAxisAlignment.start
-        : CrossAxisAlignment.end;
     final isRead = messageId != null
         ? _readReceipts[messageId] ?? false
         : false;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: messageColor.withOpacity(0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: alignment,
-              children: [
-                // Sender badge + timestamp
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: messageColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        isAdmin ? 'ADMIN' : 'YOU',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: messageColor,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (timestamp.isNotEmpty)
-                      Text(
-                        timestamp,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: textMuted,
-                        ),
-                      ),
-                    if (!isAdmin && isRead) ...[
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.done_all_rounded,
-                        size: 12,
-                        color: primaryBlue,
-                      ),
-                    ],
-                  ],
+    return Align(
+      alignment: isAdmin ? Alignment.centerLeft : Alignment.centerRight,
+      child: FractionallySizedBox(
+        widthFactor: 0.78,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.fromLTRB(11, 8, 9, 6),
+          decoration: BoxDecoration(
+            color: isAdmin ? incomingBubble : outgoingBubble,
+            borderRadius: _chatBubbleRadius(isAdmin),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x16000000),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAdmin ? _laxmiAgroActorLabel(actorName) : 'You',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isAdmin ? primaryBlue : greenAccent,
                 ),
-                const SizedBox(height: 6),
-                // Message text
-                Text(
-                  message,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: textPrimary,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                message,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: textPrimary,
+                  height: 1.35,
+                ),
+              ),
+              if (timestamp.isNotEmpty || (!isAdmin && isRead)) ...[
+                const SizedBox(height: 2),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (timestamp.isNotEmpty)
+                        Text(
+                          timestamp,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9.5,
+                            color: const Color(0xFF667781),
+                          ),
+                        ),
+                      if (!isAdmin && isRead) ...[
+                        const SizedBox(width: 3),
+                        const Icon(
+                          Icons.done_all_rounded,
+                          size: 14,
+                          color: Color(0xFF53BDEB),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  void _handleChatInputChanged(String value) {
+    setState(() {});
+    final user = ref.read(authProvider).user;
+    if (user?.id == null) return;
+
+    _localTypingTimer?.cancel();
+    if (value.trim().isEmpty) {
+      _emitStopTyping();
+      return;
+    }
+
+    _isTyping = true;
+    _socketService.emitTyping(
+      userId: user!.id,
+      username: user.name,
+      userRole: 'wholesaler',
+    );
+    _localTypingTimer = Timer(const Duration(seconds: 3), _emitStopTyping);
+  }
+
+  void _emitStopTyping() {
+    _localTypingTimer?.cancel();
+    _localTypingTimer = null;
+    if (!_isTyping) return;
+
+    final userId = ref.read(authProvider).user?.id;
+    if (userId != null) {
+      _socketService.emitStopTyping(userId: userId);
+    }
+    _isTyping = false;
   }
 
   Future<void> _sendChatMessage() async {
@@ -1312,6 +1410,8 @@ class _NegotiationDetailScreenState
       _showError('Message too long (max $maxMessageLength characters)');
       return;
     }
+
+    _emitStopTyping();
 
     // Optimistic update - show message immediately
     final optimisticMessage = {
@@ -1465,24 +1565,45 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildChatInput() {
-    final auth = ref.read(authProvider);
+    final typingName = _typingUsers.values.isEmpty
+        ? ''
+        : _typingUsers.values.first;
     final typingIndicatorText = _typingUsers.isNotEmpty
-        ? '${_typingUsers.keys.toList().join(', ')} is typing...'
+        ? '${_laxmiAgroActorLabel(typingName)} is typing...'
         : '';
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (typingIndicatorText.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              typingIndicatorText,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: textMuted,
-                fontStyle: FontStyle.italic,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: chatBackground,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.more_horiz_rounded,
+                    size: 18,
+                    color: greenAccent,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    typingIndicatorText,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: slateBlue,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1494,26 +1615,30 @@ class _NegotiationDetailScreenState
                 enabled: !_isActioning,
                 maxLines: 3,
                 minLines: 1,
-                onChanged: (value) {
-                  setState(() {});
-
-                  // Emit typing indicator
-                  if (auth.user?.id != null && value.isNotEmpty) {
-                    _socketService.emitTyping(
-                      userId: auth.user!.id,
-                      username: auth.user?.name ?? 'Wholesaler',
-                      userRole: 'wholesaler',
-                    );
-                  } else if (value.isEmpty && auth.user?.id != null) {
-                    _socketService.emitStopTyping(userId: auth.user!.id);
-                  }
+                maxLength: maxMessageLength,
+                buildCounter:
+                    (
+                      _, {
+                      required currentLength,
+                      required isFocused,
+                      maxLength,
+                    }) => null,
+                onChanged: _handleChatInputChanged,
+                onTapOutside: (_) {
+                  FocusScope.of(context).unfocus();
+                  _emitStopTyping();
                 },
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Type a message... (max 280 chars)',
+                  hintText: 'Message',
+                  prefixIcon: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 19,
+                    color: textMuted,
+                  ),
                   hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
                   filled: true,
                   fillColor: backgroundWhite,
@@ -1522,19 +1647,19 @@ class _NegotiationDetailScreenState
                     vertical: 12,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide(color: borderLight),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide(color: borderLight),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: primaryBlue, width: 2),
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(color: greenAccent, width: 1.5),
                   ),
                   disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide(color: borderLight),
                   ),
                 ),
@@ -1553,9 +1678,7 @@ class _NegotiationDetailScreenState
                   backgroundColor: primaryBlue,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: textMuted.withOpacity(0.3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  shape: const CircleBorder(),
                   padding: EdgeInsets.zero,
                 ),
                 child: _isActioning
@@ -1573,14 +1696,15 @@ class _NegotiationDetailScreenState
           ],
         ),
         const SizedBox(height: 4),
-        Text(
-          '${_counterMessageController.text.length}/$maxMessageLength',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11,
-            color: _counterMessageController.text.length > maxMessageLength
-                ? redAccent
-                : textMuted,
-            fontWeight: FontWeight.w500,
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '${_counterMessageController.text.length}/$maxMessageLength',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: textMuted,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
