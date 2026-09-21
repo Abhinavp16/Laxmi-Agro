@@ -41,6 +41,8 @@ import '../../core/utils/number_formatter.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/product_search.dart';
 
+enum _SearchScope { product, brand, category }
+
 class MarketplaceHomeScreen extends ConsumerStatefulWidget {
   final int? initialTab;
   final String? initialSearchQuery;
@@ -117,6 +119,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   CancelToken? _searchCancelToken;
   String? _searchError;
   String _searchQuery = '';
+  _SearchScope _searchScope = _SearchScope.product;
   Timer? _searchDebounce;
   final List<String> _recentSearches = ['Seed Drill', 'Tractor parts'];
 
@@ -228,6 +231,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
 
     if (requestedQuery.isNotEmpty && _searchController.text != requestedQuery) {
+      _searchScope = _SearchScope.product;
       _searchController
         ..text = requestedQuery
         ..selection = TextSelection.collapsed(offset: requestedQuery.length);
@@ -1132,269 +1136,84 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _searchProducts(_searchQuery, page: _searchPage + 1, append: true);
   }
 
-  void _showFilterSheet() {
-    String? tempCategoryId = _selectedFilterCategoryId;
-    String? tempBrandId = _selectedFilterBrandId;
-    final t = ref.read(localeProvider.notifier).translate;
+  void _selectSearchScope(
+    _SearchScope selectedScope, {
+    bool openSearch = false,
+  }) {
+    _searchDebounce?.cancel();
+    _invalidateSearchRequests();
+    setState(() {
+      _searchScope = selectedScope;
+      _selectedFilterCategoryId = null;
+      _selectedFilterBrandId = null;
+      _searchResults = [];
+      _isSearching = false;
+      _isLoadingMoreSearch = false;
+      _searchHasNext = false;
+      _searchError = null;
+      if (openSearch) _selectedNavIndex = 1;
+    });
+    if (selectedScope == _SearchScope.product) {
+      _searchProducts(_searchController.text);
+    }
+    if (openSearch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocusNode.requestFocus();
+      });
+    }
+  }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final availableCategories = tempBrandId == null
-              ? _searchCategoryData
-              : _searchCategoryData
-                    .where(
-                      (category) =>
-                          category['brandId']?.toString() == tempBrandId,
-                    )
-                    .toList();
-          return Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.65,
-            ),
-            decoration: const BoxDecoration(
-              color: surfaceWhite,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle bar
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: borderLight,
-                    borderRadius: BorderRadius.circular(2),
+  Widget _buildSearchScopeMenu({
+    required Widget child,
+    bool openSearch = false,
+  }) {
+    const options = <(_SearchScope, String, IconData)>[
+      (_SearchScope.product, 'Product', Icons.inventory_2_outlined),
+      (_SearchScope.brand, 'Brand', Icons.storefront_outlined),
+      (_SearchScope.category, 'Category', Icons.category_outlined),
+    ];
+
+    return PopupMenuButton<_SearchScope>(
+      tooltip: 'Search filter',
+      position: PopupMenuPosition.under,
+      offset: const Offset(-132, 6),
+      constraints: const BoxConstraints.tightFor(width: 184),
+      color: surfaceWhite,
+      elevation: 12,
+      shadowColor: const Color(0xFF0F172A).withOpacity(0.16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (scope) => _selectSearchScope(scope, openSearch: openSearch),
+      itemBuilder: (context) => options.map((option) {
+        final selected = option.$1 == _searchScope;
+        return PopupMenuItem<_SearchScope>(
+          value: option.$1,
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Icon(
+                option.$3,
+                size: 19,
+                color: selected ? primaryBlue : textSecondary,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  option.$2,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: selected ? primaryBlue : textPrimary,
                   ),
                 ),
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        t('Filters'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: textPrimary,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setSheetState(() {
-                            tempCategoryId = null;
-                            tempBrandId = null;
-                          });
-                        },
-                        child: Text(
-                          t('Reset'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: primaryBlue,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Category section
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t('Category'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: availableCategories.map((category) {
-                            final id = category['id']?.toString() ?? '';
-                            final brandId =
-                                category['brandId']?.toString() ?? '';
-                            final selected = tempCategoryId == id;
-                            final categoryLabel = _getDisplayCategoryName(
-                              category,
-                            );
-                            final brandLabel =
-                                category['brandName']?.toString() ?? '';
-                            return GestureDetector(
-                              onTap: () => setSheetState(() {
-                                tempCategoryId = selected ? null : id;
-                                if (!selected && brandId.isNotEmpty) {
-                                  tempBrandId = brandId;
-                                }
-                              }),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: selected ? primaryBlue : surfaceWhite,
-                                  borderRadius: BorderRadius.circular(100),
-                                  border: Border.all(
-                                    color: selected ? primaryBlue : borderLight,
-                                  ),
-                                  boxShadow: selected
-                                      ? [
-                                          BoxShadow(
-                                            color: primaryBlue.withOpacity(0.2),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(
-                                  tempBrandId == null && brandLabel.isNotEmpty
-                                      ? '$categoryLabel · $brandLabel'
-                                      : categoryLabel,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : textSecondary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
-                        // Brand section
-                        Text(
-                          t('Brand'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _brands.map((brand) {
-                            final id = brand['id']?.toString() ?? '';
-                            final name = brand['name']?.toString() ?? '';
-                            final selected = tempBrandId == id;
-                            return GestureDetector(
-                              onTap: () => setSheetState(() {
-                                tempBrandId = selected ? null : id;
-                                if (tempCategoryId != null) {
-                                  final selectedCategory = _searchCategoryData
-                                      .where(
-                                        (category) =>
-                                            category['id']?.toString() ==
-                                            tempCategoryId,
-                                      )
-                                      .firstOrNull;
-                                  if (selectedCategory?['brandId']
-                                          ?.toString() !=
-                                      tempBrandId) {
-                                    tempCategoryId = null;
-                                  }
-                                }
-                              }),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: selected ? primaryBlue : surfaceWhite,
-                                  borderRadius: BorderRadius.circular(100),
-                                  border: Border.all(
-                                    color: selected ? primaryBlue : borderLight,
-                                  ),
-                                  boxShadow: selected
-                                      ? [
-                                          BoxShadow(
-                                            color: primaryBlue.withOpacity(0.2),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(
-                                  name,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : textSecondary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-                ),
-                // Apply button
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedFilterCategoryId = tempCategoryId;
-                          _selectedFilterBrandId = tempBrandId;
-                        });
-                        Navigator.pop(ctx);
-                        _searchProducts(_searchController.text);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        t('Apply Filters'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+              if (selected)
+                const Icon(Icons.check_rounded, color: primaryBlue, size: 18),
+            ],
+          ),
+        );
+      }).toList(),
+      child: child,
     );
   }
 
@@ -2203,37 +2022,76 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final t = ref.read(localeProvider.notifier).translate;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedNavIndex = 1),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderLight),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.search_rounded, color: textMuted, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  t('Search products, brands...'),
-                  style: GoogleFonts.plusJakartaSans(
-                    color: textMuted,
-                    fontSize: 14,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() => _selectedNavIndex = 1);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _searchFocusNode.requestFocus();
+                  });
+                },
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.search_rounded,
+                        color: textMuted,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          t('Search products, brands, categories...'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: textMuted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+            Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
+            _buildSearchScopeMenu(
+              openSearch: true,
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Icon(
+                  Icons.tune_rounded,
+                  size: 20,
+                  color: _searchScope == _SearchScope.product
+                      ? textSecondary
+                      : primaryBlue,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -3024,6 +2882,276 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  void _handleSearchTextChanged(String value) {
+    _searchDebounce?.cancel();
+    _invalidateSearchRequests();
+    setState(() {
+      _searchQuery = value;
+      _searchError = null;
+      _isSearching = false;
+      _isLoadingMoreSearch = false;
+      _searchHasNext = false;
+      if (_searchScope != _SearchScope.product || value.trim().isEmpty) {
+        _searchResults = [];
+      }
+    });
+
+    if (_searchScope != _SearchScope.product) return;
+    if (value.trim().isEmpty) {
+      if (_selectedFilterCategoryId != null || _selectedFilterBrandId != null) {
+        _searchProducts('');
+      }
+      return;
+    }
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 400),
+      () => _searchProducts(value),
+    );
+  }
+
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _invalidateSearchRequests();
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+      _isSearching = false;
+      _isLoadingMoreSearch = false;
+      _searchHasNext = false;
+      _searchError = null;
+    });
+    if (_searchScope == _SearchScope.product &&
+        (_selectedFilterCategoryId != null || _selectedFilterBrandId != null)) {
+      _searchProducts('');
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredSearchBrands {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _brands;
+    return _brands.where((brand) {
+      final name = brand['name']?.toString().toLowerCase() ?? '';
+      final slug = brand['slug']?.toString().toLowerCase() ?? '';
+      return name.contains(query) || slug.contains(query);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredSearchCategories {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _searchCategoryData;
+    return _searchCategoryData.where((category) {
+      final searchableText = [
+        _getDisplayCategoryName(category),
+        category['name'],
+        category['queryName'],
+        category['brandName'],
+      ].whereType<Object>().join(' ').toLowerCase();
+      return searchableText.contains(query);
+    }).toList();
+  }
+
+  Widget _buildScopedEmptyState(String label) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.search_off_rounded, size: 48, color: textMuted),
+          const SizedBox(height: 14),
+          Text(
+            'No $label found',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Try a different search term',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrandSearchResults() {
+    if (_isLoadingBrands) {
+      return const Center(child: CircularProgressIndicator(color: primaryBlue));
+    }
+    final brands = _filteredSearchBrands;
+    if (brands.isEmpty) return _buildScopedEmptyState('brands');
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+      itemCount: brands.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final brand = brands[index];
+        final id = brand['id']?.toString() ?? '';
+        final name = brand['name']?.toString() ?? '';
+        final logo = ApiConfig.normalizeMediaUrl(
+          brand['logo']?.toString() ?? '',
+        );
+        return Material(
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: id.isEmpty
+                ? null
+                : () => context.push(
+                    '/brand/${Uri.encodeComponent(id)}?name=${Uri.encodeQueryComponent(name)}',
+                  ),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: borderLight),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: logo.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: CachedNetworkImage(
+                              imageUrl: logo,
+                              fit: BoxFit.contain,
+                              errorWidget: (_, __, ___) => const Icon(
+                                Icons.storefront_outlined,
+                                color: primaryBlue,
+                              ),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.storefront_outlined,
+                            color: primaryBlue,
+                          ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 15,
+                    color: textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategorySearchResults() {
+    if (_isLoadingCategories) {
+      return const Center(child: CircularProgressIndicator(color: primaryBlue));
+    }
+    final categories = _filteredSearchCategories;
+    if (categories.isEmpty) return _buildScopedEmptyState('categories');
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+      itemCount: categories.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final category = categories[index];
+        final name = category['name']?.toString() ?? '';
+        final displayName = _getDisplayCategoryName(category);
+        final brandName = category['brandName']?.toString() ?? '';
+        return Material(
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: () => setState(() {
+              _categoryNavigationRequest++;
+              _requestedCategoryId = category['id']?.toString() ?? '';
+              _requestedCategoryName = name;
+              _requestedCategoryBrandId = category['brandId']?.toString() ?? '';
+              _selectedNavIndex = 2;
+              _searchFocusNode.unfocus();
+            }),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: borderLight),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withOpacity(0.07),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.category_outlined,
+                      color: primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                        if (brandName.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            brandName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: textMuted,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 15,
+                    color: textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSearchContent() {
     final t = ref.read(localeProvider.notifier).translate;
     final popularCategories = [
@@ -3085,40 +3213,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    onChanged: (value) {
-                      _searchDebounce?.cancel();
-                      _invalidateSearchRequests();
-                      setState(() {
-                        _searchQuery = value;
-                        _searchError = null;
-                      });
-                      if (value.trim().isEmpty) {
-                        if (_selectedFilterCategoryId != null ||
-                            _selectedFilterBrandId != null) {
-                          _searchProducts('');
-                        } else {
-                          setState(() {
-                            _searchResults = [];
-                            _isSearching = false;
-                            _searchHasNext = false;
-                          });
-                        }
-                        return;
-                      }
-                      _searchDebounce = Timer(
-                        const Duration(milliseconds: 400),
-                        () {
-                          _searchProducts(value);
-                        },
-                      );
-                    },
+                    onChanged: _handleSearchTextChanged,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                       color: textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: t('Products, brands, equipment...'),
+                      hintText: t('Search products, brands, categories...'),
                       hintStyle: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -3130,124 +3232,72 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ),
                 ),
                 if (_searchController.text.isNotEmpty)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Always show filter button when searching so users can apply filters
-                      GestureDetector(
-                        onTap: _showFilterSheet,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedFilterHorizontal,
-                                color:
-                                    (_selectedFilterCategoryId != null ||
-                                        _selectedFilterBrandId != null)
-                                    ? primaryBlue
-                                    : textMuted,
-                                size: 22,
-                              ),
-                              if (_selectedFilterCategoryId != null ||
-                                  _selectedFilterBrandId != null)
-                                Positioned(
-                                  top: -2,
-                                  right: -4,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: primaryBlue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                  IconButton(
+                    onPressed: _clearSearch,
+                    icon: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: borderLight,
+                        shape: BoxShape.circle,
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          _searchDebounce?.cancel();
-                          _invalidateSearchRequests();
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                            _searchError = null;
-                          });
-                          if (_selectedFilterCategoryId != null ||
-                              _selectedFilterBrandId != null) {
-                            _searchProducts('');
-                          } else {
-                            setState(() {
-                              _searchResults = [];
-                              _isSearching = false;
-                              _searchHasNext = false;
-                            });
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: borderLight,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              size: 14,
-                              color: textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  GestureDetector(
-                    onTap: _showFilterSheet,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedFilterHorizontal,
-                            color:
-                                (_selectedFilterCategoryId != null ||
-                                    _selectedFilterBrandId != null)
-                                ? primaryBlue
-                                : textMuted,
-                            size: 22,
-                          ),
-                          if (_selectedFilterCategoryId != null ||
-                              _selectedFilterBrandId != null)
-                            Positioned(
-                              top: -2,
-                              right: -4,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: primaryBlue,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: textSecondary,
                       ),
                     ),
                   ),
+                Container(width: 1, height: 26, color: borderLight),
+                _buildSearchScopeMenu(
+                  child: Container(
+                    width: 52,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _searchScope == _SearchScope.product
+                          ? Colors.transparent
+                          : primaryBlue.withOpacity(0.08),
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(100),
+                      ),
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedFilterHorizontal,
+                          color: _searchScope == _SearchScope.product
+                              ? textMuted
+                              : primaryBlue,
+                          size: 22,
+                        ),
+                        if (_searchScope != _SearchScope.product)
+                          const Positioned(
+                            top: -3,
+                            right: -4,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: primaryBlue,
+                                shape: BoxShape.circle,
+                              ),
+                              child: SizedBox(width: 8, height: 8),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
         // Content
         Expanded(
-          child: _isSearching && _searchResults.isEmpty
+          child: _searchScope == _SearchScope.brand
+              ? _buildBrandSearchResults()
+              : _searchScope == _SearchScope.category
+              ? _buildCategorySearchResults()
+              : _isSearching && _searchResults.isEmpty
               ? const Center(
                   child: CircularProgressIndicator(color: primaryBlue),
                 )
@@ -3409,11 +3459,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           onTap: () {
                                             _searchController.text =
                                                 _recentSearches[i];
-                                            setState(
-                                              () => _searchQuery =
-                                                  _recentSearches[i],
+                                            _handleSearchTextChanged(
+                                              _recentSearches[i],
                                             );
-                                            _searchProducts(_recentSearches[i]);
                                           },
                                           child: Text(
                                             _recentSearches[i],
@@ -3482,8 +3530,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       final term = popularCategories[index]
                                           .replaceAll('🔥 ', '');
                                       _searchController.text = term;
-                                      setState(() => _searchQuery = term);
-                                      _searchProducts(term);
+                                      _handleSearchTextChanged(term);
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -6268,47 +6315,90 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildAppBar() {
     final t = ref.read(localeProvider.notifier).translate;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       color: backgroundWhite,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'assets/images/laxmi-agro-logo.png',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.cover,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: primaryBlue.withOpacity(0.14)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryBlue.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/laxmi-agro-logo.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Laxmi Agro',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: textPrimary,
-                  letterSpacing: -1,
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        text: TextSpan(
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                            letterSpacing: -0.7,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Laxmi ',
+                              style: TextStyle(color: textPrimary),
+                            ),
+                            const TextSpan(
+                              text: 'Agro',
+                              style: TextStyle(color: primaryBlue),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Grow Together  •  Trade Better',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w600,
+                          color: textMuted,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          // Actions
+          const SizedBox(width: 10),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               PopupMenuButton<String>(
-                offset: const Offset(0, 45),
+                offset: const Offset(0, 42),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -6320,60 +6410,65 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   _buildLanguageItem('Hindi', '', t('Hindi')),
                 ],
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(100),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderLight),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: const Color(0xFF0F172A).withOpacity(0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const Icon(
+                        Icons.language_rounded,
+                        color: primaryBlue,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 5),
                       Text(
                         ref.watch(localeProvider) == 'English' ? 'EN' : 'HI',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                           color: primaryBlue,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       const Icon(
-                        Icons.arrow_drop_down_rounded,
+                        Icons.keyboard_arrow_down_rounded,
                         color: primaryBlue,
-                        size: 20,
+                        size: 15,
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: _showNotificationPopup,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: surfaceWhite,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: borderLight),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            color: const Color(0xFF0F172A).withOpacity(0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
@@ -6381,7 +6476,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedNotification02,
                           color: textPrimary,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -6396,14 +6491,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             shape: BoxShape.circle,
                           ),
                           constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
+                            minWidth: 16,
+                            minHeight: 16,
                           ),
                           child: Text(
                             '$_unreadCount',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
+                              fontSize: 8,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
@@ -6696,6 +6791,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       }
       if (matchedCategory == null) return;
       setState(() {
+        _searchScope = _SearchScope.product;
         _selectedFilterCategoryId = matchedCategory!['id']?.toString();
         _selectedFilterBrandId = matchedCategory['brandId']?.toString();
         _selectedNavIndex = 1;
@@ -8893,6 +8989,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildPromoBannerCarousel() {
+    final isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+    final bannerHeight = isTablet ? 190.0 : 160.0;
+
     if (_isLoadingPromoBanners) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -8900,7 +8999,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Container(
-            height: 160,
+            height: bannerHeight,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
@@ -8914,7 +9013,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return Column(
       children: [
         SizedBox(
-          height: 104,
+          height: bannerHeight,
           child: PageView.builder(
             controller: _promoBannerController,
             itemCount: _promoBanners.length,
@@ -8996,7 +9095,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             child: LayoutBuilder(
                               builder: (context, constraints) {
-                                final isCompact = constraints.maxHeight < 150;
+                                final isCompact = constraints.maxHeight < 170;
                                 return Padding(
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 20,
@@ -9049,25 +9148,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                               letterSpacing: -0.5,
                                             ),
                                             maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      if (banner['subtitle'] != null &&
-                                          banner['subtitle'].isNotEmpty)
-                                        Padding(
-                                          padding: EdgeInsets.only(
-                                            top: isCompact ? 2 : 4,
-                                          ),
-                                          child: Text(
-                                            banner['subtitle'],
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: isCompact ? 11 : 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white.withOpacity(
-                                                0.9,
-                                              ),
-                                            ),
-                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
