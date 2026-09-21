@@ -18,6 +18,15 @@ class LocaleNotifier extends StateNotifier<String> {
 
   static const Map<String, Map<String, String>> _translations = {
     'Search products, brands...': {'Hindi': 'उत्पाद, ब्रांड खोजें...'},
+    'Search products, brands, categories...': {
+      'Hindi': 'उत्पाद, ब्रांड, श्रेणियाँ खोजें...',
+    },
+    'Search filter': {'Hindi': 'खोज फ़िल्टर'},
+    'Brand': {'Hindi': 'ब्रांड'},
+    'Category': {'Hindi': 'श्रेणी'},
+    'No brands found': {'Hindi': 'कोई ब्रांड नहीं मिला'},
+    'No categories found': {'Hindi': 'कोई श्रेणी नहीं मिली'},
+    'Try a different search term': {'Hindi': 'कोई दूसरा खोज शब्द आज़माएं'},
     'Exclusive Offers': {'Hindi': 'विशेष ऑफ़र'},
     'View Deals': {'Hindi': 'सौदे देखें'},
     'Categories': {'Hindi': 'श्रेणियाँ'},

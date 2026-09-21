@@ -1167,6 +1167,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     required Widget child,
     bool openSearch = false,
   }) {
+    final t = ref.read(localeProvider.notifier).translate;
     const options = <(_SearchScope, String, IconData)>[
       (_SearchScope.product, 'Product', Icons.inventory_2_outlined),
       (_SearchScope.brand, 'Brand', Icons.storefront_outlined),
@@ -1174,7 +1175,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     ];
 
     return PopupMenuButton<_SearchScope>(
-      tooltip: 'Search filter',
+      tooltip: t('Search filter'),
       position: PopupMenuPosition.under,
       offset: const Offset(-132, 6),
       constraints: const BoxConstraints.tightFor(width: 184),
@@ -1199,7 +1200,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
-                  option.$2,
+                  t(option.$2),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
@@ -2951,7 +2952,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }).toList();
   }
 
-  Widget _buildScopedEmptyState(String label) {
+  Widget _buildScopedEmptyState(String message) {
+    final t = ref.read(localeProvider.notifier).translate;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2959,7 +2961,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           const Icon(Icons.search_off_rounded, size: 48, color: textMuted),
           const SizedBox(height: 14),
           Text(
-            'No $label found',
+            t(message),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -2968,7 +2970,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Try a different search term',
+            t('Try a different search term'),
             style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
           ),
         ],
@@ -2981,7 +2983,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return const Center(child: CircularProgressIndicator(color: primaryBlue));
     }
     final brands = _filteredSearchBrands;
-    if (brands.isEmpty) return _buildScopedEmptyState('brands');
+    if (brands.isEmpty) return _buildScopedEmptyState('No brands found');
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
@@ -3067,7 +3069,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return const Center(child: CircularProgressIndicator(color: primaryBlue));
     }
     final categories = _filteredSearchCategories;
-    if (categories.isEmpty) return _buildScopedEmptyState('categories');
+    if (categories.isEmpty) {
+      return _buildScopedEmptyState('No categories found');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
