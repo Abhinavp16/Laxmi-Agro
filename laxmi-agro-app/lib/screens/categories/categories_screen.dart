@@ -1390,7 +1390,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   crossAxisCount: catalogColumns,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 0.72,
+                  childAspectRatio: 0.86,
                 ),
                 itemCount: _categories.length,
                 itemBuilder: (context, index) {
@@ -1455,7 +1455,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: surfaceWhite,
           borderRadius: BorderRadius.circular(12),
@@ -1621,7 +1621,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   crossAxisCount: catalogColumns,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 0.72,
+                  childAspectRatio: 0.86,
                 ),
                 itemCount: subcategories.length + (hasDirectProducts ? 1 : 0),
                 itemBuilder: (context, index) {

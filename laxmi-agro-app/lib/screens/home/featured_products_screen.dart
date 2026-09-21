@@ -1,16 +1,20 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:dio/dio.dart';
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/config/api_config.dart';
-import '../../core/providers/locale_provider.dart';
+import '../../core/providers/cart_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
+import '../../core/providers/locale_provider.dart';
+import '../../core/providers/wishlist_provider.dart';
 import '../../core/services/storage_service.dart';
-import '../../widgets/pending_price_change_notice.dart';
+import '../../core/utils/number_formatter.dart';
+import '../../widgets/product_image_placeholder.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
   final bool isHotDeals;
@@ -35,7 +39,6 @@ class _FeaturedProductsScreenState
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF475569);
   static const Color textMuted = Color(0xFF64748B);
-  static const Color borderLight = Color(0xFFF1F5F9);
 
   late final Dio _dio =
       Dio(
@@ -121,13 +124,25 @@ class _FeaturedProductsScreenState
         return <String, dynamic>{
           'id': item['id']?.toString() ?? item['_id']?.toString() ?? '',
           'name': name,
+          'nameHindi': item['nameHindi']?.toString() ?? '',
           'category': cat,
+          'brand': item['brand']?.toString() ?? '',
           'price': catalogPriceForAudience(
             Map<String, dynamic>.from(item as Map),
             isCustomerPreview: ref.read(guestModeProvider),
           ),
           'originalPrice': item['mrp'] ?? item['originalPrice'] ?? 0,
           'image': apiImage,
+          'blurHash': item['primaryBlurHash'] ?? item['blurHash'] ?? '',
+          'rating': item['rating'] ?? 4.5,
+          'review': item['review'],
+          'reviews': item['reviews'],
+          'reviewCount':
+              item['reviewCount'] ?? item['review'] ?? item['reviews'] ?? '',
+          'inStock': item['inStock'] != false,
+          'minWholesaleQuantity': item['minWholesaleQuantity'],
+          'isHot': item['isHot'] == true,
+          'isNew': item['isNew'] == true,
           'pendingPriceChange': item['pendingPriceChange'],
         };
       }).toList();
@@ -148,18 +163,29 @@ class _FeaturedProductsScreenState
   }
 
   String _formatPrice(num? price) {
-    if (price == null) return '';
-    if (price >= 100000) {
-      final lakhs = price / 100000;
-      // Show 1L, 1.07L, etc. for amounts >= 1 lakh
-      if (lakhs >= 10) {
-        return '${lakhs.toStringAsFixed(0)}L';
-      } else {
-        return '${lakhs.toStringAsFixed(2)}L';
-      }
-    }
-    // Show full number for amounts below 1 lakh (e.g., 6455 instead of 6.5K)
-    return price.toStringAsFixed(0);
+    return NumberFormatter.formatLakhs(price ?? 0);
+  }
+
+  num _numberValue(dynamic value) {
+    return value is num ? value : num.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  void _showMessage(String message, {Color backgroundColor = primaryBlue}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          ),
+          duration: const Duration(seconds: 1),
+          backgroundColor: backgroundColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
   }
 
   @override
@@ -230,14 +256,15 @@ class _FeaturedProductsScreenState
                 final gridColumns = isTablet
                     ? (constraints.maxWidth >= 1000 ? 4 : 3)
                     : 2;
+                final cardHeight = isTablet ? 270.0 : 275.0;
 
                 return GridView.builder(
-                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                  padding: EdgeInsets.all(isTablet ? 20 : 12),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: gridColumns,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: isTablet ? 0.72 : 0.52,
+                    crossAxisSpacing: isTablet ? 14 : 10,
+                    mainAxisSpacing: isTablet ? 14 : 10,
+                    mainAxisExtent: cardHeight,
                   ),
                   itemCount: _products.length,
                   itemBuilder: (context, index) {
@@ -254,27 +281,51 @@ class _FeaturedProductsScreenState
     Map<String, dynamic> product,
     String Function(String) t,
   ) {
-    final price = product['price'] as num?;
-    final originalPrice = product['originalPrice'] as num?;
-    final hasDiscount =
-        originalPrice != null &&
-        originalPrice > 0 &&
-        price != null &&
-        price < originalPrice;
+    final productId = product['id']?.toString() ?? '';
+    final heroTag = 'product-image-$productId';
+    final price = _numberValue(product['price']);
+    final originalPrice = _numberValue(product['originalPrice']);
+    final hasDiscount = originalPrice > 0 && price < originalPrice;
     final discount = hasDiscount
         ? (((originalPrice - price) / originalPrice) * 100).round()
         : 0;
+    final brand = (product['brand'] ?? product['category'] ?? '').toString();
+    final rating = product['rating'];
+    final reviewCount =
+        product['reviewCount'] ?? product['review'] ?? product['reviews'] ?? '';
+    final inStock = product['inStock'] != false;
+    final isWishlisted = ref.watch(wishlistProvider).contains(productId);
+    final currentLanguage = ref.read(localeProvider);
+    final hindiName = product['nameHindi']?.toString() ?? '';
+    final displayName = currentLanguage == 'Hindi' && hindiName.isNotEmpty
+        ? hindiName
+        : product['name']?.toString() ?? '';
 
-    return GestureDetector(
-      onTap: () => context.push('/product/${product['id']}'),
+    String? badgeLabel;
+    Color? badgeColor;
+    if (widget.isHotDeals) {
+      badgeLabel = 'HOT';
+      badgeColor = const Color(0xFFEF4444);
+    } else if (discount > 0) {
+      badgeLabel = t('SALE');
+      badgeColor = const Color(0xFF16A34A);
+    } else if (product['isNew'] == true) {
+      badgeLabel = t('NEW');
+      badgeColor = primaryBlue;
+    }
+
+    return InkWell(
+      onTap: () =>
+          context.push('/product/$productId', extra: {'heroTag': heroTag}),
+      borderRadius: BorderRadius.circular(11),
       child: Container(
         decoration: BoxDecoration(
           color: surfaceWhite,
-          borderRadius: BorderRadius.circular(4), // Squarish
-          border: Border.all(color: borderLight, width: 1),
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: const Color(0xFFE1E8F2)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: const Color(0xFF334155).withOpacity(0.07),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -283,156 +334,320 @@ class _FeaturedProductsScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
-                    ),
-                    child:
-                        product['image'] != null &&
-                            product['image'].toString().isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: product['image'],
-                            width: double.infinity,
-                            fit: BoxFit.contain,
-                            placeholder: (_, __) =>
-                                Container(color: borderLight),
-                            errorWidget: (_, __, ___) => Container(
-                              color: borderLight,
-                              child: const Icon(Icons.image, color: textMuted),
-                            ),
-                          )
-                        : Container(
-                            color: borderLight,
-                            child: const Center(
-                              child: Icon(
-                                HugeIcons.strokeRoundedImage02,
-                                size: 40,
-                                color: textMuted,
-                              ),
-                            ),
-                          ),
-                  ),
-                  if (widget.isHotDeals)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department,
-                              color: Colors.white,
-                              size: 12,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'HOT',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (hasDiscount)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primaryBlue,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Text(
-                          '-$discount%',
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Details
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(11),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    SizedBox(
-                      height: 52,
-                      child: Text(
-                        (product['name'] ?? '').toString(),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w400,
-                          color: textPrimary,
-                          height: 1.25,
-                        ),
+                    Container(color: const Color(0xFFFAFCFF)),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Hero(
+                        tag: heroTag,
+                        child:
+                            product['image'] != null &&
+                                product['image'].toString().isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: product['image'].toString(),
+                                fit: BoxFit.contain,
+                                placeholder: (_, __) => ProductImagePlaceholder(
+                                  category:
+                                      product['category']?.toString() ?? '',
+                                  name: product['name']?.toString() ?? '',
+                                ),
+                                errorWidget: (_, __, ___) =>
+                                    ProductImagePlaceholder(
+                                      category:
+                                          product['category']?.toString() ?? '',
+                                      name: product['name']?.toString() ?? '',
+                                    ),
+                              )
+                            : ProductImagePlaceholder(
+                                category: product['category']?.toString() ?? '',
+                                name: product['name']?.toString() ?? '',
+                              ),
                       ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (hasDiscount)
-                          Text(
-                            '₹${_formatPrice(originalPrice)}',
+                    if (!inStock)
+                      Container(
+                        color: Colors.white.withOpacity(0.65),
+                        alignment: Alignment.center,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            t('Out of Stock'),
                             style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color: const Color(0xFFEF4444),
-                              decoration: TextDecoration.lineThrough,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
-                        Text(
-                          '₹${_formatPrice(price)}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: primaryBlue,
+                        ),
+                      ),
+                    if (badgeLabel != null)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: GoogleFonts.outfit(
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
-                        PendingPriceChangeNotice(
-                          pendingPriceChange:
-                              product['pendingPriceChange']
-                                  as Map<String, dynamic>?,
-                          compact: true,
-                          primaryColor: textPrimary,
-                          accentColor: const Color(0xFFB45309),
-                          backgroundColor: const Color(0xFFFFF7ED),
+                      ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Material(
+                        color: Colors.white.withOpacity(0.94),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: () {
+                            if (ref.read(guestModeProvider)) {
+                              _showMessage(
+                                t('Wishlist disabled in preview mode'),
+                                backgroundColor: textSecondary,
+                              );
+                              return;
+                            }
+                            ref
+                                .read(wishlistProvider.notifier)
+                                .toggle(
+                                  WishlistItem(
+                                    productId: productId,
+                                    name: product['name']?.toString() ?? '',
+                                    image: product['image']?.toString(),
+                                    price: price.toDouble(),
+                                    mrp: hasDiscount
+                                        ? originalPrice.toDouble()
+                                        : null,
+                                    category: product['category']?.toString(),
+                                    nameHindi: product['nameHindi']?.toString(),
+                                    blurHash: product['blurHash']?.toString(),
+                                  ),
+                                );
+                          },
+                          customBorder: const CircleBorder(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Icon(
+                              isWishlisted
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 15,
+                              color: isWishlisted
+                                  ? const Color(0xFFEF4444)
+                                  : textMuted,
+                            ),
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    brand.isEmpty ? t('Laxmi Agro') : brand,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: primaryBlue,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  SizedBox(
+                    height: 32,
+                    child: Text(
+                      displayName,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                        height: 1.35,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 12,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        rating?.toString() ?? '0',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: textSecondary,
+                        ),
+                      ),
+                      if (reviewCount.toString().isNotEmpty) ...[
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            '($reviewCount)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 8,
+                              color: textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '₹${_formatPrice(price)}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (hasDiscount)
+                              Text(
+                                '₹${_formatPrice(originalPrice)}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 7.5,
+                                  color: textMuted,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      GestureDetector(
+                        onTap: inStock
+                            ? () {
+                                if (ref.read(guestModeProvider)) {
+                                  _showMessage(
+                                    t('Add to Cart disabled in preview mode'),
+                                    backgroundColor: textSecondary,
+                                  );
+                                  return;
+                                }
+                                final configuredMinimum =
+                                    product['minWholesaleQuantity'];
+                                final minimumWholesaleQuantity =
+                                    configuredMinimum is num
+                                    ? configuredMinimum.toInt()
+                                    : int.tryParse(
+                                            configuredMinimum?.toString() ?? '',
+                                          ) ??
+                                          1;
+                                final quantity =
+                                    ref.read(effectiveIsWholesalerProvider)
+                                    ? math.max(minimumWholesaleQuantity, 1)
+                                    : 1;
+                                ref
+                                    .read(cartProvider.notifier)
+                                    .addItem(
+                                      productId: productId,
+                                      name: product['name']?.toString() ?? '',
+                                      nameHindi: product['nameHindi']
+                                          ?.toString(),
+                                      brand: product['brand']?.toString(),
+                                      category: product['category']?.toString(),
+                                      minWholesaleQuantity:
+                                          minimumWholesaleQuantity,
+                                      price: price.toDouble(),
+                                      mrp: hasDiscount
+                                          ? originalPrice.toDouble()
+                                          : null,
+                                      image: product['image']?.toString(),
+                                      quantity: quantity,
+                                    );
+                                _showMessage(t('Added to cart'));
+                              }
+                            : null,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: inStock
+                                ? primaryBlue
+                                : const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.shopping_cart_outlined,
+                                color: Colors.white,
+                                size: 11,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                t('Add'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

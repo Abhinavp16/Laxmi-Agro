@@ -33,7 +33,6 @@ import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/notification_countdown_label.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
-import '../../widgets/pending_price_change_notice.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
@@ -121,7 +120,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   String _searchQuery = '';
   _SearchScope _searchScope = _SearchScope.product;
   Timer? _searchDebounce;
-  final List<String> _recentSearches = ['Seed Drill', 'Tractor parts'];
+  final List<String> _recentSearches = [];
 
   // Filter state
   String? _selectedFilterCategoryId;
@@ -2910,6 +2909,27 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  void _submitSearch(String value) {
+    final query = value.trim();
+    if (query.isEmpty) return;
+
+    _searchDebounce?.cancel();
+    setState(() {
+      _recentSearches.removeWhere(
+        (item) => item.toLowerCase() == query.toLowerCase(),
+      );
+      _recentSearches.insert(0, query);
+      if (_recentSearches.length > 5) {
+        _recentSearches.removeRange(5, _recentSearches.length);
+      }
+      _searchQuery = query;
+    });
+
+    if (_searchScope == _SearchScope.product) {
+      _searchProducts(query);
+    }
+  }
+
   void _clearSearch() {
     _searchDebounce?.cancel();
     _invalidateSearchRequests();
@@ -3158,14 +3178,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildSearchContent() {
     final t = ref.read(localeProvider.notifier).translate;
-    final popularCategories = [
-      t('🔥 Trending'),
-      t('Tractors'),
-      t('Harvesters'),
-      t('Irrigation'),
-      t('Seeds'),
-      t('Fertilizers'),
-    ];
+    final catalogCategories = _categoryData
+        .where(_categoryHasProducts)
+        .take(8)
+        .toList();
+    final suggestionProducts = _featuredProducts.isNotEmpty
+        ? _featuredProducts
+        : _products;
+    final suggestionTitle = _featuredProducts.isNotEmpty
+        ? t('Featured Products')
+        : t('Catalog Products');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3218,6 +3240,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     onChanged: _handleSearchTextChanged,
+                    onSubmitted: _submitSearch,
+                    textInputAction: TextInputAction.search,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
@@ -3230,7 +3254,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         fontWeight: FontWeight.w500,
                         color: textMuted,
                       ),
+                      filled: true,
+                      fillColor: Colors.white,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -3497,93 +3528,88 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ],
                           ),
                         ),
-                      // Popular Searches
-                      Padding(
-                        padding: const EdgeInsets.only(top: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Text(
-                                t('Popular Searches'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: 44,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
+                      if (catalogCategories.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                 ),
-                                itemCount: popularCategories.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 10),
-                                itemBuilder: (context, index) {
-                                  final isFirst = index == 0;
-                                  return GestureDetector(
-                                    onTap: () {
-                                      final term = popularCategories[index]
-                                          .replaceAll('🔥 ', '');
-                                      _searchController.text = term;
-                                      _handleSearchTextChanged(term);
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isFirst
-                                            ? primaryBlue
-                                            : surfaceWhite,
-                                        borderRadius: BorderRadius.circular(
-                                          100,
+                                child: Text(
+                                  t('Browse Categories'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 44,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  itemCount: catalogCategories.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 10),
+                                  itemBuilder: (context, index) {
+                                    final category = catalogCategories[index];
+                                    final label = _getDisplayCategoryName(
+                                      category,
+                                    );
+                                    return GestureDetector(
+                                      onTap: () {
+                                        _searchDebounce?.cancel();
+                                        _invalidateSearchRequests();
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchScope = _SearchScope.product;
+                                          _searchQuery = '';
+                                          _selectedFilterCategoryId =
+                                              category['id']?.toString();
+                                          _selectedFilterBrandId =
+                                              category['brandId']?.toString();
+                                        });
+                                        _searchProducts('');
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
                                         ),
-                                        border: Border.all(
-                                          color: isFirst
-                                              ? primaryBlue
-                                              : borderLight,
+                                        decoration: BoxDecoration(
+                                          color: surfaceWhite,
+                                          borderRadius: BorderRadius.circular(
+                                            100,
+                                          ),
+                                          border: Border.all(
+                                            color: borderLight,
+                                          ),
                                         ),
-                                        boxShadow: isFirst
-                                            ? [
-                                                BoxShadow(
-                                                  color: primaryBlue
-                                                      .withOpacity(0.3),
-                                                  blurRadius: 12,
-                                                  offset: const Offset(0, 4),
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          popularCategories[index],
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: isFirst
-                                                ? Colors.white
-                                                : textPrimary,
+                                        child: Center(
+                                          child: Text(
+                                            label,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: textPrimary,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      // Top Suggestions
+                      // Live catalog suggestions
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 32, 16, 100),
                         child: Column(
@@ -3593,25 +3619,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  t('Top Suggestions'),
+                                  suggestionTitle,
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
                                   ),
                                 ),
-                                Text(
-                                  t('Based on your interest'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                    color: textMuted,
-                                  ),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            ..._products
+                            ...suggestionProducts
                                 .take(5)
                                 .map(
                                   (product) => _buildSuggestionCard(product),
@@ -5122,239 +5140,258 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: Product Image (100x100)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                Container(color: const Color(0xFFF1F5F9)),
-                            errorWidget: (_, __, ___) => Container(
-                              color: const Color(0xFFF1F5F9),
-                              child: Center(
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedImage01,
-                                  color: textMuted,
-                                  size: 32,
-                                ),
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: const Color(0xFFF1F5F9),
-                            child: Center(
-                              child: HugeIcon(
-                                icon: HugeIcons.strokeRoundedImage01,
-                                color: textMuted,
-                                size: 32,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Right: All Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top Row: Date, Time, Status
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                formattedDate.isNotEmpty
-                                    ? formattedDate
-                                    : 'No date',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  color: textMuted,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (formattedTime.isNotEmpty)
-                                Text(
-                                  formattedTime,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 10,
-                                    color: textMuted,
-                                    fontWeight: FontWeight.w400,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left: Product Image (100x100)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) =>
+                                    Container(color: const Color(0xFFF1F5F9)),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: const Color(0xFFF1F5F9),
+                                  child: Center(
+                                    child: HugeIcon(
+                                      icon: HugeIcons.strokeRoundedImage01,
+                                      color: textMuted,
+                                      size: 32,
+                                    ),
                                   ),
                                 ),
+                              )
+                            : Container(
+                                color: const Color(0xFFF1F5F9),
+                                child: Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedImage01,
+                                    color: textMuted,
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Right: Product Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Top Row: Date, Time, Status
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      formattedDate.isNotEmpty
+                                          ? formattedDate
+                                          : 'No date',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: textMuted,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (formattedTime.isNotEmpty)
+                                      Text(
+                                        formattedTime,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          color: textMuted,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusDisplay['bg'] as Color,
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: Text(
+                                    statusDisplay['label'] as String,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: statusDisplay['color'] as Color,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                          const SizedBox(height: 10),
+                          // SKU / Negotiation Number
+                          Text(
+                            negotiationNumber.isNotEmpty
+                                ? negotiationNumber
+                                : 'NEGOTIATION',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4C669A),
+                              letterSpacing: 0.5,
                             ),
-                            decoration: BoxDecoration(
-                              color: statusDisplay['bg'] as Color,
-                              borderRadius: BorderRadius.circular(100),
+                          ),
+                          const SizedBox(height: 4),
+                          // Product Name
+                          Text(
+                            productName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                              height: 1.2,
+                              letterSpacing: -0.3,
                             ),
-                            child: Text(
-                              statusDisplay['label'] as String,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                color: statusDisplay['color'] as Color,
-                                letterSpacing: 0.3,
-                              ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Quantity
+                          Text(
+                            t('Qty: $quantity units'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF4C669A),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      // SKU / Negotiation Number
-                      Text(
-                        negotiationNumber.isNotEmpty
-                            ? negotiationNumber
-                            : 'NEGOTIATION',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF4C669A),
-                          letterSpacing: 0.5,
-                        ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Price Info (Compact)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: backgroundWhite,
+                    borderRadius: BorderRadius.circular(6),
+                    border: status == 'accepted'
+                        ? const Border(
+                            left: BorderSide(
+                              color: Color(0xFF16A34A),
+                              width: 3,
+                            ),
+                          )
+                        : null,
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            t('Your Price:'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: const Color(0xFF4C669A),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '₹$requestedPrice',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
-                      // Product Name
-                      Text(
-                        productName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                          height: 1.2,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Quantity
-                      Text(
-                        t('Qty: $quantity units'),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF4C669A),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Price Info (Compact)
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: backgroundWhite,
-                          borderRadius: BorderRadius.circular(6),
-                          border: status == 'accepted'
-                              ? const Border(
-                                  left: BorderSide(
-                                    color: Color(0xFF16A34A),
-                                    width: 3,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  t('Your Price:'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    color: const Color(0xFF4C669A),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  '₹$requestedPrice',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: textPrimary,
-                                  ),
-                                ),
-                              ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            status == 'countered' && currentOfferBy == 'admin'
+                                ? t('Counter:')
+                                : t('Current:'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: const Color(0xFF4C669A),
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  status == 'countered' &&
-                                          currentOfferBy == 'admin'
-                                      ? t('Counter:')
-                                      : t('Current:'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    color: const Color(0xFF4C669A),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  '₹$currentPrice',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: status == 'accepted'
-                                        ? const Color(0xFF16A34A)
-                                        : primaryBlue,
-                                  ),
-                                ),
-                              ],
+                          ),
+                          Text(
+                            '₹$currentPrice',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: status == 'accepted'
+                                  ? const Color(0xFF16A34A)
+                                  : primaryBlue,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  t('Total:'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  '₹$currentTotal',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: status == 'accepted'
-                                        ? const Color(0xFF16A34A)
-                                        : textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      // Action Button
-                      _buildNegActionButton(
-                        status,
-                        currentOfferBy,
-                        canPay,
-                        negotiationId,
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            t('Total:'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '₹$currentTotal',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: status == 'accepted'
+                                  ? const Color(0xFF16A34A)
+                                  : textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 10),
+                // Action Button
+                _buildNegActionButton(
+                  status,
+                  currentOfferBy,
+                  canPay,
+                  negotiationId,
                 ),
               ],
             ),
@@ -6696,7 +6733,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                item['title'] ?? t('Next-Gen\nTractors'),
+                                item['title'] ?? t('Explore Products'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w900,
@@ -6808,6 +6845,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildBrandsSection() {
     final t = ref.read(localeProvider.notifier).translate;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth >= 600;
+    final cardGap = isTablet ? 10.0 : 6.0;
+    final cardWidth = isTablet
+        ? 104.0
+        : ((screenWidth - 32 - (cardGap * 4)) / 5).clamp(62.0, 76.0);
+    final cardHeight = isTablet ? 122.0 : 104.0;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -6892,19 +6937,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           const SizedBox(height: 12),
 
           SizedBox(
-            height: 78,
+            height: cardHeight,
             child: _isLoadingBrands
                 ? ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: 5,
                     itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
+                      padding: EdgeInsets.only(right: cardGap),
                       child: Container(
-                        width: 148,
+                        width: cardWidth,
                         decoration: BoxDecoration(
-                          color: borderLight,
-                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(11),
                         ),
                       ),
                     ),
@@ -6923,6 +6968,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     itemCount: _brands.length,
                     itemBuilder: (context, index) {
                       final brand = _brands[index];
+                      final brandName = brand['name']?.toString() ?? '';
                       final accentColor = Color(
                         (brand['accent'] as int?) ?? 0xFF2563EB,
                       );
@@ -6931,143 +6977,80 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           brand['logo'].toString().isNotEmpty;
 
                       return Padding(
-                        padding: const EdgeInsets.only(right: 12),
+                        padding: EdgeInsets.only(right: cardGap),
                         child: GestureDetector(
                           onTap: () {
-                            final name = brand['name']?.toString() ?? '';
                             final id = brand['id']?.toString() ?? '';
                             if (id.isEmpty) return;
                             context.push(
-                              '/brand/${Uri.encodeComponent(id)}?name=${Uri.encodeQueryComponent(name)}',
+                              '/brand/${Uri.encodeComponent(id)}?name=${Uri.encodeQueryComponent(brandName)}',
                             );
                           },
                           child: Container(
-                            width: 148,
+                            width: cardWidth,
+                            padding: const EdgeInsets.fromLTRB(5, 6, 5, 7),
                             decoration: BoxDecoration(
                               color: surfaceWhite,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: borderLight, width: 1),
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(
+                                color: const Color(0xFFE4EDF8),
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                                  color: const Color(
+                                    0xFF334155,
+                                  ).withOpacity(0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
-                            child: Row(
+                            child: Column(
                               children: [
-                                // Logo area
-                                Container(
-                                  width: 58,
-                                  height: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: accentColor.withOpacity(0.07),
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(17),
-                                      bottomLeft: Radius.circular(17),
-                                    ),
-                                  ),
-                                  child: hasLogo
-                                      ? Padding(
-                                          padding: const EdgeInsets.all(10),
-                                          child: CachedNetworkImage(
-                                            imageUrl: brand['logo'],
+                                Expanded(
+                                  child: Center(
+                                    child: hasLogo
+                                        ? CachedNetworkImage(
+                                            imageUrl:
+                                                ApiConfig.normalizeMediaUrl(
+                                                  brand['logo'].toString(),
+                                                ),
                                             fit: BoxFit.contain,
-                                            placeholder: (_, __) => Center(
-                                              child: SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: accentColor,
-                                                    ),
+                                            placeholder: (_, __) => SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                color: accentColor,
                                               ),
                                             ),
                                             errorWidget: (_, __, ___) =>
                                                 _buildBrandInitial(
-                                                  brand['name'] ?? '',
+                                                  brandName,
                                                   accentColor,
                                                 ),
+                                          )
+                                        : _buildBrandInitial(
+                                            brandName,
+                                            accentColor,
                                           ),
-                                        )
-                                      : _buildBrandInitial(
-                                          brand['name'] ?? '',
-                                          accentColor,
-                                        ),
+                                  ),
                                 ),
-                                // Info area
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 10,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          brand['name'] ?? '',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w800,
-                                            color: textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        if (brand['tag'] != null) ...[
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: accentColor.withOpacity(
-                                                0.1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              brand['tag'],
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: accentColor,
-                                                  ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                        ],
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.verified_rounded,
-                                              size: 10,
-                                              color: accentColor,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              t('Verified'),
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: textMuted,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                const SizedBox(height: 4),
+                                SizedBox(
+                                  height: 25,
+                                  child: Center(
+                                    child: Text(
+                                      brandName,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: isTablet ? 10 : 8.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: textPrimary,
+                                        height: 1.15,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -7110,7 +7093,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildProductsSection(String title, bool isFeatured) {
     final sectionProducts = isFeatured ? _featuredProducts : _hotProducts;
-    final filteredProducts = sectionProducts.take(4).toList();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final productGridColumns = screenWidth >= 600
+        ? 4
+        : screenWidth >= 370
+        ? 3
+        : 2;
+    final filteredProducts = sectionProducts.take(productGridColumns).toList();
 
     debugPrint(
       '🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Available: ${sectionProducts.length} | Displayed: ${filteredProducts.length}',
@@ -7118,68 +7107,64 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
     final t = ref.read(localeProvider.notifier).translate;
     final currentLang = ref.read(localeProvider);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final isTablet = screenWidth >= 700;
-    final productGridColumns = isTablet ? (screenWidth >= 1000 ? 4 : 3) : 2;
-    final productGridSpacing = isTablet ? 16.0 : 12.0;
-    final productGridHorizontalPadding = isTablet ? 20.0 : 16.0;
-    final productGridAspectRatio = isTablet ? 0.78 : 0.72;
-
-    // Section colors based on requirement
-    final Color gradientBase = isFeatured
-        ? const Color(0xFF1E3A8A) // Medium/Dark Blue
-        : const Color(0xFFEF4444); // Reddish
+    final subtitle = _isWholesaler
+        ? isFeatured
+              ? t('Popular dealer picks')
+              : t('Bulk offers for your business')
+        : isFeatured
+        ? t('Loved by farmers')
+        : t('Limited-time savings');
+    const productGridSpacing = 7.0;
+    const productGridHorizontalPadding = 10.0;
+    final productCardHeight = productGridColumns == 2 ? 244.0 : 220.0;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            isFeatured
-                ? const Color(0xFF1E3A8A).withOpacity(0.15) // Deep Blue
-                : const Color(0xFFFECACA).withOpacity(0.25), // Lighter Reddish
-            isFeatured
-                ? const Color(0xFF1E3A8A).withOpacity(0.05)
-                : const Color(0xFFFECACA).withOpacity(0.1),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.4, 1.0],
-        ),
+        color: const Color(0xFFF2F7FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3EDFC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: textPrimary,
-                        letterSpacing: -0.5,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 3,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: gradientBase,
-                        borderRadius: BorderRadius.circular(2),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 6),
                 GestureDetector(
                   onTap: () {
                     if (isFeatured) {
@@ -7190,35 +7175,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 8,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: borderLight),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Row(
                       children: [
                         Text(
-                          t('View all'),
+                          t(isFeatured ? 'See All' : 'View all'),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
                           ),
                         ),
                         const SizedBox(width: 4),
                         const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 10,
+                          Icons.arrow_forward_rounded,
+                          size: 14,
                           color: primaryBlue,
                         ),
                       ],
@@ -7228,8 +7206,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          // Products Grid - 2 columns
+          const SizedBox(height: 12),
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: productGridHorizontalPadding,
@@ -7242,26 +7219,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       crossAxisCount: productGridColumns,
                       crossAxisSpacing: productGridSpacing,
                       mainAxisSpacing: productGridSpacing,
-                      childAspectRatio: productGridAspectRatio,
+                      mainAxisExtent: productCardHeight,
                     ),
-                    itemCount: 4,
+                    itemCount: productGridColumns,
                     itemBuilder: (context, index) => Container(
                       decoration: BoxDecoration(
                         color: borderLight,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(11),
                       ),
                     ),
                   )
                 : filteredProducts.isEmpty
                 ? Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(40),
+                      padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
                           Icon(
                             Icons.inventory_2_outlined,
                             color: textMuted.withOpacity(0.5),
-                            size: 48,
+                            size: 28,
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -7281,11 +7258,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       crossAxisCount: productGridColumns,
                       crossAxisSpacing: productGridSpacing,
                       mainAxisSpacing: productGridSpacing,
-                      childAspectRatio: productGridAspectRatio,
+                      mainAxisExtent: productCardHeight,
                     ),
-                    itemCount: filteredProducts.length > 6
-                        ? 6
-                        : filteredProducts.length,
+                    itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
                       // Only show HOT badge in Hot Deals section, not in Popular Products
@@ -7308,7 +7283,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     bool showHotBadge = true,
   }) {
     final t = ref.read(localeProvider.notifier).translate;
-    final heroTag = 'product-image-${product['id']}';
+    final productId = product['id'].toString();
+    final heroTag = 'product-image-$productId';
     final hasOriginalPrice =
         product['originalPrice'] != null &&
         product['originalPrice'] != product['price'] &&
@@ -7337,26 +7313,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       badgeColor = primaryBlue;
     }
 
-    final category = (product['category'] ?? '').toString().toUpperCase();
+    final brand = (product['brand'] ?? product['category'] ?? '').toString();
     final rating = product['rating'];
     final reviewCount = product['reviewCount'] ?? product['reviews'] ?? '';
+    final inStock = product['inStock'] != false;
+    final isWishlisted = ref.watch(wishlistProvider).contains(productId);
 
-    return GestureDetector(
-      onTap: () => context.push(
-        '/product/${product['id']}',
-        extra: {'heroTag': heroTag},
-      ),
+    return InkWell(
+      onTap: () =>
+          context.push('/product/$productId', extra: {'heroTag': heroTag}),
+      borderRadius: BorderRadius.circular(11),
       child: Container(
         decoration: BoxDecoration(
           color: surfaceWhite,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: borderLight, width: 1),
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: const Color(0xFFE1E8F2)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              spreadRadius: 0,
-              offset: const Offset(0, 3),
+              color: const Color(0xFF334155).withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -7367,54 +7343,58 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(4),
+                  top: Radius.circular(11),
                 ),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Background + image
-                    Hero(
-                      tag: heroTag,
-                      child:
-                          product['image'] != null &&
-                              product['image'].toString().isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: product['image'],
-                              fit: BoxFit.contain,
-                              placeholder: (_, __) => ProductImagePlaceholder(
+                    Container(color: const Color(0xFFFAFCFF)),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Hero(
+                        tag: heroTag,
+                        child:
+                            product['image'] != null &&
+                                product['image'].toString().isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: product['image'],
+                                fit: BoxFit.contain,
+                                placeholder: (_, __) => ProductImagePlaceholder(
+                                  category:
+                                      product['category']?.toString() ?? '',
+                                  name: product['name']?.toString() ?? '',
+                                ),
+                                errorWidget: (_, __, ___) =>
+                                    ProductImagePlaceholder(
+                                      category:
+                                          product['category']?.toString() ?? '',
+                                      name: product['name']?.toString() ?? '',
+                                    ),
+                              )
+                            : ProductImagePlaceholder(
                                 category: product['category']?.toString() ?? '',
                                 name: product['name']?.toString() ?? '',
                               ),
-                              errorWidget: (_, __, ___) =>
-                                  ProductImagePlaceholder(
-                                    category:
-                                        product['category']?.toString() ?? '',
-                                    name: product['name']?.toString() ?? '',
-                                  ),
-                            )
-                          : ProductImagePlaceholder(
-                              category: product['category']?.toString() ?? '',
-                              name: product['name']?.toString() ?? '',
-                            ),
+                      ),
                     ),
                     // Out of stock overlay
-                    if (product['inStock'] == false)
+                    if (!inStock)
                       Container(
                         color: Colors.white.withOpacity(0.65),
                         alignment: Alignment.center,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 7,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.black87,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
                             t('Out of Stock'),
                             style: GoogleFonts.outfit(
-                              fontSize: 11,
+                              fontSize: 9,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -7424,21 +7404,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     // Badge (top-left)
                     if (badgeLabel != null)
                       Positioned(
-                        top: 10,
-                        left: 10,
+                        top: 6,
+                        left: 6,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: badgeColor,
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
                             badgeLabel,
                             style: GoogleFonts.outfit(
-                              fontSize: 9,
+                              fontSize: 7.5,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                               letterSpacing: 0.5,
@@ -7446,212 +7426,256 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                         ),
                       ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Material(
+                        color: Colors.white.withOpacity(0.94),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: () {
+                            if (ref.read(guestModeProvider)) {
+                              _showGuestModePopup(
+                                'Wishlist disabled in preview mode',
+                              );
+                              return;
+                            }
+                            ref
+                                .read(wishlistProvider.notifier)
+                                .toggle(
+                                  WishlistItem(
+                                    productId: productId,
+                                    name: product['name']?.toString() ?? '',
+                                    image: product['image']?.toString(),
+                                    price:
+                                        (product['price'] as num?)
+                                            ?.toDouble() ??
+                                        0,
+                                    mrp: hasOriginalPrice
+                                        ? (product['originalPrice'] as num)
+                                              .toDouble()
+                                        : null,
+                                    category: product['category']?.toString(),
+                                    nameHindi: product['nameHindi']?.toString(),
+                                    blurHash: product['blurHash']?.toString(),
+                                  ),
+                                );
+                          },
+                          customBorder: const CircleBorder(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Icon(
+                              isWishlisted
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 15,
+                              color: isWishlisted
+                                  ? const Color(0xFFEF4444)
+                                  : textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
 
-            // ── Info area ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: const EdgeInsets.fromLTRB(7, 6, 7, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (category.isNotEmpty)
-                    Text(
-                      category,
-                      style: GoogleFonts.outfit(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: textMuted,
-                        letterSpacing: 0.8,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  Text(
+                    brand.isEmpty ? t('Laxmi Agro') : brand,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: primaryBlue,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 2),
                   SizedBox(
-                    height: 52,
+                    height: 30,
                     child: Text(
                       _getDisplayName(product, currentLang),
-                      style: GoogleFonts.outfit(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w400,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
                         color: textPrimary,
-                        height: 1.25,
+                        height: 1.35,
                       ),
-                      maxLines: 3,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  // Star rating visualization
+                  const SizedBox(height: 2),
                   if (rating != null)
                     Row(
                       children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 12,
+                          color: Color(0xFFF59E0B),
+                        ),
+                        const SizedBox(width: 2),
                         Text(
                           '$rating',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: textPrimary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: textSecondary,
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Row(
-                          children: List.generate(5, (index) {
-                            final rv = (rating is num)
-                                ? rating.toDouble()
-                                : double.tryParse(rating.toString()) ?? 0.0;
-                            final starIndex = index + 1;
-                            if (rv >= starIndex) {
-                              return const Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: Color(0xFFFBBF24),
-                              );
-                            } else if (rv >= starIndex - 0.5) {
-                              return const Icon(
-                                Icons.star_half_rounded,
-                                size: 14,
-                                color: Color(0xFFFBBF24),
-                              );
-                            } else {
-                              return const Icon(
-                                Icons.star_outline_rounded,
-                                size: 14,
-                                color: Color(0xFFE2E8F0),
-                              );
-                            }
-                          }),
                         ),
                         if (reviewCount != null &&
                             reviewCount.toString().isNotEmpty) ...[
-                          const SizedBox(width: 5),
-                          Text(
-                            '($reviewCount)',
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              color: textMuted,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(width: 2),
+                          Flexible(
+                            child: Text(
+                              '($reviewCount)',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 8,
+                                color: textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ],
                     ),
-                  const SizedBox.shrink(),
-                  const SizedBox(height: 6),
-                  // Price + Cart button
+                  const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '₹${_formatPrice(product['price'] ?? 0)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: textPrimary,
-                            ),
-                          ),
-                          if (hasOriginalPrice)
-                            Text(
-                              '₹${_formatPrice(product['originalPrice'])}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                color: const Color(0xFFEF4444),
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          if (ref.read(guestModeProvider)) {
-                            _showGuestModePopup(
-                              'Add to Cart disabled in preview mode',
-                            );
-                            return;
-                          }
-                          final configuredMinimum =
-                              product['minWholesaleQuantity'];
-                          final minimumWholesaleQuantity =
-                              configuredMinimum is num
-                              ? configuredMinimum.toInt()
-                              : int.tryParse(
-                                      configuredMinimum?.toString() ?? '',
-                                    ) ??
-                                    1;
-                          final quantity = _isWholesaler
-                              ? math.max(minimumWholesaleQuantity, 1)
-                              : 1;
-                          ref
-                              .read(cartProvider.notifier)
-                              .addItem(
-                                productId: product['id'].toString(),
-                                name: product['name'] ?? '',
-                                nameHindi: product['nameHindi']?.toString(),
-                                brand: product['brand']?.toString(),
-                                category: product['category']?.toString(),
-                                minWholesaleQuantity: minimumWholesaleQuantity,
-                                price: (product['price'] as num).toDouble(),
-                                mrp: hasOriginalPrice
-                                    ? (product['originalPrice'] as num)
-                                          .toDouble()
-                                    : null,
-                                image: product['image']?.toString(),
-                                quantity: quantity,
-                              );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                t('Added to cart'),
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '₹${_formatPrice(product['price'] ?? 0)}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: textPrimary,
                                 ),
                               ),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: primaryBlue,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              margin: const EdgeInsets.all(16),
                             ),
-                          );
-                        },
+                            if (hasOriginalPrice)
+                              Text(
+                                '₹${_formatPrice(product['originalPrice'])}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 7.5,
+                                  color: textMuted,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      GestureDetector(
+                        onTap: inStock
+                            ? () {
+                                if (ref.read(guestModeProvider)) {
+                                  _showGuestModePopup(
+                                    'Add to Cart disabled in preview mode',
+                                  );
+                                  return;
+                                }
+                                final configuredMinimum =
+                                    product['minWholesaleQuantity'];
+                                final minimumWholesaleQuantity =
+                                    configuredMinimum is num
+                                    ? configuredMinimum.toInt()
+                                    : int.tryParse(
+                                            configuredMinimum?.toString() ?? '',
+                                          ) ??
+                                          1;
+                                final quantity = _isWholesaler
+                                    ? math.max(minimumWholesaleQuantity, 1)
+                                    : 1;
+                                ref
+                                    .read(cartProvider.notifier)
+                                    .addItem(
+                                      productId: productId,
+                                      name: product['name'] ?? '',
+                                      nameHindi: product['nameHindi']
+                                          ?.toString(),
+                                      brand: product['brand']?.toString(),
+                                      category: product['category']?.toString(),
+                                      minWholesaleQuantity:
+                                          minimumWholesaleQuantity,
+                                      price: (product['price'] as num)
+                                          .toDouble(),
+                                      mrp: hasOriginalPrice
+                                          ? (product['originalPrice'] as num)
+                                                .toDouble()
+                                          : null,
+                                      image: product['image']?.toString(),
+                                      quantity: quantity,
+                                    );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      t('Added to cart'),
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: primaryBlue,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    margin: const EdgeInsets.all(16),
+                                  ),
+                                );
+                              }
+                            : null,
                         child: Container(
-                          width: 34,
-                          height: 34,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: primaryBlue,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryBlue.withOpacity(0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                            color: inStock
+                                ? primaryBlue
+                                : const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.shopping_cart_outlined,
+                                color: Colors.white,
+                                size: 11,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                t('Add'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
                               ),
                             ],
-                          ),
-                          child: const Icon(
-                            Icons.shopping_cart_rounded,
-                            color: Colors.white,
-                            size: 17,
                           ),
                         ),
                       ),
                     ],
-                  ),
-                  PendingPriceChangeNotice(
-                    pendingPriceChange:
-                        product['pendingPriceChange'] as Map<String, dynamic>?,
-                    compact: true,
-                    primaryColor: textPrimary,
-                    accentColor: const Color(0xFFB45309),
-                    backgroundColor: const Color(0xFFFFF7ED),
                   ),
                 ],
               ),
