@@ -168,7 +168,7 @@ exports.getNegotiationById = async (req, res, next) => {
     data.approvedBy = accepted
       ? {
           role: accepted.actorRole || 'admin',
-          name: accepted.actorId?.name || accepted.actorId?.username || (accepted.actorRole === 'staff' ? 'Staff' : 'Admin'),
+          name: accepted.actorId?.name || accepted.actorId?.username || (accepted.actorRole === 'staff' ? 'Member' : 'Admin'),
         }
       : null;
 

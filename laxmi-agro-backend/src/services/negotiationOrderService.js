@@ -207,7 +207,7 @@ async function acceptNegotiationAndCreateOrder({
     totalPrice: acceptedTotalPrice,
   }];
 
-  const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  const actorLabel = actor.role === 'staff' ? `Member ${actor.name}` : `Admin ${actor.name}`;
   let order;
   let createdOrder = false;
   try {
@@ -288,7 +288,7 @@ async function acceptNegotiationAndCreateOrder({
 }
 
 async function runPostConversionEffects({ negotiation, order, actor, product, wholesaler, io }) {
-  const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  const actorLabel = actor.role === 'staff' ? `Member ${actor.name}` : `Admin ${actor.name}`;
   if (product) {
     await Product.findByIdAndUpdate(product._id, { $inc: { orderCount: 1 } });
   }
@@ -328,7 +328,7 @@ async function runPostConversionEffects({ negotiation, order, actor, product, wh
 }
 
 async function finalizeNegotiation({ negotiation, order, actor, message, recoverExisting = false }) {
-  const actorLabel = actor.role === 'staff' ? `Staff ${actor.name}` : `Admin ${actor.name}`;
+  const actorLabel = actor.role === 'staff' ? `Member ${actor.name}` : `Admin ${actor.name}`;
   const acceptedPricePerUnit = negotiation.finalPricePerUnit ?? negotiation.currentPricePerUnit;
   const acceptedTotalPrice = negotiation.finalTotalPrice ?? negotiation.currentTotalPrice;
   const acceptanceAlreadyRecorded = negotiation.status === NEGOTIATION_STATUS.ACCEPTED ||

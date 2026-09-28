@@ -37,7 +37,7 @@ async function attachApprovers(negotiations) {
     const approver = approverByNegotiation.get(String(n._id)) || null;
     if (approver?.userId) {
       const user = usersById.get(approver.userId);
-      approver.name = user?.name || user?.username || user?.email || 'Staff';
+      approver.name = user?.name || user?.username || user?.email || 'Member';
     } else if (approver) {
       approver.name = 'Admin';
     }
@@ -143,7 +143,7 @@ exports.getNegotiationById = async (req, res, next) => {
       ? {
           role: accepted.actorRole || 'admin',
           userId: accepted.actorId?._id ? String(accepted.actorId._id) : null,
-          name: accepted.actorId?.name || accepted.actorId?.username || (accepted.actorRole === 'staff' ? 'Staff' : 'Admin'),
+          name: accepted.actorId?.name || accepted.actorId?.username || (accepted.actorRole === 'staff' ? 'Member' : 'Admin'),
         }
       : null;
 

@@ -171,7 +171,7 @@ exports.login = async (req, res, next) => {
     }
 
     if (user.role === USER_ROLES.STAFF) {
-      throw new UnauthorizedError('Please use staff login', 'AUTH_ROLE_MISMATCH');
+      throw new UnauthorizedError('Please use member login', 'AUTH_ROLE_MISMATCH');
     }
 
     if (user.authProvider !== AUTH_PROVIDERS.EMAIL) {

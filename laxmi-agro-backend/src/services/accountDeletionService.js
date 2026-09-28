@@ -40,7 +40,7 @@ async function createRequestForUser({ user, source }) {
     events: [{
       action: 'requested',
       byUserId: user._id,
-      note: source === 'app' ? 'Submitted by the authenticated account holder.' : 'Submitted through the public deletion page; staff identity verification is required.',
+      note: source === 'app' ? 'Submitted by the authenticated account holder.' : 'Submitted through the public deletion page; Member identity verification is required.',
     }],
   });
 
@@ -58,7 +58,7 @@ async function completeRequest({ requestId, adminUserId, staffNote = '' }) {
 
   if (request.source === 'website' && !request.identityVerification?.verifiedAt) {
     throw new BadRequestError(
-      'A website deletion request must be verified by staff before completion',
+      'A website deletion request must be verified by a Member before completion',
       'DELETION_REQUEST_VERIFICATION_REQUIRED'
     );
   }

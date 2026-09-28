@@ -73,7 +73,7 @@ exports.cancelMyAccountDeletion = async (req, res, next) => {
     request.events.push({
       action: 'cancelled',
       byUserId: req.user._id,
-      note: 'Cancelled by the authenticated account holder before staff processing.',
+      note: 'Cancelled by the authenticated account holder before Member processing.',
     });
     await request.save();
 

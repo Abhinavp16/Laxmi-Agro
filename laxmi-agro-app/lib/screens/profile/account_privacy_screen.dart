@@ -175,7 +175,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'After staff verification, we complete deletion within 30 days. Restricted financial records may be retained only for legal, tax, payment, fraud-prevention, dispute, or warranty obligations.',
+                    'After Member verification, we complete deletion within 30 days. Restricted financial records may be retained only for legal, tax, payment, fraud-prevention, dispute, or warranty obligations.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       height: 1.55,

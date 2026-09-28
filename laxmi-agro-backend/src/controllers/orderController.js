@@ -14,6 +14,7 @@ const {
 } = require('../utils/productVariants');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 const { round2 } = require('../utils/productDiscount');
+const { withDisplayNotes } = require('../utils/roleLabels');
 const { notifyAdmins } = require('../services/adminNotificationService');
 
 const cartItemKey = (productId, variantId) => `${productId}:${variantId || 'default'}`;
@@ -592,7 +593,7 @@ exports.getMyOrders = async (req, res, next) => {
       acceptedAt: order.acceptedAt,
       rejectedAt: order.rejectedAt,
       rejectionReason: order.rejectionReason,
-      statusHistory: order.statusHistory,
+      statusHistory: withDisplayNotes(order.statusHistory),
       trackingNumber: order.trackingNumber,
       courierName: order.courierName,
       shippedAt: order.shippedAt,
@@ -946,11 +947,13 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
 exports.getOrderById = async (req, res, next) => {
   try {
     const order = await getOwnedOrderOrThrow(req.params.id, req.user._id);
+    const orderData = order.toObject();
 
     res.json({
       success: true,
       data: {
-        ...order.toObject(),
+        ...orderData,
+        statusHistory: withDisplayNotes(orderData.statusHistory),
         payment: null,
         checkoutMethod: 'whatsapp',
       },

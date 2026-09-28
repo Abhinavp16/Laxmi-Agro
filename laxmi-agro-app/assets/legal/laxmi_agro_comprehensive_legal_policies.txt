@@ -28,4 +28,4 @@ Company: Laxmi Agro
 
 PRIVACY, DELETION, AND RETENTION
 
-Account holders can request deletion from Account & Privacy in the app or at https://www.laxmiagroenterprises.com/delete-account. After staff verification, the target completion time is 30 days. Direct account data is deleted or anonymized; restricted financial, tax, payment, fraud-prevention, dispute, warranty, and other legally required records may be retained for the applicable retention period. Backup handling follows applicable operational and legal retention requirements.
+Account holders can request deletion from Account & Privacy in the app or at https://www.laxmiagroenterprises.com/delete-account. After Member verification, the target completion time is 30 days. Direct account data is deleted or anonymized; restricted financial, tax, payment, fraud-prevention, dispute, warranty, and other legally required records may be retained for the applicable retention period. Backup handling follows applicable operational and legal retention requirements.

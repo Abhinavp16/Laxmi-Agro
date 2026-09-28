@@ -273,7 +273,7 @@ class _NegotiationDetailScreenState
   }
 
   // NOTE: wholesalers negotiate through chat messages only. Accept, counter
-  // and reject are admin/staff actions performed from the admin panel, so the
+  // and reject are admin/member actions performed from the admin panel, so the
   // corresponding app actions were removed. _proceedToOrder below is kept as a
   // legacy fallback for negotiations accepted before order auto-creation.
   Future<void> _proceedToOrder() async {

@@ -13,7 +13,7 @@ async function notifyWholesaler(userId, notification, data) {
   try {
     await notificationService.sendToUser(userId, notification, data);
   } catch (error) {
-    console.error('Failed to send staff negotiation notification:', error.message);
+    console.error('Failed to send member negotiation notification:', error.message);
   }
 }
 
@@ -202,7 +202,7 @@ exports.acceptNegotiation = async (req, res, next) => {
     if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
     assertStaffNegotiationAction(negotiation);
 
-    const staffName = req.user.name || req.user.username || 'Staff';
+    const staffName = req.user.name || req.user.username || 'Member';
     const { acceptNegotiationAndCreateOrder } = require('../services/negotiationOrderService');
     const { negotiation: updated, order, alreadyConverted } = await acceptNegotiationAndCreateOrder({
       negotiationId: negotiation._id,

@@ -57,7 +57,7 @@ exports.createStaff = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Staff account created. Share the password securely.',
+      message: 'Member account created. Share the password securely.',
       data: sanitizeUser(staff),
     });
   } catch (error) {
@@ -68,7 +68,7 @@ exports.createStaff = async (req, res, next) => {
 exports.resetStaffPassword = async (req, res, next) => {
   try {
     const staff = await User.findOne({ _id: req.params.id, role: USER_ROLES.STAFF }).select('+passwordHash');
-    if (!staff) throw new NotFoundError('Staff account not found', 'STAFF_NOT_FOUND');
+    if (!staff) throw new NotFoundError('Member account not found', 'STAFF_NOT_FOUND');
 
     staff.passwordHash = req.body.password;
     staff.mustChangePassword = false;
@@ -91,11 +91,11 @@ exports.resetStaffPassword = async (req, res, next) => {
 exports.updateStaffStatus = async (req, res, next) => {
   try {
     const staff = await User.findOne({ _id: req.params.id, role: USER_ROLES.STAFF });
-    if (!staff) throw new NotFoundError('Staff account not found', 'STAFF_NOT_FOUND');
+    if (!staff) throw new NotFoundError('Member account not found', 'STAFF_NOT_FOUND');
 
     const { isActive } = req.body;
     if (staff.isActive === isActive) {
-      throw new BadRequestError('Staff account already has this status', 'STAFF_STATUS_UNCHANGED');
+      throw new BadRequestError('Member account already has this status', 'STAFF_STATUS_UNCHANGED');
     }
 
     staff.isActive = isActive;
@@ -111,7 +111,7 @@ exports.updateStaffStatus = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: `Staff account ${isActive ? 'activated' : 'deactivated'}.`,
+      message: `Member account ${isActive ? 'activated' : 'deactivated'}.`,
       data: sanitizeUser(staff),
     });
   } catch (error) {
