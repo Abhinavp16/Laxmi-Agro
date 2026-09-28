@@ -158,6 +158,8 @@ class CartNotifier extends StateNotifier<CartState> {
         minWholesaleQuantity: _positiveInt(product['minWholesaleQuantity']),
         image: product['image']?.toString(),
         price: (item['currentPrice'] ?? product['price'] ?? 0).toDouble(),
+        // Keep MRP so the crossed-out price and % off survive cart sync.
+        mrp: (product['mrp'] as num?)?.toDouble(),
         quantity: item['quantity'] ?? 1,
         stock: product['stock'] ?? 0,
       );

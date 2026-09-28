@@ -347,6 +347,12 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         final quantity = item['quantity'] as num? ?? 1;
         final price = item['pricePerUnit'] as num? ?? 0;
         final totalPrice = item['totalPrice'] as num? ?? quantity * price;
+        final mrpPerUnit = item['mrpPerUnit'] as num?;
+        final discountPercent = item['discountPercent'] as num?;
+        final hasCatalogDiscount = discountPercent != null &&
+            discountPercent > 0 &&
+            mrpPerUnit != null &&
+            mrpPerUnit > price;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -385,6 +391,30 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    if (hasCatalogDiscount) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            'MRP ₹${_fmt(mrpPerUnit)}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${discountPercent % 1 == 0 ? discountPercent.toInt() : discountPercent}% OFF',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
