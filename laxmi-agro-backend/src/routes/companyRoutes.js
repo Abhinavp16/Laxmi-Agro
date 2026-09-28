@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, optionalAuth, authorize } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
 const Joi = require('joi');
+
+// Percentage off MRP; null or 0 clears it.
+const discountPercent = Joi.number().min(0).max(100).precision(2).allow(null, '');
 
 const companyValidation = {
   create: Joi.object({
@@ -15,6 +18,8 @@ const companyValidation = {
       publicId: Joi.string().allow('', null),
     }).allow(null),
     order: Joi.number().integer().min(0),
+    customerDiscountPercent: discountPercent,
+    wholesalerDiscountPercent: discountPercent,
   }),
   update: Joi.object({
     name: Joi.string().max(100),
@@ -26,6 +31,8 @@ const companyValidation = {
     }).allow(null),
     isActive: Joi.boolean(),
     order: Joi.number().integer().min(0),
+    customerDiscountPercent: discountPercent,
+    wholesalerDiscountPercent: discountPercent,
   }),
   reorder: Joi.object({
     updates: Joi.array().items(Joi.object({
@@ -36,9 +43,9 @@ const companyValidation = {
 };
 
 // Public routes
-router.get('/', companyController.getAllCompanies);
-router.get('/:id', companyController.getCompanyById);
-router.get('/:id/products', companyController.getCompanyProducts);
+router.get('/', optionalAuth, companyController.getAllCompanies);
+router.get('/:id', optionalAuth, companyController.getCompanyById);
+router.get('/:id/products', optionalAuth, companyController.getCompanyProducts);
 
 // Admin routes
 router.post('/reorder', protect, authorize('admin'), validate(companyValidation.reorder), companyController.reorderCompanies);

@@ -12,6 +12,8 @@ const {
   buildVariantSnapshot,
   getVariantDisplayName,
 } = require('../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
+const { round2 } = require('../utils/productDiscount');
 const { notifyAdmins } = require('../services/adminNotificationService');
 
 const cartItemKey = (productId, variantId) => `${productId}:${variantId || 'default'}`;
@@ -348,12 +350,13 @@ const getCurrentCartPricing = async (userId, userRole) => {
   }
 
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
-  const products = await Product.find({ _id: { $in: productIds } }).select('retailPrice wholesalePrice stock');
+  const products = await Product.find({ _id: { $in: productIds } }).select('mrp retailPrice wholesalePrice stock company categoryRef category');
   const productMap = products.reduce((acc, product) => {
     acc[product._id.toString()] = product;
     return acc;
   }, {});
 
+  const discountMap = await buildDiscountMap(products);
   let subtotal = 0;
   let itemCount = 0;
 
@@ -364,8 +367,8 @@ const getCurrentCartPricing = async (userId, userRole) => {
     const resolved = getVariantById(product, null);
     if (!resolved) continue;
 
-    const pricing = getPriceForUser(product, userRole, resolved.variant);
-    subtotal += pricing.price * item.quantity;
+    const pricing = getPriceForUser(product, userRole, resolved.variant, discountsFor(discountMap, product));
+    subtotal = round2(subtotal + pricing.price * item.quantity);
     itemCount += item.quantity;
   }
 
@@ -386,7 +389,9 @@ const getMinimumWholesaleQuantity = (product) => {
   return Number.isInteger(value) && value > 0 ? value : 1;
 };
 
-const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
+// productMap products must include company/categoryRef/category;
+// discountMap comes from buildDiscountMap (brand/category % off MRP).
+const prepareOrderItems = ({ itemsToProcess, productMap, userRole, discountMap = null }) => {
   const orderItems = [];
   const stockIssues = [];
   let subtotal = 0;
@@ -453,9 +458,9 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
       continue;
     }
 
-    const pricing = getPriceForUser(product, userRole, resolved.variant);
+    const pricing = getPriceForUser(product, userRole, resolved.variant, discountsFor(discountMap, product));
     const pricePerUnit = pricing.price;
-    const itemTotal = pricePerUnit * item.quantity;
+    const itemTotal = round2(pricePerUnit * item.quantity);
 
     orderItems.push({
       productId: product._id,
@@ -468,9 +473,13 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole }) => {
       variantSnapshot: buildVariantSnapshot(product, resolved.variant),
       quantity: item.quantity,
       pricePerUnit,
+      mrpPerUnit: pricing.mrp || null,
+      discountPercent: pricing.discountPercent,
+      discountSource: pricing.discountSource,
+      discountSourceName: pricing.discountSourceName,
       totalPrice: itemTotal,
     });
-    subtotal += itemTotal;
+    subtotal = round2(subtotal + itemTotal);
   }
 
   return { orderItems, subtotal, stockIssues };
@@ -564,6 +573,9 @@ exports.getMyOrders = async (req, res, next) => {
         name: item.variantSnapshot?.displayName || item.productSnapshot.name,
         quantity: item.quantity,
         pricePerUnit: item.pricePerUnit,
+        mrpPerUnit: item.mrpPerUnit ?? null,
+        discountPercent: item.discountPercent ?? null,
+        discountSource: item.discountSource ?? null,
         totalPrice: item.totalPrice,
         image: item.productSnapshot.image,
         variantId: item.variantId || null,
@@ -645,7 +657,8 @@ exports.createOrderFromCart = async (req, res, next) => {
 
     const products = await Product.find({ _id: { $in: productIds } });
     const productMap = buildProductMap(products);
-    const { orderItems, subtotal, stockIssues } = prepareOrderItems({ itemsToProcess, productMap, userRole });
+    const discountMap = await buildDiscountMap(products);
+    const { orderItems, subtotal, stockIssues } = prepareOrderItems({ itemsToProcess, productMap, userRole, discountMap });
 
     if (stockIssues.length > 0) {
       const msg = stockIssues.map((issue) => issue.message).join('; ');
@@ -677,7 +690,7 @@ exports.createOrderFromCart = async (req, res, next) => {
       userRole,
     });
     const deliveryFee = subtotal > 0 ? 50 : 0;
-    const total = Math.max(subtotal + deliveryFee - discount, 0);
+    const total = round2(Math.max(subtotal + deliveryFee - discount, 0));
 
     let order = null;
     const shouldCreateOrderRecord = checkout.createOrderBeforeRedirect && Boolean(req.user?._id);

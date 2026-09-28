@@ -6,6 +6,7 @@ const {
   getVariantById,
   getPriceForUser,
 } = require('../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 const { notifyAdmins } = require('../services/adminNotificationService');
 
 exports.getMyNegotiations = async (req, res, next) => {
@@ -81,7 +82,8 @@ exports.createNegotiation = async (req, res, next) => {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
-    const pricing = getPriceForUser(product, req.user.role, resolved.variant);
+    const discounts = discountsFor(await buildDiscountMap([product]), product);
+    const pricing = getPriceForUser(product, req.user.role, resolved.variant, discounts);
     const settings = await Settings.getSettings();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + settings.negotiationExpiryDays);
@@ -97,6 +99,9 @@ exports.createNegotiation = async (req, res, next) => {
         variantName: '',
         variantDisplayName: product.name,
         price: pricing.price,
+        mrp: pricing.mrp || null,
+        discountPercent: pricing.discountPercent,
+        discountSource: pricing.discountSource,
         image: product.primaryImage,
         sku: product.sku,
         variantSku: '',

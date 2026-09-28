@@ -30,6 +30,6 @@ router.put('/:id', protect, authorize('admin'), updateCategory);
 router.delete('/:id', protect, authorize('admin'), deleteCategory);
 
 // Generic ID route (must come last)
-router.get('/:id', getCategory);
+router.get('/:id', optionalAuth, getCategory);
 
 module.exports = router;

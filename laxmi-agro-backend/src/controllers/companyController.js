@@ -2,6 +2,28 @@ const { Company, Product, Category } = require('../models');
 const { NotFoundError, ConflictError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
+const { recordAudit } = require('../services/auditService');
+const {
+  pickDiscountUpdates,
+  discountSnapshot,
+  discountChanged,
+  presentDiscountFields,
+} = require('../utils/productDiscount');
+
+// Discount percentages are dealer-margin information: only admins see them.
+const presentCompany = (req, company) => presentDiscountFields(req, company);
+
+const auditDiscountChange = async (req, company, before) => {
+  const after = discountSnapshot(company);
+  if (!discountChanged(before, after)) return;
+  await recordAudit({
+    actorId: req.user?._id,
+    action: 'brand.discount_updated',
+    entityType: 'Company',
+    entityId: company._id,
+    metadata: { name: company.name, before, after },
+  });
+};
 
 exports.getAllCompanies = async (req, res, next) => {
   try {
@@ -25,7 +47,7 @@ exports.getAllCompanies = async (req, res, next) => {
 
     res.json({
       success: true,
-      ...formatPaginationResponse(companies, total, page, limit),
+      ...formatPaginationResponse(presentCompany(req, companies), total, page, limit),
     });
   } catch (error) {
     next(error);
@@ -42,7 +64,7 @@ exports.getCompanyById = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: company,
+      data: presentCompany(req, company),
     });
   } catch (error) {
     next(error);
@@ -52,6 +74,7 @@ exports.getCompanyById = async (req, res, next) => {
 exports.createCompany = async (req, res, next) => {
   try {
     const { name, description, website, logo, order } = req.body;
+    const discountUpdates = pickDiscountUpdates(req.body);
 
     const existingCompany = await Company.findOne({ 
       name: { $regex: new RegExp(`^${name}$`, 'i') } 
@@ -70,7 +93,9 @@ exports.createCompany = async (req, res, next) => {
       website,
       logo,
       order: order ?? ((lastCompany?.order || 0) + 1),
+      ...discountUpdates,
     });
+    await auditDiscountChange(req, company, discountSnapshot({}));
 
     res.status(201).json({
       success: true,
@@ -85,6 +110,7 @@ exports.createCompany = async (req, res, next) => {
 exports.updateCompany = async (req, res, next) => {
   try {
     const { name, description, website, logo, isActive, order } = req.body;
+    const discountUpdates = pickDiscountUpdates(req.body);
 
     const company = await Company.findById(req.params.id);
     
@@ -109,8 +135,11 @@ exports.updateCompany = async (req, res, next) => {
     if (logo !== undefined) company.logo = logo;
     if (isActive !== undefined) company.isActive = isActive;
     if (order !== undefined) company.order = order;
+    const discountBefore = discountSnapshot(company);
+    Object.assign(company, discountUpdates);
 
     await company.save();
+    await auditDiscountChange(req, company, discountBefore);
 
     res.json({
       success: true,
@@ -225,7 +254,7 @@ exports.getCompanyProducts = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        company,
+        company: presentCompany(req, company),
         products,
       },
     });

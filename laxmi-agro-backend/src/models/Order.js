@@ -37,6 +37,11 @@ const orderItemSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  // Brand/category discount applied to pricePerUnit (% off MRP), if any.
+  mrpPerUnit: { type: Number, default: null },
+  discountPercent: { type: Number, default: null },
+  discountSource: { type: String, enum: ['brand', 'category', null], default: null },
+  discountSourceName: { type: String, default: null },
   totalPrice: {
     type: Number,
     required: true,

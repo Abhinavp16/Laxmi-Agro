@@ -1,4 +1,5 @@
 const { USER_ROLES } = require('./constants');
+const { applyMrpDiscount } = require('./productDiscount');
 
 const normalizeObjectIdLike = (value) => {
   if (value === null || value === undefined) return null;
@@ -54,24 +55,67 @@ const getVariantById = (product = {}, variantId) => {
   };
 };
 
-const getPriceForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput = null) => {
+// Returns the brand/category discount that actually applies for the role
+// (a discount needs an MRP to be taken off).
+const getActiveRoleDiscount = (variant, discounts, isWholesaler) => {
+  const discount = isWholesaler ? discounts?.wholesaler : discounts?.buyer;
+  if (!discount || !(toPositiveNumber(variant?.mrp) > 0)) return null;
+  return discount;
+};
+
+const getPriceForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput = null, discounts = null) => {
   const variant = variantInput || getDefaultVariant(product) || getLegacyVariant(product);
   const isWholesaler = userRole === USER_ROLES.WHOLESALER;
+  const mrp = toPositiveNumber(variant?.mrp);
+
+  const baseRetailPrice = toPositiveNumber(variant?.retailPrice);
+  const baseWholesalePrice = toPositiveNumber(variant?.wholesalePrice);
+  const buyerDiscount = getActiveRoleDiscount(variant, discounts, false);
+  const wholesalerDiscount = getActiveRoleDiscount(variant, discounts, true);
+
+  // A discount always replaces the stored price for that role.
+  const retailPrice = buyerDiscount ? applyMrpDiscount(mrp, buyerDiscount.percent) : baseRetailPrice;
+  const wholesalePrice = wholesalerDiscount ? applyMrpDiscount(mrp, wholesalerDiscount.percent) : baseWholesalePrice;
+  const roleDiscount = isWholesaler ? wholesalerDiscount : buyerDiscount;
 
   return {
-    price: isWholesaler ? toPositiveNumber(variant?.wholesalePrice) : toPositiveNumber(variant?.retailPrice),
-    mrp: toPositiveNumber(variant?.mrp),
-    retailPrice: toPositiveNumber(variant?.retailPrice),
-    wholesalePrice: toPositiveNumber(variant?.wholesalePrice),
+    price: isWholesaler ? wholesalePrice : retailPrice,
+    basePrice: isWholesaler ? baseWholesalePrice : baseRetailPrice,
+    mrp,
+    retailPrice,
+    wholesalePrice,
+    discountPercent: roleDiscount ? roleDiscount.percent : null,
+    discountSource: roleDiscount ? roleDiscount.source : null,
+    discountSourceName: roleDiscount ? roleDiscount.sourceName : null,
     minWholesaleQuantity: toPositiveNumber(product?.minWholesaleQuantity, 1),
     negotiationEnabled: Boolean(product?.negotiationEnabled),
     canNegotiate: isWholesaler && Boolean(product?.negotiationEnabled),
   };
 };
 
-const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput = null) => {
+// Buyer and wholesaler pricing side by side, for admin/staff screens.
+const getEffectivePricing = (product = {}, discounts = null) => {
+  const pick = (pricing) => ({
+    price: pricing.price,
+    basePrice: pricing.basePrice,
+    discountPercent: pricing.discountPercent,
+    discountSource: pricing.discountSource,
+    discountSourceName: pricing.discountSourceName,
+  });
+  return {
+    buyer: pick(getPriceForUser(product, USER_ROLES.BUYER, null, discounts)),
+    wholesaler: pick(getPriceForUser(product, USER_ROLES.WHOLESALER, null, discounts)),
+  };
+};
+
+const getPendingPriceChangeForUser = (product = {}, userRole = USER_ROLES.BUYER, variantInput = null, discounts = null) => {
   const variant = variantInput || getDefaultVariant(product) || getLegacyVariant(product);
   const isWholesaler = userRole === USER_ROLES.WHOLESALER;
+  // A brand/category discount sets the price from MRP, so a scheduled
+  // retail/wholesale change has no effect for this role.
+  if (getActiveRoleDiscount(variant, discounts, isWholesaler)) {
+    return null;
+  }
   const currentPrice = isWholesaler
     ? toPositiveNumber(variant?.wholesalePrice)
     : toPositiveNumber(variant?.retailPrice);
@@ -180,6 +224,7 @@ module.exports = {
   getLegacyVariant,
   getVariantById,
   getPriceForUser,
+  getEffectivePricing,
   getPendingPriceChangeForUser,
   getVariantStock,
   getProductStockTotal,

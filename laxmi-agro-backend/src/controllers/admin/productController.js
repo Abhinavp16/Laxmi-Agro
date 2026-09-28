@@ -14,7 +14,9 @@ const slugify = require('slugify');
 const { encode } = require('blurhash');
 const {
   normalizeVariantsForPersistence,
+  getEffectivePricing,
 } = require('../../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../../services/productDiscountService');
 const {
   registerPriceChangeCampaign,
   clearPendingFields,
@@ -456,9 +458,11 @@ exports.getProducts = async (req, res, next) => {
       Product.find(query).sort(sortOption).skip(skip).limit(limit).lean(),
       Product.countDocuments(query),
     ]);
+    const discountMap = await buildDiscountMap(products);
     const sanitizedProducts = products.map(({ variants, ...product }) => ({
       ...product,
       variants: [],
+      effectivePricing: getEffectivePricing(product, discountsFor(discountMap, product)),
     }));
 
     res.json({
@@ -516,6 +520,7 @@ exports.getProductById = async (req, res, next) => {
 
     const data = product.toObject();
     data.variants = [];
+    data.effectivePricing = getEffectivePricing(data, discountsFor(await buildDiscountMap([data]), data));
 
     res.json({
       success: true,

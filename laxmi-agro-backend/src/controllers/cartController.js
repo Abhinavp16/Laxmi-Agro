@@ -6,6 +6,7 @@ const {
   buildVariantSnapshot,
   getVariantDisplayName,
 } = require('../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 
 const buildCartItemKey = (productId, variantId) => `${productId}:${variantId || 'default'}`;
 
@@ -40,11 +41,11 @@ const assertMinimumWholesaleQuantity = (product, userRole, quantity) => {
   }
 };
 
-const formatCartItem = (item, product, userRole) => {
+const formatCartItem = (item, product, userRole, discounts = null) => {
   const resolved = getVariantById(product, null);
   if (!resolved) return null;
 
-  const pricing = getPriceForUser(product, userRole, resolved.variant);
+  const pricing = getPriceForUser(product, userRole, resolved.variant, discounts);
   const currentPrice = pricing.price;
   const productId = item.productId.toString();
   const variantId = null;
@@ -61,8 +62,12 @@ const formatCartItem = (item, product, userRole) => {
       category: product.categoryRef?.name || product.category || '',
       slug: product.slug,
       price: pricing.price,
+      mrp: pricing.mrp,
       retailPrice: pricing.retailPrice,
       wholesalePrice: pricing.wholesalePrice,
+      discountPercent: pricing.discountPercent,
+      discountSource: pricing.discountSource,
+      discountSourceName: pricing.discountSourceName,
       stock: product.stock,
       minWholesaleQuantity: getMinimumWholesaleQuantity(product),
       image: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
@@ -81,12 +86,13 @@ const formatCartItem = (item, product, userRole) => {
 const populateCartItems = async (cart, userRole = 'guest') => {
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
   const products = await Product.find({ _id: { $in: productIds } })
-    .select('name nameHindi brand category categoryRef company slug retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
+    .select('name nameHindi brand category categoryRef company slug mrp retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
     .populate('company', 'name')
     .populate('categoryRef', 'name nameHindi slug')
     .lean();
 
   const productMap = buildProductMap(products);
+  const discountMap = await buildDiscountMap(products);
   let cartUpdated = false;
 
   const items = cart.items.map((item) => {
@@ -103,7 +109,7 @@ const populateCartItems = async (cart, userRole = 'guest') => {
       cartUpdated = true;
     }
 
-    return formatCartItem(item, product, userRole);
+    return formatCartItem(item, product, userRole, discountsFor(discountMap, product));
   }).filter(Boolean);
 
   if (cartUpdated) {
@@ -167,7 +173,8 @@ exports.addItem = async (req, res, next) => {
       throw new BadRequestError('Insufficient stock', 'INSUFFICIENT_STOCK');
     }
 
-    const pricing = getPriceForUser(product, userRole, resolved.variant);
+    const discounts = discountsFor(await buildDiscountMap([product]), product);
+    const pricing = getPriceForUser(product, userRole, resolved.variant, discounts);
     const variantSnapshot = buildVariantSnapshot(product, resolved.variant);
 
     cart.addItem(productId, null, requestedQuantity, pricing.price, variantSnapshot);

@@ -21,9 +21,10 @@ const {
   collectCategoryScope,
   pruneCategoriesWithInaccessibleAncestors,
 } = require('../services/productSearchService');
+const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 
-const formatProductCard = (product, userRole, req) => {
-  const pricing = getPriceForUser(product, userRole);
+const formatProductCard = (product, userRole, req, discounts = null) => {
+  const pricing = getPriceForUser(product, userRole, null, discounts);
   const stock = getProductStockTotal(product);
 
   return {
@@ -49,8 +50,14 @@ const formatProductCard = (product, userRole, req) => {
     rating: product.rating,
     purchaseCountMin: product.purchaseCountMin,
     purchaseCountMax: product.purchaseCountMax,
-    pendingPriceChange: getPendingPriceChangeForUser(product, userRole),
+    pendingPriceChange: getPendingPriceChangeForUser(product, userRole, null, discounts),
   };
+};
+
+// Products must include company, categoryRef and category for brand/category discounts.
+const formatProductCards = async (products, userRole, req) => {
+  const discountMap = await buildDiscountMap(products);
+  return products.map((product) => formatProductCard(product, userRole, req, discountsFor(discountMap, product)));
 };
 
 const isTrueQuery = (value) => value === true || value === 'true';
@@ -167,7 +174,7 @@ exports.getProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
         .populate('company', 'name')
         .sort(sortOption)
         .skip(skip)
@@ -176,7 +183,7 @@ exports.getProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
+    const formattedProducts = await formatProductCards(products, userRole, req);
 
     res.json({
       success: true,
@@ -212,8 +219,9 @@ exports.getProductBySlug = async (req, res, next) => {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
 
-    // Build response with role-based pricing
-    const pricing = getPriceForUser(product, userRole);
+    // Build response with role-based pricing (including brand/category discount)
+    const discounts = discountsFor(await buildDiscountMap([product]), product);
+    const pricing = getPriceForUser(product, userRole, null, discounts);
     let resolvedLabels = [];
     if (Array.isArray(product.labelIds) && product.labelIds.length > 0) {
       const settings = await WebsiteSettings.getSettings();
@@ -263,7 +271,7 @@ exports.getProductBySlug = async (req, res, next) => {
       ...pricing,
       labels: resolvedLabels,
       stock: getProductStockTotal(product),
-      pendingPriceChange: getPendingPriceChangeForUser(product, userRole),
+      pendingPriceChange: getPendingPriceChangeForUser(product, userRole, null, discounts),
     };
 
     // Remove raw price fields for non-admin users, but keep for wholesalers so they can see customer price
@@ -370,11 +378,11 @@ exports.getFeaturedProducts = async (req, res, next) => {
     }, req.user);
 
     const products = await Product.find(query)
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
       .limit(10)
       .lean();
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
+    const formattedProducts = await formatProductCards(products, userRole, req);
 
     res.json({
       success: true,
@@ -500,7 +508,7 @@ exports.searchProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
         .populate('company', 'name')
         .sort({ createdAt: -1, _id: -1 })
         .skip(skip)
@@ -509,7 +517,7 @@ exports.searchProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    const formattedProducts = products.map(p => formatProductCard(p, userRole, req));
+    const formattedProducts = await formatProductCards(products, userRole, req);
 
     res.json({
       success: true,
@@ -603,12 +611,12 @@ exports.getRelatedProducts = async (req, res, next) => {
     }, req.user);
 
     const relatedProducts = await Product.find(relatedQuery)
-      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company')
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company categoryRef')
       .populate('company', 'name')
       .limit(limit)
       .lean();
 
-    const formattedProducts = relatedProducts.map(p => formatProductCard(p, userRole, req));
+    const formattedProducts = await formatProductCards(relatedProducts, userRole, req);
 
     res.json({ success: true, data: formattedProducts });
   } catch (error) {

@@ -61,6 +61,10 @@ const negotiationSchema = new mongoose.Schema({
     variantName: { type: String, default: '' },
     variantDisplayName: { type: String, default: '' },
     price: { type: Number, required: true },
+    // Brand/category discount behind `price` (% off MRP), if any.
+    mrp: { type: Number, default: null },
+    discountPercent: { type: Number, default: null },
+    discountSource: { type: String, enum: ['brand', 'category', null], default: null },
     image: String,
     sku: String,
     variantSku: String,

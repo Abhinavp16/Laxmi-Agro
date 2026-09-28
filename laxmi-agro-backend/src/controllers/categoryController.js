@@ -6,10 +6,32 @@ const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
 
 const { normalizeImageObject } = require('../utils/mediaUrls');
+const { recordAudit } = require('../services/auditService');
+const {
+  pickDiscountUpdates,
+  discountSnapshot,
+  discountChanged,
+  presentDiscountFields,
+} = require('../utils/productDiscount');
 const {
   applyCategoryAccessToProductQuery,
   filterCategoriesForUser,
 } = require('../utils/categoryAccess');
+
+// Discount percentages are dealer-margin information: only admins see them.
+const presentCategory = (req, category) => presentDiscountFields(req, category);
+
+async function auditCategoryDiscountChange(req, category, before) {
+  const after = discountSnapshot(category);
+  if (!discountChanged(before, after)) return;
+  await recordAudit({
+    actorId: req.user?._id,
+    action: 'category.discount_updated',
+    entityType: 'Category',
+    entityId: category._id,
+    metadata: { name: category.name, parent: category.parent?._id || category.parent || null, before, after },
+  });
+}
 
 async function getDescendantCategoryIds(rootId) {
   const descendantIds = [];
@@ -168,11 +190,11 @@ exports.getCategories = async (req, res, next) => {
       req.user,
       active === 'true',
     );
-    const categoriesWithCounts = visibleCategories.map((category) => ({
+    const categoriesWithCounts = presentCategory(req, visibleCategories.map((category) => ({
       ...category,
       image: normalizeImageObject(category.image, req),
       productCount: countsByCategory.get(String(category._id)) ?? 0,
-    }));
+    })));
 
     res.json({
       success: true,
@@ -215,7 +237,7 @@ exports.getCategory = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: categoryData,
+      data: presentCategory(req, categoryData),
     });
   } catch (error) {
     next(error);
@@ -228,6 +250,7 @@ exports.getCategory = async (req, res, next) => {
 exports.createCategory = async (req, res, next) => {
   try {
     const { name, nameHindi, description, image, parent, order, isActive, company } = req.body;
+    const discountUpdates = pickDiscountUpdates(req.body);
 
     const companyId = await resolveCompanyId(company);
     if (!companyId) {
@@ -279,7 +302,9 @@ exports.createCategory = async (req, res, next) => {
       parent: parent || null,
       order: order || 0,
       isActive: isActive !== undefined ? isActive : true,
+      ...discountUpdates,
     });
+    await auditCategoryDiscountChange(req, category, discountSnapshot({}));
 
     res.status(201).json({
       success: true,
@@ -296,6 +321,7 @@ exports.createCategory = async (req, res, next) => {
 exports.updateCategory = async (req, res, next) => {
   try {
     const { name, nameHindi, description, image, parent, order, isActive, company } = req.body;
+    const discountUpdates = pickDiscountUpdates(req.body);
 
     let category = await Category.findById(req.params.id);
 
@@ -306,6 +332,7 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
 
+    const discountBefore = discountSnapshot(category);
     const previousCategoryName = category.name;
     const previousCategorySlug = category.slug;
     const previousCompanyId = category.company;
@@ -382,9 +409,11 @@ exports.updateCategory = async (req, res, next) => {
         parent: parent !== undefined ? (parent || null) : category.parent,
         order: order !== undefined ? order : category.order,
         isActive: isActive !== undefined ? isActive : category.isActive,
+        ...discountUpdates,
       },
       { new: true, runValidators: true }
     ).populate('parent', 'name nameHindi slug').populate('company', 'name slug logo');
+    await auditCategoryDiscountChange(req, category, discountBefore);
 
     const canonicalCategoryValue = category.slug || category.name;
     const legacyCategoryValues = [previousCategoryName, previousCategorySlug]

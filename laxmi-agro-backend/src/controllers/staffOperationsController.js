@@ -6,6 +6,8 @@ const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PAYMENT_STATUS, ORDER_STATUS, NEGOTIATION_STATUS, NEGOTIATION_ACTIONS, PRODUCT_STATUS } = require('../utils/constants');
 const { recordAudit } = require('../services/auditService');
 const notificationService = require('../services/notificationService');
+const { getEffectivePricing } = require('../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 
 async function notifyWholesaler(userId, notification, data) {
   try {
@@ -55,7 +57,7 @@ exports.getProducts = async (req, res, next) => {
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi sku category retailPrice wholesalePrice stock status priceUnit packing images.url images.isPrimary')
+        .select('name nameHindi sku category categoryRef company mrp retailPrice wholesalePrice stock status priceUnit packing images.url images.isPrimary')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -63,7 +65,13 @@ exports.getProducts = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    res.json({ success: true, ...formatPaginationResponse(products, total, page, limit) });
+    const discountMap = await buildDiscountMap(products);
+    const productsWithPricing = products.map((product) => ({
+      ...product,
+      effectivePricing: getEffectivePricing(product, discountsFor(discountMap, product)),
+    }));
+
+    res.json({ success: true, ...formatPaginationResponse(productsWithPricing, total, page, limit) });
   } catch (error) {
     next(error);
   }

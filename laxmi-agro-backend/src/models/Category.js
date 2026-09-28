@@ -54,6 +54,19 @@ const categorySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Percentage off MRP. null/0 = not set (falls through to the next level).
+  customerDiscountPercent: {
+    type: Number,
+    min: [0, 'Discount cannot be negative'],
+    max: [100, 'Discount cannot exceed 100%'],
+    default: null,
+  },
+  wholesalerDiscountPercent: {
+    type: Number,
+    min: [0, 'Discount cannot be negative'],
+    max: [100, 'Discount cannot exceed 100%'],
+    default: null,
+  },
 }, {
   timestamps: true,
 });
