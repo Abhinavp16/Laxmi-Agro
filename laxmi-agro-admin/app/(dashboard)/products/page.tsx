@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { describeDiscountSource, type EffectivePricing } from "@/lib/discount";
 
 interface ProductCategory {
   name?: string;
@@ -46,6 +47,7 @@ interface Product {
   rating: number;
   isFeatured?: boolean;
   isHot?: boolean;
+  effectivePricing?: EffectivePricing;
 }
 
 function getProductRating(product: any): number | null {
@@ -75,7 +77,12 @@ function getDisplaySku(product: Product): string {
   return product.sku || "-";
 }
 
+// Customer price after any brand/category discount (from the backend).
 function getDisplayPrice(product: Product): number | null {
+  const effective = product.effectivePricing?.buyer?.price;
+  if (typeof effective === "number" && Number.isFinite(effective) && effective > 0) {
+    return effective;
+  }
   if (
     typeof product.retailPrice === "number" &&
     Number.isFinite(product.retailPrice)
@@ -83,6 +90,22 @@ function getDisplayPrice(product: Product): number | null {
     return product.retailPrice;
   }
   return null;
+}
+
+function DiscountHint({ product }: { product: Product }) {
+  const customer = describeDiscountSource(product.effectivePricing?.buyer);
+  const dealer = describeDiscountSource(product.effectivePricing?.wholesaler);
+  if (!customer && !dealer) return null;
+  return (
+    <div className="mt-0.5 space-y-0.5 text-[11px] font-medium text-amber-600">
+      {customer && <p>Customer: {customer}</p>}
+      {dealer && (
+        <p>
+          Dealer Rs {product.effectivePricing?.wholesaler.price.toLocaleString()}: {dealer}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function getTotalStock(product: Product): number {
@@ -195,6 +218,7 @@ function ProductCard({
               ? `Rs ${displayPrice.toLocaleString()}`
               : "-"}
           </p>
+          <DiscountHint product={product} />
         </div>
         <div className="shrink-0 text-right">
           <p className="text-xs text-slate-500">Stock</p>
@@ -596,6 +620,7 @@ export default function ProductsPage() {
                         {displayPrice !== null
                           ? `Rs ${displayPrice.toLocaleString()}`
                           : "-"}
+                        <DiscountHint product={product} />
                       </TableCell>
                       <TableCell className="text-right text-slate-900">
                         {totalStock}

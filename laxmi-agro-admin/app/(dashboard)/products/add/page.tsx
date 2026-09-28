@@ -72,18 +72,24 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { apiFetch, buildApiUrl } from "@/lib/api";
+import { EffectivePricePreview } from "@/components/effective-price-preview";
 
 interface Category {
   _id: string;
   name: string;
   slug: string;
   company?: { _id: string; name: string; slug: string } | string | null;
+  parent?: { _id: string } | string | null;
+  customerDiscountPercent?: number | null;
+  wholesalerDiscountPercent?: number | null;
 }
 
 interface Company {
   _id: string;
   name: string;
   slug: string;
+  customerDiscountPercent?: number | null;
+  wholesalerDiscountPercent?: number | null;
 }
 
 interface ProductLabelOption {
@@ -448,9 +454,8 @@ export default function AddProductPage() {
 
   async function fetchCategories(): Promise<Category[]> {
     try {
-      const response = await apiFetch("/categories?page=1&limit=500", {
-        skipAuth: true,
-      });
+      // Authenticated so admin-only discount fields are included.
+      const response = await apiFetch("/categories?page=1&limit=500");
       if (response.ok) {
         const data = await response.json();
         const nextCategories = Array.isArray(data.data) ? data.data : [];
@@ -467,9 +472,7 @@ export default function AddProductPage() {
 
   async function fetchCompanies() {
     try {
-      const response = await apiFetch("/companies?page=1&limit=500", {
-        skipAuth: true,
-      });
+      const response = await apiFetch("/companies?page=1&limit=500");
       if (response.ok) {
         const data = await response.json();
         const nextCompanies = Array.isArray(data.data) ? data.data : [];
@@ -1635,6 +1638,27 @@ export default function AddProductPage() {
                       )}
                     />
                   </div>
+
+                  {(() => {
+                    const selectedCategory = categories.find(
+                      (category) => category._id === form.watch("category"),
+                    );
+                    const brandId = selectedCategory
+                      ? typeof selectedCategory.company === "object" && selectedCategory.company
+                        ? selectedCategory.company._id
+                        : String(selectedCategory.company || "")
+                      : "";
+                    return (
+                      <EffectivePricePreview
+                        mrp={form.watch("mrp")}
+                        retailPrice={form.watch("retailPrice")}
+                        wholesalePrice={form.watch("wholesalePrice")}
+                        brand={companies.find((company) => company._id === brandId) || null}
+                        categoryId={selectedCategory?._id ?? null}
+                        categories={categories}
+                      />
+                    );
+                  })()}
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField

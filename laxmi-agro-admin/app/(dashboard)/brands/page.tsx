@@ -42,6 +42,16 @@ import {
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
+import { DiscountBadge, DiscountFields } from "@/components/discount-fields"
+import {
+    EMPTY_DISCOUNT_FORM,
+    formatDiscountSummary,
+    hasDiscountFields,
+    toDiscountFormValues,
+    toDiscountPayload,
+    validateDiscountValues,
+    type DiscountFormValues,
+} from "@/lib/discount"
 
 interface Company {
     _id: string
@@ -51,6 +61,8 @@ interface Company {
     description?: string
     order: number
     createdAt: string
+    customerDiscountPercent?: number | null
+    wholesalerDiscountPercent?: number | null
 }
 
 export default function BrandsPage() {
@@ -82,6 +94,8 @@ export default function BrandsPage() {
     const [logoPublicId, setLogoPublicId] = useState("")
     const [previewImageUrl, setPreviewImageUrl] = useState("")
     const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+    const [discounts, setDiscounts] = useState<DiscountFormValues>(EMPTY_DISCOUNT_FORM)
+    const [discountsUnavailable, setDiscountsUnavailable] = useState(false)
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -104,7 +118,8 @@ export default function BrandsPage() {
                 params.append('search', requestedSearch.trim())
             }
 
-            const res = await apiFetch(`/companies?${params.toString()}`, { skipAuth: true })
+            // Authenticated so the admin-only discount fields are included.
+            const res = await apiFetch(`/companies?${params.toString()}`)
             if (requestGeneration !== fetchGeneration.current) return
             if (res.ok) {
                 const data = await res.json()
@@ -157,6 +172,8 @@ export default function BrandsPage() {
         setDescription("")
         setLogoUrl("")
         setLogoPublicId("")
+        setDiscounts(EMPTY_DISCOUNT_FORM)
+        setDiscountsUnavailable(false)
         setIsDialogOpen(true)
     }
 
@@ -166,6 +183,8 @@ export default function BrandsPage() {
         setDescription(company.description || "")
         setLogoUrl(company.logo?.url || "")
         setLogoPublicId(company.logo?.publicId || "")
+        setDiscounts(toDiscountFormValues(company))
+        setDiscountsUnavailable(!hasDiscountFields(company))
         setIsDialogOpen(true)
     }
 
@@ -209,6 +228,11 @@ export default function BrandsPage() {
             toast.error("Brand name is required")
             return
         }
+        const discountError = validateDiscountValues(discounts)
+        if (discountError) {
+            toast.error(discountError)
+            return
+        }
 
         setIsSubmitting(true)
 
@@ -217,6 +241,7 @@ export default function BrandsPage() {
                 name: name.trim(),
                 description: description.trim() || undefined,
                 logo: logoUrl.trim() ? { url: logoUrl.trim(), publicId: logoPublicId || undefined } : undefined,
+                ...(discountsUnavailable ? {} : toDiscountPayload(discounts)),
             }
 
             const endpoint = editingCompany
@@ -349,9 +374,12 @@ export default function BrandsPage() {
                 <TableCell className="font-medium text-white">{company.name}</TableCell>
                 <TableCell className="text-gray-400">{company.slug}</TableCell>
                 <TableCell className="max-w-[200px] truncate text-gray-400">{company.description || '-'}</TableCell>
+                <TableCell>
+                    {formatDiscountSummary(company) ? <DiscountBadge summary={formatDiscountSummary(company)} /> : <span className="text-gray-600">-</span>}
+                </TableCell>
                 <TableCell className="text-right">
                     <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-400 hover:text-blue-300" onClick={() => openEditDialog(company)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-400 hover:text-blue-300" onClick={() => openEditDialog(company)} aria-label="Edit brand">
                             <Pencil className="h-4 w-4" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:bg-red-400/10 hover:text-red-300" onClick={() => setDeleteConfirmId(company._id)}>
@@ -390,7 +418,7 @@ export default function BrandsPage() {
                         <span className="text-sm font-bold text-white">#{index + 1}</span>
                     </div>
                     <div className="flex gap-1" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-300 hover:bg-blue-400/20 hover:text-blue-200" onClick={() => openEditDialog(company)}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-300 hover:bg-blue-400/20 hover:text-blue-200" onClick={() => openEditDialog(company)} aria-label="Edit brand">
                             <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-400/20 hover:text-red-300" onClick={() => setDeleteConfirmId(company._id)}>
@@ -410,6 +438,7 @@ export default function BrandsPage() {
                         <h3 className="text-lg font-semibold text-white">{company.name}</h3>
                         <p className="text-sm text-gray-500">/{company.slug}</p>
                     </div>
+                    <DiscountBadge summary={formatDiscountSummary(company)} />
                     {company.description && <p className="line-clamp-2 text-sm text-gray-400">{company.description}</p>}
                     <div className="flex items-center gap-2 border-t border-[#333] pt-3 text-xs font-medium text-[#86efac]">
                         <FolderTree className="h-4 w-4" />
@@ -518,6 +547,7 @@ export default function BrandsPage() {
                                             <TableHead className="text-gray-400">Name</TableHead>
                                             <TableHead className="text-gray-400">Slug</TableHead>
                                             <TableHead className="text-gray-400">Description</TableHead>
+                                            <TableHead className="text-gray-400">Discount</TableHead>
                                             <TableHead className="text-right text-gray-400">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -545,7 +575,7 @@ export default function BrandsPage() {
 
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="bg-[#161616] border-[#333]">
+                <DialogContent className="max-h-[90vh] overflow-y-auto bg-[#161616] border-[#333]">
                     <DialogHeader>
                         <DialogTitle className="text-white">
                             {editingCompany ? "Edit Brand" : "Add New Brand"}
@@ -631,6 +661,13 @@ export default function BrandsPage() {
                                 className="bg-[#0D0D0D] border-[#333] text-white min-h-[80px]"
                             />
                         </div>
+
+                        <DiscountFields
+                            value={discounts}
+                            onChange={setDiscounts}
+                            unavailable={discountsUnavailable}
+                            helperText="Applies to every product of this brand and overrides category discounts. Leave empty to use category discounts."
+                        />
                     </div>
                     
                     <DialogFooter>

@@ -50,6 +50,17 @@ import {
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
+import { DiscountBadge, DiscountFields } from "@/components/discount-fields"
+import {
+    EMPTY_DISCOUNT_FORM,
+    buildCategoryDiscountNotes,
+    formatDiscountSummary,
+    hasDiscountFields,
+    toDiscountFormValues,
+    toDiscountPayload,
+    validateDiscountValues,
+    type DiscountFormValues,
+} from "@/lib/discount"
 
 interface Category {
     _id: string
@@ -64,12 +75,16 @@ interface Category {
     isActive: boolean
     productCount: number
     createdAt: string
+    customerDiscountPercent?: number | null
+    wholesalerDiscountPercent?: number | null
 }
 
 interface Company {
     _id: string
     name: string
     slug: string
+    customerDiscountPercent?: number | null
+    wholesalerDiscountPercent?: number | null
 }
 
 type UploadStatus = 'idle' | 'converting' | 'uploading' | 'done'
@@ -120,6 +135,8 @@ export default function CategoriesPage() {
     const [companyId, setCompanyId] = useState<string>("")
     const [order, setOrder] = useState("0")
     const [isActive, setIsActive] = useState(true)
+    const [discounts, setDiscounts] = useState<DiscountFormValues>(EMPTY_DISCOUNT_FORM)
+    const [discountsUnavailable, setDiscountsUnavailable] = useState(false)
     const [previewImageUrl, setPreviewImageUrl] = useState("")
     const [isUploadingImage, setIsUploadingImage] = useState(false)
     const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
@@ -135,6 +152,8 @@ export default function CategoriesPage() {
     const [isUploadingSubcategoryImage, setIsUploadingSubcategoryImage] = useState(false)
     const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false)
     const [editingSubcategory, setEditingSubcategory] = useState<Category | null>(null)
+    const [subcategoryDiscounts, setSubcategoryDiscounts] = useState<DiscountFormValues>(EMPTY_DISCOUNT_FORM)
+    const [subcategoryDiscountsUnavailable, setSubcategoryDiscountsUnavailable] = useState(false)
     
     // Product assignment state
     const [isProductAssignmentOpen, setIsProductAssignmentOpen] = useState(false)
@@ -164,7 +183,7 @@ export default function CategoriesPage() {
 
     async function fetchCompanies() {
         try {
-            const res = await apiFetch('/companies?page=1&limit=500', { skipAuth: true })
+            const res = await apiFetch('/companies?page=1&limit=500')
             if (res.ok) {
                 const data = await res.json()
                 setCompanies(Array.isArray(data.data) ? data.data : [])
@@ -178,6 +197,10 @@ export default function CategoriesPage() {
         return typeof category.company === 'object' && category.company
             ? category.company._id
             : String(category.company || '')
+    }
+
+    function getCompanyById(id: string | null | undefined) {
+        return companies.find((company) => company._id === id) || null
     }
 
     function getCategoryCompanyName(category: Category) {
@@ -280,7 +303,8 @@ export default function CategoriesPage() {
                 params.append('company', companyFilter)
             }
 
-            const res = await apiFetch(`/categories?${params.toString()}`, { skipAuth: true })
+            // Authenticated so the admin-only discount fields are included.
+            const res = await apiFetch(`/categories?${params.toString()}`)
             if (requestGeneration !== categoryFetchGeneration.current) return
             if (res.ok) {
                 const data = await res.json()
@@ -339,6 +363,8 @@ export default function CategoriesPage() {
         // New categories go AFTER existing cards, not to the front.
         setOrder(String(maxCategoryOrder(parentCategories) + 1))
         setIsActive(true)
+        setDiscounts(EMPTY_DISCOUNT_FORM)
+        setDiscountsUnavailable(false)
         setIsDialogOpen(true)
     }
 
@@ -358,6 +384,8 @@ export default function CategoriesPage() {
         setCompanyId(getCategoryCompanyId(category))
         setOrder(String(category.order || 0))
         setIsActive(category.isActive)
+        setDiscounts(toDiscountFormValues(category))
+        setDiscountsUnavailable(!hasDiscountFields(category))
         setIsDialogOpen(true)
     }
 
@@ -428,6 +456,11 @@ export default function CategoriesPage() {
             toast.error("Brand is required")
             return
         }
+        const discountError = validateDiscountValues(discounts)
+        if (discountError) {
+            toast.error(discountError)
+            return
+        }
 
         setIsSubmitting(true)
 
@@ -441,6 +474,7 @@ export default function CategoriesPage() {
                 parent: parentId !== "none" ? parentId : null,
                 order: Number(order) || 0,
                 isActive,
+                ...(discountsUnavailable ? {} : toDiscountPayload(discounts)),
             }
 
             const endpoint = editingCategory
@@ -477,6 +511,11 @@ export default function CategoriesPage() {
             toast.error("Please select a parent category first")
             return
         }
+        const discountError = validateDiscountValues(subcategoryDiscounts)
+        if (discountError) {
+            toast.error(discountError)
+            return
+        }
 
         setIsSubmittingSubcategory(true)
 
@@ -492,6 +531,7 @@ export default function CategoriesPage() {
                 parent: editingCategory._id,
                 order: Number(subcategoryOrder) || 0,
                 isActive: true,
+                ...(subcategoryDiscountsUnavailable ? {} : toDiscountPayload(subcategoryDiscounts)),
             }
 
             const endpoint = editingSubcategory
@@ -551,6 +591,8 @@ export default function CategoriesPage() {
         setSubcategoryOrder(String(subcategory.order || 0))
         setSubcategoryImageUrl(subcategory.image?.url || "")
         setSubcategoryImagePublicId(subcategory.image?.publicId || "")
+        setSubcategoryDiscounts(toDiscountFormValues(subcategory))
+        setSubcategoryDiscountsUnavailable(!hasDiscountFields(subcategory))
         setIsSubcategoryDialogOpen(true)
     }
 
@@ -566,6 +608,8 @@ export default function CategoriesPage() {
         setSubcategoryOrder(String(maxCategoryOrder(siblings) + 1))
         setSubcategoryImageUrl("")
         setSubcategoryImagePublicId("")
+        setSubcategoryDiscounts(EMPTY_DISCOUNT_FORM)
+        setSubcategoryDiscountsUnavailable(false)
         setIsSubcategoryDialogOpen(true)
     }
 
@@ -803,6 +847,7 @@ export default function CategoriesPage() {
                         {category.nameHindi ? (
                             <div className="text-xs font-normal text-gray-400">{category.nameHindi}</div>
                         ) : null}
+                        <DiscountBadge summary={formatDiscountSummary(category)} className="mt-1" />
                     </div>
                 </TableCell>
                 <TableCell className="text-gray-400">
@@ -959,6 +1004,7 @@ export default function CategoriesPage() {
                                 {subcategoryCountByParent.get(category._id) || 0} subs
                             </span>
                         )}
+                        <DiscountBadge summary={formatDiscountSummary(category)} />
                     </div>
                     {category.parent?.name && (
                         <p className="text-gray-500 text-xs pt-2 border-t border-[#333]">Parent: {category.parent.name}</p>
@@ -1217,7 +1263,7 @@ export default function CategoriesPage() {
 
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-xl gap-3 overflow-y-hidden border-[#333] bg-[#161616] p-5">
+                <DialogContent className="max-h-[90vh] max-w-xl gap-3 overflow-y-auto border-[#333] bg-[#161616] p-5">
                     <DialogHeader>
                         <DialogTitle className="text-white">
                             {editingCategory ? "Edit Category" : "Add New Category"}
@@ -1431,6 +1477,23 @@ export default function CategoriesPage() {
                             </div>
                         </div>
 
+                        <div className="order-7 w-full">
+                            <DiscountFields
+                                value={discounts}
+                                onChange={setDiscounts}
+                                unavailable={discountsUnavailable}
+                                helperText={parentId !== "none"
+                                    ? "Leave empty to use the parent category's discount. A brand discount overrides this."
+                                    : "Applies to this category and its subcategories (unless a subcategory sets its own). A brand discount overrides this."}
+                                {...buildCategoryDiscountNotes({
+                                    brand: getCompanyById(companyId),
+                                    parentId: parentId !== "none" ? parentId : null,
+                                    categories,
+                                    values: discounts,
+                                })}
+                            />
+                        </div>
+
                         {/* Subcategories Section - Only show when editing */}
                         {editingCategory && (
                             <div className="order-8 w-full border-t border-[#333] pt-4">
@@ -1560,7 +1623,7 @@ export default function CategoriesPage() {
 
             {/* Add/Edit Subcategory Dialog */}
             <Dialog open={isSubcategoryDialogOpen} onOpenChange={setIsSubcategoryDialogOpen}>
-                <DialogContent className="max-w-md border-[#333] bg-[#161616] gap-3">
+                <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-[#333] bg-[#161616] gap-3">
                     <DialogHeader>
                         <DialogTitle className="text-white">
                             {editingSubcategory ? "Edit Subcategory" : "Add Subcategory"}
@@ -1661,6 +1724,19 @@ export default function CategoriesPage() {
                                 New subcategories appear after existing ones. Lower numbers show first.
                             </p>
                         </div>
+
+                        <DiscountFields
+                            value={subcategoryDiscounts}
+                            onChange={setSubcategoryDiscounts}
+                            unavailable={subcategoryDiscountsUnavailable}
+                            helperText="Leave empty to use the parent category's discount. A brand discount overrides this."
+                            {...buildCategoryDiscountNotes({
+                                brand: editingCategory ? getCompanyById(getCategoryCompanyId(editingCategory)) : null,
+                                parentId: editingCategory?._id ?? null,
+                                categories,
+                                values: subcategoryDiscounts,
+                            })}
+                        />
                     </div>
 
                     <DialogFooter>

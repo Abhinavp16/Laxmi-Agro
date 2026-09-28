@@ -4,6 +4,7 @@
 import Link from "next/link"
 import { FormEvent, useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
+import { type EffectivePricing, type EffectiveRolePricing } from "@/lib/discount"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ type Product = {
   category?: string
   retailPrice: number
   wholesalePrice: number
+  effectivePricing?: EffectivePricing
   stock?: number
   status: string
   priceUnit?: string
@@ -39,6 +41,16 @@ type Product = {
 
 function formatPrice(value: number) {
   return `₹${Number(value || 0).toLocaleString("en-IN")}`
+}
+
+// Staff quote the price customers actually pay (after brand/category discount).
+function sellingPrice(pricing: EffectiveRolePricing | undefined, fallback: number) {
+  return pricing && pricing.price > 0 ? pricing.price : fallback
+}
+
+function DiscountNote({ pricing }: { pricing?: EffectiveRolePricing }) {
+  if (!pricing?.discountPercent) return null
+  return <p className="mt-0.5 text-[10px] font-medium text-amber-600">{pricing.discountPercent}% off MRP</p>
 }
 
 function productImage(product: Product) {
@@ -53,7 +65,7 @@ function ProductCard({ product }: { product: Product }) {
   const image = productImage(product)
   const stock = Number(product.stock || 0)
 
-  return <article className="catalog-card-borderless flex min-h-[280px] flex-col rounded-[22px] bg-white p-4 shadow-[0_12px_32px_rgba(55,78,35,0.07)]"><div className="mb-4 flex items-start justify-between gap-3">{image ? <img src={image} alt={product.name} className="h-12 w-12 rounded-xl object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f0f5e8]"><Package className="h-5 w-5 text-slate-500" /></div>}<Badge variant="outline" className={`capitalize ${product.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-600"}`}>{product.status}</Badge></div><h2 className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">{product.name}</h2>{product.nameHindi && <p className="mt-1 line-clamp-1 text-xs text-slate-500">{product.nameHindi}</p>}<p className="mt-1.5 truncate text-[10px] text-slate-500">SKU: {product.sku || "—"}</p><div className="mt-3 flex flex-wrap gap-1.5"><span className="max-w-full truncate rounded-full border border-[#dce7ef] bg-[#f4f9fc] px-2 py-0.5 text-[10px] text-slate-600">{product.category || "Uncategorized"}</span>{product.packing && <span className="rounded-full border border-[#e4ead8] bg-[#f8faef] px-2 py-0.5 text-[10px] text-slate-600">{product.packing}</span>}</div><div className="mt-auto grid grid-cols-2 gap-3 border-t border-[#edf0e7] pt-4"><div><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer price</p><p className="mt-1 text-sm font-bold text-blue-600">{formatPrice(product.retailPrice)}</p></div><div className="border-l border-[#edf0e7] pl-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Wholesaler price</p><p className="mt-1 text-sm font-bold text-emerald-700">{formatPrice(product.wholesalePrice)}</p></div></div><p className="mt-3 text-right text-[10px] text-slate-500">Stock <span className="font-semibold text-slate-800">{stock.toLocaleString("en-IN")}{product.priceUnit ? ` ${product.priceUnit}` : ""}</span></p></article>
+  return <article className="catalog-card-borderless flex min-h-[280px] flex-col rounded-[22px] bg-white p-4 shadow-[0_12px_32px_rgba(55,78,35,0.07)]"><div className="mb-4 flex items-start justify-between gap-3">{image ? <img src={image} alt={product.name} className="h-12 w-12 rounded-xl object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f0f5e8]"><Package className="h-5 w-5 text-slate-500" /></div>}<Badge variant="outline" className={`capitalize ${product.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-600"}`}>{product.status}</Badge></div><h2 className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">{product.name}</h2>{product.nameHindi && <p className="mt-1 line-clamp-1 text-xs text-slate-500">{product.nameHindi}</p>}<p className="mt-1.5 truncate text-[10px] text-slate-500">SKU: {product.sku || "—"}</p><div className="mt-3 flex flex-wrap gap-1.5"><span className="max-w-full truncate rounded-full border border-[#dce7ef] bg-[#f4f9fc] px-2 py-0.5 text-[10px] text-slate-600">{product.category || "Uncategorized"}</span>{product.packing && <span className="rounded-full border border-[#e4ead8] bg-[#f8faef] px-2 py-0.5 text-[10px] text-slate-600">{product.packing}</span>}</div><div className="mt-auto grid grid-cols-2 gap-3 border-t border-[#edf0e7] pt-4"><div><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer price</p><p className="mt-1 text-sm font-bold text-blue-600">{formatPrice(sellingPrice(product.effectivePricing?.buyer, product.retailPrice))}</p><DiscountNote pricing={product.effectivePricing?.buyer} /></div><div className="border-l border-[#edf0e7] pl-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Wholesaler price</p><p className="mt-1 text-sm font-bold text-emerald-700">{formatPrice(sellingPrice(product.effectivePricing?.wholesaler, product.wholesalePrice))}</p><DiscountNote pricing={product.effectivePricing?.wholesaler} /></div></div><p className="mt-3 text-right text-[10px] text-slate-500">Stock <span className="font-semibold text-slate-800">{stock.toLocaleString("en-IN")}{product.priceUnit ? ` ${product.priceUnit}` : ""}</span></p></article>
 }
 
 export default function StaffProductsPage() {
