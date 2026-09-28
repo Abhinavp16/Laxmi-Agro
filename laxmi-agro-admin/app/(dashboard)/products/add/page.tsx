@@ -73,6 +73,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { apiFetch, buildApiUrl } from "@/lib/api";
 import { EffectivePricePreview } from "@/components/effective-price-preview";
+import { HINDI_AUTO_NOTE, SuggestHindiButton } from "@/components/hindi-name-tools";
 
 interface Category {
   _id: string;
@@ -921,18 +922,25 @@ export default function AddProductPage() {
                     name="nameHindi"
                     render={({ field }) => (
                       <FormItem className="mt-4">
-                        <FormLabel className="text-white">
-                          Product Name (Hindi)
-                        </FormLabel>
+                        <div className="flex items-center justify-between gap-2">
+                          <FormLabel className="text-white">
+                            Product Name (Hindi)
+                          </FormLabel>
+                          <SuggestHindiButton
+                            text={form.watch("name") || ""}
+                            onSuggest={(hindi) => form.setValue("nameHindi", hindi, { shouldDirty: true })}
+                            className="h-7 border-[#333] bg-[#0D0D0D] text-xs text-white hover:bg-[#1A1A1A]"
+                          />
+                        </div>
                         <FormControl>
                           <Input
-                            placeholder="Optional Hindi display name"
+                            placeholder="Leave empty to fill automatically"
                             {...field}
                             className="bg-[#0D0D0D] border-[#333] text-white"
                           />
                         </FormControl>
                         <FormDescription className="text-gray-500">
-                          Used by the app when Hindi language is selected.
+                          Shown in the app when Hindi is selected. {HINDI_AUTO_NOTE} A name you type here is never replaced.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

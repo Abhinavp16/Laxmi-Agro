@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, Languages, GripVertical } from "@/components/hugeicons"
+import { Plus, Pencil, Trash2, FolderTree, Loader2, LayoutGrid, List, Upload, Package, Search, GripVertical } from "@/components/hugeicons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -51,6 +51,7 @@ import {
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
 import { DiscountBadge, DiscountFields } from "@/components/discount-fields"
+import { HINDI_AUTO_NOTE, HindiNameBatchButtons, SuggestHindiButton } from "@/components/hindi-name-tools"
 import {
     EMPTY_DISCOUNT_FORM,
     buildCategoryDiscountNotes,
@@ -123,7 +124,6 @@ export default function CategoriesPage() {
     const [loadedSearchQuery, setLoadedSearchQuery] = useState("")
     const [isReordering, setIsReordering] = useState(false)
     const reorderInFlight = useRef(false)
-    const [isConvertingHindi, setIsConvertingHindi] = useState(false)
 
     // Form state
     const [name, setName] = useState("")
@@ -647,33 +647,6 @@ export default function CategoriesPage() {
         }
     }
 
-    async function convertMissingHindiNames() {
-        setIsConvertingHindi(true)
-        try {
-            const res = await apiFetch("/categories/hindi-names/generate-missing", {
-                method: "POST",
-                body: JSON.stringify({}),
-            })
-
-            const data = await res.json().catch(() => ({}))
-            if (!res.ok || data?.success === false) {
-                toast.error(data?.message || "Failed to convert Hindi names")
-                return
-            }
-
-            const stats = data.data || {}
-            toast.success(
-                `Hindi conversion done: ${stats.updated ?? 0} updated, ${stats.skipped ?? 0} skipped (processed ${stats.processed ?? 0}).`
-            )
-            fetchCategories(1, true)
-        } catch (error) {
-            console.error(error)
-            toast.error("Error converting Hindi names")
-        } finally {
-            setIsConvertingHindi(false)
-        }
-    }
-
     async function handleDelete(id: string) {
         try {
             const res = await apiFetch(`/categories/${id}`, {
@@ -1061,20 +1034,12 @@ export default function CategoriesPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <Button
-                        type="button"
-                        onClick={convertMissingHindiNames}
-                        disabled={isConvertingHindi}
-                        variant="outline"
-                        className="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
-                    >
-                        {isConvertingHindi ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Languages className="mr-2 h-4 w-4" />
-                        )}
-                        Convert Missing Hindi Names
-                    </Button>
+                    <HindiNameBatchButtons
+                        endpoint="/categories/hindi-names/generate-missing"
+                        entityLabel="categories"
+                        onDone={() => fetchCategories(1, true)}
+                        buttonClassName="w-full border-[#333] bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] sm:w-auto"
+                    />
                     {/* View Toggle */}
                     <div className="flex items-center rounded-lg border border-[#333] bg-[#161616] p-1">
                         <button
@@ -1317,15 +1282,19 @@ export default function CategoriesPage() {
                         </div>
 
                         <div className="order-4 w-1/2 pl-2">
-                            <label className="text-sm font-medium text-white mb-2 block">
-                                Category Name (Hindi)
-                            </label>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <label className="block text-sm font-medium text-white">
+                                    Category Name (Hindi)
+                                </label>
+                                <SuggestHindiButton text={name} onSuggest={setNameHindi} className="h-7 border-[#333] bg-[#0D0D0D] text-xs text-white hover:bg-[#1A1A1A]" />
+                            </div>
                             <Input
-                                placeholder="e.g., मशीनरी, बीज, उर्वरक"
+                                placeholder="Leave empty to fill automatically"
                                 value={nameHindi}
                                 onChange={(e) => setNameHindi(e.target.value)}
                                 className="bg-[#0D0D0D] border-[#333] text-white"
                             />
+                            <p className="mt-1 text-[11px] text-gray-500">{HINDI_AUTO_NOTE}</p>
                         </div>
 
                         {/* Image Upload */}
@@ -1650,11 +1619,14 @@ export default function CategoriesPage() {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-white mb-2 block">
-                                Subcategory Name (Hindi)
-                            </label>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <label className="block text-sm font-medium text-white">
+                                    Subcategory Name (Hindi)
+                                </label>
+                                <SuggestHindiButton text={subcategoryName} onSuggest={setSubcategoryNameHindi} className="h-7 border-[#333] bg-[#0D0D0D] text-xs text-white hover:bg-[#1A1A1A]" />
+                            </div>
                             <Input
-                                placeholder="e.g., ट्रैक्टर, कटाई"
+                                placeholder="Leave empty to fill automatically"
                                 value={subcategoryNameHindi}
                                 onChange={(e) => setSubcategoryNameHindi(e.target.value)}
                                 className="bg-[#0D0D0D] border-[#333] text-white"

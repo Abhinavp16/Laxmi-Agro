@@ -11,7 +11,6 @@ import {
   List,
   Package,
   Star,
-  Languages,
   Search,
 } from "@/components/hugeicons";
 import { useEffect, useState, useCallback } from "react";
@@ -28,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { HindiNameBatchButtons } from "@/components/hindi-name-tools";
 import { describeDiscountSource, type EffectivePricing } from "@/lib/discount";
 
 interface ProductCategory {
@@ -234,7 +234,6 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "card">("card");
-  const [isConvertingHindi, setIsConvertingHindi] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -417,41 +416,6 @@ export default function ProductsPage() {
     }
   }
 
-  async function convertMissingHindiNames() {
-    const confirmed = window.confirm(
-      "Convert missing Hindi names for all products that don't have Hindi text yet?",
-    );
-    if (!confirmed) return;
-
-    setIsConvertingHindi(true);
-    try {
-      const res = await apiFetch(
-        "/admin/products/hindi-names/generate-missing",
-        {
-          method: "POST",
-          body: JSON.stringify({}),
-        },
-      );
-      const data = await res.json();
-
-      if (!res.ok || !data?.success) {
-        toast.error(data?.message || "Failed to convert Hindi names");
-        return;
-      }
-
-      const stats = data.data || {};
-      toast.success(
-        `Hindi conversion done: ${stats.updated ?? 0} updated, ${stats.skipped ?? 0} skipped (processed ${stats.processed ?? 0}).`,
-      );
-      fetchProducts();
-    } catch (error) {
-      console.error(error);
-      toast.error("Error converting Hindi names");
-    } finally {
-      setIsConvertingHindi(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -463,20 +427,12 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start lg:justify-end">
-          <Button
-            type="button"
-            onClick={convertMissingHindiNames}
-            disabled={isConvertingHindi}
-            variant="outline"
-            className="w-full border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900 sm:w-auto"
-          >
-            {isConvertingHindi ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Languages className="mr-2 h-4 w-4" />
-            )}
-            Convert Missing Hindi Names
-          </Button>
+          <HindiNameBatchButtons
+            endpoint="/admin/products/hindi-names/generate-missing"
+            entityLabel="products"
+            onDone={() => fetchProducts()}
+            buttonClassName="w-full border-[#d8dfca] bg-white text-slate-700 hover:bg-[#f6f8ef] hover:text-slate-900 sm:w-auto"
+          />
           <div className="hidden items-center rounded-xl border border-[#d8dfca] bg-[#f3f6ea] p-1 md:flex">
             <button
               onClick={() => setViewMode("list")}
