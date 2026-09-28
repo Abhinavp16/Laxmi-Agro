@@ -433,6 +433,17 @@ exports.getMe = async (req, res, next) => {
   }
 };
 
+// Saves the app language so notifications reach the customer in it.
+exports.updatePreferences = async (req, res, next) => {
+  try {
+    const { language } = req.body;
+    await User.updateOne({ _id: req.user._id }, { $set: { preferredLanguage: language } });
+    res.json({ success: true, data: { preferredLanguage: language } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.updateProfile = async (req, res, next) => {
   try {
     const { name, avatar, phone, address } = req.body;

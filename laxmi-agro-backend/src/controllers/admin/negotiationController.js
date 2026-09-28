@@ -208,9 +208,8 @@ exports.sendMessage = async (req, res, next) => {
       messageId: entry.messageId,
     });
 
-    await notifyWholesaler(negotiation.wholesalerId, {
-      title: 'New message on your requirement',
-      body: `Laxmi Agro: ${message.trim().slice(0, 120)}`,
+    await notifyWholesaler(negotiation.wholesalerId, 'requirementMessage', {
+      message: message.trim().slice(0, 120),
     }, {
       type: 'negotiation_update',
       negotiationId: negotiation._id.toString(),
@@ -291,11 +290,10 @@ exports.rejectNegotiation = async (req, res, next) => {
 
     // Send push notification to user
     try {
-      await notificationService.sendToUser(negotiation.wholesalerId, {
-        title: 'Requirement Declined',
-        body: reason
-          ? `Laxmi Agro could not confirm requirement for ${negotiation.productSnapshot.name}: ${reason}`
-          : `Laxmi Agro could not confirm requirement for ${negotiation.productSnapshot.name}. Open it to view the reason.`,
+      await notificationService.sendLocalizedToUser(negotiation.wholesalerId, reason ? 'requirementDeclinedWithReason' : 'requirementDeclined', {
+        productName: negotiation.productSnapshot.name,
+        productNameHindi: negotiation.productSnapshot.nameHindi,
+        reason,
       }, {
         type: 'negotiation_rejected',
         negotiationId: negotiation._id.toString(),
@@ -360,9 +358,10 @@ exports.counterNegotiation = async (req, res, next) => {
 
     // Send push notification to user
     try {
-      await notificationService.sendToUser(negotiation.wholesalerId, {
-        title: 'New Price from Laxmi Agro',
-        body: `Laxmi Agro shared a new price ₹${pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
+      await notificationService.sendLocalizedToUser(negotiation.wholesalerId, 'requirementNewPrice', {
+        productName: negotiation.productSnapshot.name,
+        productNameHindi: negotiation.productSnapshot.nameHindi,
+        price: pricePerUnit,
       }, {
         type: 'negotiation_countered',
         negotiationId: negotiation._id.toString(),

@@ -126,6 +126,10 @@ const authValidation = {
     refreshToken: Joi.string().required(),
   }),
 
+  updatePreferences: Joi.object({
+    language: Joi.string().valid('en', 'hi').required(),
+  }),
+
   updateProfile: Joi.object({
     name: Joi.string().max(100),
     avatar: Joi.string().uri().allow('', null),

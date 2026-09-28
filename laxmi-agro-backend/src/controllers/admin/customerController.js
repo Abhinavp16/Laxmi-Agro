@@ -160,13 +160,12 @@ exports.upgradeCustomer = async (req, res, next) => {
       const { getMessaging } = require('../../config/firebase');
       const messaging = getMessaging();
       if (messaging) {
+        const { renderNotification } = require('../../services/notificationTemplates');
         const payload = {
-          notification: {
-            title: action === 'accept' ? 'Account Upgraded! 🎉' : 'Application Update',
-            body: action === 'accept' 
-              ? 'Your wholesaler account has been approved. Enjoy exclusive bulk access!' 
-              : 'Your wholesaler application was not approved. Please review your details and re-apply from your profile.',
-          },
+          notification: renderNotification(
+            action === 'accept' ? 'wholesalerApproved' : 'wholesalerRejected',
+            customer.preferredLanguage,
+          ),
           data: {
             type: 'ROLE_UPDATED',
             action: action

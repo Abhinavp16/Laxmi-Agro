@@ -2,6 +2,7 @@ const { Product, User, DeviceToken, Notification, PriceChangeCampaign, PriceChan
 const logger = require('../utils/logger');
 const { USER_ROLES, NOTIFICATION_TYPES, PRODUCT_STATUS } = require('../utils/constants');
 const notificationService = require('./notificationService');
+const { normalizeLanguage, renderNotification } = require('./notificationTemplates');
 
 const PRICE_CHANGE_POLL_INTERVAL_MS = 60 * 1000;
 
@@ -95,13 +96,24 @@ function pickRepresentativeProductIds(products = []) {
   return [...new Set([...topSelling, ...remaining])];
 }
 
-function formatCampaignEffectiveAt(effectiveAt) {
+// Notification template for each campaign stage (English + Hindi).
+const CAMPAIGN_TEMPLATE_BY_STAGE = {
+  [NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_STARTED]: 'priceCampaignStarted',
+  [NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_12H]: 'priceCampaign12h',
+  [NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_6H]: 'priceCampaign6h',
+  [NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_20M]: 'priceCampaign20m',
+  [NOTIFICATION_TYPES.PRICE_CHANGE_CAMPAIGN_APPLIED]: 'priceCampaignApplied',
+};
+
+function formatCampaignEffectiveAt(effectiveAt, language = 'en') {
   const date = new Date(effectiveAt);
   if (Number.isNaN(date.getTime())) {
-    return 'the scheduled date';
+    return language === 'hi' ? 'तय तारीख' : 'the scheduled date';
   }
 
-  return date.toLocaleString('en-IN', {
+  // Hindi month names, but digits always stay 1, 2, 3.
+  return date.toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+    numberingSystem: 'latn',
     timeZone: 'Asia/Kolkata',
     day: '2-digit',
     month: 'short',
@@ -120,59 +132,75 @@ function getCampaignNotificationBody(stage, campaign) {
   return stage.body;
 }
 
+function buildCampaignNotification(stage, campaign, language) {
+  const templateKey = CAMPAIGN_TEMPLATE_BY_STAGE[stage.key];
+  if (!templateKey) {
+    return { title: stage.title, body: getCampaignNotificationBody(stage, campaign) };
+  }
+  return renderNotification(templateKey, language, {
+    when: formatCampaignEffectiveAt(campaign.effectiveAt, language),
+  });
+}
+
 async function broadcastCampaignNotification(stage, campaign) {
   const appUsers = await User.find({
     role: { $in: [USER_ROLES.BUYER, USER_ROLES.WHOLESALER] },
-  }).select('_id');
+  }).select('_id preferredLanguage').lean();
 
   if (!appUsers.length) {
     return;
   }
 
-  const userIds = appUsers.map((user) => user._id);
-  const tokens = await DeviceToken.find({
-    userId: { $in: userIds },
-    isActive: true,
-  }).select('fcmToken');
-
-  const fcmTokens = [...new Set(tokens.map((token) => token.fcmToken).filter(Boolean))];
-  const notification = {
-    title: stage.title,
-    body: getCampaignNotificationBody(stage, campaign),
-  };
   const data = {
     type: stage.key,
     campaignId: String(campaign._id),
     effectiveAt: campaign.effectiveAt ? new Date(campaign.effectiveAt).toISOString() : '',
   };
 
-  if (fcmTokens.length > 0) {
-    try {
-      await notificationService.sendToMultipleDevices(
-        fcmTokens,
-        notification,
-        data,
-        {
-          androidDataOnly: true,
-        }
-      );
-    } catch (error) {
-      logger.error('Failed to send price campaign notification:', error);
-    }
+  // One broadcast per language so everyone gets the message in their language.
+  const usersByLanguage = new Map();
+  for (const user of appUsers) {
+    const language = normalizeLanguage(user.preferredLanguage);
+    if (!usersByLanguage.has(language)) usersByLanguage.set(language, []);
+    usersByLanguage.get(language).push(user._id);
   }
 
-  try {
-    await Notification.insertMany(
-      userIds.map((userId) => ({
-        userId,
-        title: notification.title,
-        body: notification.body,
-        type: stage.key,
-        data,
-      }))
-    );
-  } catch (error) {
-    logger.error('Failed to persist price campaign notifications:', error);
+  for (const [language, userIds] of usersByLanguage) {
+    const notification = buildCampaignNotification(stage, campaign, language);
+    const tokens = await DeviceToken.find({
+      userId: { $in: userIds },
+      isActive: true,
+    }).select('fcmToken');
+    const fcmTokens = [...new Set(tokens.map((token) => token.fcmToken).filter(Boolean))];
+
+    if (fcmTokens.length > 0) {
+      try {
+        await notificationService.sendToMultipleDevices(
+          fcmTokens,
+          notification,
+          { ...data, language },
+          {
+            androidDataOnly: true,
+          }
+        );
+      } catch (error) {
+        logger.error('Failed to send price campaign notification:', error);
+      }
+    }
+
+    try {
+      await Notification.insertMany(
+        userIds.map((userId) => ({
+          userId,
+          title: notification.title,
+          body: notification.body,
+          type: stage.key,
+          data: { ...data, language },
+        }))
+      );
+    } catch (error) {
+      logger.error('Failed to persist price campaign notifications:', error);
+    }
   }
 }
 

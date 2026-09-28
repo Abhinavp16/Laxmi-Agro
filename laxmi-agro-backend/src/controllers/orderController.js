@@ -468,6 +468,7 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole, discountMap =
       variantId: resolved.variantId,
       productSnapshot: {
         name: product.name,
+        nameHindi: product.nameHindi || '',
         sku: product.sku,
         image: product.primaryImage,
       },
@@ -572,6 +573,7 @@ exports.getMyOrders = async (req, res, next) => {
       items: order.items.map((item) => ({
         productId: item.productId ? String(item.productId) : null,
         name: item.variantSnapshot?.displayName || item.productSnapshot.name,
+        nameHindi: item.productSnapshot?.nameHindi || '',
         quantity: item.quantity,
         pricePerUnit: item.pricePerUnit,
         mrpPerUnit: item.mrpPerUnit ?? null,
@@ -854,6 +856,7 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
       variantId: null,
       productSnapshot: {
         name: product.name,
+        nameHindi: product.nameHindi || '',
         sku: product.sku,
         image: product.primaryImage,
       },

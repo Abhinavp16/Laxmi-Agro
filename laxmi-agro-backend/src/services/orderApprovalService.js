@@ -85,11 +85,9 @@ async function releaseInventory(order, actorId, session) {
 
 async function runCustomerNotification(order, accepted, reason) {
   try {
-    await notificationService.sendToUser(order.userId, {
-      title: accepted ? 'Order Accepted' : 'Order Rejected',
-      body: accepted
-        ? `Your order ${order.orderNumber} has been accepted. You can now complete payment.`
-        : `Your order ${order.orderNumber} was rejected: ${reason}`,
+    await notificationService.sendLocalizedToUser(order.userId, accepted ? 'orderAccepted' : 'orderRejected', {
+      orderNumber: order.orderNumber,
+      reason,
     }, {
       type: 'order_update',
       orderId: String(order._id),

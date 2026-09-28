@@ -65,6 +65,13 @@ const userSchema = new mongoose.Schema({
     default: USER_ROLES.BUYER,
   },
 
+  // App language chosen by the customer; used for push/in-app notifications.
+  preferredLanguage: {
+    type: String,
+    enum: ['en', 'hi'],
+    default: 'en',
+  },
+
   businessInfo: {
     businessName: { type: String, default: null },
     gstNumber: { type: String, default: null },

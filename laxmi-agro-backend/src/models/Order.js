@@ -14,6 +14,7 @@ const orderItemSchema = new mongoose.Schema({
   },
   productSnapshot: {
     name: { type: String, required: true },
+    nameHindi: { type: String, default: '' },
     sku: { type: String, required: true },
     image: String,
   },

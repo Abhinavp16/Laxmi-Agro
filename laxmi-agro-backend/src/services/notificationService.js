@@ -1,5 +1,6 @@
 const { getMessaging } = require('../config/firebase');
-const { DeviceToken, Notification } = require('../models');
+const { DeviceToken, Notification, User } = require('../models');
+const { normalizeLanguage, renderNotification } = require('./notificationTemplates');
 
 // Only these FCM error codes mean the device token itself is permanently unusable.
 // Every other failure (auth, APNs config, quota, outage) must leave the token active.
@@ -196,6 +197,21 @@ class NotificationService {
     }
   }
 
+  async getUserLanguage(userId) {
+    try {
+      const user = await User.findById(userId).select('preferredLanguage').lean();
+      return normalizeLanguage(user?.preferredLanguage);
+    } catch (error) {
+      return 'en';
+    }
+  }
+
+  // Sends a template (services/notificationTemplates.js) in the user's language.
+  async sendLocalizedToUser(userId, templateKey, params = {}, data = {}) {
+    const language = await this.getUserLanguage(userId);
+    return this.sendToUser(userId, renderNotification(templateKey, language, params), { ...data, language });
+  }
+
   async sendToTopic(topic, notification, data = {}) {
     const messaging = this.getMessagingInstance();
     if (!messaging) {
@@ -278,30 +294,21 @@ class NotificationService {
 
   // Pre-built notification templates
   async sendOrderStatusUpdate(userId, orderId, status) {
-    const statusMessages = {
-      confirmed: { title: 'Order Confirmed!', body: 'Your order has been confirmed and is being processed.' },
-      shipped: { title: 'Order Shipped!', body: 'Your order is on its way!' },
-      delivered: { title: 'Order Delivered!', body: 'Your order has been delivered. Enjoy!' },
-      cancelled: { title: 'Order Cancelled', body: 'Your order has been cancelled.' },
+    const templateByStatus = {
+      confirmed: 'orderConfirmed',
+      shipped: 'orderShipped',
+      delivered: 'orderDelivered',
+      cancelled: 'orderCancelled',
     };
-
-    const notification = statusMessages[status] || { 
-      title: 'Order Update', 
-      body: `Your order status has been updated to ${status}` 
-    };
-
-    return this.sendToUser(userId, notification, { 
-      type: 'order_update', 
+    return this.sendLocalizedToUser(userId, templateByStatus[status] || 'orderUpdated', {}, {
+      type: 'order_update',
       orderId: orderId.toString(),
-      status 
+      status,
     });
   }
 
   async sendNegotiationUpdate(userId, negotiationId, message) {
-    return this.sendToUser(userId, {
-      title: 'Negotiation Update',
-      body: message,
-    }, {
+    return this.sendLocalizedToUser(userId, 'negotiationUpdate', { message }, {
       type: 'negotiation_update',
       negotiationId: negotiationId.toString(),
     });
@@ -328,25 +335,19 @@ class NotificationService {
   }
 
   async sendPaymentVerified(userId, orderId, orderNumber) {
-    return this.sendToUser(userId, {
-      title: 'Payment Verified!',
-      body: `Your payment for order ${orderNumber} has been verified. We're processing your order now.`,
-    }, {
+    return this.sendLocalizedToUser(userId, 'paymentVerified', { orderNumber }, {
       type: 'payment_verified',
       orderId: orderId.toString(),
     });
   }
 
   async sendPaymentRejected(userId, orderId, orderNumber, reason) {
-    return this.sendToUser(userId, {
-      title: 'Payment Declined',
-      body: reason
-        ? `Your payment for order ${orderNumber} was declined: ${reason}`
-        : `Your payment for order ${orderNumber} was declined. Please re-upload.`,
-    }, {
-      type: 'payment_rejected',
-      orderId: orderId.toString(),
-    });
+    return this.sendLocalizedToUser(
+      userId,
+      reason ? 'paymentRejectedWithReason' : 'paymentRejected',
+      { orderNumber, reason },
+      { type: 'payment_rejected', orderId: orderId.toString() },
+    );
   }
 }
 

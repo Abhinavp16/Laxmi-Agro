@@ -9,9 +9,9 @@ const notificationService = require('../services/notificationService');
 const { getEffectivePricing } = require('../utils/productVariants');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 
-async function notifyWholesaler(userId, notification, data) {
+async function notifyWholesaler(userId, templateKey, params, data) {
   try {
-    await notificationService.sendToUser(userId, notification, data);
+    await notificationService.sendLocalizedToUser(userId, templateKey, params, data);
   } catch (error) {
     console.error('Failed to send member negotiation notification:', error.message);
   }
@@ -258,9 +258,10 @@ exports.counterNegotiation = async (req, res, next) => {
     });
 
     await recordAudit({ actorId: req.user._id, action: 'negotiation.countered', entityType: 'negotiation', entityId: negotiation._id, metadata: { pricePerUnit: req.body.pricePerUnit } });
-    await notifyWholesaler(negotiation.wholesalerId, {
-      title: 'New Price from Laxmi Agro',
-      body: `Laxmi Agro shared a new price ₹${req.body.pricePerUnit}/unit for ${negotiation.productSnapshot.name}. Review and respond.`,
+    await notifyWholesaler(negotiation.wholesalerId, 'requirementNewPrice', {
+      productName: negotiation.productSnapshot.name,
+      productNameHindi: negotiation.productSnapshot.nameHindi,
+      price: req.body.pricePerUnit,
     }, { type: 'negotiation_countered', negotiationId: negotiation._id.toString() });
 
     res.json({ success: true, message: 'Counter offer sent', data: { status: negotiation.status, currentPricePerUnit: negotiation.currentPricePerUnit } });

@@ -58,9 +58,10 @@ function emitToNegotiationRoom(io, negotiationId, event, payload) {
   }
 }
 
-async function notifyWholesaler(userId, notification, data) {
+// Sends a notification template in the wholesaler's language.
+async function notifyWholesaler(userId, templateKey, params, data) {
   try {
-    await notificationService.sendToUser(userId, notification, data);
+    await notificationService.sendLocalizedToUser(userId, templateKey, params, data);
   } catch (err) {
     console.error('Failed to send negotiation order notification:', err.message);
   }
@@ -198,6 +199,7 @@ async function acceptNegotiationAndCreateOrder({
     variantId: null,
     productSnapshot: {
       name: product.name,
+      nameHindi: product.nameHindi || negotiation.productSnapshot?.nameHindi || '',
       sku: product.sku,
       image: product.primaryImage,
     },
@@ -305,9 +307,11 @@ async function runPostConversionEffects({ negotiation, order, actor, product, wh
   });
 
   if (wholesaler) {
-    await notifyWholesaler(wholesaler._id, {
-      title: 'Order Created! ✅',
-      body: `Laxmi Agro accepted your requirement for ${negotiation.productSnapshot.name} at ₹${negotiation.finalPricePerUnit}/unit. Order ${order.orderNumber} is ready to view.`,
+    await notifyWholesaler(wholesaler._id, 'requirementAccepted', {
+      productName: negotiation.productSnapshot.name,
+      productNameHindi: negotiation.productSnapshot.nameHindi,
+      price: negotiation.finalPricePerUnit,
+      orderNumber: order.orderNumber,
     }, {
       type: 'negotiation_accepted',
       negotiationId: negotiation._id.toString(),

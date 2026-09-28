@@ -33,6 +33,7 @@ router.post('/refresh-token', validate(authValidation.refreshToken), authControl
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);
 router.put('/profile', protect, validate(authValidation.updateProfile), authController.updateProfile);
+router.put('/preferences', protect, validate(authValidation.updatePreferences), authController.updatePreferences);
 router.post('/profile/avatar', protect, uploadAvatar.single('avatar'), authController.uploadProfileAvatar);
 router.post('/fcm-token', protect, validate(authValidation.fcmToken), authController.registerFcmToken);
 router.post('/convert-to-wholesaler', protect, uploadProductImages.array('proofImages', 3), validate(authValidation.convertWholesaler), authController.convertToWholesaler);

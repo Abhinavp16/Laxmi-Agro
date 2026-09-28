@@ -58,6 +58,7 @@ const negotiationSchema = new mongoose.Schema({
   },
   productSnapshot: {
     name: { type: String, required: true },
+    nameHindi: { type: String, default: '' },
     variantName: { type: String, default: '' },
     variantDisplayName: { type: String, default: '' },
     price: { type: Number, required: true },

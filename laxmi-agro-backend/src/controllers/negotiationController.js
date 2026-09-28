@@ -36,6 +36,7 @@ exports.getMyNegotiations = async (req, res, next) => {
           id: negotiation.productId,
           variantId: negotiation.variantId || null,
           name: negotiation.productSnapshot.variantDisplayName || negotiation.productSnapshot.name,
+          nameHindi: negotiation.productSnapshot.nameHindi || '',
           image: negotiation.productSnapshot.image,
           currentPrice: negotiation.productSnapshot.price,
         },
@@ -96,6 +97,7 @@ exports.createNegotiation = async (req, res, next) => {
       variantId: null,
       productSnapshot: {
         name: product.name,
+        nameHindi: product.nameHindi || '',
         variantName: '',
         variantDisplayName: product.name,
         price: pricing.price,
