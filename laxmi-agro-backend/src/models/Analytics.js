@@ -31,15 +31,16 @@ const analyticsSchema = new mongoose.Schema({
     deviceModel: String,
   },
 
+  // Indexed only by the TTL index below (a plain index on the same key would
+  // stop MongoDB from creating the TTL index, so old rows never expired).
   timestamp: {
     type: Date,
     default: Date.now,
-    index: true,
   },
 });
 
 analyticsSchema.index({ productId: 1, eventType: 1, timestamp: -1 });
-analyticsSchema.index({ timestamp: 1 }, { expireAfterSeconds: 7776000 });
+analyticsSchema.index({ timestamp: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
 analyticsSchema.index({ eventType: 1, timestamp: -1 });
 analyticsSchema.index({ userId: 1, timestamp: -1 }, { sparse: true });
 

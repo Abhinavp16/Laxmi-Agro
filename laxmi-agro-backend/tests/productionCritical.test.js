@@ -9,9 +9,12 @@ function readSource(relativePath) {
 
 function testAnalyticsConversionWindow() {
   const source = readSource('src/controllers/admin/analyticsController.js');
+  const leadRules = require('../src/utils/leadInterest');
+  assert.strictEqual(leadRules.LEAD_DELAY_MINUTES, 10, 'leads must appear 10 minutes after the last view');
+  assert.strictEqual(leadRules.LEAD_RETENTION_DAYS, 5, 'leads must be kept for 5 days after the last view');
   assert.ok(
-    source.includes('const SIX_HOURS_MS = 6 * 60 * 60 * 1000;'),
-    'potential-customer window must be six hours',
+    source.includes('LEAD_DELAY_MINUTES * 60 * 1000'),
+    'potential-customer delay must come from the shared lead rules',
   );
   assert.ok(
     !source.includes('revert to 6 * 60 * 60 * 1000 after testing'),

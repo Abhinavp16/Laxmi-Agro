@@ -1,5 +1,15 @@
-const { Order, Product, Negotiation, User, Analytics, Payment } = require('../../models');
+const { Order, Product, Negotiation, User, Analytics, Payment, ProductInterest } = require('../../models');
 const { ORDER_STATUS, PAYMENT_STATUS, NEGOTIATION_STATUS, PRODUCT_STATUS } = require('../../utils/constants');
+const {
+  LEAD_DELAY_MINUTES,
+  LEAD_RETENTION_DAYS,
+  LEAD_ROLES,
+  INTEREST_THRESHOLDS,
+  interestLevel,
+  resolveLeadPeriodDays,
+} = require('../../utils/leadInterest');
+const { getPriceForUser } = require('../../utils/productVariants');
+const { buildDiscountMap, discountsFor } = require('../../services/productDiscountService');
 
 exports.getDashboardStats = async (req, res, next) => {
   try {
@@ -252,130 +262,192 @@ exports.getSalesAnalytics = async (req, res, next) => {
   }
 };
 
+// Mongo expression mirroring utils/leadInterest.interestLevel for summaries.
+const meetsInterest = (level) => ({
+  $or: [
+    { $gte: ['$viewCount', INTEREST_THRESHOLDS[level].views] },
+    { $gte: ['$totalWatchSeconds', INTEREST_THRESHOLDS[level].watchSeconds] },
+  ],
+});
+
+// Leads: one row per customer + product (ProductInterest). A lead shows
+// LEAD_DELAY_MINUTES after the last view and is hidden once the customer sent
+// a requirement for the product or ordered it. Staff/admin are never leads.
 exports.getPotentialCustomers = async (req, res, next) => {
   try {
-    const { period = '7d', page = 1, limit = 30 } = req.query;
-    const daysMap = { '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
-    const days = daysMap[period] || 7;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    const { period, page = 1, limit = 30 } = req.query;
+    const days = resolveLeadPeriodDays(period);
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const pageLimit = Math.min(Math.max(parseInt(limit, 10) || 30, 1), 100);
+    const skip = (pageNumber - 1) * pageLimit;
 
-    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const now = Date.now();
+    const startDate = new Date(now - days * 24 * 60 * 60 * 1000);
+    const readyBefore = new Date(now - LEAD_DELAY_MINUTES * 60 * 1000);
 
-    // Step 1: Get unique (userId, productId, latestViewTime) for logged-in users
-    // Step 2: Check if same user+product has cart_add or purchase within 6h
-    // Step 3: Keep only those who did NOT convert
-    const results = await Analytics.aggregate([
-      {
-        $match: {
-          eventType: 'view',
-          userId: { $ne: null },
-          timestamp: { $gte: startDate },
-        },
-      },
-      // Group by user+product, keep the latest view
-      {
-        $group: {
-          _id: { userId: '$userId', productId: '$productId' },
-          lastViewed: { $max: '$timestamp' },
-          viewCount: { $sum: 1 },
-        },
-      },
-      // Only include views older than 6 hours (give them time to convert)
-      {
-        $match: {
-          lastViewed: { $lte: new Date(Date.now() - SIX_HOURS_MS) },
-        },
-      },
-      // Lookup conversion events (cart_add or purchase) for same user+product after the view
+    const results = await ProductInterest.aggregate([
+      { $match: { lastViewedAt: { $gte: startDate, $lte: readyBefore } } },
       {
         $lookup: {
-          from: 'analytics',
-          let: { uid: '$_id.userId', pid: '$_id.productId', viewTime: '$lastViewed' },
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          pipeline: [{
+            $project: {
+              name: 1, email: 1, phone: 1, role: 1, isActive: 1,
+              businessName: '$businessInfo.businessName',
+            },
+          }],
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      { $match: { 'user.role': { $in: LEAD_ROLES }, 'user.isActive': { $ne: false } } },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          pipeline: [{
+            $project: {
+              name: 1, sku: 1, stock: 1, mrp: 1, retailPrice: 1, wholesalePrice: 1,
+              company: 1, categoryRef: 1, category: 1, minWholesaleQuantity: 1, negotiationEnabled: 1,
+              image: { $arrayElemAt: ['$images.url', 0] },
+            },
+          }],
+          as: 'product',
+        },
+      },
+      { $unwind: '$product' },
+      // Hidden: sent a requirement for this product...
+      {
+        $lookup: {
+          from: 'negotiations',
+          let: { uid: '$userId', pid: '$productId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$wholesalerId', '$$uid'] },
+                    { $eq: ['$productId', '$$pid'] },
+                    { $gte: ['$createdAt', startDate] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+            { $project: { _id: 1 } },
+          ],
+          as: 'requirements',
+        },
+      },
+      // ...or ordered it (Buy Now or cart), unless that order was cancelled.
+      {
+        $lookup: {
+          from: 'orders',
+          let: { uid: '$userId', pid: '$productId' },
           pipeline: [
             {
               $match: {
                 $expr: {
                   $and: [
                     { $eq: ['$userId', '$$uid'] },
-                    { $eq: ['$productId', '$$pid'] },
-                    { $in: ['$eventType', ['cart_add', 'purchase']] },
-                    { $gte: ['$timestamp', '$$viewTime'] },
+                    { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                    { $gte: ['$createdAt', startDate] },
+                    { $in: ['$$pid', '$items.productId'] },
                   ],
                 },
               },
             },
             { $limit: 1 },
+            { $project: { _id: 1 } },
           ],
-          as: 'conversions',
+          as: 'orders',
         },
       },
-      // Keep only those with NO conversions
-      { $match: { conversions: { $size: 0 } } },
-      // Sort by view count desc (most interested first)
-      { $sort: { viewCount: -1, lastViewed: -1 } },
-      // Facet for pagination + count
+      { $match: { requirements: { $size: 0 }, orders: { $size: 0 } } },
+      { $sort: { viewCount: -1, totalWatchSeconds: -1, lastViewedAt: -1 } },
       {
         $facet: {
-          data: [
-            { $skip: skip },
-            { $limit: parseInt(limit) },
-            // Lookup user info
-            {
-              $lookup: {
-                from: 'users',
-                localField: '_id.userId',
-                foreignField: '_id',
-                as: 'user',
-              },
+          data: [{ $skip: skip }, { $limit: pageLimit }],
+          summary: [{
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              hot: { $sum: { $cond: [meetsInterest('hot'), 1, 0] } },
+              warm: { $sum: { $cond: [{ $and: [{ $not: [meetsInterest('hot')] }, meetsInterest('warm')] }, 1, 0] } },
+              addedToCart: { $sum: { $cond: [{ $ne: [{ $ifNull: ['$lastCartAddAt', null] }, null] }, 1, 0] } },
+              averageViews: { $avg: '$viewCount' },
+              averageWatchSeconds: { $avg: '$totalWatchSeconds' },
             },
-            { $unwind: '$user' },
-            // Lookup product info
-            {
-              $lookup: {
-                from: 'products',
-                localField: '_id.productId',
-                foreignField: '_id',
-                as: 'product',
-              },
-            },
-            { $unwind: '$product' },
-            {
-              $project: {
-                _id: 0,
-                userId: '$_id.userId',
-                productId: '$_id.productId',
-                viewCount: 1,
-                lastViewed: 1,
-                user: { name: 1, email: 1, phone: 1, businessName: '$user.businessInfo.businessName' },
-                product: {
-                  name: 1,
-                  sku: '$product.sku',
-                  price: '$product.retailPrice',
-                  stock: '$product.stock',
-                  image: { $arrayElemAt: ['$product.images.url', 0] },
-                },
-              },
-            },
-          ],
-          total: [{ $count: 'count' }],
+          }],
         },
       },
     ]);
 
-    const data = results[0]?.data || [];
-    const total = results[0]?.total?.[0]?.count || 0;
+    const rows = results[0]?.data || [];
+    const summaryRow = results[0]?.summary?.[0] || {};
+    const total = summaryRow.total || 0;
+
+    // Price the product the way this customer sees it (brand/category discount).
+    const discountMap = await buildDiscountMap(rows.map((row) => row.product));
+    const potentialCustomers = rows.map((row) => {
+      const pricing = getPriceForUser(row.product, row.user.role, null, discountsFor(discountMap, row.product));
+      const totalWatchSeconds = row.totalWatchSeconds || 0;
+      return {
+        userId: row.userId,
+        productId: row.productId,
+        viewCount: row.viewCount,
+        totalWatchSeconds,
+        averageWatchSeconds: row.viewCount > 0 ? Math.round(totalWatchSeconds / row.viewCount) : 0,
+        firstViewed: row.firstViewedAt,
+        lastViewed: row.lastViewedAt,
+        addedToCart: Boolean(row.lastCartAddAt),
+        lastCartAddAt: row.lastCartAddAt || null,
+        interest: interestLevel({ viewCount: row.viewCount, totalWatchSeconds }),
+        user: {
+          name: row.user.name,
+          email: row.user.email,
+          phone: row.user.phone,
+          role: row.user.role,
+          businessName: row.user.businessName,
+        },
+        product: {
+          name: row.product.name,
+          sku: row.product.sku,
+          price: pricing.price,
+          mrp: pricing.mrp || null,
+          discountPercent: pricing.discountPercent,
+          stock: row.product.stock,
+          image: row.product.image,
+        },
+      };
+    });
 
     res.json({
       success: true,
       data: {
-        potentialCustomers: data,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+        potentialCustomers,
+        summary: {
           total,
-          pages: Math.ceil(total / parseInt(limit)),
+          hot: summaryRow.hot || 0,
+          warm: summaryRow.warm || 0,
+          browsing: Math.max(total - (summaryRow.hot || 0) - (summaryRow.warm || 0), 0),
+          addedToCart: summaryRow.addedToCart || 0,
+          averageViews: Math.round((summaryRow.averageViews || 0) * 10) / 10,
+          averageWatchSeconds: Math.round(summaryRow.averageWatchSeconds || 0),
+        },
+        rules: {
+          periodDays: days,
+          delayMinutes: LEAD_DELAY_MINUTES,
+          retentionDays: LEAD_RETENTION_DAYS,
+        },
+        pagination: {
+          page: pageNumber,
+          limit: pageLimit,
+          total,
+          pages: Math.ceil(total / pageLimit),
         },
       },
     });

@@ -43,7 +43,9 @@
     "test:mobile-app-settings": "node tests/mobileAppSettings.test.js",
     "test:order-approval": "node tests/orderApproval.test.js",
     "test:product-discount": "node tests/productDiscount.test.js",
-    "test:role-labels": "node tests/roleLabels.test.js"
+    "test:role-labels": "node tests/roleLabels.test.js",
+    "test:lead-interest": "node tests/leadInterest.test.js",
+    "leads:backfill": "CONFIRM_PRODUCT_INTEREST_BACKFILL=yes CONFIRM_ANALYTICS_TTL_FIX=yes node src/scripts/backfillProductInterest.js"
   },
   "keywords": [
     "ecommerce",

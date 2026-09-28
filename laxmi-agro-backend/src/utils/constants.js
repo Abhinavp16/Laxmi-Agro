@@ -62,6 +62,7 @@ module.exports = {
     WISHLIST_ADD: 'wishlist_add',
     NEGOTIATION_START: 'negotiation_start',
     PURCHASE: 'purchase',
+    SHARE: 'share',
   },
 
   ANALYTICS_SOURCES: {

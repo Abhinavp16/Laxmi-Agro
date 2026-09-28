@@ -14,4 +14,5 @@ router.get('/:id/related', optionalAuth, productController.getRelatedProducts);
 router.get('/:slug', optionalAuth, productController.getProductBySlug);
 router.post('/:id/view', optionalAuth, productController.trackProductView);
 router.post('/:id/event', optionalAuth, productController.trackProductEvent);
+router.post('/:id/watch-time', optionalAuth, productController.trackProductWatchTime);
 module.exports = router;

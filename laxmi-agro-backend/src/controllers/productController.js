@@ -1,4 +1,4 @@
-const { Product, Analytics, WebsiteSettings, Company } = require('../models');
+const { Product, Analytics, WebsiteSettings, Company, ProductInterest } = require('../models');
 const { NotFoundError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS, ANALYTICS_EVENTS } = require('../utils/constants');
@@ -22,6 +22,8 @@ const {
   pruneCategoriesWithInaccessibleAncestors,
 } = require('../services/productSearchService');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
+const { isLeadRole, sanitizeWatchSeconds } = require('../utils/leadInterest');
+const logger = require('../utils/logger');
 
 const formatProductCard = (product, userRole, req, discounts = null) => {
   const pricing = getPriceForUser(product, userRole, null, discounts);
@@ -528,12 +530,43 @@ exports.searchProducts = async (req, res, next) => {
   }
 };
 
+// Lead tracking (one ProductInterest per customer + product). Failures here
+// must never break the request that triggered them.
+const canTrackLead = (req) => Boolean(req.user?._id) && isLeadRole(req.user.role);
+
+async function recordLeadView(userId, productId) {
+  const now = new Date();
+  const update = {
+    $inc: { viewCount: 1 },
+    $set: { lastViewedAt: now },
+    $setOnInsert: { firstViewedAt: now },
+  };
+  try {
+    await ProductInterest.updateOne({ userId, productId }, update, { upsert: true });
+  } catch (error) {
+    // Two first views at the same moment: the other request created the doc.
+    if (error?.code === 11000) {
+      await ProductInterest.updateOne({ userId, productId }, update);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function trackLeadSafely(fn) {
+  try {
+    await fn();
+  } catch (error) {
+    logger.warn(`[Leads] tracking failed: ${error.message}`);
+  }
+}
+
 exports.trackProductView = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { source, sessionId } = req.body;
 
-    await Product.findByIdAndUpdate(id, { $inc: { viewCount: 1 } });
+    const product = await Product.findByIdAndUpdate(id, { $inc: { viewCount: 1 } }).select('_id');
 
     await Analytics.create({
       productId: id,
@@ -547,10 +580,31 @@ exports.trackProductView = async (req, res, next) => {
       },
     });
 
+    if (product && canTrackLead(req)) {
+      await trackLeadSafely(() => recordLeadView(req.user._id, product._id));
+    }
+
     res.json({
       success: true,
       message: 'View tracked',
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Sent by the app when the customer leaves the product page (or the app goes
+// to the background) with the seconds spent on it.
+exports.trackProductWatchTime = async (req, res, next) => {
+  try {
+    const seconds = sanitizeWatchSeconds(req.body?.seconds);
+    if (seconds > 0 && canTrackLead(req) && mongoose.isValidObjectId(req.params.id)) {
+      await trackLeadSafely(() => ProductInterest.updateOne(
+        { userId: req.user._id, productId: req.params.id },
+        { $inc: { totalWatchSeconds: seconds }, $set: { lastViewedAt: new Date() } },
+      ));
+    }
+    res.json({ success: true, message: 'Watch time tracked' });
   } catch (error) {
     next(error);
   }
@@ -577,6 +631,13 @@ exports.trackProductEvent = async (req, res, next) => {
         appVersion: req.headers['x-app-version'],
       },
     });
+
+    if (event === ANALYTICS_EVENTS.CART_ADD && canTrackLead(req)) {
+      await trackLeadSafely(() => ProductInterest.updateOne(
+        { userId: req.user._id, productId: id },
+        { $set: { lastCartAddAt: new Date() } },
+      ));
+    }
 
     res.json({ success: true, message: 'Event tracked' });
   } catch (error) {
