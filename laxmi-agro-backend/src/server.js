@@ -5,6 +5,7 @@ const app = require('./app');
 const connectDB = require('./config/database');
 const { initializeFirebase } = require('./config/firebase');
 const { startPriceChangeScheduler } = require('./services/productPriceSchedulerService');
+const { startHindiNameScheduler } = require('./services/hindiNameSchedulerService');
 const NegotiationSocketService = require('./services/negotiationSocketService');
 const logger = require('./utils/logger');
 
@@ -42,6 +43,7 @@ const startServer = async () => {
     // Initialize Firebase (optional - will warn if not configured)
     initializeFirebase();
     startPriceChangeScheduler();
+    startHindiNameScheduler();
 
     server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);

@@ -14,6 +14,12 @@ const categorySchema = new mongoose.Schema({
     default: '',
     maxlength: [100, 'Hindi name cannot exceed 100 characters'],
   },
+  // 'manual' = typed by an admin (never overwritten); 'auto' = generated.
+  nameHindiSource: {
+    type: String,
+    enum: ['auto', 'manual', null],
+    default: null,
+  },
   slug: {
     type: String,
     lowercase: true,

@@ -112,6 +112,12 @@ const productSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
+  // 'manual' = typed by an admin (never overwritten); 'auto' = generated.
+  nameHindiSource: {
+    type: String,
+    enum: ['auto', 'manual', null],
+    default: null,
+  },
   slug: {
     type: String,
     unique: true,

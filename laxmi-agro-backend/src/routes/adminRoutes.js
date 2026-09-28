@@ -66,6 +66,7 @@ router.put('/products/:id/stock', validate(adminValidation.updateStock), adminPr
 router.get('/products/:id/stock-logs', adminProductController.getStockLogs);
 router.delete('/products/:id/images/:imageId', adminProductController.deleteProductImage);
 router.post('/products/hindi-names/generate-missing', adminProductController.generateMissingHindiNames);
+router.post('/hindi-name/suggest', adminProductController.suggestHindiName);
 
 // Negotiations
 router.get('/negotiations', adminNegotiationController.getNegotiations);

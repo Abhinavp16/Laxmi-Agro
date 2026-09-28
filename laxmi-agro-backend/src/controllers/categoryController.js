@@ -1,7 +1,8 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const Company = require('../models/Company');
-const { transliterateToHindi } = require('../services/hindiTransliterationService');
+const { fillHindiNames, scheduleHindiNameFill } = require('../services/hindiNameService');
+const { resolveHindiNameOnSave } = require('../utils/hindiNames');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS } = require('../utils/constants');
 
@@ -293,10 +294,12 @@ exports.createCategory = async (req, res, next) => {
       }
     }
 
+    const hindiDecision = resolveHindiNameOnSave({ incomingHindi: nameHindi, nameChanged: true });
     const category = await Category.create({
       name,
       company: companyId,
-      nameHindi: typeof nameHindi === 'string' ? nameHindi.trim() : '',
+      nameHindi: '',
+      ...hindiDecision.set,
       description,
       image,
       parent: parent || null,
@@ -305,6 +308,7 @@ exports.createCategory = async (req, res, next) => {
       ...discountUpdates,
     });
     await auditCategoryDiscountChange(req, category, discountSnapshot({}));
+    if (hindiDecision.generate) scheduleHindiNameFill(Category, category._id);
 
     res.status(201).json({
       success: true,
@@ -398,12 +402,19 @@ exports.updateCategory = async (req, res, next) => {
       ? await getDescendantCategoryIds(category._id)
       : [];
 
+    const hindiDecision = resolveHindiNameOnSave({
+      incomingHindi: nameHindi,
+      storedHindi: category.nameHindi,
+      storedSource: category.nameHindiSource,
+      nameChanged: Boolean(name && name !== category.name),
+    });
+
     category = await Category.findByIdAndUpdate(
       req.params.id,
       {
         name: name || category.name,
         company: nextCompanyId,
-        nameHindi: nameHindi !== undefined ? String(nameHindi || '').trim() : category.nameHindi,
+        ...hindiDecision.set,
         description: description !== undefined ? description : category.description,
         image: image !== undefined ? image : category.image,
         parent: parent !== undefined ? (parent || null) : category.parent,
@@ -414,6 +425,7 @@ exports.updateCategory = async (req, res, next) => {
       { new: true, runValidators: true }
     ).populate('parent', 'name nameHindi slug').populate('company', 'name slug logo');
     await auditCategoryDiscountChange(req, category, discountBefore);
+    if (hindiDecision.generate) scheduleHindiNameFill(Category, category._id);
 
     const canonicalCategoryValue = category.slug || category.name;
     const legacyCategoryValues = [previousCategoryName, previousCategorySlug]
@@ -538,95 +550,24 @@ exports.updateProductCount = async (categorySlug, companyId = null) => {
 exports.generateMissingHindiNames = async (req, res, next) => {
   try {
     const requestedBatchSize = Number(req.body?.batchSize ?? req.query.batchSize ?? 0);
-    const batchSize = Number.isFinite(requestedBatchSize) && requestedBatchSize > 0
+    const limit = Number.isFinite(requestedBatchSize) && requestedBatchSize > 0
       ? Math.min(requestedBatchSize, 5000)
       : 0;
-
-    const query = {
-      $or: [
-        { nameHindi: { $exists: false } },
-        { nameHindi: null },
-        { nameHindi: '' },
-      ],
-    };
-
-    let finder = Category.find(query).select('_id name nameHindi').sort({ createdAt: 1 }).lean();
-    if (batchSize > 0) {
-      finder = finder.limit(batchSize);
-    }
-
-    const categories = await finder;
-    if (categories.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No categories require Hindi name conversion',
-        data: {
-          processed: 0,
-          updated: 0,
-          skipped: 0,
-          failed: 0,
-          failedCategories: [],
-        },
-      });
-    }
-
-    const updates = [];
-    const failedCategories = [];
-    let skipped = 0;
-
-    const processCategory = async (category) => {
-      const englishName = (category.name || '').trim();
-      if (!englishName) {
-        skipped += 1;
-        failedCategories.push({
-          id: category._id.toString(),
-          reason: 'Missing English category name',
-        });
-        return;
-      }
-
-      try {
-        const hindiName = await transliterateToHindi(englishName);
-        if (!hindiName || !hindiName.trim() || hindiName.trim() === englishName) {
-          skipped += 1;
-          return;
-        }
-
-        updates.push({
-          updateOne: {
-            filter: { _id: category._id },
-            update: { $set: { nameHindi: hindiName.trim() } },
-          },
-        });
-      } catch (error) {
-        skipped += 1;
-        failedCategories.push({
-          id: category._id.toString(),
-          name: englishName,
-          reason: error.message || 'Transliteration failed',
-        });
-      }
-    };
-
-    const concurrency = 5;
-    for (let i = 0; i < categories.length; i += concurrency) {
-      const chunk = categories.slice(i, i + concurrency);
-      await Promise.all(chunk.map(processCategory));
-    }
-
-    if (updates.length > 0) {
-      await Category.bulkWrite(updates, { ordered: false });
-    }
+    // 'missing' fills empty Hindi names; 'repair' also regenerates broken ones.
+    const mode = (req.body?.mode || req.query.mode) === 'repair' ? 'repair' : 'missing';
+    const stats = await fillHindiNames(Category, { mode, limit });
 
     res.json({
       success: true,
-      message: `Hindi name conversion completed. Updated ${updates.length} categories.`,
+      message: stats.processed === 0
+        ? 'No categories require Hindi name conversion'
+        : `Hindi name conversion completed. Updated ${stats.updated} categories.`,
       data: {
-        processed: categories.length,
-        updated: updates.length,
-        skipped,
-        failed: failedCategories.length,
-        failedCategories: failedCategories.slice(0, 20),
+        processed: stats.processed,
+        updated: stats.updated,
+        skipped: stats.skipped,
+        failed: stats.failed,
+        failedCategories: stats.failedItems.slice(0, 50),
       },
     });
   } catch (error) {
