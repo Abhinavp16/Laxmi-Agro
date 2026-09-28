@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 
 const RESEND_COOLDOWN_SECONDS = 30
 
-type LoginMode = "admin" | "staff"
+type LoginMode = "admin" | "member"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -45,7 +45,7 @@ export default function LoginPage() {
     }
   }
 
-  async function submitStaffLogin(event: FormEvent) {
+  async function submitMemberLogin(event: FormEvent) {
     event.preventDefault()
     setIsLoading(true)
     try {
@@ -63,7 +63,7 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user))
       localStorage.setItem("sessionExpiresAt", sessionExpiresAt)
       localStorage.removeItem("loginAt")
-      router.push("/staff/orders")
+      router.push("/member/orders")
     } catch (error: any) {
       toast.error(error.message || "Invalid username or password")
     } finally {
@@ -78,19 +78,19 @@ export default function LoginPage() {
           <div className="flex justify-center"><Image src="/icon.svg" alt="Laxmi Agro logo" width={56} height={56} className="h-14 w-14 rounded-xl object-cover" /></div>
           <CardTitle className="text-center text-2xl font-bold text-slate-900">Laxmi Agro Enterprises</CardTitle>
           <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
-            {(["admin", "staff"] as LoginMode[]).map((value) => (
+            {(["admin", "member"] as LoginMode[]).map((value) => (
               <button key={value} type="button" onClick={() => { setMode(value); setSent(false) }} className={`rounded-md px-3 py-2 text-sm font-semibold capitalize ${mode === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>
-                {value === "staff" ? "member" : value} login
+                {value} login
               </button>
             ))}
           </div>
           <CardDescription className="text-center text-slate-500">
-            {mode === "staff" ? "Use the username and password supplied by your administrator." : sent ? "Your sign-in link is on its way" : "Get a one-time sign-in link in your email. No password needed."}
+            {mode === "member" ? "Use the username and password supplied by your administrator." : sent ? "Your sign-in link is on its way" : "Get a one-time sign-in link in your email. No password needed."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {mode === "staff" ? (
-            <form className="space-y-4" onSubmit={submitStaffLogin}>
+          {mode === "member" ? (
+            <form className="space-y-4" onSubmit={submitMemberLogin}>
               <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Username" autoComplete="username" required />
               <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" autoComplete="current-password" required />
               <Button type="submit" className="w-full bg-[#86efac] text-black hover:bg-[#74e39c]" disabled={isLoading}>

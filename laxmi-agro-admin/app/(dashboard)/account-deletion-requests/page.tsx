@@ -73,7 +73,7 @@ export default function AccountDeletionRequestsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<"all" | DeletionStatus>("all")
   const [selectedRequest, setSelectedRequest] = useState<DeletionRequest | null>(null)
-  const [staffNote, setStaffNote] = useState("")
+  const [memberNote, setMemberNote] = useState("")
   const [identityVerified, setIdentityVerified] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -117,7 +117,7 @@ export default function AccountDeletionRequestsPage() {
 
   function openRequest(request: DeletionRequest) {
     setSelectedRequest(request)
-    setStaffNote(request.staffNote || "")
+    setMemberNote(request.staffNote || "")
     setIdentityVerified(Boolean(request.identityVerification?.verifiedAt))
   }
 
@@ -134,7 +134,7 @@ export default function AccountDeletionRequestsPage() {
         : `/admin/account-deletion-requests/${selectedRequest._id}`
       const response = await apiFetch(endpoint, {
         method: status === "completed" ? "POST" : "PUT",
-        body: JSON.stringify(status === "completed" ? { staffNote } : { status, staffNote, identityVerified }),
+        body: JSON.stringify(status === "completed" ? { staffNote: memberNote } : { status, staffNote: memberNote, identityVerified }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body.message || "Unable to update deletion request")
@@ -244,8 +244,8 @@ export default function AccountDeletionRequestsPage() {
                     </label>
                   ) : null}
                   <Textarea
-                    value={staffNote}
-                    onChange={(event) => setStaffNote(event.target.value)}
+                    value={memberNote}
+                    onChange={(event) => setMemberNote(event.target.value)}
                     placeholder="Verification outcome, retention exception, or rejection reason"
                     className="min-h-28 border-[#333] bg-[#0D0D0D] text-white placeholder:text-gray-500"
                   />

@@ -82,7 +82,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/negotiations", label: "DEAL DESK", icon: Message01Icon },
-      { href: "/staff-management", label: "MEMBERS", icon: UserGroupIcon },
+      { href: "/member-management", label: "MEMBERS", icon: UserGroupIcon },
       { href: "/customers", label: "CUSTOMERS", icon: UserGroupIcon },
       { href: "/account-deletion-requests", label: "DELETION REQUESTS", icon: UserGroupIcon },
       { href: "/account-upgrades", label: "ACCOUNT UPGRADES", icon: AddTeamIcon },
@@ -361,25 +361,25 @@ export function Sidebar() {
 }
 
 
-const staffNavGroups: NavGroup[] = [
+const memberNavGroups: NavGroup[] = [
   {
     label: "Workspace",
     items: [
-      { href: "/staff/products", label: "PRODUCTS", icon: Package01Icon },
-      { href: "/staff/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
-      { href: "/staff/negotiations", label: "DEAL DESK", icon: Message01Icon },
+      { href: "/member/products", label: "PRODUCTS", icon: Package01Icon },
+      { href: "/member/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
+      { href: "/member/negotiations", label: "DEAL DESK", icon: Message01Icon },
     ],
   },
 ]
 
-const staffPrimaryNavItems = staffNavGroups.flatMap((group) => group.items)
+const memberPrimaryNavItems = memberNavGroups.flatMap((group) => group.items)
 
-function getStaffPageTitle(pathname: string) {
-  const activeItem = staffPrimaryNavItems.find((item) => isNavItemActive(pathname, item))
+function getMemberPageTitle(pathname: string) {
+  const activeItem = memberPrimaryNavItems.find((item) => isNavItemActive(pathname, item))
   return activeItem ? formatPageTitle(activeItem.label) : "Member Workspace"
 }
 
-function useStaffSidebarState() {
+function useMemberSidebarState() {
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -397,7 +397,7 @@ function useStaffSidebarState() {
 
   return {
     mounted,
-    pageTitle: getStaffPageTitle(pathname),
+    pageTitle: getMemberPageTitle(pathname),
     pathname,
     theme,
     setTheme,
@@ -405,7 +405,7 @@ function useStaffSidebarState() {
   }
 }
 
-function StaffSidebarNavContent({
+function MemberSidebarNavContent({
   pathname,
   mounted,
   theme,
@@ -441,9 +441,9 @@ function StaffSidebarNavContent({
   return (
     <div className="flex min-h-full flex-col">
       <nav className="flex flex-col gap-6" aria-label="Member navigation">
-        {staffNavGroups.map((group) => (
-          <section key={group.label} aria-labelledby={`staff-sidebar-group-${group.label.toLowerCase()}`}>
-            <p id={`staff-sidebar-group-${group.label.toLowerCase()}`} className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
+        {memberNavGroups.map((group) => (
+          <section key={group.label} aria-labelledby={`member-sidebar-group-${group.label.toLowerCase()}`}>
+            <p id={`member-sidebar-group-${group.label.toLowerCase()}`} className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
             <div className="flex flex-col gap-0.5">{group.items.map(renderLink)}</div>
           </section>
         ))}
@@ -471,8 +471,8 @@ function StaffSidebarNavContent({
   )
 }
 
-export function MobileStaffNav() {
-  const { mounted, pageTitle, pathname, theme, setTheme, handleLogout } = useStaffSidebarState()
+export function MobileMemberNav() {
+  const { mounted, pageTitle, pathname, theme, setTheme, handleLogout } = useMemberSidebarState()
 
   return (
     <div className="-mx-4 -mt-4 border-b border-slate-200 bg-white sm:-mx-5 sm:-mt-5 md:hidden">
@@ -486,7 +486,7 @@ export function MobileStaffNav() {
           </SheetTrigger>
           <SheetContent side="left" className="w-[88vw] border-r border-slate-200 bg-white p-0 text-slate-900 sm:max-w-sm">
             <SheetHeader className="border-b border-slate-200 p-0 text-left"><SidebarBrand portalLabel="Member Portal" /><SheetTitle className="sr-only">Member Navigation</SheetTitle><SheetDescription className="sr-only">Browse your permitted work areas and account actions.</SheetDescription></SheetHeader>
-            <div className="h-[calc(100dvh-77px)] overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} closeOnNavigate /></div>
+            <div className="h-[calc(100dvh-77px)] overflow-y-auto no-scrollbar px-3 py-5"><MemberSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} closeOnNavigate /></div>
           </SheetContent>
         </Sheet>
       </div>
@@ -494,13 +494,13 @@ export function MobileStaffNav() {
   )
 }
 
-export function StaffSidebar() {
-  const { mounted, pathname, theme, setTheme, handleLogout } = useStaffSidebarState()
+export function MemberSidebar() {
+  const { mounted, pathname, theme, setTheme, handleLogout } = useMemberSidebarState()
 
   return (
     <aside className="hidden h-screen shrink-0 md:flex md:w-60 lg:w-64 md:flex-col md:self-stretch md:overflow-hidden border-r border-slate-200 bg-white text-slate-900">
       <div className="border-b border-slate-200"><SidebarBrand portalLabel="Member Portal" /></div>
-      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-5"><StaffSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} /></div>
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-5"><MemberSidebarNavContent pathname={pathname} mounted={mounted} theme={theme} setTheme={setTheme} handleLogout={handleLogout} /></div>
     </aside>
   )
 }

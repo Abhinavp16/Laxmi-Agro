@@ -22,6 +22,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
+import { displayRole } from "@/lib/role-labels"
 import { TableSkeleton } from "@/components/ui/skeleton"
 
 interface Customer {
@@ -445,7 +446,7 @@ export default function AccountUpgradesPage() {
                                         <div>
                                             <span className="text-gray-500 block text-xs mb-1">Current Role</span>
                                             <Badge variant="outline" className="text-blue-400 border-blue-400 capitalize">
-                                                {selectedCustomer.role}
+                                                {displayRole(selectedCustomer.role)}
                                             </Badge>
                                         </div>
                                     </div>

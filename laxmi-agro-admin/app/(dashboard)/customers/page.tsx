@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/api"
+import { displayRole } from "@/lib/role-labels"
 
 interface Customer {
     _id: string
@@ -371,7 +372,7 @@ export default function CustomersPage() {
                                                     </div>
                                                 </div>
                                                 <Badge variant="outline" className={customer.role === "wholesaler" ? "border-purple-400 text-purple-400" : "border-blue-400 text-blue-400"}>
-                                                    {customer.role}
+                                                    {displayRole(customer.role)}
                                                 </Badge>
                                             </div>
 
@@ -448,7 +449,7 @@ export default function CustomersPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="outline" className={customer.role === "wholesaler" ? "border-purple-400 text-purple-400" : "border-blue-400 text-blue-400"}>
-                                                        {customer.role}
+                                                        {displayRole(customer.role)}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-sm text-gray-400">
@@ -496,7 +497,7 @@ export default function CustomersPage() {
                     <DialogHeader>
                         <DialogTitle>Customer Profile</DialogTitle>
                         <DialogDescription>
-                            {selectedCustomer?.name} ({selectedCustomer?.role})
+                            {selectedCustomer?.name} ({displayRole(selectedCustomer?.role)})
                         </DialogDescription>
                     </DialogHeader>
 

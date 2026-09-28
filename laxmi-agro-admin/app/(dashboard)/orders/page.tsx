@@ -25,6 +25,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
+import { displayActivityText } from "@/lib/role-labels"
 
 interface Order {
     _id: string
@@ -784,7 +785,7 @@ export default function OrdersPage() {
                                             <div key={idx} className="border-l-2 border-[#86efac] pl-3">
                                                 <div className="text-sm font-medium">{formatStatusLabel(entry.status)}</div>
                                                 <div className="text-xs text-gray-400">{new Date(entry.timestamp).toLocaleString("en-IN")}</div>
-                                                {entry.note ? <div className="mt-1 text-xs text-gray-300">{entry.note}</div> : null}
+                                                {entry.note ? <div className="mt-1 text-xs text-gray-300">{displayActivityText(entry.note)}</div> : null}
                                             </div>
                                         ))}
                                     </div>

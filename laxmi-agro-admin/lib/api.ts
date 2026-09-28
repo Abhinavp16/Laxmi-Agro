@@ -1,3 +1,5 @@
+import { isMemberRole } from './role-labels'
+
 const DEFAULT_API_BASE = "http://localhost:5000/api/v1"
 const RAW_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE
 const API_BASE = RAW_API_BASE.replace(/\/+$/, "")
@@ -115,7 +117,7 @@ export const SESSION_MAX_MS = 4 * 60 * 60 * 1000
 export function isSessionExpired(): boolean {
   if (typeof window === 'undefined') return false
   const user = getUser()
-  if (user?.role === 'staff') {
+  if (isMemberRole(user?.role)) {
     const sessionExpiresAt = localStorage.getItem('sessionExpiresAt')
     return !sessionExpiresAt || new Date(sessionExpiresAt).getTime() <= Date.now()
   }

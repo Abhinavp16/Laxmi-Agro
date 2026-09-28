@@ -54,7 +54,7 @@ async function mockOrders(page: Page, role: "admin" | "staff") {
 
 for (const surface of [
   { role: "admin" as const, path: "/orders" },
-  { role: "staff" as const, path: "/staff/orders" },
+  { role: "staff" as const, path: "/member/orders" },
 ]) {
   test(`${surface.role} can approve a pending retail order before payment completion`, async ({ page }) => {
     await mockOrders(page, surface.role)

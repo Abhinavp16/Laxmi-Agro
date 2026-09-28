@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { apiFetch, getUser } from "@/lib/api"
+import { isMemberRole } from "@/lib/role-labels"
 import { useNegotiationSocket } from "@/lib/hooks/useNegotiationSocket"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
@@ -172,10 +173,10 @@ function AcceptCard({ name, pricePerUnit, timestamp, note, orderCreated }: { nam
 
 function actorDisplayName(entry: HistoryEntry, dealerFallback = 'Dealer'): string {
     if (typeof entry.actorId === 'object' && entry.actorId) {
-        return entry.actorId.name || entry.actorId.username || entry.actorId.email || 'Staff'
+        return entry.actorId.name || entry.actorId.username || entry.actorId.email || 'Member'
     }
     if (entry.by === 'wholesaler') return dealerFallback
-    return entry.actorRole === 'staff' ? 'Staff' : 'Admin'
+    return isMemberRole(entry.actorRole) ? 'Member' : 'Admin'
 }
 
 export default function NegotiationsPage() {
@@ -350,7 +351,7 @@ export default function NegotiationsPage() {
                                         </TableCell>
                                         <TableCell className="text-gray-300 text-sm">
                                             {negotiation.approvedBy
-                                                ? `${negotiation.approvedBy.role === 'staff' ? 'Staff' : 'Admin'} · ${negotiation.approvedBy.name}`
+                                                ? `${isMemberRole(negotiation.approvedBy.role) ? 'Member' : 'Admin'} · ${negotiation.approvedBy.name}`
                                                 : <span className="text-gray-600">—</span>}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -500,7 +501,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
         fetchDetail(true)
     }, [negotiationId, messageRevision, reconnectRevision, detail, fetchDetail])
 
-    // Live updates from wholesaler / staff actions
+    // Live updates from wholesaler / member actions
     useEffect(() => {
         if (!lastAction || !detail || handledActionAt.current === lastAction.at) return
         const actionNegotiationId = (lastAction.payload as { negotiationId?: string })?.negotiationId
