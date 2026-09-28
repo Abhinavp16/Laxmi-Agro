@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class LegalPolicyItem {
   final String id;
@@ -17,6 +18,35 @@ class LegalPolicyItem {
     required this.icon,
     required this.color,
   });
+
+  /// Policy name in the current language. The policy text itself stays English.
+  String localizedTitle(BuildContext context) {
+    final l10n = context.l10n;
+    switch (id) {
+      case 'privacy-policy':
+        return l10n.legalPrivacyPolicy;
+      case 'terms-conditions':
+        return l10n.legalTermsConditions;
+      case 'shipping-policy':
+        return l10n.legalShippingPolicy;
+      case 'refund-return-policy':
+        return l10n.legalRefundReturnPolicy;
+      case 'cancellation-policy':
+        return l10n.legalCancellationPolicy;
+      case 'cod-delivery-policy':
+        return l10n.legalCodDeliveryPolicy;
+      case 'dealer-agreement':
+        return l10n.legalDealerAgreement;
+      case 'dealer-pricing-map-policy':
+        return l10n.legalDealerPricingPolicy;
+      case 'warranty-policy':
+        return l10n.legalWarrantyPolicy;
+      case 'comprehensive-legal-policies':
+        return l10n.legalComprehensivePolicies;
+      default:
+        return title;
+    }
+  }
 }
 
 class LegalPolicyCatalog {
@@ -110,11 +140,11 @@ class LegalPolicyScreen extends StatelessWidget {
     final item = LegalPolicyCatalog.byId(policyId);
     if (item == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Legal & Policies')),
+        appBar: AppBar(title: Text(context.l10n.legalHubTitle)),
         body: Center(
           child: Text(
-            'Policy not found.',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            context.l10n.legalNotFound,
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -123,8 +153,8 @@ class LegalPolicyScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          item.title,
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          item.localizedTitle(context),
+          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
         ),
       ),
       body: FutureBuilder<String>(
@@ -138,8 +168,8 @@ class LegalPolicyScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Text(
-                  'Unable to load policy content.',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                  context.l10n.legalLoadFailed,
+                  style: AppFonts.jakarta(fontWeight: FontWeight.w600),
                 ),
               ),
             );
@@ -151,7 +181,18 @@ class LegalPolicyScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeaderCard(item),
+                _buildHeaderCard(context, item),
+                if (context.isHindi) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    context.l10n.legalEnglishOnlyNote,
+                    style: AppFonts.jakarta(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 ...blocks.map((block) => _buildBlock(block, item.color)),
               ],
@@ -162,7 +203,7 @@ class LegalPolicyScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderCard(LegalPolicyItem item) {
+  Widget _buildHeaderCard(BuildContext context, LegalPolicyItem item) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -186,8 +227,8 @@ class LegalPolicyScreen extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              item.title,
-              style: GoogleFonts.plusJakartaSans(
+              item.localizedTitle(context),
+              style: AppFonts.jakarta(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF0F172A),
@@ -195,8 +236,8 @@ class LegalPolicyScreen extends StatelessWidget {
             ),
           ),
           Text(
-            'Policy',
-            style: GoogleFonts.plusJakartaSans(
+            context.l10n.legalPolicyBadge,
+            style: AppFonts.jakarta(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: item.color,
@@ -223,7 +264,7 @@ class LegalPolicyScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   block.text,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF0F172A),
@@ -252,7 +293,7 @@ class LegalPolicyScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   block.text,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 15,
                     height: 1.55,
                     color: const Color(0xFF1F2937),
@@ -268,7 +309,7 @@ class LegalPolicyScreen extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
             block.text,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 15,
               height: 1.65,
               color: const Color(0xFF1F2937),

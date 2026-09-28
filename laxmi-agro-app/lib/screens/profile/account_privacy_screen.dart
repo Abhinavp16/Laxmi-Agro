@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class AccountPrivacyScreen extends ConsumerStatefulWidget {
   const AccountPrivacyScreen({super.key});
@@ -44,19 +46,17 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Request account deletion?'),
-        content: const Text(
-          'We will process your request within 30 days. Direct account data, uploaded business documents, saved addresses, carts, device tokens, and notifications will be removed or anonymized. Financial records may be retained where required for tax, payment, fraud-prevention, dispute, or warranty obligations. Backup handling follows our applicable operational and legal retention requirements.',
-        ),
+        title: Text(dialogContext.l10n.privacyDialogTitle),
+        content: Text(dialogContext.l10n.privacyDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep account'),
+            child: Text(dialogContext.l10n.privacyKeepAccount),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Request deletion'),
+            child: Text(dialogContext.l10n.privacyRequestDeletion),
           ),
         ],
       ),
@@ -73,8 +73,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
     if (response == null) {
       setState(
         () => _error =
-            ref.read(authProvider).error ??
-            'Unable to submit deletion request.',
+            ref.read(authProvider).error ?? context.l10n.privacySubmitFailed,
       );
       return;
     }
@@ -92,8 +91,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
     if (response == null) {
       setState(
         () => _error =
-            ref.read(authProvider).error ??
-            'Unable to cancel deletion request.',
+            ref.read(authProvider).error ?? context.l10n.privacyCancelFailed,
       );
       return;
     }
@@ -103,8 +101,10 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
   String _formatDate(dynamic value) {
     final parsed = value == null ? null : DateTime.tryParse(value.toString());
     if (parsed == null) return '—';
-    final local = parsed.toLocal();
-    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
+    return DateFormat(
+      'dd/MM/yyyy',
+      Localizations.localeOf(context).languageCode,
+    ).format(parsed.toLocal());
   }
 
   @override
@@ -114,12 +114,13 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
     const textSecondary = Color(0xFF475569);
     final status = _request?['status']?.toString();
     final canCancel = status == 'pending';
+    final l10n = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Account & Privacy',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          l10n.privacyTitle,
+          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
         ),
       ),
       backgroundColor: const Color(0xFFF8FAFC),
@@ -131,9 +132,10 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                 _InfoCard(
                   icon: Icons.security_outlined,
                   color: primary,
-                  title: 'Your privacy controls',
-                  body:
-                      'Manage your account-deletion request here. You can also submit a request after uninstalling the app at laxmiagroenterprises.com/delete-account.',
+                  title: l10n.privacyControlsTitle,
+                  body: l10n.privacyControlsBody(
+                    'laxmiagroenterprises.com/delete-account',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (_error != null) ...[
@@ -145,9 +147,7 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                     ),
                     child: Text(
                       _error!,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF991B1B),
-                      ),
+                      style: AppFonts.jakarta(color: const Color(0xFF991B1B)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -155,19 +155,21 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                 if (status == 'pending' || status == 'in_review')
                   _RequestStatusCard(
                     status: status == 'in_review'
-                        ? 'Under review'
-                        : 'Request received',
+                        ? l10n.privacyStatusUnderReview
+                        : l10n.privacyStatusReceived,
+                    isComplete: false,
                     dueDate: _formatDate(_request?['dueAt']),
                   )
                 else if (status == 'completed')
                   _RequestStatusCard(
-                    status: 'Completed',
+                    status: l10n.privacyStatusCompleted,
+                    isComplete: true,
                     dueDate: _formatDate(_request?['completedAt']),
                   )
                 else ...[
                   Text(
-                    'Request account deletion',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.privacyRequestHeading,
+                    style: AppFonts.jakarta(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
@@ -175,8 +177,8 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'After Member verification, we complete deletion within 30 days. Restricted financial records may be retained only for legal, tax, payment, fraud-prevention, dispute, or warranty obligations.',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.privacyRequestBody,
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       height: 1.55,
                       color: textSecondary,
@@ -198,10 +200,8 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                             )
                           : const Icon(Icons.delete_outline),
                       label: Text(
-                        'Request account deletion',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        l10n.privacyRequestButton,
+                        style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red.shade700,
@@ -214,17 +214,15 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                   OutlinedButton(
                     onPressed: _isSubmitting ? null : _cancelRequest,
                     child: Text(
-                      'Cancel pending request',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      l10n.privacyCancelPending,
+                      style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
                 const SizedBox(height: 24),
                 Text(
-                  'What happens when deletion is completed',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.privacyAfterDeletionTitle,
+                  style: AppFonts.jakarta(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: textPrimary,
@@ -232,8 +230,8 @@ class _AccountPrivacyScreenState extends ConsumerState<AccountPrivacyScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Your account access is revoked. Profile details, saved addresses, uploaded account media, carts, notification tokens, notification history, and negotiations are deleted or anonymized. Orders and payment records are kept in restricted records for the applicable legal retention period. Backup handling follows our applicable operational and legal retention requirements.',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.privacyAfterDeletionBody,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     height: 1.55,
                     color: textSecondary,
@@ -278,7 +276,7 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF0F172A),
                   ),
@@ -286,7 +284,7 @@ class _InfoCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     height: 1.5,
                     color: const Color(0xFF475569),
@@ -303,13 +301,17 @@ class _InfoCard extends StatelessWidget {
 
 class _RequestStatusCard extends StatelessWidget {
   final String status;
+  final bool isComplete;
   final String dueDate;
 
-  const _RequestStatusCard({required this.status, required this.dueDate});
+  const _RequestStatusCard({
+    required this.status,
+    required this.isComplete,
+    required this.dueDate,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isComplete = status == 'Completed';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -335,7 +337,7 @@ class _RequestStatusCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 status,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F172A),
@@ -345,8 +347,10 @@ class _RequestStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            isComplete ? 'Completed on: $dueDate' : 'Complete by: $dueDate',
-            style: GoogleFonts.plusJakartaSans(
+            isComplete
+                ? context.l10n.privacyCompletedOn(dueDate)
+                : context.l10n.privacyCompleteBy(dueDate),
+            style: AppFonts.jakarta(
               fontSize: 13,
               color: const Color(0xFF475569),
             ),

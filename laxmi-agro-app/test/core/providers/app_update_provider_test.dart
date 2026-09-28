@@ -4,6 +4,7 @@ import 'package:laxmi_agro/core/models/app_update_config.dart';
 import 'package:laxmi_agro/core/navigation/app_navigator_key.dart';
 import 'package:laxmi_agro/core/providers/app_update_provider.dart';
 import 'package:laxmi_agro/core/services/app_update_service.dart';
+import 'package:laxmi_agro/l10n/l10n.dart';
 
 class _FakeUpdateGateway implements AppUpdateGateway {
   final List<AppUpdateCheckResult> results = [];
@@ -34,6 +35,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           navigatorKey: appNavigatorKey,
           home: const Scaffold(body: Text('Home')),
         ),

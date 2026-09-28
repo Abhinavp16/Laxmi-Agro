@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/app_image.dart';
@@ -9,6 +8,8 @@ import '../../widgets/app_image.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class NegotiationsScreen extends ConsumerStatefulWidget {
   const NegotiationsScreen({super.key});
@@ -73,14 +74,16 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
         });
       } else {
         setState(() {
-          _error = data['message']?.toString() ?? 'Failed to load negotiations';
+          _error =
+              data['message']?.toString() ??
+              context.l10n.negotiationsLoadFailed;
           _isLoading = false;
         });
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load negotiations';
+        _error = context.l10n.negotiationsLoadFailed;
         _isLoading = false;
       });
     }
@@ -107,6 +110,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -132,9 +136,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                     ),
                     Expanded(
                       child: Text(
-                        'Negotiations',
+                        l10n.negotiationsTitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -157,9 +161,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      _buildTab('Active', 0),
+                      _buildTab(l10n.negotiationsTabActive, 0),
                       const SizedBox(width: 32),
-                      _buildTab('Completed', 1),
+                      _buildTab(l10n.negotiationsTabCompleted, 1),
                     ],
                   ),
                 ),
@@ -192,14 +196,12 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 children: [
                                   Text(
                                     _error!,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: textMuted,
-                                    ),
+                                    style: AppFonts.jakarta(color: textMuted),
                                   ),
                                   const SizedBox(height: 12),
                                   TextButton(
                                     onPressed: _fetchNegotiations,
-                                    child: const Text('Retry'),
+                                    child: Text(l10n.commonRetry),
                                   ),
                                 ],
                               ),
@@ -223,9 +225,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                   const SizedBox(height: 12),
                                   Text(
                                     _selectedTab == 0
-                                        ? 'No active negotiations'
-                                        : 'No completed negotiations',
-                                    style: GoogleFonts.plusJakartaSans(
+                                        ? l10n.negotiationsEmptyActive
+                                        : l10n.negotiationsEmptyCompleted,
+                                    style: AppFonts.jakarta(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: textMuted,
@@ -233,8 +235,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Start negotiating on product pages',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    l10n.negotiationsEmptyHint,
+                                    style: AppFonts.jakarta(
                                       fontSize: 13,
                                       color: slateBlue,
                                     ),
@@ -278,7 +280,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
         ),
         child: Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
@@ -293,41 +295,50 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     String status,
     Map<String, dynamic> negotiation,
   ) {
-    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
+    final l10n = context.l10n;
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(
+      negotiation,
+      l10n: l10n,
+    );
     switch (status) {
       case 'pending':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT SENT',
+          'label': (orderStatusLabel ?? l10n.dealStatusRequirementSent)
+              .toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'countered':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'NEW PRICE RECEIVED',
+          'label': (orderStatusLabel ?? l10n.dealStatusNewPriceReceived)
+              .toUpperCase(),
           'color': const Color(0xFFF59E0B),
           'bg': const Color(0xFFFEF3C7),
         };
       case 'accepted':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'ACCEPTED',
+          'label': (orderStatusLabel ?? l10n.dealStatusAccepted).toUpperCase(),
           'color': const Color(0xFF16A34A),
           'bg': const Color(0xFFDCFCE7),
         };
       case 'rejected':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT DECLINED',
+          'label': (orderStatusLabel ?? l10n.dealStatusRequirementDeclined)
+              .toUpperCase(),
           'color': const Color(0xFFDC2626),
           'bg': const Color(0xFFFEE2E2),
         };
       case 'expired':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'REQUIREMENT EXPIRED',
+          'label': (orderStatusLabel ?? l10n.dealStatusRequirementExpired)
+              .toUpperCase(),
           'color': const Color(0xFF9CA3AF),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'converted':
         return {
-          'label': orderStatusLabel?.toUpperCase() ?? 'ORDER CREATED',
+          'label': (orderStatusLabel ?? l10n.statusDealOrderCreated)
+              .toUpperCase(),
           'color': const Color(0xFF7C3AED),
           'bg': const Color(0xFFF3E8FF),
         };
@@ -342,9 +353,14 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
 
   Widget _buildNegotiationCard(Map<String, dynamic> negotiation) {
     final status = negotiation['status'] as String? ?? 'pending';
+    final l10n = context.l10n;
     final statusDisplay = _getStatusDisplay(status, negotiation);
     final product = negotiation['product'] as Map<String, dynamic>? ?? {};
-    final productName = product['name'] as String? ?? 'Unknown Product';
+    final productName = localizedName(
+      context,
+      product,
+      fallback: l10n.negotiationsUnknownProduct,
+    );
     final imageUrl = product['image'] as String? ?? '';
     final quantity = negotiation['requestedQuantity'] ?? 0;
     final requestedPrice = negotiation['requestedPricePerUnit'] ?? 0;
@@ -365,8 +381,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     if (createdAt.isNotEmpty) {
       try {
         final dateTime = DateTime.parse(createdAt);
-        formattedDate = DateFormat('MMM d, yyyy').format(dateTime);
-        formattedTime = DateFormat('h:mm a').format(dateTime);
+        final localeCode = Localizations.localeOf(context).languageCode;
+        formattedDate = DateFormat('MMM d, yyyy', localeCode).format(dateTime);
+        formattedTime = DateFormat('h:mm a', localeCode).format(dateTime);
       } catch (_) {}
     }
 
@@ -438,8 +455,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               Text(
                                 formattedDate.isNotEmpty
                                     ? formattedDate
-                                    : 'No date',
-                                style: GoogleFonts.plusJakartaSans(
+                                    : l10n.negotiationsNoDate,
+                                style: AppFonts.jakarta(
                                   fontSize: 11,
                                   color: textMuted,
                                   fontWeight: FontWeight.w500,
@@ -448,7 +465,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               if (formattedTime.isNotEmpty)
                                 Text(
                                   formattedTime,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 10,
                                     color: textMuted,
                                     fontWeight: FontWeight.w400,
@@ -467,7 +484,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                             ),
                             child: Text(
                               statusDisplay['label'] as String,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: statusDisplay['color'] as Color,
@@ -482,8 +499,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                       Text(
                         negotiationNumber.isNotEmpty
                             ? negotiationNumber
-                            : 'NEGOTIATION',
-                        style: GoogleFonts.plusJakartaSans(
+                            : l10n.negotiationsNumberFallback,
+                        style: AppFonts.jakarta(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: slateBlue,
@@ -496,7 +513,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                         productName,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -507,8 +524,13 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                       const SizedBox(height: 8),
                       // Quantity
                       Text(
-                        'Qty: $quantity units',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.dealQtyUnits(
+                          int.tryParse(
+                                NumberFormatter.formatQuantity(quantity),
+                              ) ??
+                              0,
+                        ),
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                           color: slateBlue,
@@ -536,8 +558,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Your Expected Price:',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.negotiationsYourExpectedPrice,
+                                  style: AppFonts.jakarta(
                                     fontSize: 11,
                                     color: slateBlue,
                                     fontWeight: FontWeight.w500,
@@ -545,7 +567,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                                 Text(
                                   '₹${NumberFormatter.formatPrice(requestedPrice)}',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
@@ -560,9 +582,9 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 Text(
                                   status == 'countered' &&
                                           currentOfferBy == 'admin'
-                                      ? 'New Price from Laxmi Agro:'
-                                      : 'Current:',
-                                  style: GoogleFonts.plusJakartaSans(
+                                      ? l10n.negotiationsNewPriceFromLaxmiLabel
+                                      : l10n.negotiationsCurrentLabel,
+                                  style: AppFonts.jakarta(
                                     fontSize: 11,
                                     color: slateBlue,
                                     fontWeight: FontWeight.w500,
@@ -570,7 +592,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                                 Text(
                                   '₹${NumberFormatter.formatPrice(currentPrice)}',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: status == 'accepted'
@@ -585,8 +607,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Total:',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.negotiationsTotalLabel,
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
@@ -594,7 +616,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                                 ),
                                 Text(
                                   '₹${NumberFormatter.formatPrice(currentTotal)}',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
                                     color: status == 'accepted'
@@ -636,6 +658,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     bool hasOrder,
     String? orderId,
   ) {
+    final l10n = context.l10n;
     String label;
     String style;
     IconData? icon;
@@ -647,7 +670,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     }
 
     if (hasOrder || status == 'converted') {
-      label = 'View Order';
+      label = l10n.dealViewOrder;
       style = 'primary';
       icon = Icons.local_shipping_outlined;
       onTap = () {
@@ -658,27 +681,27 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
         }
       };
     } else if (status == 'countered' && currentOfferBy == 'admin') {
-      label = 'Reply in Chat';
+      label = l10n.dealReplyInChat;
       style = 'primary';
       icon = Icons.reply_rounded;
       onTap = openDetail;
     } else if (status == 'accepted' && canPay) {
       // Legacy rows accepted before order auto-creation.
-      label = 'View Details';
+      label = l10n.commonViewDetails;
       style = 'primary';
       icon = Icons.account_balance_wallet_rounded;
       onTap = openDetail;
     } else if (status == 'pending') {
-      label = 'Requirement Sent';
+      label = l10n.dealStatusRequirementSent;
       style = 'disabled';
     } else if (status == 'rejected') {
-      label = 'Requirement Declined';
+      label = l10n.dealStatusRequirementDeclined;
       style = 'disabled';
     } else if (status == 'expired') {
-      label = 'Requirement Expired';
+      label = l10n.dealStatusRequirementExpired;
       style = 'disabled';
     } else {
-      label = 'View Details';
+      label = l10n.commonViewDetails;
       style = 'outline';
       onTap = openDetail;
     }
@@ -715,7 +738,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
             ],
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: style == 'primary'

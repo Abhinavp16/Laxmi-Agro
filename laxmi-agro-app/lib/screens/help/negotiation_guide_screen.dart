@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class NegotiationGuideScreen extends StatelessWidget {
   const NegotiationGuideScreen({super.key});
@@ -15,6 +16,7 @@ class NegotiationGuideScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
@@ -24,11 +26,11 @@ class NegotiationGuideScreen extends StatelessWidget {
         leading: IconButton(
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back_ios_new, color: textDark),
-          tooltip: 'Back',
+          tooltip: l10n.commonBack,
         ),
         title: Text(
-          'Negotiation Guide',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.guideTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: textDark,
@@ -58,8 +60,8 @@ class NegotiationGuideScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Bulk Pricing Guide',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.guideHeroTitle,
+                    style: AppFonts.jakarta(
                       fontSize: 27,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -67,8 +69,8 @@ class NegotiationGuideScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Learn how to request and review bulk-price offers for agricultural equipment.',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.guideHeroSubtitle,
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       height: 1.5,
                       color: Colors.white.withValues(alpha: 0.84),
@@ -79,8 +81,8 @@ class NegotiationGuideScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             Text(
-              'How price negotiation works',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.guideHowItWorksTitle,
+              style: AppFonts.jakarta(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: textDark,
@@ -88,8 +90,8 @@ class NegotiationGuideScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Use negotiations for bulk requirements when you want to discuss quantity, price, and delivery expectations with the seller.',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.guideHowItWorksBody,
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 height: 1.55,
                 color: gray600,
@@ -99,30 +101,26 @@ class NegotiationGuideScreen extends StatelessWidget {
             _GuideStep(
               number: '1',
               icon: Icons.request_quote_outlined,
-              title: 'Request a bulk price',
-              description:
-                  'Open an eligible product and submit your quantity, target price, and delivery requirements.',
+              title: l10n.guideStep1Title,
+              description: l10n.guideStep1Body,
             ),
             _GuideStep(
               number: '2',
               icon: Icons.handshake_outlined,
-              title: 'Review the seller response',
-              description:
-                  'The seller may accept your request or send a counter-offer. Check the app for updates before confirming an order.',
+              title: l10n.guideStep2Title,
+              description: l10n.guideStep2Body,
             ),
             _GuideStep(
               number: '3',
               icon: Icons.receipt_long_outlined,
-              title: 'Send your order receipt',
-              description:
-                  'After your order is created, send its receipt to Laxmi Agro on WhatsApp so the team can coordinate the next step.',
+              title: l10n.guideStep3Title,
+              description: l10n.guideStep3Body,
             ),
             _GuideStep(
               number: '4',
               icon: Icons.verified_user_outlined,
-              title: 'Pay through the Laxmi Agro team',
-              description:
-                  'Complete payment at the shop or using QR or bank details provided by the Laxmi Agro team. Your order status is updated after admin verification.',
+              title: l10n.guideStep4Title,
+              description: l10n.guideStep4Body,
               isLast: true,
             ),
             const SizedBox(height: 20),
@@ -140,8 +138,8 @@ class NegotiationGuideScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Include the quantity and your preferred delivery timeline in your request so the seller can provide a useful response.',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.guideTip,
+                      style: AppFonts.jakarta(
                         fontSize: 13,
                         height: 1.5,
                         color: gray700,
@@ -158,7 +156,7 @@ class NegotiationGuideScreen extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: () => context.go('/negotiations'),
                 icon: const Icon(Icons.handshake_outlined),
-                label: const Text('View Negotiations'),
+                label: Text(l10n.guideViewNegotiations),
                 style: FilledButton.styleFrom(
                   backgroundColor: primary,
                   foregroundColor: Colors.white,
@@ -175,7 +173,7 @@ class NegotiationGuideScreen extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => context.push('/help'),
                 icon: const Icon(Icons.support_agent_outlined),
-                label: const Text('Contact Support'),
+                label: Text(l10n.guideContactSupport),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textDark,
                   side: const BorderSide(color: gray200),
@@ -227,7 +225,7 @@ class _GuideStep extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Text(
                     number,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                     ),
@@ -258,7 +256,7 @@ class _GuideStep extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: NegotiationGuideScreen.textDark,
@@ -267,7 +265,7 @@ class _GuideStep extends StatelessWidget {
                         const SizedBox(height: 5),
                         Text(
                           description,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 13,
                             height: 1.48,
                             color: NegotiationGuideScreen.gray600,

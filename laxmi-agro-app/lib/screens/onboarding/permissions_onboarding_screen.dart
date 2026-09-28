@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/locale_provider.dart';
 import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class PermissionsOnboardingScreen extends ConsumerStatefulWidget {
   const PermissionsOnboardingScreen({super.key});
@@ -21,6 +23,21 @@ class PermissionsOnboardingScreen extends ConsumerStatefulWidget {
 class _PermissionsOnboardingScreenState
     extends ConsumerState<PermissionsOnboardingScreen> {
   bool _isContinuing = false;
+
+  /// Shown once, until the user has picked a language on this device.
+  bool _showLanguageChoice = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLanguageChoice();
+  }
+
+  Future<void> _checkLanguageChoice() async {
+    final hasChoice = await LocaleNotifier.hasSavedChoice();
+    if (!mounted || hasChoice) return;
+    setState(() => _showLanguageChoice = true);
+  }
 
   Future<void> _requestNotificationPermission() async {
     try {
@@ -61,6 +78,7 @@ class _PermissionsOnboardingScreenState
     const primary = Color(0xFF1E40AF);
     const textPrimary = Color(0xFF0F172A);
     const textSecondary = Color(0xFF475569);
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -73,6 +91,10 @@ class _PermissionsOnboardingScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_showLanguageChoice) ...[
+                    const _LanguageChoice(),
+                    const SizedBox(height: 28),
+                  ],
                   Container(
                     width: 56,
                     height: 56,
@@ -88,8 +110,8 @@ class _PermissionsOnboardingScreenState
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'Stay updated',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.onboardingTitle,
+                    style: AppFonts.jakarta(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
@@ -97,24 +119,23 @@ class _PermissionsOnboardingScreenState
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Choose whether you would like order, payment, and price-update notifications. You can change this later in device settings.',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.onboardingSubtitle,
+                    style: AppFonts.jakarta(
                       fontSize: 15,
                       height: 1.55,
                       color: textSecondary,
                     ),
                   ),
                   const SizedBox(height: 26),
-                  const _PermissionBenefit(
+                  _PermissionBenefit(
                     icon: Icons.notifications_outlined,
-                    title: 'Notifications',
-                    description:
-                        'Receive alerts when your order or payment status changes and when price updates are scheduled.',
+                    title: l10n.onboardingNotificationsTitle,
+                    description: l10n.onboardingNotificationsBody,
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Location and photo access are requested only when you choose a current shop location or upload an image.',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.onboardingOtherPermissionsNote,
+                    style: AppFonts.jakarta(
                       fontSize: 13,
                       height: 1.5,
                       color: textSecondary,
@@ -145,8 +166,8 @@ class _PermissionsOnboardingScreenState
                               ),
                             )
                           : Text(
-                              'Enable Notifications',
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.onboardingEnableNotifications,
+                              style: AppFonts.jakarta(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
                               ),
@@ -162,8 +183,8 @@ class _PermissionsOnboardingScreenState
                           : () =>
                                 _complete(requestNotificationPermission: false),
                       child: Text(
-                        'Not now',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.onboardingNotNow,
+                        style: AppFonts.jakarta(
                           fontWeight: FontWeight.w700,
                           color: textSecondary,
                         ),
@@ -176,6 +197,82 @@ class _PermissionsOnboardingScreenState
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Two big buttons to pick the app language (English / हिंदी).
+class _LanguageChoice extends ConsumerWidget {
+  const _LanguageChoice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final current = ref.watch(localeProvider).languageCode;
+
+    Widget option(Locale locale, String label) {
+      final selected = current == locale.languageCode;
+      const primary = Color(0xFF1E40AF);
+      return Expanded(
+        child: Material(
+          color: selected ? primary : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => ref.read(localeProvider.notifier).setLocale(locale),
+            child: Container(
+              height: 64,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: selected ? primary : const Color(0xFFE2E8F0),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                label,
+                style: AppFonts.jakarta(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.languageChooseTitle,
+          style: AppFonts.jakarta(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          l10n.languageChooseSubtitle,
+          style: AppFonts.jakarta(
+            fontSize: 13,
+            height: 1.5,
+            color: const Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            option(LocaleNotifier.english, l10n.languageEnglish),
+            const SizedBox(width: 12),
+            option(LocaleNotifier.hindi, l10n.languageHindi),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -219,7 +316,7 @@ class _PermissionBenefit extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F172A),
@@ -228,7 +325,7 @@ class _PermissionBenefit extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     height: 1.45,
                     color: const Color(0xFF475569),

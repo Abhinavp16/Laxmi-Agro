@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/public_business_config.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -32,42 +33,14 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     _packageInfo = PackageInfo.fromPlatform();
   }
 
-  final List<Map<String, String>> _faqs = [
-    {
-      'q': 'How do I place a bulk order?',
-      'a':
-          'Navigate to the product page and tap "Initiate Negotiation" to start the bulk ordering process. You can request custom pricing for large quantities.',
-    },
-    {
-      'q': 'What payment methods are accepted?',
-      'a':
-          'Retail orders are reviewed in the app after submission. Once accepted, complete payment at the shop or use the QR code, UPI, or bank details shared by our team. Your order status updates after payment is confirmed.',
-    },
-    {
-      'q': 'How long does delivery take?',
-      'a':
-          'Delivery availability and timing depend on the product, order, and location. Contact support to confirm delivery arrangements for your order.',
-    },
-    {
-      'q': 'How do I track my order?',
-      'a':
-          'Go to the Orders section in your profile and tap on any order to view its available status updates.',
-    },
-    {
-      'q': 'What is the return policy?',
-      'a':
-          'Return availability depends on the product and order. Contact support so our team can review your request.',
-    },
-    {
-      'q': 'How do negotiations work?',
-      'a':
-          'Wholesalers can negotiate prices for bulk orders. Submit a negotiation request with your preferred price, and our team will review and respond with a counter-offer or acceptance.',
-    },
-    {
-      'q': 'How do I become a wholesaler?',
-      'a':
-          'Register with a wholesaler account and provide your business details. Once verified by our team, you\'ll get access to wholesale pricing and negotiations.',
-    },
+  List<Map<String, String>> _faqs(AppLocalizations l10n) => [
+    {'q': l10n.helpFaqBulkOrderQuestion, 'a': l10n.helpFaqBulkOrderAnswer},
+    {'q': l10n.helpFaqPaymentQuestion, 'a': l10n.helpFaqPaymentAnswer},
+    {'q': l10n.helpFaqDeliveryQuestion, 'a': l10n.helpFaqDeliveryAnswer},
+    {'q': l10n.helpFaqTrackQuestion, 'a': l10n.helpFaqTrackAnswer},
+    {'q': l10n.helpFaqReturnQuestion, 'a': l10n.helpFaqReturnAnswer},
+    {'q': l10n.helpFaqNegotiationQuestion, 'a': l10n.helpFaqNegotiationAnswer},
+    {'q': l10n.helpFaqWholesalerQuestion, 'a': l10n.helpFaqWholesalerAnswer},
   ];
 
   @override
@@ -96,9 +69,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Help & Support',
+                        context.l10n.helpSupportTitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -178,8 +151,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'How can we help you?',
-            style: GoogleFonts.plusJakartaSans(
+            context.l10n.helpHeroTitle,
+            style: AppFonts.jakarta(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: Colors.white,
@@ -188,9 +161,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'We\'re here to help with anything you need.\nReach out and we\'ll respond as soon as we can.',
+            context.l10n.helpHeroSubtitle,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.8),
@@ -203,17 +176,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   Widget _buildQuickContactRow() {
+    final l10n = context.l10n;
     final actions = [
       {
         'icon': Icons.call_rounded,
-        'label': 'Call Us',
+        'label': l10n.helpCallUs,
         'color': const Color(0xFF16A34A),
         'bg': const Color(0xFFF0FDF4),
         'action': 'call',
       },
       {
         'icon': Icons.chat_bubble_outline_rounded,
-        'label': 'WhatsApp',
+        'label': l10n.helpWhatsApp,
         'color': const Color(0xFF25D366),
         'bg': const Color(0xFFF0FDF4),
         'action': 'whatsapp',
@@ -259,7 +233,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     const SizedBox(height: 8),
                     Text(
                       actions[i]['label'] as String,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
@@ -276,7 +250,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   Widget _buildFaqSection() {
-    final faqs = _faqs;
+    final faqs = _faqs(context.l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,8 +259,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Frequently Asked Questions',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.helpFaqTitle,
+              style: AppFonts.jakarta(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
                 color: textPrimary,
@@ -301,7 +275,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
               child: Text(
                 '${faqs.length}',
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: primaryBlue,
@@ -355,7 +329,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   child: Center(
                     child: Text(
                       '${index + 1}',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: isExpanded ? primaryBlue : textMuted,
@@ -367,7 +341,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 Expanded(
                   child: Text(
                     faq['q']!,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
@@ -396,7 +370,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 padding: const EdgeInsets.only(top: 12, left: 44),
                 child: Text(
                   faq['a']!,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: textSecondary,
@@ -412,23 +386,24 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   Widget _buildContactCard() {
+    final l10n = context.l10n;
     final contacts = [
       {
         'icon': Icons.email_rounded,
-        'title': 'Email Us',
+        'title': l10n.helpEmailUs,
         'value': 'ashirvadmarketing62@gmail.com',
         'color': const Color(0xFF2563EB),
       },
       {
         'icon': Icons.call_rounded,
-        'title': 'Call Us',
+        'title': l10n.helpCallUs,
         'value': PublicBusinessConfig.whatsappDisplayNumber,
         'color': const Color(0xFF16A34A),
       },
       {
         'icon': Icons.access_time_rounded,
-        'title': 'Working Hours',
-        'value': 'Mon - Sat, 9:00 AM - 6:00 PM',
+        'title': l10n.helpWorkingHours,
+        'value': l10n.helpWorkingHoursValue,
         'color': const Color(0xFF7C3AED),
       },
     ];
@@ -451,8 +426,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Contact Information',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.helpContactInfoTitle,
+            style: AppFonts.jakarta(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               color: textPrimary,
@@ -461,8 +436,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Get in touch with our support team',
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
+            l10n.helpContactInfoSubtitle,
+            style: AppFonts.jakarta(fontSize: 13, color: textMuted),
           ),
           const SizedBox(height: 20),
           ...List.generate(
@@ -493,7 +468,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       children: [
                         Text(
                           contacts[i]['title'] as String,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: textMuted,
@@ -503,7 +478,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                         const SizedBox(height: 2),
                         Text(
                           contacts[i]['value'] as String,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: textPrimary,
@@ -554,8 +529,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Laxmi Agro',
-            style: GoogleFonts.plusJakartaSans(
+            context.l10n.helpBrandName,
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: textPrimary,
@@ -566,22 +541,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             future: _packageInfo,
             builder: (context, snapshot) => Text(
               snapshot.hasData
-                  ? 'Version ${snapshot.data!.version}'
-                  : 'Version',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: textMuted,
-              ),
+                  ? context.l10n.helpVersion(snapshot.data!.version)
+                  : context.l10n.helpVersionLabel,
+              style: AppFonts.jakarta(fontSize: 12, color: textMuted),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            'Raipur-based agricultural supply marketplace',
+            context.l10n.helpAppTagline,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: textSecondary,
-            ),
+            style: AppFonts.jakarta(fontSize: 13, color: textSecondary),
           ),
         ],
       ),

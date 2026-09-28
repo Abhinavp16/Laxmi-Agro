@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +11,8 @@ import 'package:latlong2/latlong.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/models/user_model.dart';
 import 'shop_location_picker_screen.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class AccountConversionScreen extends ConsumerStatefulWidget {
   const AccountConversionScreen({super.key});
@@ -65,7 +66,7 @@ class _AccountConversionScreenState
     if (!_formKey.currentState!.validate()) return;
     if (_shopLocation == null) {
       setState(() {
-        _errorMessage = 'Please pick your shop location on the map.';
+        _errorMessage = context.l10n.conversionPickLocationError;
       });
       return;
     }
@@ -108,10 +109,8 @@ class _AccountConversionScreenState
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Application submitted successfully! Our team will verify your details.',
-              ),
+            SnackBar(
+              content: Text(context.l10n.conversionSubmitted),
               backgroundColor: Colors.green,
             ),
           );
@@ -128,14 +127,14 @@ class _AccountConversionScreenState
           rawMessage.contains('AUTH_TOKEN');
       setState(() {
         _errorMessage = isAuthError
-            ? 'Please login first, then submit your application.'
+            ? context.l10n.conversionLoginFirst
             : (rawMessage.isNotEmpty
                 ? rawMessage
-                : 'Failed to submit application. Please try again.');
+                : context.l10n.conversionSubmitFailed);
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'An unexpected error occurred.';
+        _errorMessage = context.l10n.conversionUnexpectedError;
       });
     } finally {
       if (mounted) {
@@ -173,7 +172,7 @@ class _AccountConversionScreenState
   Future<void> _pickProofImages() async {
     final remainingSlots = 3 - _proofImages.length;
     if (remainingSlots <= 0) {
-      _showMessage('You can upload up to 3 proof images only.');
+      _showMessage(context.l10n.conversionMaxProofImages);
       return;
     }
 
@@ -182,14 +181,14 @@ class _AccountConversionScreenState
       maxWidth: 1600,
     );
 
-    if (pickedImages.isEmpty) return;
+    if (pickedImages.isEmpty || !mounted) return;
 
     setState(() {
       _proofImages.addAll(pickedImages.take(remainingSlots));
     });
 
     if (pickedImages.length > remainingSlots) {
-      _showMessage('Only the first 3 proof images were added.');
+      _showMessage(context.l10n.conversionProofImagesTrimmed);
     }
   }
 
@@ -214,6 +213,7 @@ class _AccountConversionScreenState
 
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final l10n = context.l10n;
     final isPending = user?.isBuyer == true && user?.businessInfo?.status == 'pending';
     final isRejected = user?.isBuyer == true && user?.businessInfo?.status == 'rejected';
 
@@ -227,7 +227,7 @@ class _AccountConversionScreenState
             onPressed: () => context.pop(),
             icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: textPrimary, size: 24),
           ),
-          title: Text('Apply for wholesaler account', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary)),
+          title: Text(l10n.conversionTitle, style: AppFonts.jakarta(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary)),
           centerTitle: true,
         ),
         body: Center(
@@ -243,14 +243,14 @@ class _AccountConversionScreenState
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'Login Required',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.w800, color: textPrimary),
+                  l10n.conversionLoginRequiredTitle,
+                  style: AppFonts.jakarta(fontSize: 24, fontWeight: FontWeight.w800, color: textPrimary),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Please login to your account first, then submit your wholesaler application.',
+                  l10n.conversionLoginRequiredBody,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 16, color: textSecondary, height: 1.5),
+                  style: AppFonts.jakarta(fontSize: 16, color: textSecondary, height: 1.5),
                 ),
                 const SizedBox(height: 48),
                 SizedBox(
@@ -263,7 +263,7 @@ class _AccountConversionScreenState
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: Text('Login', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text(l10n.commonLogin, style: AppFonts.jakarta(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
               ],
@@ -283,7 +283,7 @@ class _AccountConversionScreenState
             onPressed: () => context.pop(),
             icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: textPrimary, size: 24),
           ),
-          title: Text('Application Status', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary)),
+          title: Text(l10n.conversionStatusTitle, style: AppFonts.jakarta(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary)),
           centerTitle: true,
         ),
         body: Center(
@@ -299,14 +299,14 @@ class _AccountConversionScreenState
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'Already Applied',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.w800, color: textPrimary),
+                  l10n.conversionAlreadyAppliedTitle,
+                  style: AppFonts.jakarta(fontSize: 24, fontWeight: FontWeight.w800, color: textPrimary),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Your wholesaler application is currently under review by our team. We will notify you shortly once it has been processed.',
+                  l10n.conversionAlreadyAppliedBody,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 16, color: textSecondary, height: 1.5),
+                  style: AppFonts.jakarta(fontSize: 16, color: textSecondary, height: 1.5),
                 ),
                 const SizedBox(height: 48),
                 SizedBox(
@@ -319,7 +319,7 @@ class _AccountConversionScreenState
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: Text('Go Back', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text(l10n.conversionGoBack, style: AppFonts.jakarta(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
               ],
@@ -343,8 +343,8 @@ class _AccountConversionScreenState
           ),
         ),
         title: Text(
-          'Apply for wholesaler account',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.conversionTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: textPrimary,
@@ -381,8 +381,9 @@ class _AccountConversionScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Wholesaler Account Application',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.conversionHeaderTitle,
+                    textAlign: TextAlign.center,
+                    style: AppFonts.jakarta(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
@@ -390,9 +391,9 @@ class _AccountConversionScreenState
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Get access to exclusive bulk pricing, negotiation tools, and priority support.',
+                    l10n.conversionHeaderSubtitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       color: textSecondary,
                       height: 1.5,
@@ -440,8 +441,8 @@ class _AccountConversionScreenState
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'Your previous application was not approved. You can review your details and submit again.',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.conversionRejectedNote,
+                                  style: AppFonts.jakarta(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.red[700],
@@ -454,8 +455,8 @@ class _AccountConversionScreenState
                         const SizedBox(height: 24),
                       ],
                       Text(
-                        'BUSINESS INFORMATION',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.conversionSectionBusiness,
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: textSecondary,
@@ -465,18 +466,18 @@ class _AccountConversionScreenState
                       const SizedBox(height: 20),
                       _buildTextField(
                         controller: _businessNameController,
-                        label: 'Business Name',
-                        hint: 'Enter your company name',
+                        label: l10n.fieldBusinessName,
+                        hint: l10n.conversionBusinessNameHint,
                         icon: HugeIcons.strokeRoundedBriefcase01,
                         validator: (value) => value?.isEmpty ?? true
-                            ? 'Business name is required'
+                            ? l10n.conversionBusinessNameRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _gstNumberController,
-                        label: 'GST Number',
-                        hint: 'Enter 15-digit GSTIN',
+                        label: l10n.conversionGstNumber,
+                        hint: l10n.conversionGstHint,
                         icon: HugeIcons.strokeRoundedFile01,
                         optional: true,
                         validator: (value) {
@@ -485,7 +486,7 @@ class _AccountConversionScreenState
                             return null;
                           }
                           if (trimmed.length != 15) {
-                            return 'Invalid GST number format';
+                            return l10n.conversionGstInvalid;
                           }
                           return null;
                         },
@@ -493,12 +494,12 @@ class _AccountConversionScreenState
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _businessAddressController,
-                        label: 'Business Address',
-                        hint: 'Enter full office address',
+                        label: l10n.conversionBusinessAddress,
+                        hint: l10n.conversionBusinessAddressHint,
                         icon: HugeIcons.strokeRoundedLocation01,
                         maxLines: 3,
                         validator: (value) => value?.isEmpty ?? true
-                            ? 'Address is required'
+                            ? l10n.conversionAddressRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -507,8 +508,8 @@ class _AccountConversionScreenState
                       _buildProofUploadSection(),
                       const SizedBox(height: 24),
                       Text(
-                        'CONTACT INFORMATION',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.conversionSectionContact,
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: textSecondary,
@@ -518,26 +519,26 @@ class _AccountConversionScreenState
                       const SizedBox(height: 20),
                       _buildTextField(
                         controller: _contactPersonController,
-                        label: 'Contact Person',
-                        hint: 'Full name',
+                        label: l10n.conversionContactPerson,
+                        hint: l10n.conversionContactPersonHint,
                         icon: HugeIcons.strokeRoundedUser,
                         validator: (value) => value?.isEmpty ?? true
-                            ? 'Contact person name is required'
+                            ? l10n.conversionContactPersonRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _phoneController,
-                        label: 'Phone Number',
-                        hint: 'Enter 10-digit mobile number',
+                        label: l10n.fieldPhoneNumber,
+                        hint: l10n.conversionPhoneHint,
                         icon: HugeIcons.strokeRoundedCall02,
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value?.isEmpty ?? true) {
-                            return 'Phone number is required';
+                            return l10n.conversionPhoneRequired;
                           }
                           if (value!.length < 10) {
-                            return 'Enter a valid phone number';
+                            return l10n.conversionPhoneInvalid;
                           }
                           return null;
                         },
@@ -547,7 +548,7 @@ class _AccountConversionScreenState
                         const SizedBox(height: 16),
                         Text(
                           _errorMessage!,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             color: Colors.red,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -580,8 +581,8 @@ class _AccountConversionScreenState
                                   ),
                                 )
                               : Text(
-                                  'Submit Application',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.conversionSubmit,
+                                  style: AppFonts.jakarta(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -622,7 +623,7 @@ class _AccountConversionScreenState
           children: [
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: textPrimary,
@@ -631,8 +632,8 @@ class _AccountConversionScreenState
             if (optional) ...[
               const SizedBox(width: 6),
               Text(
-                '(Optional)',
-                style: GoogleFonts.plusJakartaSans(
+                context.l10n.fieldOptionalTag,
+                style: AppFonts.jakarta(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: textSecondary,
@@ -647,14 +648,14 @@ class _AccountConversionScreenState
           maxLines: maxLines,
           keyboardType: keyboardType,
           validator: validator,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: textPrimary,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(
+            hintStyle: AppFonts.jakarta(
               fontSize: 14,
               color: textSecondary.withOpacity(0.5),
             ),
@@ -692,6 +693,7 @@ class _AccountConversionScreenState
     const textSecondary = Color(0xFF64748B);
     const borderLight = Color(0xFFE2E8F0);
     const primaryBlue = Color(0xFF2563EB);
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,8 +701,8 @@ class _AccountConversionScreenState
         Row(
           children: [
             Text(
-              'Valid Image Proof',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.conversionProofTitle,
+              style: AppFonts.jakarta(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: textPrimary,
@@ -708,8 +710,8 @@ class _AccountConversionScreenState
             ),
             const SizedBox(width: 6),
             Text(
-              '(Up to 3)',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.conversionProofLimit,
+              style: AppFonts.jakarta(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: textSecondary,
@@ -719,8 +721,8 @@ class _AccountConversionScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'Upload shop photo, GST certificate, trade license, or any valid business proof.',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.conversionProofDescription,
+          style: AppFonts.jakarta(
             fontSize: 12,
             color: textSecondary,
             height: 1.5,
@@ -759,9 +761,11 @@ class _AccountConversionScreenState
                     children: [
                       Text(
                         _proofImages.isEmpty
-                            ? 'Upload proof images'
-                            : '${_proofImages.length}/3 images selected',
-                        style: GoogleFonts.plusJakartaSans(
+                            ? l10n.conversionUploadProof
+                            : l10n.conversionImagesSelected(
+                                _proofImages.length,
+                              ),
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: textPrimary,
@@ -769,8 +773,8 @@ class _AccountConversionScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'JPG, PNG, or similar image files',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.conversionImageFormats,
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           color: textSecondary,
                         ),
@@ -779,8 +783,10 @@ class _AccountConversionScreenState
                   ),
                 ),
                 Text(
-                  _proofImages.length >= 3 ? 'Full' : 'Add',
-                  style: GoogleFonts.plusJakartaSans(
+                  _proofImages.length >= 3
+                      ? l10n.conversionProofFull
+                      : l10n.conversionProofAdd,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: primaryBlue,
@@ -852,13 +858,14 @@ class _AccountConversionScreenState
     const primaryBlue = Color(0xFF2563EB);
 
     final selected = _shopLocation;
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Shop Location',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.conversionShopLocation,
+          style: AppFonts.jakarta(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: textPrimary,
@@ -866,8 +873,8 @@ class _AccountConversionScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'Mark your shop on the map. You can use current location and then adjust the pin before saving it.',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.conversionShopLocationDescription,
+          style: AppFonts.jakarta(
             fontSize: 12,
             color: textSecondary,
             height: 1.5,
@@ -910,9 +917,9 @@ class _AccountConversionScreenState
                     children: [
                       Text(
                         selected == null
-                            ? 'Pick shop location on map'
-                            : 'Shop location selected',
-                        style: GoogleFonts.plusJakartaSans(
+                            ? l10n.conversionPickShopLocation
+                            : l10n.conversionShopLocationSelected,
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: textPrimary,
@@ -921,9 +928,9 @@ class _AccountConversionScreenState
                       const SizedBox(height: 2),
                       Text(
                         selected == null
-                            ? 'Use current location or manually place a pin'
+                            ? l10n.conversionShopLocationHint
                             : '${selected.lat.toStringAsFixed(6)}, ${selected.lng.toStringAsFixed(6)}',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           color: textSecondary,
                         ),
@@ -932,8 +939,10 @@ class _AccountConversionScreenState
                   ),
                 ),
                 Text(
-                  selected == null ? 'Pick' : 'Change',
-                  style: GoogleFonts.plusJakartaSans(
+                  selected == null
+                      ? l10n.conversionPick
+                      : l10n.conversionChange,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: primaryBlue,

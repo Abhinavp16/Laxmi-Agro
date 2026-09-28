@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+import '../providers/locale_provider.dart';
 import 'notification_navigation_service.dart';
 
 const String _shopNowActionId = 'price_campaign_shop_now';
@@ -28,6 +30,17 @@ class LocalNotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+
+  /// App text in the saved language. Local notifications are shown without a
+  /// BuildContext (possibly from a background isolate), so the language is
+  /// read from storage; English is used if that fails.
+  Future<AppLocalizations> _l10n() async {
+    try {
+      return lookupAppLocalizations(await LocaleNotifier.loadSaved());
+    } catch (_) {
+      return lookupAppLocalizations(LocaleNotifier.english);
+    }
+  }
 
   static const Set<String> _priceCampaignTypes = {
     'price_change_campaign_started',
@@ -66,19 +79,20 @@ class LocalNotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
+    final l10n = await _l10n();
     await androidPlugin?.createNotificationChannel(
-      const AndroidNotificationChannel(
+      AndroidNotificationChannel(
         _defaultChannelId,
-        'General Notifications',
-        description: 'General notifications for Laxmi Agro',
+        l10n.localNotificationGeneralChannel,
+        description: l10n.localNotificationGeneralChannelDescription,
         importance: Importance.high,
       ),
     );
     await androidPlugin?.createNotificationChannel(
-      const AndroidNotificationChannel(
+      AndroidNotificationChannel(
         _countdownChannelId,
-        'Price Countdown Notifications',
-        description: 'Live countdown notifications for scheduled price updates',
+        l10n.localNotificationCountdownChannel,
+        description: l10n.localNotificationCountdownChannelDescription,
         importance: Importance.high,
       ),
     );
@@ -102,11 +116,15 @@ class LocalNotificationService {
       return;
     }
 
+    final l10n = await _l10n();
     if (type == 'price_change_campaign_applied') {
       await cancelPriceCountdown();
       await showSimpleNotification(
-        title: _extractTitle(message, fallback: 'Laxmi Agro'),
-        body: _extractBody(message, fallback: 'New prices are now applied.'),
+        title: _extractTitle(message, fallback: l10n.localNotificationBrand),
+        body: _extractBody(
+          message,
+          fallback: l10n.localNotificationPricesApplied,
+        ),
         data: message.data,
         messageId: message.messageId,
       );
@@ -115,10 +133,13 @@ class LocalNotificationService {
 
     await syncPriceCountdown(
       type: type!,
-      title: _extractTitle(message, fallback: 'Price update scheduled'),
+      title: _extractTitle(
+        message,
+        fallback: l10n.localNotificationPriceUpdateScheduled,
+      ),
       body: _extractBody(
         message,
-        fallback: 'A scheduled price update is active.',
+        fallback: l10n.localNotificationPriceUpdateActive,
       ),
       effectiveAtIso: message.data['effectiveAt']?.toString(),
     );
@@ -147,13 +168,17 @@ class LocalNotificationService {
       return;
     }
 
+    final l10n = await _l10n();
     await syncPriceCountdown(
       type: type!,
-      title: title ?? data['title']?.toString() ?? 'Price update scheduled',
+      title:
+          title ??
+          data['title']?.toString() ??
+          l10n.localNotificationPriceUpdateScheduled,
       body:
           body ??
           data['body']?.toString() ??
-          'A scheduled price update is active.',
+          l10n.localNotificationPriceUpdateActive,
       effectiveAtIso: data['effectiveAt']?.toString(),
     );
   }
@@ -177,16 +202,17 @@ class LocalNotificationService {
 
     final remaining = effectiveAt.difference(DateTime.now());
     if (!remaining.isNegative && remaining > Duration.zero) {
+      final l10n = await _l10n();
       await _plugin.show(
         _priceCountdownNotificationId,
-        'Laxmi Agro',
+        l10n.localNotificationBrand,
         body,
         NotificationDetails(
           android: AndroidNotificationDetails(
             _countdownChannelId,
-            'Price Countdown Notifications',
+            l10n.localNotificationCountdownChannel,
             channelDescription:
-                'Live countdown notifications for scheduled price updates',
+                l10n.localNotificationCountdownChannelDescription,
             importance: Importance.high,
             priority: Priority.high,
             ongoing: true,
@@ -203,13 +229,13 @@ class LocalNotificationService {
             subText: title,
             styleInformation: BigTextStyleInformation(
               body,
-              contentTitle: 'Laxmi Agro',
+              contentTitle: l10n.localNotificationBrand,
               summaryText: title,
             ),
-            actions: const <AndroidNotificationAction>[
+            actions: <AndroidNotificationAction>[
               AndroidNotificationAction(
                 _shopNowActionId,
-                'Shop Now',
+                l10n.localNotificationShopNow,
                 showsUserInterface: true,
                 cancelNotification: false,
               ),
@@ -238,6 +264,7 @@ class LocalNotificationService {
         '_messageId': messageId,
     };
     final payload = payloadData.isEmpty ? null : jsonEncode(payloadData);
+    final l10n = await _l10n();
 
     await _plugin.show(
       DateTime.now().millisecondsSinceEpoch.remainder(100000),
@@ -246,8 +273,8 @@ class LocalNotificationService {
       NotificationDetails(
         android: AndroidNotificationDetails(
           _defaultChannelId,
-          'General Notifications',
-          channelDescription: 'General notifications for Laxmi Agro',
+          l10n.localNotificationGeneralChannel,
+          channelDescription: l10n.localNotificationGeneralChannelDescription,
           importance: Importance.high,
           priority: Priority.high,
           largeIcon: const DrawableResourceAndroidBitmap('ic_launcher'),
@@ -255,7 +282,7 @@ class LocalNotificationService {
           styleInformation: BigTextStyleInformation(
             body,
             contentTitle: title,
-            summaryText: 'Laxmi Agro',
+            summaryText: l10n.localNotificationBrand,
           ),
         ),
         iOS: const DarwinNotificationDetails(

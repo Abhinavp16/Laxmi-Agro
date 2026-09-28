@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/providers/locale_provider.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -49,16 +49,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           );
 
       if (mounted) {
-        final t = ref.read(localeProvider.notifier).translate;
+        final l10n = context.l10n;
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t('Profile updated successfully'))),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.editProfileUpdated)));
           context.pop();
         } else {
           final error = ref.read(authProvider).error;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t(error ?? 'Failed to update profile'))),
+            SnackBar(content: Text(error ?? l10n.editProfileUpdateFailed)),
           );
         }
       }
@@ -67,7 +67,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _pickAndUploadAvatar() async {
     if (_isUploadingAvatar) return;
-    final t = ref.read(localeProvider.notifier).translate;
     try {
       final picker = ImagePicker();
       final file = await picker.pickImage(
@@ -85,12 +84,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
         setState(() => _avatarController.text = avatarUrl);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t('Profile updated successfully'))),
+          SnackBar(content: Text(context.l10n.editProfileUpdated)),
         );
       } else {
         final error = ref.read(authProvider).error;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t(error ?? 'Failed to update profile'))),
+          SnackBar(
+            content: Text(error ?? context.l10n.editProfileUpdateFailed),
+          ),
         );
       }
     } finally {
@@ -102,7 +103,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = ref.watch(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final isLoading = ref.watch(authProvider).isLoading;
 
     return Scaffold(
@@ -118,8 +119,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
         ),
         title: Text(
-          t('Edit Profile'),
-          style: GoogleFonts.plusJakartaSans(
+          l10n.profileEditProfile,
+          style: AppFonts.jakarta(
             color: Colors.black,
             fontWeight: FontWeight.w700,
             fontSize: 18,
@@ -194,17 +195,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 32),
 
               _buildTextField(
-                label: t('Full Name'),
+                label: l10n.fieldFullName,
                 controller: _nameController,
                 icon: HugeIcons.strokeRoundedUser,
-                validator: (val) => val == null || val.isEmpty
-                    ? t('Please enter your name')
-                    : null,
+                validator: (val) =>
+                    val == null || val.isEmpty ? l10n.fieldEnterName : null,
               ),
               const SizedBox(height: 20),
 
               _buildTextField(
-                label: t('Phone Number'),
+                label: l10n.fieldPhoneNumber,
                 controller: _phoneController,
                 icon: HugeIcons.strokeRoundedSmartPhone01,
                 keyboardType: TextInputType.phone,
@@ -235,8 +235,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                         )
                       : Text(
-                          t('Save Changes'),
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.commonSaveChanges,
+                          style: AppFonts.jakarta(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -266,7 +266,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.grey[700],

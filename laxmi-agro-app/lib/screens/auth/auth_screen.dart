@@ -7,6 +7,7 @@ import '../../core/config/legal_acceptance_config.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/utils/phone_validation.dart';
+import '../../l10n/l10n.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -124,17 +125,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         : _phoneController.text;
     final password = _passwordController.text;
 
+    final l10n = context.l10n;
     final phoneError = _isLogin
         ? (phone.isEmpty || phone.length < 10
-              ? 'Please enter a valid phone number'
+              ? l10n.authErrorInvalidPhone
               : null)
-        : PhoneValidation.registrationError(phone);
+        : _registrationPhoneError(phone);
     if (phoneError != null) {
       _showError(phoneError);
       return;
     }
     if (password.isEmpty || password.length < 6) {
-      _showError('Password must be at least 6 characters');
+      _showError(l10n.authErrorPasswordShort);
       return;
     }
 
@@ -152,15 +154,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     } else {
       final name = _nameController.text.trim();
       if (name.isEmpty) {
-        _showError('Please enter your name');
+        _showError(l10n.fieldEnterName);
         return;
       }
       if (_confirmPasswordController.text != password) {
-        _showError('Passwords do not match');
+        _showError(l10n.authErrorPasswordMismatch);
         return;
       }
       if (!_acceptedTermsAndPrivacy) {
-        _showError('Please accept Terms & Conditions and Privacy Policy');
+        _showError(l10n.authErrorAcceptTerms);
         return;
       }
 
@@ -185,6 +187,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
+  /// Localized version of [PhoneValidation.registrationError].
+  String? _registrationPhoneError(String phone) {
+    if (PhoneValidation.registrationError(phone) == null) return null;
+    return RegExp(r'^[6-9]\d{9}$').hasMatch(phone)
+        ? context.l10n.authErrorPhoneNotReal
+        : context.l10n.authErrorPhoneIndian;
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -200,6 +210,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final l10n = context.l10n;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -227,7 +238,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         child: Text(
-                          _isLogin ? 'Welcome Back' : 'Create Account',
+                          _isLogin
+                              ? l10n.authWelcomeBack
+                              : l10n.authCreateAccount,
                           key: ValueKey(_isLogin),
                           style: AppFonts.h1(color: _textDark),
                         ),
@@ -235,8 +248,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       const SizedBox(height: 8),
                       Text(
                         _isLogin
-                            ? 'Sign in to continue to Laxmi Agro'
-                            : 'Join Laxmi Agro today',
+                            ? l10n.authSignInSubtitle
+                            : l10n.authJoinSubtitle,
                         style: AppFonts.bodyMedium(color: _textMuted),
                       ),
                       const SizedBox(height: 32),
@@ -325,8 +338,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       ),
       child: Row(
         children: [
-          Expanded(child: _buildRoleButton('Customer', false)),
-          Expanded(child: _buildRoleButton('Wholesaler', true)),
+          Expanded(
+            child: _buildRoleButton(context.l10n.authRoleCustomer, false),
+          ),
+          Expanded(
+            child: _buildRoleButton(context.l10n.authRoleWholesaler, true),
+          ),
         ],
       ),
     );
@@ -385,6 +402,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Widget _buildForm() {
+    final l10n = context.l10n;
     return AnimatedSize(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
@@ -395,8 +413,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           if (!_isLogin) ...[
             _buildTextField(
               controller: _nameController,
-              label: 'Full Name',
-              hint: 'Enter your name',
+              label: l10n.fieldFullName,
+              hint: l10n.authNameHint,
               icon: HugeIcons.strokeRoundedUser,
               textCapitalization: TextCapitalization.words,
             ),
@@ -406,8 +424,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           // Phone field
           _buildTextField(
             controller: _phoneController,
-            label: 'Phone Number',
-            hint: '10-digit mobile number',
+            label: l10n.fieldPhoneNumber,
+            hint: l10n.authPhoneHint,
             icon: HugeIcons.strokeRoundedCall,
             keyboardType: TextInputType.phone,
             prefix: '+91 ',
@@ -421,8 +439,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           // Password field
           _buildTextField(
             controller: _passwordController,
-            label: 'Password',
-            hint: 'Enter your password',
+            label: l10n.authPasswordLabel,
+            hint: l10n.authPasswordHint,
             icon: HugeIcons.strokeRoundedLockPassword,
             isPassword: true,
             obscureText: _obscurePassword,
@@ -435,8 +453,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             const SizedBox(height: 16),
             _buildTextField(
               controller: _confirmPasswordController,
-              label: 'Confirm Password',
-              hint: 'Re-enter your password',
+              label: l10n.authConfirmPasswordLabel,
+              hint: l10n.authConfirmPasswordHint,
               icon: HugeIcons.strokeRoundedLockPassword,
               isPassword: true,
               obscureText: _obscureConfirmPassword,
@@ -451,14 +469,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             const SizedBox(height: 16),
             _buildTextField(
               controller: _businessNameController,
-              label: 'Business Name',
-              hint: 'Your shop or company name',
+              label: l10n.fieldBusinessName,
+              hint: l10n.authBusinessNameHint,
               icon: HugeIcons.strokeRoundedStore01,
               required: false,
             ),
             const SizedBox(height: 10),
             Text(
-              'After creating your account, submit your business proof from Convert to Wholesaler for admin review.',
+              l10n.authWholesalerProofNote,
               style: AppFonts.caption(color: _textMuted),
             ),
           ],
@@ -476,7 +494,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Need help accessing your account? Contact Support',
+                  l10n.authNeedHelp,
                   style: AppFonts.bodySmall(
                     color: _primaryColor,
                     fontWeight: FontWeight.w600,
@@ -513,7 +531,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             Text(label, style: AppFonts.labelMedium(color: _textDark)),
             if (!required) ...[
               const SizedBox(width: 6),
-              Text('(Optional)', style: AppFonts.caption(color: _textMuted)),
+              Text(
+                context.l10n.fieldOptionalTag,
+                style: AppFonts.caption(color: _textMuted),
+              ),
             ],
           ],
         ),
@@ -596,7 +617,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 ),
               )
             : Text(
-                _isLogin ? 'Sign In' : 'Create Account',
+                _isLogin
+                    ? context.l10n.authSignIn
+                    : context.l10n.authCreateAccount,
                 style: AppFonts.button(color: Colors.white),
               ),
       ),
@@ -604,6 +627,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Widget _buildBusinessConsentCheckbox() {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -635,7 +659,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'By continuing, you agree to our:',
+                        l10n.authConsentIntro,
                         style: AppFonts.bodyMedium(
                           color: _textMuted,
                           fontWeight: FontWeight.w500,
@@ -653,7 +677,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
-                              'Terms & Conditions',
+                              l10n.legalTermsConditions,
                               style: AppFonts.bodyMedium(
                                 color: _primaryColor,
                                 fontWeight: FontWeight.w700,
@@ -661,7 +685,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                             ),
                           ),
                           Text(
-                            'and',
+                            l10n.authConsentAnd,
                             style: AppFonts.bodyMedium(
                               color: _textMuted,
                               fontWeight: FontWeight.w500,
@@ -676,7 +700,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
-                              'Privacy Policy.',
+                              l10n.authConsentPrivacyLink,
                               style: AppFonts.bodyMedium(
                                 color: _primaryColor,
                                 fontWeight: FontWeight.w700,
@@ -712,22 +736,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '- We collect basic details like name, phone, email, and app usage data.',
+                    l10n.authConsentPointCollect,
                     style: AppFonts.bodySmall(color: _textMuted),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '- We use this data to process orders, provide support, and improve services.',
+                    l10n.authConsentPointUse,
                     style: AppFonts.bodySmall(color: _textMuted),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '- We share data only with logistics, payment, service partners, or legal authorities.',
+                    l10n.authConsentPointShare,
                     style: AppFonts.bodySmall(color: _textMuted),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '- You can request access, correction, or deletion of your data where permitted.',
+                    l10n.authConsentPointRights,
                     style: AppFonts.bodySmall(color: _textMuted),
                   ),
                 ],
@@ -746,13 +770,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _isLogin ? "Don't have an account? " : 'Already have an account? ',
+            _isLogin
+                ? context.l10n.authNoAccount
+                : context.l10n.authHaveAccount,
             style: AppFonts.bodyMedium(color: _textMuted),
           ),
           GestureDetector(
             onTap: _toggleAuthMode,
             child: Text(
-              _isLogin ? 'Sign Up' : 'Sign In',
+              _isLogin ? context.l10n.authSignUp : context.l10n.authSignIn,
               style: AppFonts.bodyMedium(
                 color: _primaryColor,
                 fontWeight: FontWeight.w700,

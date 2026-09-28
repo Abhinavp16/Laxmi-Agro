@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class ShopLocationPickerResult {
   final double lat;
@@ -50,6 +51,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
   }
 
   Future<void> _useCurrentLocation() async {
+    final l10n = context.l10n;
     setState(() {
       _locating = true;
       _error = null;
@@ -58,7 +60,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are turned off');
+        throw _LocationError(l10n.shopLocationServicesOff);
       }
 
       var permission = await Geolocator.checkPermission();
@@ -68,7 +70,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        throw Exception('Location permission denied');
+        throw _LocationError(l10n.shopLocationPermissionDenied);
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -86,7 +88,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = e is _LocationError ? e.message : l10n.shopLocationFailed;
       });
     } finally {
       if (mounted) {
@@ -112,8 +114,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: textPrimary),
         ),
         title: Text(
-          'Pick Shop Location',
-          style: GoogleFonts.plusJakartaSans(
+          context.l10n.shopLocationTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: textPrimary,
@@ -129,8 +131,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Tap anywhere on the map to place your shop, or use your current location and adjust it.',
-                    style: GoogleFonts.plusJakartaSans(
+                    context.l10n.shopLocationHint,
+                    style: AppFonts.jakarta(
                       fontSize: 13,
                       color: textSecondary,
                       height: 1.5,
@@ -148,8 +150,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
                         )
                       : const Icon(Icons.my_location, size: 16),
                   label: Text(
-                    _locating ? 'Locating' : 'Use Current',
-                    style: GoogleFonts.plusJakartaSans(
+                    _locating ? context.l10n.shopLocationLocating : context.l10n.shopLocationUseCurrent,
+                    style: AppFonts.jakarta(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -175,7 +177,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
                 ),
                 child: Text(
                   _error!,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Colors.red[700],
@@ -235,8 +237,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Selected Coordinates',
-                    style: GoogleFonts.plusJakartaSans(
+                    context.l10n.shopLocationSelectedCoordinates,
+                    style: AppFonts.jakarta(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: textSecondary,
@@ -246,7 +248,7 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
                   const SizedBox(height: 8),
                   Text(
                     '${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
@@ -274,8 +276,8 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
                         ),
                       ),
                       child: Text(
-                        'Use This Shop Location',
-                        style: GoogleFonts.plusJakartaSans(
+                        context.l10n.shopLocationConfirm,
+                        style: AppFonts.jakarta(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -290,4 +292,9 @@ class _ShopLocationPickerScreenState extends State<ShopLocationPickerScreen> {
       ),
     );
   }
+}
+
+class _LocationError implements Exception {
+  const _LocationError(this.message);
+  final String message;
 }

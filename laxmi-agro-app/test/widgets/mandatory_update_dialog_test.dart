@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laxmi_agro/core/models/app_update_config.dart';
+import 'package:laxmi_agro/l10n/l10n.dart';
 import 'package:laxmi_agro/widgets/mandatory_update_dialog.dart';
 
 void main() {
@@ -9,6 +10,8 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
@@ -49,6 +52,8 @@ void main() {
   testWidgets('dialog reports a store launch failure', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: MandatoryUpdateDialog(
           requirement: AppUpdateRequirement(
             currentVersion: '1.0.6',

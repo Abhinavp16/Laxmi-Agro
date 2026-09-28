@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/notification_navigation_service.dart';
 import '../../widgets/notification_countdown_label.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class NotificationsCenterScreen extends ConsumerStatefulWidget {
   const NotificationsCenterScreen({super.key, this.initialTab = 4});
@@ -131,7 +132,8 @@ class _NotificationsCenterScreenState
   }
 
   String _formatTime(String? createdAt) {
-    if (createdAt == null) return 'Just now';
+    final l10n = context.l10n;
+    if (createdAt == null) return l10n.notificationsJustNow;
 
     try {
       final date = DateTime.parse(createdAt);
@@ -139,18 +141,18 @@ class _NotificationsCenterScreenState
       final diff = now.difference(date);
 
       if (diff.inMinutes < 1) {
-        return 'Just now';
+        return l10n.notificationsJustNow;
       } else if (diff.inMinutes < 60) {
-        return '${diff.inMinutes}m ago';
+        return l10n.notificationsMinutesAgo('${diff.inMinutes}');
       } else if (diff.inHours < 24) {
-        return '${diff.inHours}h ago';
+        return l10n.notificationsHoursAgo('${diff.inHours}');
       } else if (diff.inDays < 7) {
-        return '${diff.inDays}d ago';
+        return l10n.notificationsDaysAgo('${diff.inDays}');
       } else {
         return '${date.day}/${date.month}/${date.year}';
       }
     } catch (e) {
-      return 'Just now';
+      return l10n.notificationsJustNow;
     }
   }
 
@@ -192,9 +194,9 @@ class _NotificationsCenterScreenState
                     ),
                     Expanded(
                       child: Text(
-                        'Notifications',
+                        context.l10n.notificationsTitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textDark,
@@ -239,8 +241,8 @@ class _NotificationsCenterScreenState
           Icon(Icons.notifications_none, size: 64, color: gray400),
           const SizedBox(height: 16),
           Text(
-            'No notifications yet',
-            style: GoogleFonts.plusJakartaSans(
+            context.l10n.notificationsEmptyTitle,
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: gray600,
@@ -248,8 +250,8 @@ class _NotificationsCenterScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            'You\'ll see your notifications here',
-            style: GoogleFonts.plusJakartaSans(fontSize: 14, color: gray500),
+            context.l10n.notificationsEmptySubtitle,
+            style: AppFonts.jakarta(fontSize: 14, color: gray500),
           ),
         ],
       ),
@@ -320,7 +322,7 @@ class _NotificationsCenterScreenState
                           Expanded(
                             child: Text(
                               title,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 15,
                                 fontWeight: isRead
                                     ? FontWeight.w500
@@ -331,7 +333,7 @@ class _NotificationsCenterScreenState
                           ),
                           Text(
                             _formatTime(createdAt),
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               color: gray500,
                             ),
@@ -341,10 +343,7 @@ class _NotificationsCenterScreenState
                       const SizedBox(height: 4),
                       Text(
                         body,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: gray600,
-                        ),
+                        style: AppFonts.jakarta(fontSize: 13, color: gray600),
                       ),
                       NotificationCountdownLabel(
                         data: data,

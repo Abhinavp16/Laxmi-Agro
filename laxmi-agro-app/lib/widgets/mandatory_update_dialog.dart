@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models/app_update_config.dart';
 import '../core/theme/app_theme.dart';
+import '../l10n/l10n.dart';
 
 class MandatoryUpdateDialog extends StatefulWidget {
   const MandatoryUpdateDialog({
@@ -38,6 +39,7 @@ class _MandatoryUpdateDialogState extends State<MandatoryUpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return PopScope(
       canPop: false,
       child: AlertDialog(
@@ -88,7 +90,7 @@ class _MandatoryUpdateDialogState extends State<MandatoryUpdateDialog> {
                       children: [
                         Expanded(
                           child: _VersionLabel(
-                            label: 'Current',
+                            label: l10n.updateCurrentVersion,
                             version: widget.requirement.currentVersion,
                           ),
                         ),
@@ -99,7 +101,7 @@ class _MandatoryUpdateDialogState extends State<MandatoryUpdateDialog> {
                         ),
                         Expanded(
                           child: _VersionLabel(
-                            label: 'Latest',
+                            label: l10n.updateLatestVersion,
                             version: widget.requirement.latestVersion,
                             alignEnd: true,
                           ),
@@ -110,7 +112,7 @@ class _MandatoryUpdateDialogState extends State<MandatoryUpdateDialog> {
                   if (_showLaunchError) ...[
                     const SizedBox(height: 14),
                     Text(
-                      'Unable to open the app store. Check your connection and try again.',
+                      l10n.updateStoreOpenFailed,
                       textAlign: TextAlign.center,
                       style: Theme.of(
                         context,
@@ -133,7 +135,9 @@ class _MandatoryUpdateDialogState extends State<MandatoryUpdateDialog> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_new_rounded, size: 18),
-              label: Text(_isOpeningStore ? 'Opening Store...' : 'Update Now'),
+              label: Text(
+                _isOpeningStore ? l10n.updateOpeningStore : l10n.updateNow,
+              ),
             ),
           ),
         ],

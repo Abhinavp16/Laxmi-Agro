@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/state_city_pincode_fields.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class AddressesScreen extends StatefulWidget {
   const AddressesScreen({super.key});
@@ -45,14 +46,21 @@ class _AddressesScreenState extends State<AddressesScreen> {
     if (!mounted) return;
     setState(() => _selectedId = address.id);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_slotLabel(address.slot)} set as default')),
+      SnackBar(
+        content: Text(
+          _isPrimary(address.slot)
+              ? context.l10n.addressPrimarySetDefault
+              : context.l10n.addressSecondarySetDefault,
+        ),
+      ),
     );
   }
 
-  String _slotLabel(String slot) {
-    if (slot == ShippingAddressService.slotPrimary) return 'Primary';
-    return 'Secondary';
-  }
+  bool _isPrimary(String slot) => slot == ShippingAddressService.slotPrimary;
+
+  String _slotLabel(String slot) => _isPrimary(slot)
+      ? context.l10n.addressSlotPrimary
+      : context.l10n.addressSlotSecondary;
 
   Future<void> _openEditor(String slot) async {
     final existing = _forSlot(slot);
@@ -81,18 +89,24 @@ class _AddressesScreenState extends State<AddressesScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${_slotLabel(slot)} Address',
-                  style: GoogleFonts.plusJakartaSans(
+                  _isPrimary(slot)
+                      ? ctx.l10n.addressPrimaryTitle
+                      : ctx.l10n.addressSecondaryTitle,
+                  style: AppFonts.jakarta(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 12),
-                _field(nameC, 'Full Name'),
+                _field(nameC, ctx.l10n.fieldFullName),
                 const SizedBox(height: 10),
-                _field(phoneC, 'Phone', keyboard: TextInputType.phone),
+                _field(
+                  phoneC,
+                  ctx.l10n.fieldPhone,
+                  keyboard: TextInputType.phone,
+                ),
                 const SizedBox(height: 10),
-                _field(addrC, 'Address Line 1'),
+                _field(addrC, ctx.l10n.fieldAddressLine1),
                 const SizedBox(height: 10),
                 StateCityPincodeFields(
                   stateController: stateC,
@@ -114,7 +128,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                         'pincode': pinC.text.trim(),
                       });
                     },
-                    child: const Text('Save Address'),
+                    child: Text(ctx.l10n.addressSaveButton),
                   ),
                 ),
               ],
@@ -143,15 +157,19 @@ class _AddressesScreenState extends State<AddressesScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_slotLabel(slot)} address saved')),
+        SnackBar(
+          content: Text(
+            _isPrimary(slot)
+                ? context.l10n.addressPrimarySaved
+                : context.l10n.addressSecondarySaved,
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not save address. Please try again.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.addressSaveFailed)));
     }
   }
 
@@ -163,7 +181,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboard,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+      validator: (v) =>
+          (v == null || v.trim().isEmpty) ? context.l10n.commonRequired : null,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
@@ -200,7 +219,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                   children: [
                     Text(
                       _slotLabel(slot),
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -217,8 +236,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'Default',
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.addressDefaultBadge,
+                          style: AppFonts.jakarta(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF2563EB),
@@ -230,30 +249,36 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 ),
                 TextButton(
                   onPressed: () => _openEditor(slot),
-                  child: Text(address == null ? 'Add' : 'Edit'),
+                  child: Text(
+                    address == null
+                        ? context.l10n.addressAdd
+                        : context.l10n.commonEdit,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             if (address == null)
               Text(
-                'No address saved yet. Add this delivery slot now.',
-                style: GoogleFonts.plusJakartaSans(color: Colors.black54),
+                context.l10n.addressEmpty,
+                style: AppFonts.jakarta(color: Colors.black54),
               )
             else ...[
               Text(
                 '${address.fullName} • ${address.phone}',
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                style: AppFonts.jakarta(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
-                '${address.addressLine1}, ${address.city}, ${address.state} - ${address.pincode}',
+                '${address.addressLine1}, ${address.city}, ${localizedStateName(context, address.state)} - ${address.pincode}',
               ),
               const SizedBox(height: 10),
               OutlinedButton(
                 onPressed: isDefault ? null : () => _setDefault(address),
                 child: Text(
-                  isDefault ? 'Default for delivery' : 'Set as default',
+                  isDefault
+                      ? context.l10n.addressDefaultForDelivery
+                      : context.l10n.addressSetAsDefault,
                 ),
               ),
             ],
@@ -266,7 +291,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Addresses')),
+      appBar: AppBar(title: Text(context.l10n.profileAddresses)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -291,8 +316,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Keep two delivery slots ready: Primary and Secondary.',
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.addressBanner,
+                          style: AppFonts.jakarta(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,

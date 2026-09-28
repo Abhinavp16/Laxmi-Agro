@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
@@ -18,6 +17,8 @@ import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class NegotiationDetailScreen extends ConsumerStatefulWidget {
   final String negotiationId;
@@ -99,9 +100,8 @@ class _NegotiationDetailScreenState
     _socketService.onUserTyping = (userId, username) {
       if (mounted) {
         setState(() {
-          _typingUsers[userId] = username.trim().isEmpty
-              ? 'Laxmi Agro'
-              : username.trim();
+          // Empty name -> shown as the localized "Laxmi Agro" label.
+          _typingUsers[userId] = username.trim();
         });
         _remoteTypingTimer?.cancel();
         _remoteTypingTimer = Timer(const Duration(seconds: 5), () {
@@ -244,7 +244,9 @@ class _NegotiationDetailScreenState
       } else {
         if (!background) {
           setState(() {
-            _error = response.data['message']?.toString() ?? 'Failed to load';
+            _error =
+                response.data['message']?.toString() ??
+                context.l10n.dealLoadFailed;
             _isLoading = false;
           });
           _flushQueuedRefresh();
@@ -254,7 +256,9 @@ class _NegotiationDetailScreenState
       if (!mounted || requestSequence != _detailRequestSequence) return false;
       if (!background) {
         setState(() {
-          _error = e.response?.data?['message']?.toString() ?? 'Failed to load';
+          _error =
+              e.response?.data?['message']?.toString() ??
+              context.l10n.dealLoadFailed;
           _isLoading = false;
         });
         _flushQueuedRefresh();
@@ -263,7 +267,7 @@ class _NegotiationDetailScreenState
       if (!mounted || requestSequence != _detailRequestSequence) return false;
       if (!background) {
         setState(() {
-          _error = 'Something went wrong';
+          _error = context.l10n.commonSomethingWentWrong;
           _isLoading = false;
         });
         _flushQueuedRefresh();
@@ -310,15 +314,18 @@ class _NegotiationDetailScreenState
           );
         }
       } on DioException catch (e) {
-        _showError(
-          e.response?.data?['message']?.toString() ?? 'Failed to create order',
-        );
+        if (mounted) {
+          _showError(
+            e.response?.data?['message']?.toString() ??
+                context.l10n.dealCreateOrderFailed,
+          );
+        }
       } finally {
         if (mounted) setState(() => _isActioning = false);
       }
     } catch (e) {
       debugPrint('_proceedToOrder error: $e');
-      if (mounted) _showError('Error: $e');
+      if (mounted) _showError(context.l10n.dealErrorWithDetails('$e'));
     }
   }
 
@@ -340,112 +347,119 @@ class _NegotiationDetailScreenState
     final pinCtrl = TextEditingController(text: savedAddress?.pincode ?? '');
     final couponCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final l10n = context.l10n;
 
-    Map<String, String>?
-    result = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
-        decoration: const BoxDecoration(
-          color: surfaceWhite,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: borderLight,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Shipping Address',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _addrField('Full Name', nameCtrl),
-                  const SizedBox(height: 12),
-                  _addrField('Phone', phoneCtrl, keyboard: TextInputType.phone),
-                  const SizedBox(height: 12),
-                  _addrField('Address Line 1', addr1Ctrl),
-                  const SizedBox(height: 12),
-                  StateCityPincodeFields(
-                    stateController: stateCtrl,
-                    cityController: cityCtrl,
-                    pincodeController: pinCtrl,
-                  ),
-                  if (!kHideOfferCouponUi) ...[
-                    const SizedBox(height: 12),
-                    _addrField(
-                      'Coupon / Affiliate Code (Optional)',
-                      couponCtrl,
-                      required: false,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (formKey.currentState!.validate()) {
-                          Navigator.of(ctx).pop({
-                            'fullName': nameCtrl.text.trim(),
-                            'phone': phoneCtrl.text.trim(),
-                            'addressLine1': addr1Ctrl.text.trim(),
-                            'city': cityCtrl.text.trim(),
-                            'state': stateCtrl.text.trim(),
-                            'pincode': pinCtrl.text.trim(),
-                            'couponCode': couponCtrl.text.trim().toUpperCase(),
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: greenAccent,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+    Map<String, String>? result =
+        await showModalBottomSheet<Map<String, String>>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => Container(
+            margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
+            decoration: const BoxDecoration(
+              color: surfaceWhite,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: borderLight,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        'Confirm & Proceed',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
+                      Text(
+                        l10n.dealShippingAddressTitle,
+                        style: AppFonts.jakarta(
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
+                          color: textPrimary,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      _addrField(l10n.dealFieldFullName, nameCtrl),
+                      const SizedBox(height: 12),
+                      _addrField(
+                        l10n.dealFieldPhone,
+                        phoneCtrl,
+                        keyboard: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      _addrField(l10n.dealFieldAddressLine1, addr1Ctrl),
+                      const SizedBox(height: 12),
+                      StateCityPincodeFields(
+                        stateController: stateCtrl,
+                        cityController: cityCtrl,
+                        pincodeController: pinCtrl,
+                      ),
+                      if (!kHideOfferCouponUi) ...[
+                        const SizedBox(height: 12),
+                        _addrField(
+                          l10n.dealFieldCouponCode,
+                          couponCtrl,
+                          required: false,
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              Navigator.of(ctx).pop({
+                                'fullName': nameCtrl.text.trim(),
+                                'phone': phoneCtrl.text.trim(),
+                                'addressLine1': addr1Ctrl.text.trim(),
+                                'city': cityCtrl.text.trim(),
+                                'state': stateCtrl.text.trim(),
+                                'pincode': pinCtrl.text.trim(),
+                                'couponCode': couponCtrl.text
+                                    .trim()
+                                    .toUpperCase(),
+                              });
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: greenAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            l10n.dealConfirmAndProceed,
+                            style: AppFonts.jakarta(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
 
     if (result != null) {
       final address = ShippingAddress(
@@ -486,15 +500,14 @@ class _NegotiationDetailScreenState
       controller: ctrl,
       keyboardType: keyboard,
       validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+          ? (v) => (v == null || v.trim().isEmpty)
+                ? context.l10n.commonRequired
+                : null
           : null,
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
+      style: AppFonts.jakarta(fontSize: 14, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
+        labelStyle: AppFonts.jakarta(fontSize: 13, color: textMuted),
         filled: true,
         fillColor: backgroundWhite,
         border: OutlineInputBorder(
@@ -519,7 +532,7 @@ class _NegotiationDetailScreenState
       SnackBar(
         content: Text(
           msg,
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+          style: AppFonts.jakarta(fontWeight: FontWeight.w600),
         ),
         backgroundColor: redAccent,
         behavior: SnackBarBehavior.floating,
@@ -548,14 +561,11 @@ class _NegotiationDetailScreenState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        _error!,
-                        style: GoogleFonts.plusJakartaSans(color: textMuted),
-                      ),
+                      Text(_error!, style: AppFonts.jakarta(color: textMuted)),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: _fetchDetail,
-                        child: const Text('Retry'),
+                        child: Text(context.l10n.commonRetry),
                       ),
                     ],
                   ),
@@ -567,6 +577,11 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildContent() {
+    final l10n = context.l10n;
+    final timeFormat = DateFormat(
+      'h:mm a',
+      Localizations.localeOf(context).languageCode,
+    );
     final n = _negotiation!;
     final status = n['status'] as String? ?? 'pending';
     final productSnapshot = n['productSnapshot'] as Map<String, dynamic>? ?? {};
@@ -577,7 +592,11 @@ class _NegotiationDetailScreenState
     final currentOfferBy = n['currentOfferBy'] as String? ?? '';
     final negotiationNumber = n['negotiationNumber'] as String? ?? '';
     final imageUrl = productSnapshot['image'] as String? ?? '';
-    final productName = productSnapshot['name'] as String? ?? 'Product';
+    final productName = localizedName(
+      context,
+      productSnapshot,
+      fallback: l10n.dealProductFallback,
+    );
     final originalPrice = productSnapshot['price'] ?? 0;
     final canPay = n['canPay'] == true;
     final orderRef = n['orderId'];
@@ -592,8 +611,8 @@ class _NegotiationDetailScreenState
     final approvedByLabel = approvedBy == null
         ? null
         : approvedByName.isNotEmpty
-        ? 'Accepted by Laxmi Agro: $approvedByName'
-        : 'Accepted by Laxmi Agro';
+        ? l10n.dealAcceptedByLaxmiAgroName(approvedByName)
+        : l10n.dealAcceptedByLaxmiAgro;
 
     return Column(
       children: [
@@ -614,9 +633,9 @@ class _NegotiationDetailScreenState
                 child: Text(
                   negotiationNumber.isNotEmpty
                       ? negotiationNumber
-                      : 'Negotiation',
+                      : l10n.negotiationTitleFallback,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: textPrimary,
@@ -664,7 +683,7 @@ class _NegotiationDetailScreenState
                             children: [
                               Text(
                                 productName,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: textPrimary,
@@ -672,15 +691,17 @@ class _NegotiationDetailScreenState
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Retail: ₹${NumberFormatter.formatPrice(originalPrice)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.dealRetailPrice(
+                                  NumberFormatter.formatPrice(originalPrice),
+                                ),
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   color: slateBlue,
                                 ),
                               ),
                               Text(
-                                'Qty: $quantity units',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.dealQtyUnits(_quantityCount(quantity)),
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   color: slateBlue,
                                 ),
@@ -723,7 +744,7 @@ class _NegotiationDetailScreenState
                         Expanded(
                           child: Text(
                             approvedByLabel,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: greenAccent,
@@ -744,9 +765,9 @@ class _NegotiationDetailScreenState
                       icon: const Icon(Icons.local_shipping_outlined, size: 18),
                       label: Text(
                         orderNumber.isNotEmpty
-                            ? 'View Order $orderNumber'
-                            : 'View Order',
-                        style: GoogleFonts.plusJakartaSans(
+                            ? l10n.dealViewOrderNumber(orderNumber)
+                            : l10n.dealViewOrder,
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -771,8 +792,8 @@ class _NegotiationDetailScreenState
 
                 // History Timeline
                 Text(
-                  'Chat & History',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.dealChatAndHistory,
+                  style: AppFonts.jakarta(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: textPrimary,
@@ -790,7 +811,7 @@ class _NegotiationDetailScreenState
                             entry['by'] as String,
                             entry['message'] as String,
                             entry['timestamp'] != null
-                                ? DateFormat('h:mm a').format(
+                                ? timeFormat.format(
                                     DateTime.parse(
                                       entry['timestamp'] as String,
                                     ),
@@ -806,9 +827,9 @@ class _NegotiationDetailScreenState
                         (msg) => _buildChatMessage(
                           msg['by'] as String,
                           msg['message'] as String,
-                          DateFormat(
-                            'h:mm a',
-                          ).format(DateTime.parse(msg['timestamp'] as String)),
+                          timeFormat.format(
+                            DateTime.parse(msg['timestamp'] as String),
+                          ),
                           messageId: msg['messageId'] as String?,
                         ),
                       ),
@@ -836,22 +857,23 @@ class _NegotiationDetailScreenState
     final tracking = (order['trackingNumber'] ?? '').toString();
     final courier = (order['courierName'] ?? '').toString();
     final history = (order['statusHistory'] as List?) ?? [];
+    final l10n = context.l10n;
     String label(String s) {
       switch (s) {
         case 'pending_payment':
-          return 'Payment Pending';
+          return l10n.dealOrderStatusPaymentPending;
         case 'payment_uploaded':
-          return 'Payment Verification Pending';
+          return l10n.dealOrderStatusPaymentVerificationPending;
         case 'payment_verified':
-          return 'Payment Verified';
+          return l10n.dealOrderStatusPaymentVerified;
         case 'processing':
-          return 'Packing';
+          return l10n.dealOrderStatusPacking;
         case 'shipped':
-          return 'Dispatched';
+          return l10n.dealOrderStatusDispatched;
         case 'delivered':
-          return 'Delivered';
+          return l10n.dealOrderStatusDelivered;
         case 'cancelled':
-          return 'Cancelled';
+          return l10n.dealOrderStatusCancelled;
         default:
           return s;
       }
@@ -890,8 +912,11 @@ class _NegotiationDetailScreenState
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Order ${order['orderNumber'] ?? ''} · ${label(status)}',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.dealOrderStatusLine(
+                    (order['orderNumber'] ?? '').toString(),
+                    label(status),
+                  ),
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: textPrimary,
@@ -921,11 +946,13 @@ class _NegotiationDetailScreenState
           const SizedBox(height: 8),
           if (tracking.isNotEmpty || courier.isNotEmpty)
             Text(
-              'LR: ${tracking.isNotEmpty ? tracking : '-'}${courier.isNotEmpty ? ' · $courier' : ''}',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: slateBlue,
-              ),
+              courier.isNotEmpty
+                  ? l10n.dealLrLineWithCourier(
+                      tracking.isNotEmpty ? tracking : '-',
+                      courier,
+                    )
+                  : l10n.dealLrLine(tracking.isNotEmpty ? tracking : '-'),
+              style: AppFonts.jakarta(fontSize: 12, color: slateBlue),
             ),
           if (history.isNotEmpty)
             ...history.reversed.take(3).map((h) {
@@ -934,17 +961,14 @@ class _NegotiationDetailScreenState
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '• ${label((m['status'] ?? '').toString())}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: textMuted,
-                  ),
+                  style: AppFonts.jakarta(fontSize: 11, color: textMuted),
                 ),
               );
             }),
           const SizedBox(height: 4),
           Text(
-            'Live status from your order. Open full order for payment & dispatch details.',
-            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: textMuted),
+            l10n.dealOrderTrackingNote,
+            style: AppFonts.jakarta(fontSize: 11, color: textMuted),
           ),
         ],
       ),
@@ -962,39 +986,43 @@ class _NegotiationDetailScreenState
     Color statusColor;
     String statusLabel;
     IconData statusIcon;
-    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
+    final l10n = context.l10n;
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(
+      negotiation,
+      l10n: l10n,
+    );
 
     switch (status) {
       case 'pending':
         statusColor = textMuted;
-        statusLabel = 'Requirement Sent';
+        statusLabel = l10n.dealStatusRequirementSent;
         statusIcon = Icons.hourglass_empty_rounded;
         break;
       case 'countered':
         statusColor = amberAccent;
         statusLabel = currentOfferBy == 'admin'
-            ? 'New Price from Laxmi Agro'
-            : 'Your Counter Offer';
+            ? l10n.dealStatusNewPriceFromLaxmi
+            : l10n.dealStatusYourCounterOffer;
         statusIcon = Icons.swap_horiz_rounded;
         break;
       case 'accepted':
         statusColor = greenAccent;
-        statusLabel = orderStatusLabel ?? 'Accepted · Order Pending';
+        statusLabel = orderStatusLabel ?? l10n.statusDealAcceptedOrderPending;
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'converted':
         statusColor = greenAccent;
-        statusLabel = orderStatusLabel ?? 'Order Created';
+        statusLabel = orderStatusLabel ?? l10n.statusDealOrderCreated;
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'rejected':
         statusColor = redAccent;
-        statusLabel = 'Requirement Declined';
+        statusLabel = l10n.dealStatusRequirementDeclined;
         statusIcon = Icons.cancel_rounded;
         break;
       case 'expired':
         statusColor = textMuted;
-        statusLabel = 'Requirement Expired';
+        statusLabel = l10n.dealStatusRequirementExpired;
         statusIcon = Icons.info_outline;
         break;
       default:
@@ -1019,7 +1047,7 @@ class _NegotiationDetailScreenState
               const SizedBox(width: 8),
               Text(
                 statusLabel,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: statusColor,
@@ -1032,15 +1060,12 @@ class _NegotiationDetailScreenState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Current Price/unit',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: slateBlue,
-                ),
+                l10n.dealCurrentPricePerUnit,
+                style: AppFonts.jakarta(fontSize: 13, color: slateBlue),
               ),
               Text(
                 '₹${NumberFormatter.formatPrice(currentPrice)}',
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: statusColor,
@@ -1053,15 +1078,12 @@ class _NegotiationDetailScreenState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Total ($quantity units)',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: slateBlue,
-                ),
+                l10n.dealTotalForUnits(_quantityCount(quantity)),
+                style: AppFonts.jakarta(fontSize: 13, color: slateBlue),
               ),
               Text(
                 '₹${NumberFormatter.formatPrice(currentTotal)}',
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: textPrimary,
@@ -1073,6 +1095,9 @@ class _NegotiationDetailScreenState
       ),
     );
   }
+
+  int _quantityCount(dynamic quantity) =>
+      int.tryParse(NumberFormatter.formatQuantity(quantity)) ?? 0;
 
   String _entryActorName(Map<String, dynamic> entry) {
     final actor = entry['actorId'];
@@ -1092,7 +1117,9 @@ class _NegotiationDetailScreenState
   }
 
   String _laxmiAgroActorLabel(String actorName) {
-    return actorName.isEmpty ? 'Laxmi Agro' : 'Laxmi Agro: $actorName';
+    return actorName.isEmpty
+        ? context.l10n.dealLaxmiAgro
+        : context.l10n.dealLaxmiAgroActor(actorName);
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> entry) {
@@ -1103,12 +1130,14 @@ class _NegotiationDetailScreenState
     final message = entry['message'] as String? ?? '';
     final timestamp = entry['timestamp'] as String? ?? '';
     final actorName = _entryActorName(entry);
+    final l10n = context.l10n;
 
     String formattedTime = '';
     if (timestamp.isNotEmpty) {
       try {
         formattedTime = DateFormat(
           'MMM d, h:mm a',
+          Localizations.localeOf(context).languageCode,
         ).format(DateTime.parse(timestamp));
       } catch (_) {}
     }
@@ -1131,30 +1160,30 @@ class _NegotiationDetailScreenState
       case 'requested':
         accentColor = primaryBlue;
         actionIcon = Icons.send_rounded;
-        actionLabel = 'Requirement Sent';
+        actionLabel = l10n.dealStatusRequirementSent;
         break;
       case 'countered':
         accentColor = amberAccent;
         actionIcon = Icons.swap_horiz_rounded;
         actionLabel = by == 'admin'
-            ? 'New Price from Laxmi Agro'
-            : 'Your Counter Offer';
+            ? l10n.dealStatusNewPriceFromLaxmi
+            : l10n.dealStatusYourCounterOffer;
         break;
       case 'accepted':
         accentColor = greenAccent;
         actionIcon = Icons.check_circle_rounded;
         actionLabel = by == 'admin'
             ? (actorName.isNotEmpty
-                  ? 'Accepted by ${_laxmiAgroActorLabel(actorName)}'
-                  : 'Accepted by Laxmi Agro')
-            : 'You Accepted';
+                  ? l10n.dealAcceptedByLaxmiAgroName(actorName)
+                  : l10n.dealAcceptedByLaxmiAgro)
+            : l10n.dealYouAccepted;
         break;
       case 'rejected':
         accentColor = redAccent;
         actionIcon = Icons.cancel_rounded;
         actionLabel = by == 'admin'
-            ? 'Declined by Laxmi Agro'
-            : 'You Cancelled';
+            ? l10n.dealDeclinedByLaxmiAgro
+            : l10n.dealYouCancelled;
         break;
       default:
         accentColor = textMuted;
@@ -1185,8 +1214,10 @@ class _NegotiationDetailScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAdmin ? _laxmiAgroActorLabel(actorName) : 'You',
-                style: GoogleFonts.plusJakartaSans(
+                isAdmin
+                    ? _laxmiAgroActorLabel(actorName)
+                    : context.l10n.dealYou,
+                style: AppFonts.jakarta(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   color: isAdmin ? primaryBlue : greenAccent,
@@ -1201,7 +1232,7 @@ class _NegotiationDetailScreenState
                   Expanded(
                     child: Text(
                       actionLabel,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: accentColor,
@@ -1217,8 +1248,10 @@ class _NegotiationDetailScreenState
                   spacing: 5,
                   children: [
                     Text(
-                      '₹${NumberFormatter.formatPrice(price)}/unit',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.commonPricePerUnit(
+                        NumberFormatter.formatPrice(price),
+                      ),
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
@@ -1226,11 +1259,10 @@ class _NegotiationDetailScreenState
                     ),
                     if (total != null)
                       Text(
-                        '• Total: ₹${NumberFormatter.formatPrice(total)}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: slateBlue,
+                        l10n.dealBulletTotal(
+                          NumberFormatter.formatPrice(total),
                         ),
+                        style: AppFonts.jakarta(fontSize: 12, color: slateBlue),
                       ),
                   ],
                 ),
@@ -1241,7 +1273,7 @@ class _NegotiationDetailScreenState
                 const SizedBox(height: 5),
                 Text(
                   message,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     color: textPrimary,
                     height: 1.35,
@@ -1254,7 +1286,7 @@ class _NegotiationDetailScreenState
                   alignment: Alignment.centerRight,
                   child: Text(
                     formattedTime,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 9.5,
                       color: const Color(0xFF667781),
                     ),
@@ -1311,8 +1343,10 @@ class _NegotiationDetailScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAdmin ? _laxmiAgroActorLabel(actorName) : 'You',
-                style: GoogleFonts.plusJakartaSans(
+                isAdmin
+                    ? _laxmiAgroActorLabel(actorName)
+                    : context.l10n.dealYou,
+                style: AppFonts.jakarta(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   color: isAdmin ? primaryBlue : greenAccent,
@@ -1321,7 +1355,7 @@ class _NegotiationDetailScreenState
               const SizedBox(height: 2),
               Text(
                 message,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: textPrimary,
@@ -1338,7 +1372,7 @@ class _NegotiationDetailScreenState
                       if (timestamp.isNotEmpty)
                         Text(
                           timestamp,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 9.5,
                             color: const Color(0xFF667781),
                           ),
@@ -1397,12 +1431,12 @@ class _NegotiationDetailScreenState
   Future<void> _sendChatMessage() async {
     final messageText = _counterMessageController.text.trim();
     if (messageText.isEmpty) {
-      _showError('Please enter a message');
+      _showError(context.l10n.dealEnterMessage);
       return;
     }
 
     if (messageText.length > maxMessageLength) {
-      _showError('Message too long (max $maxMessageLength characters)');
+      _showError(context.l10n.dealMessageTooLong('$maxMessageLength'));
       return;
     }
 
@@ -1442,8 +1476,8 @@ class _NegotiationDetailScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Message sent!',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              context.l10n.dealMessageSent,
+              style: AppFonts.jakarta(fontWeight: FontWeight.w600),
             ),
             backgroundColor: primaryBlue,
             behavior: SnackBarBehavior.floating,
@@ -1458,7 +1492,8 @@ class _NegotiationDetailScreenState
     } on DioException catch (e) {
       if (!mounted) return;
       _showError(
-        e.response?.data?['message']?.toString() ?? 'Failed to send message',
+        e.response?.data?['message']?.toString() ??
+            context.l10n.dealSendMessageFailed,
       );
       // Remove optimistic message on error
       setState(
@@ -1512,11 +1547,8 @@ class _NegotiationDetailScreenState
           onPressed: _proceedToOrder,
           icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
           label: Text(
-            'View Details',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
+            context.l10n.commonViewDetails,
+            style: AppFonts.jakarta(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: greenAccent,
@@ -1542,8 +1574,8 @@ class _NegotiationDetailScreenState
             Icon(Icons.check_circle_rounded, color: greenAccent, size: 18),
             const SizedBox(width: 8),
             Text(
-              'Negotiation Completed',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.negotiationCompleted,
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: greenAccent,
@@ -1564,7 +1596,7 @@ class _NegotiationDetailScreenState
         ? ''
         : _typingUsers.values.first;
     final typingIndicatorText = _typingUsers.isNotEmpty
-        ? '${_laxmiAgroActorLabel(typingName)} is typing...'
+        ? context.l10n.dealTyping(_laxmiAgroActorLabel(typingName))
         : '';
 
     return Column(
@@ -1593,7 +1625,7 @@ class _NegotiationDetailScreenState
                   const SizedBox(width: 6),
                   Text(
                     typingIndicatorText,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 12,
                       color: slateBlue,
                       fontStyle: FontStyle.italic,
@@ -1624,18 +1656,18 @@ class _NegotiationDetailScreenState
                   FocusScope.of(context).unfocus();
                   _emitStopTyping();
                 },
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Message',
+                  hintText: context.l10n.dealMessageHint,
                   prefixIcon: const Icon(
                     Icons.chat_bubble_outline_rounded,
                     size: 19,
                     color: textMuted,
                   ),
-                  hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+                  hintStyle: AppFonts.jakarta(color: textMuted),
                   filled: true,
                   fillColor: backgroundWhite,
                   contentPadding: const EdgeInsets.symmetric(
@@ -1696,7 +1728,7 @@ class _NegotiationDetailScreenState
           alignment: Alignment.centerRight,
           child: Text(
             '${_counterMessageController.text.length}/$maxMessageLength',
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 11,
               color: textMuted,
               fontWeight: FontWeight.w500,

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_update_provider.dart';
 import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -96,8 +97,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Laxmi Agro Enterprises',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.appTitle,
+              textAlign: TextAlign.center,
+              style: AppFonts.jakarta(
                 fontSize: 27,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
@@ -106,8 +108,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Wholesale agriculture marketplace',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.splashTagline,
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withValues(alpha: 0.8),

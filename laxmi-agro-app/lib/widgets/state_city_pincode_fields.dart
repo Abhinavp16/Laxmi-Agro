@@ -1,5 +1,55 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
+
+/// Hindi display names for Indian states and union territories. The English
+/// name stays the stored / submitted value.
+const Map<String, String> indianStateNamesHindi = {
+  'Andhra Pradesh': 'आंध्र प्रदेश',
+  'Arunachal Pradesh': 'अरुणाचल प्रदेश',
+  'Assam': 'असम',
+  'Bihar': 'बिहार',
+  'Chhattisgarh': 'छत्तीसगढ़',
+  'Goa': 'गोवा',
+  'Gujarat': 'गुजरात',
+  'Haryana': 'हरियाणा',
+  'Himachal Pradesh': 'हिमाचल प्रदेश',
+  'Jharkhand': 'झारखंड',
+  'Karnataka': 'कर्नाटक',
+  'Kerala': 'केरल',
+  'Madhya Pradesh': 'मध्य प्रदेश',
+  'Maharashtra': 'महाराष्ट्र',
+  'Manipur': 'मणिपुर',
+  'Meghalaya': 'मेघालय',
+  'Mizoram': 'मिज़ोरम',
+  'Nagaland': 'नागालैंड',
+  'Odisha': 'ओडिशा',
+  'Punjab': 'पंजाब',
+  'Rajasthan': 'राजस्थान',
+  'Sikkim': 'सिक्किम',
+  'Tamil Nadu': 'तमिलनाडु',
+  'Telangana': 'तेलंगाना',
+  'Tripura': 'त्रिपुरा',
+  'Uttar Pradesh': 'उत्तर प्रदेश',
+  'Uttarakhand': 'उत्तराखंड',
+  'West Bengal': 'पश्चिम बंगाल',
+  'Andaman and Nicobar Islands': 'अंडमान और निकोबार द्वीप समूह',
+  'Chandigarh': 'चंडीगढ़',
+  'Dadra and Nagar Haveli and Daman and Diu':
+      'दादरा और नगर हवेली और दमन और दीव',
+  'Delhi': 'दिल्ली',
+  'Jammu and Kashmir': 'जम्मू और कश्मीर',
+  'Ladakh': 'लद्दाख',
+  'Lakshadweep': 'लक्षद्वीप',
+  'Puducherry': 'पुडुचेरी',
+};
+
+/// State name to show: Hindi when Hindi is selected and known, else as stored.
+String localizedStateName(BuildContext context, String state) {
+  if (!context.isHindi) return state;
+  return indianStateNamesHindi[state.trim()] ?? state;
+}
+
 /// A curated India delivery-location list. The PIN filled after choosing a city
 /// is a useful default and remains editable because a city can have many PINs.
 class StateCityPincodeFields extends StatefulWidget {
@@ -169,20 +219,24 @@ class _StateCityPincodeFieldsState extends State<StateCityPincodeFields> {
       states.insert(0, _selectedState!);
     }
     final cities = _cities;
+    final l10n = context.l10n;
 
     return Column(
       children: [
         DropdownButtonFormField<String>(
           initialValue: _selectedState,
           isExpanded: true,
-          decoration: _decoration('State'),
+          decoration: _decoration(l10n.fieldState),
           items: states
               .map(
-                (state) => DropdownMenuItem(value: state, child: Text(state)),
+                (state) => DropdownMenuItem(
+                  value: state,
+                  child: Text(localizedStateName(context, state)),
+                ),
               )
               .toList(),
           validator: (value) =>
-              value == null || value.isEmpty ? 'Select a state' : null,
+              value == null || value.isEmpty ? l10n.fieldSelectState : null,
           onChanged: (value) {
             setState(() {
               _selectedState = value;
@@ -197,7 +251,7 @@ class _StateCityPincodeFieldsState extends State<StateCityPincodeFields> {
         DropdownButtonFormField<String>(
           initialValue: _selectedCity,
           isExpanded: true,
-          decoration: _decoration('City'),
+          decoration: _decoration(l10n.fieldCity),
           items: cities.entries
               .map(
                 (entry) =>
@@ -205,7 +259,7 @@ class _StateCityPincodeFieldsState extends State<StateCityPincodeFields> {
               )
               .toList(),
           validator: (value) =>
-              value == null || value.isEmpty ? 'Select a city' : null,
+              value == null || value.isEmpty ? l10n.fieldSelectCity : null,
           onChanged: _selectedState == null
               ? null
               : (value) {
@@ -221,9 +275,10 @@ class _StateCityPincodeFieldsState extends State<StateCityPincodeFields> {
         TextFormField(
           controller: widget.pincodeController,
           keyboardType: TextInputType.number,
-          validator: (value) =>
-              value == null || value.trim().isEmpty ? 'Enter a pincode' : null,
-          decoration: _decoration('Pincode (editable)'),
+          validator: (value) => value == null || value.trim().isEmpty
+              ? l10n.fieldEnterPincode
+              : null,
+          decoration: _decoration(l10n.fieldPincodeEditable),
         ),
       ],
     );

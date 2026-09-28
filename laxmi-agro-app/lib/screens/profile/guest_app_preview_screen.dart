@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../home/marketplace_home_screen.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class GuestAppPreviewScreen extends StatelessWidget {
   const GuestAppPreviewScreen({super.key});
@@ -74,16 +75,16 @@ class _GuestModeBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Viewing as Customer',
-                  style: GoogleFonts.plusJakartaSans(
+                  context.l10n.guestPreviewTitle,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
                 Text(
-                  'You\'re seeing what customers see',
-                  style: GoogleFonts.plusJakartaSans(
+                  context.l10n.guestPreviewSubtitle,
+                  style: AppFonts.jakarta(
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.85),
                   ),

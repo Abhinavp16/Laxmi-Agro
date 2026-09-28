@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class AboutLaxmiAgroScreen extends StatelessWidget {
   const AboutLaxmiAgroScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('About Laxmi Agro')),
+      appBar: AppBar(title: Text(l10n.aboutTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -37,8 +39,8 @@ class AboutLaxmiAgroScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Laxmi Agro',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.aboutBrand,
+                  style: AppFonts.jakarta(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
@@ -46,8 +48,8 @@ class AboutLaxmiAgroScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Agriculture supply platform for retailers, dealers, and wholesalers',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.aboutTagline,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     color: Colors.white.withOpacity(0.95),
                     fontWeight: FontWeight.w500,
@@ -58,23 +60,25 @@ class AboutLaxmiAgroScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Laxmi Agro, operated through Ashirvad Marketing, supports retailers, wholesalers, and buyers with pumps, submersible cables, GI pipes, PVC column pipes, sprinkler sets, and related agriculture supply items. '
-            'You can discover products, place orders, negotiate bulk deals, and manage delivery from one app.',
-            style: GoogleFonts.plusJakartaSans(fontSize: 14, height: 1.6),
+            l10n.aboutDescription,
+            style: AppFonts.jakarta(fontSize: 14, height: 1.6),
           ),
           const SizedBox(height: 16),
           Text(
-            'What you can do',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.aboutWhatYouCanDo,
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          _featureTile(Icons.verified_outlined, 'Practical catalogue across cable, pipes, irrigation, and pump categories'),
-          _featureTile(Icons.location_on_outlined, 'Raipur-based sales and dispatch coordination'),
-          _featureTile(Icons.local_offer_outlined, 'Dealer and bulk order support'),
-          _featureTile(Icons.support_agent_outlined, 'Direct contact with the business support team'),
+          _featureTile(Icons.verified_outlined, l10n.aboutFeatureCatalogue),
+          _featureTile(Icons.location_on_outlined, l10n.aboutFeatureRaipur),
+          _featureTile(Icons.local_offer_outlined, l10n.aboutFeatureDealerSupport),
+          _featureTile(
+            Icons.support_agent_outlined,
+            l10n.aboutFeatureDirectContact,
+          ),
         ],
       ),
     );
@@ -98,7 +102,7 @@ class AboutLaxmiAgroScreen extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+            child: Text(text, style: AppFonts.jakarta(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
