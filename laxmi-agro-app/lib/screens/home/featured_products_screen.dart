@@ -5,16 +5,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
-import '../../core/providers/locale_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../widgets/product_image_placeholder.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
   final bool isHotDeals;
@@ -177,7 +177,7 @@ class _FeaturedProductsScreenState
         SnackBar(
           content: Text(
             message,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            style: AppFonts.outfit(fontWeight: FontWeight.w600),
           ),
           duration: const Duration(seconds: 1),
           backgroundColor: backgroundColor,
@@ -190,10 +190,17 @@ class _FeaturedProductsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final t = ref.watch(localeProvider.notifier).translate;
+    final l10n = context.l10n;
+    final isDealer = ref.watch(effectiveIsWholesalerProvider);
     final title = widget.brandName != null
         ? widget.brandName!
-        : (widget.isHotDeals ? t('Hot Deals') : t('Popular Products'));
+        : widget.isHotDeals
+        ? (isDealer
+              ? l10n.featuredHotDealsDealer
+              : l10n.featuredHotDealsCustomer)
+        : (isDealer
+              ? l10n.featuredPopularDealer
+              : l10n.featuredPopularCustomer);
 
     return Scaffold(
       backgroundColor: backgroundWhite,
@@ -206,7 +213,7 @@ class _FeaturedProductsScreenState
         ),
         title: Text(
           title,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: textPrimary,
@@ -221,11 +228,11 @@ class _FeaturedProductsScreenState
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(t('Error loading products')),
+                  Text(l10n.featuredLoadError),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _fetchProducts,
-                    child: Text(t('Retry')),
+                    child: Text(l10n.commonRetry),
                   ),
                 ],
               ),
@@ -244,8 +251,8 @@ class _FeaturedProductsScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    t('No products available'),
-                    style: GoogleFonts.outfit(color: textMuted, fontSize: 16),
+                    l10n.featuredEmpty,
+                    style: AppFonts.outfit(color: textMuted, fontSize: 16),
                   ),
                 ],
               ),
@@ -269,7 +276,7 @@ class _FeaturedProductsScreenState
                   itemCount: _products.length,
                   itemBuilder: (context, index) {
                     final product = _products[index];
-                    return _buildProductCard(product, t);
+                    return _buildProductCard(product, l10n);
                   },
                 );
               },
@@ -279,7 +286,7 @@ class _FeaturedProductsScreenState
 
   Widget _buildProductCard(
     Map<String, dynamic> product,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final productId = product['id']?.toString() ?? '';
     final heroTag = 'product-image-$productId';
@@ -295,22 +302,18 @@ class _FeaturedProductsScreenState
         product['reviewCount'] ?? product['review'] ?? product['reviews'] ?? '';
     final inStock = product['inStock'] != false;
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
-    final currentLanguage = ref.read(localeProvider);
-    final hindiName = product['nameHindi']?.toString() ?? '';
-    final displayName = currentLanguage == 'Hindi' && hindiName.isNotEmpty
-        ? hindiName
-        : product['name']?.toString() ?? '';
+    final displayName = localizedName(context, product);
 
     String? badgeLabel;
     Color? badgeColor;
     if (widget.isHotDeals) {
-      badgeLabel = 'HOT';
+      badgeLabel = l10n.productBadgeHot;
       badgeColor = const Color(0xFFEF4444);
     } else if (discount > 0) {
-      badgeLabel = t('SALE');
+      badgeLabel = l10n.productBadgeSale;
       badgeColor = const Color(0xFF16A34A);
     } else if (product['isNew'] == true) {
-      badgeLabel = t('NEW');
+      badgeLabel = l10n.productBadgeNew;
       badgeColor = primaryBlue;
     }
 
@@ -385,8 +388,8 @@ class _FeaturedProductsScreenState
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
-                            t('Out of Stock'),
-                            style: GoogleFonts.outfit(
+                            l10n.commonOutOfStock,
+                            style: AppFonts.outfit(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -409,7 +412,7 @@ class _FeaturedProductsScreenState
                           ),
                           child: Text(
                             badgeLabel,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 7.5,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -428,7 +431,7 @@ class _FeaturedProductsScreenState
                           onTap: () {
                             if (ref.read(guestModeProvider)) {
                               _showMessage(
-                                t('Wishlist disabled in preview mode'),
+                                l10n.productWishlistDisabledPreview,
                                 backgroundColor: textSecondary,
                               );
                               return;
@@ -476,8 +479,8 @@ class _FeaturedProductsScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    brand.isEmpty ? t('Laxmi Agro') : brand,
-                    style: GoogleFonts.plusJakartaSans(
+                    brand.isEmpty ? l10n.productBrandFallback : brand,
+                    style: AppFonts.jakarta(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       color: primaryBlue,
@@ -490,7 +493,7 @@ class _FeaturedProductsScreenState
                     height: 32,
                     child: Text(
                       displayName,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: textPrimary,
@@ -511,7 +514,7 @@ class _FeaturedProductsScreenState
                       const SizedBox(width: 2),
                       Text(
                         rating?.toString() ?? '0',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                           color: textSecondary,
@@ -522,7 +525,7 @@ class _FeaturedProductsScreenState
                         Flexible(
                           child: Text(
                             '($reviewCount)',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 8,
                               color: textMuted,
                               fontWeight: FontWeight.w500,
@@ -547,7 +550,7 @@ class _FeaturedProductsScreenState
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 '₹${_formatPrice(price)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: textPrimary,
@@ -557,7 +560,7 @@ class _FeaturedProductsScreenState
                             if (hasDiscount)
                               Text(
                                 '₹${_formatPrice(originalPrice)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 7.5,
                                   color: textMuted,
                                   decoration: TextDecoration.lineThrough,
@@ -574,7 +577,7 @@ class _FeaturedProductsScreenState
                             ? () {
                                 if (ref.read(guestModeProvider)) {
                                   _showMessage(
-                                    t('Add to Cart disabled in preview mode'),
+                                    l10n.productAddToCartDisabledPreview,
                                     backgroundColor: textSecondary,
                                   );
                                   return;
@@ -610,7 +613,7 @@ class _FeaturedProductsScreenState
                                       image: product['image']?.toString(),
                                       quantity: quantity,
                                     );
-                                _showMessage(t('Added to cart'));
+                                _showMessage(l10n.productAddedToCart);
                               }
                             : null,
                         child: Container(
@@ -634,8 +637,8 @@ class _FeaturedProductsScreenState
                               ),
                               const SizedBox(width: 2),
                               Text(
-                                t('Add'),
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.productAddShort,
+                                style: AppFonts.jakarta(
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,

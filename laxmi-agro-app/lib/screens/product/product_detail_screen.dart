@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../../widgets/app_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -21,9 +20,10 @@ import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
-import '../../core/providers/locale_provider.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/verified_seller_badge.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -178,25 +178,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   String _quantityUnitLabel() {
+    final l10n = context.l10n;
     final raw =
         (_product?['priceUnit'] ?? _product?['unit'] ?? _product?['uom'])
             ?.toString()
             .trim() ??
         '';
-    if (raw.isEmpty) return 'Piece';
+    if (raw.isEmpty) return l10n.productUnitPiece;
 
     final normalized = raw.toLowerCase().replaceAll('.', '');
     if (normalized.contains('mtr') || normalized.contains('meter')) {
-      return 'Meter';
+      return l10n.productUnitMeter;
     }
     if (normalized.contains('packet') || normalized.contains('pack')) {
-      return 'Packet';
+      return l10n.productUnitPacket;
     }
     if (normalized.contains('piece') ||
         normalized.contains('pcs') ||
         normalized.contains('unit') ||
         normalized.contains('nos')) {
-      return 'Piece';
+      return l10n.productUnitPiece;
     }
 
     return raw;
@@ -268,6 +269,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         _fetchRelatedProducts();
       }
     } on DioException catch (e) {
+      if (!mounted) return;
+      final l10n = context.l10n;
       final data = e.response?.data;
       final map = data is Map ? data : null;
       final error = map?['error'];
@@ -276,12 +279,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           map?['message']?.toString() ??
           errorMap?['message']?.toString() ??
           e.message ??
-          'Failed to load product details';
+          l10n.productLoadFailed;
       if (e.type == DioExceptionType.connectionError ||
           msg.contains('No route to host') ||
           msg.contains('Connection refused')) {
-        msg =
-            'Cannot reach server. Check backend is running and API URL in api_config.dart.';
+        msg = l10n.commonNetworkError;
       }
       debugPrint('Error fetching product: $msg');
       setState(() {
@@ -290,9 +292,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       });
     } catch (e) {
       debugPrint('Error fetching product: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load product details';
+        _error = context.l10n.productLoadFailed;
       });
     }
   }
@@ -370,7 +373,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 variant['name']?.toString() ??
                 '')
             .trim();
-    if (rawLabel.isEmpty) return 'Variant';
+    if (rawLabel.isEmpty) return context.l10n.productVariantFallback;
     if (productName.isEmpty) return rawLabel;
 
     final normalizedProduct = productName.toLowerCase();
@@ -461,13 +464,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(title),
-          content: const Text(
-            'This feature is disabled while viewing the customer experience. Exit the demo mode to return to your wholesaler account.',
-          ),
+          content: Text(dialogContext.l10n.productGuestModeDisabledMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Close'),
+              child: Text(dialogContext.l10n.commonClose),
             ),
           ],
         );
@@ -528,7 +529,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   Future<void> _openVariantSelectorSheet(
     List<Map<String, dynamic>> variants,
     String? selectedId,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -567,8 +568,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            t('Select Variant'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.productSelectVariant,
+                            style: AppFonts.jakarta(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               color: _txt,
@@ -576,8 +577,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            t('Choose size or pack option'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.productChooseVariantHint,
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _txtSec,
@@ -645,7 +646,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                       _variantLabel(variant),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         color: isSelected ? _blue : _txt,
@@ -655,8 +656,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                     Text(
                                       variantPrice != null
                                           ? '₹${_fmt(variantPrice)}'
-                                          : t('Tap to select'),
-                                      style: GoogleFonts.plusJakartaSans(
+                                          : l10n.productTapToSelect,
+                                      style: AppFonts.jakarta(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         color: isSelected ? _blue : _txtSec,
@@ -708,8 +709,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   // ------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final currentLang = ref.watch(localeProvider);
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final bp = MediaQuery.of(context).padding.bottom;
     final tp = MediaQuery.of(context).padding.top;
 
@@ -730,11 +730,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               const SizedBox(height: 14),
               Text(
-                t('Loading product...'),
-                style: GoogleFonts.plusJakartaSans(
-                  color: _txtSec,
-                  fontSize: 14,
-                ),
+                l10n.productLoading,
+                style: AppFonts.jakarta(color: _txtSec, fontSize: 14),
               ),
             ],
           ),
@@ -774,11 +771,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _error ?? t('Product not found'),
-                        style: GoogleFonts.plusJakartaSans(
-                          color: _txtSec,
-                          fontSize: 15,
-                        ),
+                        _error ?? l10n.productNotFound,
+                        style: AppFonts.jakarta(color: _txtSec, fontSize: 15),
                       ),
                       const SizedBox(height: 16),
                       TextButton(
@@ -790,8 +784,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           _fetchProduct();
                         },
                         child: Text(
-                          t('Retry'),
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.commonRetry,
+                          style: AppFonts.jakarta(
                             color: _blue,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -808,12 +802,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       );
     }
 
-    final name =
-        (currentLang == 'Hindi' &&
-            _product!['nameHindi'] != null &&
-            _product!['nameHindi'].toString().isNotEmpty)
-        ? _product!['nameHindi'].toString()
-        : _product!['name']?.toString() ?? 'Product';
+    final name = localizedName(
+      context,
+      _product,
+      fallback: l10n.productPlaceholderProduct,
+    );
 
     final desc =
         _product!['description']?.toString() ??
@@ -866,26 +859,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       inStock,
                       !isWholesaler,
                       isWholesaler,
-                      t,
+                      l10n,
                     ),
                   ),
                   if (_specs.isNotEmpty)
-                    SliverToBoxAdapter(child: _specsSection(t)),
+                    SliverToBoxAdapter(child: _specsSection(l10n)),
                   SliverToBoxAdapter(child: _trustBadgesStrip()),
                   if (_productLabels.isNotEmpty)
                     SliverToBoxAdapter(child: _productLabelsSection()),
-                  SliverToBoxAdapter(child: _descSection(desc, t)),
-                  SliverToBoxAdapter(child: _allImagesSection(name, t)),
-                  SliverToBoxAdapter(child: _videoSection(t)),
-                  SliverToBoxAdapter(child: _shippingSection(t)),
-                  SliverToBoxAdapter(child: _relatedProductsSection(t)),
+                  SliverToBoxAdapter(child: _descSection(desc, l10n)),
+                  SliverToBoxAdapter(child: _allImagesSection(name, l10n)),
+                  SliverToBoxAdapter(child: _videoSection(l10n)),
+                  SliverToBoxAdapter(child: _shippingSection(l10n)),
+                  SliverToBoxAdapter(child: _relatedProductsSection(l10n)),
                   SliverToBoxAdapter(
                     child: SizedBox(height: bottomContentInset + bp),
                   ),
                 ],
               ),
             ),
-            _topBar(tp, name, inStock, t),
+            _topBar(tp, name, inStock, l10n),
             _bottomBar(
               name,
               price,
@@ -896,7 +889,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               negEnabled,
               wsPrice,
               minWsQty,
-              t,
+              l10n,
             ),
           ],
         ),
@@ -905,12 +898,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   // -- TOP BAR --
-  Widget _topBar(
-    double tp,
-    String name,
-    bool inStock,
-    String Function(String) t,
-  ) {
+  Widget _topBar(double tp, String name, bool inStock, AppLocalizations l10n) {
     return Positioned(
       top: 0,
       left: 0,
@@ -938,15 +926,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _txt,
                         ),
                       ),
                       Text(
-                        inStock ? t('In Stock') : t('Out of Stock'),
-                        style: GoogleFonts.plusJakartaSans(
+                        inStock ? l10n.commonInStock : l10n.commonOutOfStock,
+                        style: AppFonts.jakarta(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                           color: inStock ? _green : _red,
@@ -959,14 +947,24 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 _circleBtn(Icons.share_outlined, () {
                   final p = _product;
                   if (p == null) return;
-                  final pName = p['name']?.toString() ?? 'Product';
+                  final pName = localizedName(
+                    context,
+                    p,
+                    fallback: l10n.productPlaceholderProduct,
+                  );
                   final pPrice = ref.read(guestModeProvider)
                       ? p['retailPrice'] ?? p['price']
                       : p['price'] ?? p['retailPrice'];
-                  final shareText =
-                      'Check out $pName'
-                      '${pPrice != null ? ' - ₹${_fmt(pPrice)}' : ''}'
-                      ' on Laxmi Agro!\n\n${PublicBusinessConfig.productUrl(p['slug']?.toString())}';
+                  final productUrl = PublicBusinessConfig.productUrl(
+                    p['slug']?.toString(),
+                  );
+                  final shareText = pPrice != null
+                      ? l10n.productShareTextWithPrice(
+                          pName,
+                          _fmt(pPrice),
+                          productUrl,
+                        )
+                      : l10n.productShareText(pName, productUrl);
                   SharePlus.instance.share(ShareParams(text: shareText));
                 }),
                 Builder(
@@ -980,7 +978,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       () {
                         if (isCustomerPreview) {
                           _showGuestModePopup(
-                            'Wishlist disabled in preview mode',
+                            l10n.productWishlistDisabledPreview,
                           );
                           return;
                         }
@@ -1177,7 +1175,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     bool inStock,
     bool showNegotiate,
     bool isWholesaler,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final priceNum = price is num
         ? price.toDouble()
@@ -1201,7 +1199,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         final val = _product?[key]?.toString().trim();
         if (val != null && val.isNotEmpty) return val;
       }
-      return 'Laxmi Agro';
+      return l10n.productBrandFallback;
     }
 
     final brandDetails = getBrand();
@@ -1247,7 +1245,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     const SizedBox(width: 4),
                     Text(
                       rating > 0 ? rating.toStringAsFixed(1) : 'N/A',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: _txt,
@@ -1257,7 +1255,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       const SizedBox(width: 4),
                       Text(
                         '($ratingCount)',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: _txtSec,
@@ -1278,8 +1276,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${t('Brand')}: $brandDetails',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productBrandValue(brandDetails),
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: _txtSec,
@@ -1291,7 +1289,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           const SizedBox(height: 10),
           Text(
             name,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: _txt,
@@ -1301,8 +1299,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '${t('SKU')}: ${sku.isNotEmpty ? sku : 'MILL-001'}',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.productSkuValue(sku.isNotEmpty ? sku : 'MILL-001'),
+            style: AppFonts.jakarta(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: _txtSec,
@@ -1331,8 +1329,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 );
 
                 return GestureDetector(
-                  onTap: () =>
-                      _openVariantSelectorSheet(variantOptions, selectedId, t),
+                  onTap: () => _openVariantSelectorSheet(
+                    variantOptions,
+                    selectedId,
+                    l10n,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
                     decoration: BoxDecoration(
@@ -1358,8 +1359,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                t('Select Variant'),
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.productSelectVariant,
+                                style: AppFonts.jakarta(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
                                   color: _blue,
@@ -1371,7 +1372,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 _variantLabel(selectedVariant),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w900,
                                   color: _txt,
@@ -1406,18 +1407,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
           RichText(
             text: TextSpan(
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: _txtSec,
               ),
               children: [
-                TextSpan(text: '${t('MRP')}: '),
+                TextSpan(text: l10n.productMrpLabel),
                 TextSpan(
                   text: mrp != null
                       ? '₹${_fmt(mrp)}'
                       : (price != null ? '₹${_fmt(price)}' : 'N/A'),
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: _mrpAmount,
@@ -1434,8 +1435,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               Row(
                 children: [
                   Text(
-                    '${t('Suggested Selling Price')}: ',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productSuggestedSellingPriceLabel,
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: _txtSec,
@@ -1443,7 +1444,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   Text(
                     '₹${_fmt(customerPrice)}',
-                    style: GoogleFonts.montserrat(
+                    style: AppFonts.montserrat(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: _customerAmount,
@@ -1461,7 +1462,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: _txtSec,
@@ -1469,13 +1470,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       children: [
                         TextSpan(
                           text: isWholesaler
-                              ? '${t('Your Dealer Price')}: '
-                              : '${t('Special Price')}: ',
+                              ? l10n.productYourDealerPriceLabel
+                              : l10n.productSpecialPriceLabel,
                         ),
                         TextSpan(
-                          text:
-                              '₹${_fmt(isWholesaler && wsPrice != null ? wsPrice : price)}${isWholesaler ? '/${_quantityUnitLabel()}' : ''}',
-                          style: GoogleFonts.outfit(
+                          text: isWholesaler
+                              ? l10n.productPriceWithUnit(
+                                  _fmt(wsPrice ?? price),
+                                  _quantityUnitLabel(),
+                                )
+                              : '₹${_fmt(price)}',
+                          style: AppFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: isWholesaler
@@ -1508,8 +1513,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '$disc% ${t('OFF')}',
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.commonPercentOff('$disc'),
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: _green,
@@ -1571,8 +1576,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        '$count units sold in the last 24 hours',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.productSoldLast24h(count),
+                        style: AppFonts.jakarta(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFFEF4444),
@@ -1594,8 +1599,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               Icon(Icons.local_shipping_outlined, size: 14, color: _txtSec),
               const SizedBox(width: 8),
               Text(
-                t('Delivery within 5 days of Purchase'),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.productDeliveryWithin5Days,
+                style: AppFonts.jakarta(
                   fontSize: 12,
                   color: _txtSec,
                   fontWeight: FontWeight.w500,
@@ -1614,8 +1619,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  inStock ? t('In Stock') : t('Out of Stock'),
-                  style: GoogleFonts.plusJakartaSans(
+                  inStock ? l10n.commonInStock : l10n.commonOutOfStock,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: inStock ? _green : _red,
@@ -1656,8 +1661,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          t('Bulk Order'),
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.productBulkOrder,
+                          style: AppFonts.jakarta(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -1669,11 +1674,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 ),
               ] else ...[
                 Text(
-                  t('Incl. taxes'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: _txtMuted,
-                  ),
+                  l10n.productInclTaxes,
+                  style: AppFonts.jakarta(fontSize: 12, color: _txtMuted),
                 ),
               ],
             ],
@@ -1692,7 +1694,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       ),
       child: Text(
         text,
-        style: GoogleFonts.plusJakartaSans(
+        style: AppFonts.jakarta(
           fontSize: 11,
           fontWeight: FontWeight.w700,
           color: color,
@@ -1805,7 +1807,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 10,
                 height: 1.2,
                 fontWeight: FontWeight.w600,
@@ -1890,7 +1892,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return Icons.verified_user_rounded;
   }
 
-  Widget _specsSection(String Function(String) t) {
+  Widget _specsSection(AppLocalizations l10n) {
     final displayCount = _specs.length > 4 ? 4 : _specs.length;
     final hasMore = _specs.length > 4;
 
@@ -1929,8 +1931,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Specifications',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productSpecifications,
+                  style: AppFonts.jakarta(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: _txt,
@@ -1939,8 +1941,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               if (_specs.isNotEmpty)
                 Text(
-                  '${_specs.length} ${t('items')}',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.commonItemsCount(_specs.length),
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _txtMuted,
@@ -1974,7 +1976,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       text: TextSpan(
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           color: _txt,
                           height: 1.3,
@@ -1983,7 +1985,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           if (!isGeneric && key.isNotEmpty)
                             TextSpan(
                               text: '$key: ',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontWeight: FontWeight.w600,
                                 color: _txtMuted,
                                 fontSize: 13,
@@ -1991,7 +1993,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                             ),
                           TextSpan(
                             text: val,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontWeight: FontWeight.w700,
                               color: _txt,
                               fontSize: 14,
@@ -2008,7 +2010,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           if (hasMore) ...[
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => _openSpecsSheet(t),
+              onTap: () => _openSpecsSheet(l10n),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -2020,8 +2022,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      t('View all specifications'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productViewAllSpecifications,
+                      style: AppFonts.jakarta(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: _blue,
@@ -2043,7 +2045,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     );
   }
 
-  void _openSpecsSheet(String Function(String) t) {
+  void _openSpecsSheet(AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2073,8 +2075,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               child: Row(
                 children: [
                   Text(
-                    t('Specifications'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productSpecifications,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: _txt,
@@ -2091,8 +2093,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_specs.length} ${t('items')}',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.commonItemsCount(_specs.length),
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: _txtSec,
@@ -2130,7 +2132,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             text: TextSpan(
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 color: _txt,
                               ),
@@ -2138,7 +2140,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 if (!isGeneric && key.isNotEmpty)
                                   TextSpan(
                                     text: '$key: ',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontWeight: FontWeight.w600,
                                       color: _txtSec,
                                       fontSize: 13,
@@ -2146,7 +2148,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                   ),
                                 TextSpan(
                                   text: val,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontWeight: FontWeight.w700,
                                     color: _txt,
                                     fontSize: 14,
@@ -2174,7 +2176,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     dynamic price,
     dynamic wsPrice,
     dynamic minQty,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -2210,16 +2212,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t('Bulk Negotiation'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productBulkNegotiation,
+                      style: AppFonts.jakarta(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
                     Text(
-                      t('Get wholesale pricing for custom bulk orders'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productBulkNegotiationSubtitle,
+                      style: AppFonts.jakarta(
                         fontSize: 13,
                         color: Colors.white.withOpacity(0.8),
                       ),
@@ -2240,15 +2242,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               child: Row(
                 children: [
                   Text(
-                    t('Wholesale: '),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productWholesaleLabel,
+                    style: AppFonts.jakarta(
                       fontSize: 13,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),
                   Text(
-                    '₹${_fmt(wsPrice)}${t('/unit')}',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.commonPricePerUnit(_fmt(wsPrice)),
+                    style: AppFonts.jakarta(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -2260,7 +2262,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ],
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () => _openNegotiateSheet(name, price, wsPrice, minQty, t),
+            onTap: () =>
+                _openNegotiateSheet(name, price, wsPrice, minQty, l10n),
             child: Container(
               width: double.infinity,
               height: 48,
@@ -2274,8 +2277,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   Icon(Icons.request_quote_outlined, size: 18, color: _violet),
                   const SizedBox(width: 8),
                   Text(
-                    t('Send Requirement'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productSendRequirement,
+                    style: AppFonts.jakarta(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: _violet,
@@ -2291,7 +2294,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   // ── ALL IMAGES ──
-  Widget _allImagesSection(String name, String Function(String) t) {
+  Widget _allImagesSection(String name, AppLocalizations l10n) {
     if (_imagesData.isEmpty) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -2312,8 +2315,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t('Product Gallery'),
-            style: GoogleFonts.plusJakartaSans(
+            l10n.productGallery,
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: _txt,
@@ -2345,7 +2348,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   // ── DESCRIPTION ──
-  Widget _descSection(String description, String Function(String) t) {
+  Widget _descSection(String description, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(20),
@@ -2365,8 +2368,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t('Description'),
-            style: GoogleFonts.plusJakartaSans(
+            l10n.productDescription,
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: _txt,
@@ -2380,8 +2383,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       : (description.length > 200
                             ? '${description.substring(0, 200)}...'
                             : description))
-                : t('No description available for this product.'),
-            style: GoogleFonts.plusJakartaSans(
+                : l10n.productNoDescription,
+            style: AppFonts.jakarta(
               fontSize: 14,
               color: description.isNotEmpty ? _txtSec : _txtMuted,
               height: 1.7,
@@ -2411,7 +2414,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     Expanded(
                       child: Text(
                         p,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: _txt,
@@ -2428,8 +2431,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             GestureDetector(
               onTap: () => setState(() => _descExpanded = !_descExpanded),
               child: Text(
-                _descExpanded ? t('Show less') : t('Read more'),
-                style: GoogleFonts.plusJakartaSans(
+                _descExpanded ? l10n.productShowLess : l10n.productReadMore,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: _blue,
@@ -2443,7 +2446,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   }
 
   // ── VIDEO (lazy) ──
-  Widget _videoSection(String Function(String) t) {
+  Widget _videoSection(AppLocalizations l10n) {
     final url = _product?['videoUrl']?.toString() ?? '';
     if (url.isEmpty) return const SizedBox.shrink();
     final vid = YoutubePlayer.convertUrlToId(url);
@@ -2529,8 +2532,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            t('Product Demo'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.productDemoVideo,
+                            style: AppFonts.jakarta(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -2591,7 +2594,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   // -- SHIPPING --
   // ── RELATED PRODUCTS ──
-  Widget _relatedProductsSection(String Function(String) t) {
+  Widget _relatedProductsSection(AppLocalizations l10n) {
     if (_isRelatedLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
@@ -2625,8 +2628,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(
-                  t('Related Products'),
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productRelatedProducts,
+                  style: AppFonts.jakarta(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF1E293B),
@@ -2684,13 +2687,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                         : firstImage) ??
                                     '')
                                 .toString();
-                        final currentLang = ref.watch(localeProvider);
                         final nameHindi = item['nameHindi']?.toString() ?? '';
                         final nameEnglish = item['name']?.toString() ?? '';
-                        final displayName =
-                            currentLang == 'Hindi' && nameHindi.isNotEmpty
-                            ? nameHindi
-                            : nameEnglish;
+                        final displayName = localizedName(context, item);
                         final brand = (item['brand'] ?? item['category'] ?? '')
                             .toString();
                         final price = catalogPriceForAudience(
@@ -2723,13 +2722,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         Color? badgeColor;
                         if (item['isHot'] == true ||
                             item['badge']?.toString().contains('HOT') == true) {
-                          badgeLabel = 'HOT';
+                          badgeLabel = l10n.productBadgeHot;
                           badgeColor = _red;
                         } else if (discount > 0) {
-                          badgeLabel = t('SALE');
+                          badgeLabel = l10n.productBadgeSale;
                           badgeColor = _green;
                         } else if (item['isNew'] == true) {
-                          badgeLabel = t('NEW');
+                          badgeLabel = l10n.productBadgeNew;
                           badgeColor = _blue;
                         }
 
@@ -2809,8 +2808,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                       BorderRadius.circular(5),
                                                 ),
                                                 child: Text(
-                                                  t('Out of Stock'),
-                                                  style: GoogleFonts.outfit(
+                                                  l10n.commonOutOfStock,
+                                                  style: AppFonts.outfit(
                                                     fontSize: 9,
                                                     fontWeight: FontWeight.w600,
                                                     color: Colors.white,
@@ -2835,7 +2834,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                 ),
                                                 child: Text(
                                                   badgeLabel,
-                                                  style: GoogleFonts.outfit(
+                                                  style: AppFonts.outfit(
                                                     fontSize: 7.5,
                                                     fontWeight: FontWeight.w800,
                                                     color: Colors.white,
@@ -2858,7 +2857,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                     guestModeProvider,
                                                   )) {
                                                     _showGuestModePopup(
-                                                      'Wishlist disabled in preview mode',
+                                                      l10n.productWishlistDisabledPreview,
                                                     );
                                                     return;
                                                   }
@@ -2927,11 +2926,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                       children: [
                                         Text(
                                           brand.isEmpty
-                                              ? t('Laxmi Agro')
+                                              ? l10n.productBrandFallback
                                               : brand,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: AppFonts.jakarta(
                                             fontSize: 8.5,
                                             fontWeight: FontWeight.w700,
                                             color: _blue,
@@ -2944,7 +2943,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                             displayName,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w600,
                                               color: _txt,
@@ -2963,12 +2962,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                             const SizedBox(width: 2),
                                             Text(
                                               '$rating',
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: _txtSec,
-                                                  ),
+                                              style: AppFonts.jakarta(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: _txtSec,
+                                              ),
                                             ),
                                             const SizedBox(width: 2),
                                             Flexible(
@@ -2976,13 +2974,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                 '($reviewCount)',
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style:
-                                                    GoogleFonts.plusJakartaSans(
-                                                      fontSize: 8,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: _txtMuted,
-                                                    ),
+                                                style: AppFonts.jakarta(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: _txtMuted,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -3003,13 +2999,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                         Alignment.centerLeft,
                                                     child: Text(
                                                       '₹${_fmt(price)}',
-                                                      style:
-                                                          GoogleFonts.plusJakartaSans(
-                                                            fontSize: 13,
-                                                            fontWeight:
-                                                                FontWeight.w800,
-                                                            color: _txt,
-                                                          ),
+                                                      style: AppFonts.jakarta(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: _txt,
+                                                      ),
                                                     ),
                                                   ),
                                                   if (hasMrp)
@@ -3018,14 +3013,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                       maxLines: 1,
                                                       overflow:
                                                           TextOverflow.ellipsis,
-                                                      style:
-                                                          GoogleFonts.plusJakartaSans(
-                                                            fontSize: 7.5,
-                                                            color: _txtMuted,
-                                                            decoration:
-                                                                TextDecoration
-                                                                    .lineThrough,
-                                                          ),
+                                                      style: AppFonts.jakarta(
+                                                        fontSize: 7.5,
+                                                        color: _txtMuted,
+                                                        decoration:
+                                                            TextDecoration
+                                                                .lineThrough,
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -3038,7 +3032,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                         guestModeProvider,
                                                       )) {
                                                         _showGuestModePopup(
-                                                          'Add to Cart disabled in demo mode',
+                                                          l10n.productAddToCartDisabledDemo,
                                                         );
                                                         return;
                                                       }
@@ -3056,7 +3050,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                           )
                                                           .addItem(
                                                             productId: pid,
-                                                            name: displayName,
+                                                            name: nameEnglish,
                                                             nameHindi:
                                                                 item['nameHindi']
                                                                     ?.toString(),
@@ -3082,7 +3076,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                       ).showSnackBar(
                                                         SnackBar(
                                                           content: Text(
-                                                            t('Added to cart'),
+                                                            l10n.productAddedToCart,
                                                           ),
                                                           duration:
                                                               const Duration(
@@ -3120,14 +3114,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                     ),
                                                     const SizedBox(width: 2),
                                                     Text(
-                                                      t('Add'),
-                                                      style:
-                                                          GoogleFonts.plusJakartaSans(
-                                                            fontSize: 8.5,
-                                                            fontWeight:
-                                                                FontWeight.w800,
-                                                            color: Colors.white,
-                                                          ),
+                                                      l10n.productAddShort,
+                                                      style: AppFonts.jakarta(
+                                                        fontSize: 8.5,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: Colors.white,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
@@ -3182,12 +3175,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     }
   }
 
-  Widget _shippingSection(String Function(String) t) {
+  Widget _shippingSection(AppLocalizations l10n) {
     final terms =
         _product?['shippingTerms']?.toString() ??
-        'Delivery, payment, and return arrangements depend on the product, '
-            'order, and location. Contact Laxmi Agro to confirm the applicable '
-            'terms before payment or dispatch.';
+        l10n.productShippingTermsDefault;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       clipBehavior: Clip.antiAlias,
@@ -3219,8 +3210,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      t('Shipping & Returns'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productShippingReturns,
+                      style: AppFonts.jakarta(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: _txt,
@@ -3246,7 +3237,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Text(
                 terms,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 13,
                   color: _txtSec,
                   height: 1.6,
@@ -3310,7 +3301,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   void _openBulkNegotiationSheet(
     String name,
     dynamic price,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final qtyCtrl = TextEditingController();
     final detailCtrl = TextEditingController();
@@ -3343,8 +3334,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 ),
               ),
               Text(
-                t('Bulk Quantity Negotiation'),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.productBulkQuantityNegotiation,
+                style: AppFonts.jakarta(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: _txt,
@@ -3352,10 +3343,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                t(
-                  "Want to deal in more quantity? Send us your requirement and we'll get back to you with the best price.",
-                ),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.productBulkQuantityNegotiationBody,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   color: _txtSec,
                   height: 1.5,
@@ -3363,8 +3352,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               const SizedBox(height: 24),
               Text(
-                t('Expected Quantity'),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.productExpectedQuantity,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: _txt,
@@ -3374,12 +3363,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               TextField(
                 controller: qtyCtrl,
                 keyboardType: TextInputType.number,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
                 decoration: InputDecoration(
-                  hintText: t('e.g. 100 units'),
+                  hintText: l10n.productExpectedQuantityHint,
                   filled: true,
                   fillColor: _bg,
                   border: OutlineInputBorder(
@@ -3394,8 +3383,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               ),
               const SizedBox(height: 20),
               Text(
-                t('Requirement Details'),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.productRequirementDetails,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: _txt,
@@ -3405,14 +3394,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               TextField(
                 controller: detailCtrl,
                 maxLines: 3,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
-                  hintText: t(
-                    'Tell us about your requirement or target price...',
-                  ),
+                  hintText: l10n.productRequirementDetailsHint,
                   filled: true,
                   fillColor: _bg,
                   border: OutlineInputBorder(
@@ -3431,7 +3418,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     final details = detailCtrl.text.trim();
                     if (qty.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(t('Please enter quantity'))),
+                        SnackBar(content: Text(l10n.productEnterQuantity)),
                       );
                       return;
                     }
@@ -3453,8 +3440,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       const Icon(Icons.chat_rounded, size: 20),
                       const SizedBox(width: 10),
                       Text(
-                        t('Send to Deal Desk'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.productSendToDealDesk,
+                        style: AppFonts.jakarta(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
@@ -3471,8 +3458,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     _openWhatsApp(name, price);
                   },
                   child: Text(
-                    t('Direct Chat with Company'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productDirectChat,
+                    style: AppFonts.jakarta(
                       color: _txtSec,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -3523,7 +3510,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     bool negEnabled,
     dynamic wsPrice,
     dynamic minQty,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final unitLabel = _quantityUnitLabel();
     final isWholesaler = ref.watch(effectiveIsWholesalerProvider);
@@ -3555,8 +3542,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  '${t('Minimum wholesale quantity')}: $minimumQuantity',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productMinWholesaleQuantity('$minimumQuantity'),
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _txtSec,
@@ -3569,8 +3556,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 child: Row(
                   children: [
                     Text(
-                      t('Select Quantity:'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productSelectQuantity,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: _txt,
@@ -3607,7 +3594,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 isDense: true,
                                 contentPadding: EdgeInsets.zero,
                               ),
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: _txt,
@@ -3631,7 +3618,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         unitLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: _txtSec,
@@ -3640,7 +3627,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     ),
                     if (stock != null) ...[
                       const SizedBox(width: 8),
-                      _buildStockStatus(stock, t),
+                      _buildStockStatus(stock, l10n),
                     ],
                   ],
                 ),
@@ -3648,7 +3635,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             if (isWholesaler)
               GestureDetector(
                 onTap: inStock
-                    ? () => _openNegotiateSheet(name, price, wsPrice, minQty, t)
+                    ? () => _openNegotiateSheet(
+                        name,
+                        price,
+                        wsPrice,
+                        minQty,
+                        l10n,
+                      )
                     : null,
                 child: Container(
                   height: 56,
@@ -3679,16 +3672,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              t('Send Requirement'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.productSendRequirement,
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                               ),
                             ),
                             Text(
-                              'Only Laxmi Agro can confirm the deal',
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.productOnlyLaxmiCanConfirm,
+                              style: AppFonts.jakarta(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.white.withOpacity(0.85),
@@ -3711,7 +3704,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                               // Check guest mode
                               if (ref.read(guestModeProvider)) {
                                 _showGuestModePopup(
-                                  'Add to Cart disabled in demo mode',
+                                  l10n.productAddToCartDisabledDemo,
                                 );
                                 return;
                               }
@@ -3723,7 +3716,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                   .read(cartProvider.notifier)
                                   .addItem(
                                     productId: widget.productId,
-                                    name: name,
+                                    name: _product?['name']?.toString() ?? name,
+                                    nameHindi: _product?['nameHindi']
+                                        ?.toString(),
                                     image: img,
                                     price: (price is int)
                                         ? price.toDouble()
@@ -3772,8 +3767,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                t('Add to Cart'),
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.productAddToCart,
+                                style: AppFonts.jakarta(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: _txt,
@@ -3793,7 +3788,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                               // Check guest mode
                               if (ref.read(guestModeProvider)) {
                                 _showGuestModePopup(
-                                  'Buy Now disabled in demo mode',
+                                  l10n.productBuyNowDisabledDemo,
                                 );
                                 return;
                               }
@@ -3859,8 +3854,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                   ),
                                 )
                               : Text(
-                                  t('Buy Now'),
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.productBuyNow,
+                                  style: AppFonts.jakarta(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
@@ -3878,17 +3873,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     );
   }
 
-  Widget _buildStockStatus(dynamic stock, String Function(String) t) {
+  Widget _buildStockStatus(dynamic stock, AppLocalizations l10n) {
     final stockCount = stock is int ? stock : 99;
 
     String label;
     Color color;
 
     if (stockCount <= 0) {
-      label = t('Out of Stock');
+      label = l10n.commonOutOfStock;
       color = _red;
     } else {
-      label = t('In Stock');
+      label = l10n.commonInStock;
       color = _green;
     }
 
@@ -3899,7 +3894,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: color,
@@ -3917,7 +3912,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     dynamic retailPrice,
     dynamic wsPrice,
     dynamic minQty,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final rp = retailPrice != null
         ? (retailPrice is int
@@ -3949,7 +3944,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               minQ,
               (q) => setSheet(() => qty = q),
               () => setSheet(() => step = 1),
-              t,
+              l10n,
             );
           } else if (step == 1) {
             content = _sheetStep2(
@@ -3960,7 +3955,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               (p) => setSheet(() => target = p),
               () => setSheet(() => step = 0),
               () => setSheet(() => step = 2),
-              t,
+              l10n,
             );
           } else {
             content = _sheetStep3(
@@ -3973,7 +3968,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 Navigator.of(ctx).pop();
                 _submitNegotiation(qty, target);
               },
-              t,
+              l10n,
             );
           }
 
@@ -4060,7 +4055,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       ? const Icon(Icons.check, color: Colors.white, size: 14)
                       : Text(
                           '${i + 1}',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: active ? Colors.white : _txtMuted,
@@ -4097,7 +4092,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     int minQ,
     ValueChanged<int> onQty,
     VoidCallback onNext,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4118,19 +4113,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('How many units?'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productHowManyUnits,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: _txt,
                     ),
                   ),
                   Text(
-                    t('Select quantity for your bulk quote'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: _txtSec,
-                    ),
+                    l10n.productHowManyUnitsSubtitle,
+                    style: AppFonts.jakarta(fontSize: 13, color: _txtSec),
                   ),
                 ],
               ),
@@ -4139,8 +4131,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         ),
         const SizedBox(height: 20),
         Text(
-          t('QUICK SELECT'),
-          style: GoogleFonts.plusJakartaSans(
+          l10n.productQuickSelect,
+          style: AppFonts.jakarta(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: _txtSec,
@@ -4168,7 +4160,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   alignment: Alignment.center,
                   child: Text(
                     '$q',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: sel ? Colors.white : _txt,
@@ -4193,14 +4185,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               final p = int.tryParse(v);
               if (p != null) onQty(p);
             },
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: _txt,
             ),
             decoration: InputDecoration(
-              hintText: t('Custom quantity'),
-              hintStyle: GoogleFonts.plusJakartaSans(color: _txtMuted),
+              hintText: l10n.productCustomQuantity,
+              hintStyle: AppFonts.jakarta(color: _txtMuted),
               prefixIcon: Icon(Icons.edit_outlined, color: _txtSec, size: 20),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
@@ -4233,8 +4225,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  t('Continue to Pricing'),
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productContinueToPricing,
+                  style: AppFonts.jakarta(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: qty >= 1 ? Colors.white : _txtMuted,
@@ -4263,7 +4255,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     ValueChanged<double> onPrice,
     VoidCallback onBack,
     VoidCallback onNext,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final savings = (rp - target) * qty;
     final pct = rp > 0 ? ((rp - target) / rp * 100).round() : 0;
@@ -4286,19 +4278,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('Your Expected Price'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productYourExpectedPrice,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: _txt,
                     ),
                   ),
                   Text(
-                    '$qty ${t('units')} · ${t('Retail')}: ₹${_fmt(rp)}/${t('unit')}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: _txtSec,
-                    ),
+                    l10n.productQtyRetailSummary(qty, _fmt(rp)),
+                    style: AppFonts.jakarta(fontSize: 13, color: _txtSec),
                   ),
                 ],
               ),
@@ -4307,8 +4296,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         ),
         const SizedBox(height: 18),
         Text(
-          t('TARGET PRICE PER UNIT'),
-          style: GoogleFonts.plusJakartaSans(
+          l10n.productTargetPricePerUnit,
+          style: AppFonts.jakarta(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: _txtSec,
@@ -4329,14 +4318,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               final p = double.tryParse(v.replaceAll(',', ''));
               if (p != null) onPrice(p);
             },
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: _txt,
             ),
             decoration: InputDecoration(
               prefixText: '₹ ',
-              prefixStyle: GoogleFonts.plusJakartaSans(
+              prefixStyle: AppFonts.jakarta(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: _blue,
@@ -4365,8 +4354,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '${t('Save')} ₹${_fmt(savings)} ${t('total')} ($pct% ${t('off')} × $qty ${t('units')})',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productSaveAmount(_fmt(savings), '$pct', '$qty'),
+                    style: AppFonts.jakarta(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: _green,
@@ -4392,8 +4381,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   child: Center(
                     child: Text(
-                      t('Back'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.commonBack,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: _txt,
@@ -4425,8 +4414,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   child: Center(
                     child: Text(
-                      t('Review Requirement'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.productReviewRequirement,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: target > 0 ? Colors.white : _txtMuted,
@@ -4450,7 +4439,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     double rp,
     VoidCallback onBack,
     VoidCallback onSubmit,
-    String Function(String) t,
+    AppLocalizations l10n,
   ) {
     final total = target * qty;
     final saved = (rp * qty) - total;
@@ -4473,19 +4462,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('Review Requirement'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.productReviewRequirement,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: _txt,
                     ),
                   ),
                   Text(
-                    t('Confirm details before submitting'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: _txtSec,
-                    ),
+                    l10n.productConfirmBeforeSubmit,
+                    style: AppFonts.jakarta(fontSize: 13, color: _txtSec),
                   ),
                 ],
               ),
@@ -4502,18 +4488,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ),
           child: Column(
             children: [
-              _reviewLine(t('Product'), productName),
+              _reviewLine(l10n.productReviewProduct, productName),
               _divider(),
-              _reviewLine(t('Quantity'), '$qty ${t('units')}'),
+              _reviewLine(l10n.commonQuantity, l10n.commonUnitsCount(qty)),
               _divider(),
               _reviewLine(
-                t('Your Expected Price'),
-                '₹${_fmt(target)}/${t('unit')}',
+                l10n.productYourExpectedPrice,
+                l10n.commonPricePerUnit(_fmt(target)),
               ),
               _divider(),
               _reviewLine(
-                t('Retail Price'),
-                '₹${_fmt(rp)}/${t('unit')}',
+                l10n.productRetailPrice,
+                l10n.commonPricePerUnit(_fmt(rp)),
                 muted: true,
               ),
               _divider(),
@@ -4521,8 +4507,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    t('Total'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.commonTotal,
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: _txt,
@@ -4530,7 +4516,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   Text(
                     '₹${_fmt(total)}',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: _blue,
@@ -4555,8 +4541,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 Icon(Icons.trending_down_rounded, color: _green, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  '${t('You save')} ₹${_fmt(saved)} ${t('vs retail')}',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productYouSaveVsRetail(_fmt(saved)),
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: _green,
@@ -4581,8 +4567,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Bulk orders require manual UPI verification before processing.',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.productBulkUpiNote,
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     color: const Color(0xFF92400E),
                     height: 1.4,
@@ -4607,8 +4593,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   child: Center(
                     child: Text(
-                      'Edit',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.commonEdit,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: _txt,
@@ -4648,8 +4634,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Submit Quote',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.productSubmitQuote,
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -4670,14 +4656,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: _txtSec),
-        ),
+        Text(label, style: AppFonts.jakarta(fontSize: 14, color: _txtSec)),
         Flexible(
           child: Text(
             value,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: muted ? _txtMuted : _txt,
@@ -4720,10 +4703,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Quotation $negNumber submitted for $qty units!',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    context.l10n.productQuotationSubmitted(qty, '$negNumber'),
+                    style: AppFonts.jakarta(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -4741,7 +4722,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       if (!mounted) return;
       final msg =
           e.response?.data?['message']?.toString() ??
-          'Failed to submit negotiation';
+          context.l10n.productNegotiationSubmitFailed;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -4751,9 +4732,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               Expanded(
                 child: Text(
                   msg,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppFonts.jakarta(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -4770,7 +4749,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Something went wrong: $e'),
+          content: Text(context.l10n.productSomethingWentWrongDetail('$e')),
           backgroundColor: _red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -4897,19 +4876,18 @@ class _ProductTrustBadgeMarqueeState extends State<_ProductTrustBadgeMarquee> {
   static const Color _blue = Color(0xFF2563EB);
   static const Color _txtSec = Color(0xFF64748B);
 
-  static final List<Map<String, dynamic>> _badges = [
-    {'icon': Icons.verified_user_rounded, 'text': 'Verified Products'},
-    {'icon': Icons.star_rounded, 'text': 'Trusted Reviews'},
-    {'icon': Icons.support_agent_rounded, 'text': 'Guaranteed Support'},
-    {'icon': Icons.local_shipping_rounded, 'text': 'Fast Delivery'},
-    {'icon': Icons.shield_rounded, 'text': 'Secure Payments'},
-    {'icon': Icons.autorenew_rounded, 'text': 'Easy Returns'},
-    {'icon': Icons.verified_user_rounded, 'text': 'Verified Products'},
-    {'icon': Icons.star_rounded, 'text': 'Trusted Reviews'},
-    {'icon': Icons.support_agent_rounded, 'text': 'Guaranteed Support'},
-    {'icon': Icons.local_shipping_rounded, 'text': 'Fast Delivery'},
-    {'icon': Icons.shield_rounded, 'text': 'Secure Payments'},
-    {'icon': Icons.autorenew_rounded, 'text': 'Easy Returns'},
+  static final List<(IconData, String Function(AppLocalizations))> _badgeSet = [
+    (Icons.verified_user_rounded, (l10n) => l10n.productTrustVerifiedProducts),
+    (Icons.star_rounded, (l10n) => l10n.productTrustReviews),
+    (Icons.support_agent_rounded, (l10n) => l10n.productTrustSupport),
+    (Icons.local_shipping_rounded, (l10n) => l10n.productTrustFastDelivery),
+    (Icons.shield_rounded, (l10n) => l10n.productTrustSecurePayments),
+    (Icons.autorenew_rounded, (l10n) => l10n.productTrustEasyReturns),
+  ];
+  // The strip repeats the set twice so the marquee can loop.
+  static final List<(IconData, String Function(AppLocalizations))> _badges = [
+    ..._badgeSet,
+    ..._badgeSet,
   ];
 
   @override
@@ -4955,11 +4933,11 @@ class _ProductTrustBadgeMarqueeState extends State<_ProductTrustBadgeMarquee> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(item['icon'] as IconData, size: 16, color: _blue),
+                Icon(item.$1, size: 16, color: _blue),
                 const SizedBox(width: 6),
                 Text(
-                  item['text'] as String,
-                  style: GoogleFonts.plusJakartaSans(
+                  item.$2(context.l10n),
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _txtSec,

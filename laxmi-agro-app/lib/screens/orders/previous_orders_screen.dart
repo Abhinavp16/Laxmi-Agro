@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/providers/auth_provider.dart';
@@ -10,6 +9,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/customer_order_presentation.dart';
 import '../../core/utils/order_pagination.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../core/utils/number_formatter.dart';
+import '../../l10n/l10n.dart';
 
 class PreviousOrdersScreen extends ConsumerStatefulWidget {
   const PreviousOrdersScreen({super.key});
@@ -22,7 +24,7 @@ class PreviousOrdersScreen extends ConsumerStatefulWidget {
 class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = true;
-  String? _error;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   Future<void> _fetchOrders() async {
     setState(() {
       _isLoading = true;
-      _error = null;
+      _loadFailed = false;
     });
 
     try {
@@ -66,30 +68,31 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load orders';
+        _loadFailed = true;
         _isLoading = false;
       });
     }
   }
 
   String _fmt(num? price) {
-    return (price ?? 0)
-        .toStringAsFixed(0)
-        .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (match) => '${match[1]},',
-        );
+    return NumberFormatter.formatPrice((price ?? 0).round());
   }
+
+  String _rupees(num? price) => context.l10n.commonRupees(_fmt(price));
 
   String _formatDate(dynamic value) {
     final parsed = value == null ? null : DateTime.tryParse(value.toString());
     if (parsed == null) return '—';
-    return DateFormat('MMM dd, yyyy · hh:mm a').format(parsed.toLocal());
+    return DateFormat(
+      'MMM dd, yyyy · hh:mm a',
+      Localizations.localeOf(context).languageCode,
+    ).format(parsed.toLocal());
   }
 
   Color _statusColor(String status) => CustomerOrderPresentation.color(status);
 
-  String _statusLabel(String status) => CustomerOrderPresentation.label(status);
+  String _statusLabel(String status) =>
+      CustomerOrderPresentation.label(context.l10n, status);
 
   IconData _statusIcon(String status) => CustomerOrderPresentation.icon(status);
 
@@ -105,8 +108,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
-          'My Orders',
-          style: GoogleFonts.plusJakartaSans(
+          context.l10n.ordersTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -123,7 +126,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    final l10n = context.l10n;
+    if (_loadFailed) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -131,14 +135,17 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             Icon(Icons.error_outline, size: 48, color: AppColors.error),
             const SizedBox(height: 12),
             Text(
-              _error!,
-              style: GoogleFonts.plusJakartaSans(
+              l10n.ordersLoadFailed,
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _fetchOrders, child: const Text('Retry')),
+            ElevatedButton(
+              onPressed: _fetchOrders,
+              child: Text(l10n.commonRetry),
+            ),
           ],
         ),
       );
@@ -156,8 +163,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No orders yet',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.ordersEmpty,
+              style: AppFonts.jakarta(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
@@ -167,8 +174,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             TextButton(
               onPressed: () => context.go('/home'),
               child: Text(
-                'Start Shopping',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.ordersStartShopping,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
@@ -191,14 +198,15 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
+    final l10n = context.l10n;
     final fulfillmentStatus = order['status']?.toString() ?? '';
     final status = CustomerOrderPresentation.stage(order);
     final statusColor = _statusColor(status);
     final items = order['items'] as List<dynamic>? ?? [];
     final orderNumber = order['orderNumber']?.toString() ?? '';
     final orderType = order['orderType']?.toString() == 'wholesale'
-        ? 'Wholesale order'
-        : 'Retail order';
+        ? l10n.ordersTypeWholesale
+        : l10n.ordersTypeRetail;
     final isNegotiated =
         order['negotiationId'] != null &&
         order['negotiationId'].toString().isNotEmpty;
@@ -225,7 +233,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         collapsedShape: const Border(),
         title: Text(
           orderNumber,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 15,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -237,8 +245,16 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$orderType${isNegotiated ? ' · Negotiated price' : ''} · ${_formatDate(order['createdAt'])}',
-                style: GoogleFonts.plusJakartaSans(
+                isNegotiated
+                    ? l10n.ordersCardSubtitleNegotiated(
+                        orderType,
+                        _formatDate(order['createdAt']),
+                      )
+                    : l10n.ordersCardSubtitle(
+                        orderType,
+                        _formatDate(order['createdAt']),
+                      ),
+                style: AppFonts.jakarta(
                   fontSize: 11,
                   color: AppColors.textSecondary,
                 ),
@@ -264,8 +280,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Negotiated',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.ordersNegotiatedChip,
+                        style: AppFonts.jakarta(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF1E40AF),
@@ -290,7 +306,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                     Flexible(
                       child: Text(
                         _statusLabel(status),
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: statusColor,
@@ -308,16 +324,16 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '₹${_fmt(order['total'] as num?)}',
-              style: GoogleFonts.plusJakartaSans(
+              _rupees(order['total'] as num?),
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
             Text(
-              '${items.length} item${items.length == 1 ? '' : 's'}',
-              style: GoogleFonts.plusJakartaSans(
+              l10n.commonItemsCount(items.length),
+              style: AppFonts.jakarta(
                 fontSize: 11,
                 color: AppColors.textSecondary,
               ),
@@ -340,6 +356,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   }
 
   Widget _buildItems(List<dynamic> items) {
+    final l10n = context.l10n;
     return Column(
       children: items.map<Widget>((rawItem) {
         final item = rawItem as Map<String, dynamic>;
@@ -349,7 +366,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         final totalPrice = item['totalPrice'] as num? ?? quantity * price;
         final mrpPerUnit = item['mrpPerUnit'] as num?;
         final discountPercent = item['discountPercent'] as num?;
-        final hasCatalogDiscount = discountPercent != null &&
+        final hasCatalogDiscount =
+            discountPercent != null &&
             discountPercent > 0 &&
             mrpPerUnit != null &&
             mrpPerUnit > price;
@@ -376,8 +394,12 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['name']?.toString() ?? 'Product',
-                      style: GoogleFonts.plusJakartaSans(
+                      localizedName(
+                        context,
+                        item,
+                        fallback: l10n.ordersProductFallback,
+                      ),
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -385,8 +407,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Qty: $quantity × ₹${_fmt(price)}',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.ordersItemQtyPrice(
+                        NumberFormatter.formatPrice(quantity),
+                        _fmt(price),
+                      ),
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -396,8 +421,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                       Row(
                         children: [
                           Text(
-                            'MRP ₹${_fmt(mrpPerUnit)}',
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.ordersMrpValue(_fmt(mrpPerUnit)),
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               color: AppColors.textSecondary,
                               decoration: TextDecoration.lineThrough,
@@ -405,8 +430,10 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${discountPercent % 1 == 0 ? discountPercent.toInt() : discountPercent}% OFF',
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.commonPercentOff(
+                              '${discountPercent % 1 == 0 ? discountPercent.toInt() : discountPercent}',
+                            ),
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF15803D),
@@ -419,8 +446,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                 ),
               ),
               Text(
-                '₹${_fmt(totalPrice)}',
-                style: GoogleFonts.plusJakartaSans(
+                _rupees(totalPrice),
+                style: AppFonts.jakarta(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -446,19 +473,23 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final subtotal = order['subtotal'] as num? ?? order['total'] as num? ?? 0;
     final delivery = order['deliveryFee'] as num? ?? 0;
     final discount = order['discount'] as num? ?? 0;
+    final l10n = context.l10n;
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _detailRow('Subtotal', '₹${_fmt(subtotal)}'),
+          _detailRow(l10n.commonSubtotal, _rupees(subtotal)),
           const SizedBox(height: 6),
-          _detailRow('Delivery', delivery == 0 ? 'Free' : '₹${_fmt(delivery)}'),
+          _detailRow(
+            l10n.ordersDelivery,
+            delivery == 0 ? l10n.ordersFree : _rupees(delivery),
+          ),
           if (discount > 0) ...[
             const SizedBox(height: 6),
             _detailRow(
-              'Discount',
-              '-₹${_fmt(discount)}',
+              l10n.cartDiscount,
+              l10n.cartMinusRupees(_fmt(discount)),
               valueColor: AppColors.success,
             ),
           ],
@@ -467,8 +498,8 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             child: Divider(height: 1, color: AppColors.border),
           ),
           _detailRow(
-            'Grand Total',
-            '₹${_fmt(order['total'] as num?)}',
+            l10n.cartGrandTotal,
+            _rupees(order['total'] as num?),
             bold: true,
           ),
         ],
@@ -487,7 +518,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 13,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
             color: AppColors.textSecondary,
@@ -495,7 +526,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         ),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: bold ? 16 : 13,
             fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
             color: valueColor ?? AppColors.textPrimary,
@@ -520,11 +551,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
 
     return _infoSection(
       icon: Icons.location_on_outlined,
-      title: 'Shipping Address',
+      title: context.l10n.checkoutShippingAddress,
       children: [
         Text(
           address['fullName']?.toString() ?? '',
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -533,7 +564,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
         const SizedBox(height: 3),
         Text(
           addressLines.join('\n'),
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 12,
             height: 1.45,
             color: AppColors.textSecondary,
@@ -543,7 +574,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           const SizedBox(height: 3),
           Text(
             address['phone'].toString(),
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 12,
               color: AppColors.textSecondary,
             ),
@@ -563,12 +594,18 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
 
     return _infoSection(
       icon: Icons.local_shipping_outlined,
-      title: 'Delivery Details',
+      title: context.l10n.ordersDeliveryDetails,
       children: [
         if (courier != null && courier.isNotEmpty)
-          Text('Courier: $courier', style: _infoTextStyle()),
+          Text(
+            context.l10n.ordersCourierValue(courier),
+            style: _infoTextStyle(),
+          ),
         if (tracking != null && tracking.isNotEmpty)
-          Text('Tracking: $tracking', style: _infoTextStyle()),
+          Text(
+            context.l10n.ordersTrackingValue(tracking),
+            style: _infoTextStyle(),
+          ),
       ],
     );
   }
@@ -580,11 +617,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final reason = order['rejectionReason']?.toString().trim();
     return _infoSection(
       icon: Icons.block_rounded,
-      title: 'Order Rejected',
+      title: context.l10n.ordersRejectedTitle,
       children: [
         Text(
           reason == null || reason.isEmpty
-              ? 'This order was not approved. Contact support if you need more information.'
+              ? context.l10n.ordersRejectedNoReason
               : reason,
           style: _infoTextStyle(),
         ),
@@ -598,7 +635,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
 
     return _infoSection(
       icon: Icons.history_rounded,
-      title: 'Status History',
+      title: context.l10n.ordersStatusHistory,
       children: history.reversed.map<Widget>((raw) {
         final entry = raw as Map;
         final status = entry['status']?.toString() ?? '';
@@ -623,7 +660,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                   children: [
                     Text(
                       _statusLabel(status),
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -647,10 +684,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
   }
 
   TextStyle _infoTextStyle() {
-    return GoogleFonts.plusJakartaSans(
-      fontSize: 12,
-      color: AppColors.textSecondary,
-    );
+    return AppFonts.jakarta(fontSize: 12, color: AppColors.textSecondary);
   }
 
   Widget _infoSection({
@@ -676,7 +710,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
               const SizedBox(width: 7),
               Text(
                 title,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -700,6 +734,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final hasAcceptance = CustomerOrderPresentation.acceptanceStatus(
       order,
     ).isNotEmpty;
+    final l10n = context.l10n;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -719,13 +754,13 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
                 );
               },
               icon: const Icon(Icons.receipt_long_outlined, size: 17),
-              label: const Text('Send Receipt'),
+              label: Text(l10n.ordersSendReceipt),
             ),
           if (trackingNumber != null && trackingNumber.isNotEmpty)
             FilledButton.icon(
               onPressed: () => context.push('/tracking/$orderId'),
               icon: const Icon(Icons.local_shipping_rounded, size: 17),
-              label: const Text('Track Order'),
+              label: Text(l10n.ordersTrackOrder),
             )
           else if (hasAcceptance ||
               status == 'payment_verified' ||
@@ -733,17 +768,17 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             OutlinedButton.icon(
               onPressed: () => context.push('/tracking/$orderId'),
               icon: const Icon(Icons.timeline_rounded, size: 17),
-              label: const Text('View Status'),
+              label: Text(l10n.ordersViewStatus),
             ),
           if (status == 'delivered')
             _terminalChip(
-              label: 'Delivered',
+              label: l10n.statusDelivered,
               icon: Icons.check_circle_rounded,
               color: const Color(0xFF22C55E),
             ),
           if (status == 'cancelled')
             _terminalChip(
-              label: 'Cancelled',
+              label: l10n.statusCancelled,
               icon: Icons.cancel_rounded,
               color: AppColors.error,
             ),
@@ -771,7 +806,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: color,

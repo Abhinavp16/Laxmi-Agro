@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../core/theme/app_fonts.dart';
+import '../l10n/l10n.dart';
 
 class VerifiedSellerBadge extends StatelessWidget {
   final bool compact;
@@ -70,8 +71,8 @@ class VerifiedSellerBadge extends StatelessWidget {
           if (showLabel) ...[
             SizedBox(width: compact ? 6 : 7),
             Text(
-              'Verified Seller',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.productVerifiedSeller,
+              style: AppFonts.jakarta(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF1E3A8A),

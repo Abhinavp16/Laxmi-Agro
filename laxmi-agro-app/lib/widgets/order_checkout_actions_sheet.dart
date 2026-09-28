@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/services/api_client.dart';
 import '../core/services/order_export_service.dart';
 import '../core/services/whatsapp_checkout_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/app_fonts.dart';
+import '../l10n/l10n.dart';
 
 class OrderCheckoutActionsSheet {
   static Future<void> handleSuccessfulCheckout({
@@ -22,14 +23,14 @@ class OrderCheckoutActionsSheet {
       return;
     }
 
+    final l10n = context.l10n;
     if (kIsWeb) {
       if (!context.mounted) return;
       await showFailure(
         context: context,
         apiClient: apiClient,
         responseData: responseData,
-        failureMessage:
-            'Your order was saved. You can send the order details by WhatsApp or try sharing the receipt again.',
+        failureMessage: l10n.checkoutWebSavedMessage,
       );
       return;
     }
@@ -46,9 +47,8 @@ class OrderCheckoutActionsSheet {
         context: context,
         apiClient: apiClient,
         responseData: responseData,
-        failureMessage:
-            exportResult.errorMessage ??
-            'We saved your order, but could not prepare the PDF receipt.',
+        // The export service's own messages are English-only.
+        failureMessage: l10n.checkoutReceiptPrepareFailed,
       );
       return;
     }
@@ -69,9 +69,7 @@ class OrderCheckoutActionsSheet {
       apiClient: apiClient,
       responseData: responseData,
       receiptFile: orderFile,
-      failureMessage:
-          shareResult.errorMessage ??
-          'We saved your order, but could not open the receipt sharing options.',
+      failureMessage: l10n.checkoutReceiptShareFailed,
     );
   }
 
@@ -115,6 +113,7 @@ class OrderCheckoutActionsSheet {
             .trim() ??
         '';
 
+    final l10n = context.l10n;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -141,8 +140,8 @@ class OrderCheckoutActionsSheet {
               ),
               const SizedBox(height: 18),
               Text(
-                'Order Submitted',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.checkoutOrderSubmitted,
+                style: AppFonts.jakarta(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F172A),
@@ -150,8 +149,8 @@ class OrderCheckoutActionsSheet {
               ),
               const SizedBox(height: 7),
               Text(
-                'Awaiting Approval',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.checkoutAwaitingApproval,
+                style: AppFonts.jakarta(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFFD97706),
@@ -159,9 +158,9 @@ class OrderCheckoutActionsSheet {
               ),
               const SizedBox(height: 10),
               Text(
-                'We’ll notify you after the Laxmi Agro team reviews your order. No WhatsApp message is required.',
+                l10n.checkoutApprovalNote,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 13,
                   height: 1.5,
                   color: const Color(0xFF64748B),
@@ -180,8 +179,8 @@ class OrderCheckoutActionsSheet {
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Text(
-                    'Order $orderNumber',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.orderNumberLabel(orderNumber),
+                    style: AppFonts.jakarta(
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF334155),
                     ),
@@ -198,7 +197,7 @@ class OrderCheckoutActionsSheet {
                       context.push('/tracking/$orderId');
                     },
                     icon: const Icon(Icons.receipt_long_outlined),
-                    label: const Text('View Order'),
+                    label: Text(l10n.checkoutViewOrder),
                   ),
                 ),
               const SizedBox(height: 8),
@@ -209,7 +208,7 @@ class OrderCheckoutActionsSheet {
                     Navigator.of(dialogContext).pop();
                     context.go('/home');
                   },
-                  child: const Text('Continue Shopping'),
+                  child: Text(l10n.checkoutContinueShopping),
                 ),
               ),
             ],
@@ -229,8 +228,8 @@ class OrderCheckoutActionsSheet {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Choose WhatsApp or another app to send your receipt.',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+          context.l10n.checkoutShareSheetOpened,
+          style: AppFonts.jakarta(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF16A34A),
       ),
@@ -244,10 +243,12 @@ class OrderCheckoutActionsSheet {
     required String failureMessage,
     File? receiptFile,
   }) async {
+    final l10n = context.l10n;
     final orderNumber = OrderExportService.extractOrderNumber(responseData);
     final receiptCaption = OrderExportService.extractCaption(responseData);
     final message = WhatsAppCheckoutService.extractMessage(responseData);
     final orderMessage = [
+      // Sent to the shop together with the server's (English) order text.
       if (orderNumber != null && orderNumber.isNotEmpty) 'Order $orderNumber',
       if (message.isNotEmpty) message else receiptCaption,
     ].join('\n\n');
@@ -269,10 +270,7 @@ class OrderCheckoutActionsSheet {
             if (file == null) {
               ScaffoldMessenger.of(sheetContext).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    exportResult.errorMessage ??
-                        'Unable to prepare the PDF receipt right now.',
-                  ),
+                  content: Text(l10n.checkoutReceiptUnavailableNow),
                   backgroundColor: AppColors.error,
                 ),
               );
@@ -293,10 +291,7 @@ class OrderCheckoutActionsSheet {
 
           ScaffoldMessenger.of(sheetContext).showSnackBar(
             SnackBar(
-              content: Text(
-                shareResult.errorMessage ??
-                    'Unable to open receipt sharing options.',
-              ),
+              content: Text(l10n.checkoutShareOptionsFailed),
               backgroundColor: AppColors.error,
             ),
           );
@@ -313,10 +308,8 @@ class OrderCheckoutActionsSheet {
           }
 
           ScaffoldMessenger.of(sheetContext).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not open WhatsApp. You can copy the order details instead.',
-              ),
+            SnackBar(
+              content: Text(l10n.checkoutWhatsappOpenFailed),
               backgroundColor: AppColors.error,
             ),
           );
@@ -326,7 +319,7 @@ class OrderCheckoutActionsSheet {
           await Clipboard.setData(ClipboardData(text: orderMessage));
           if (!sheetContext.mounted) return;
           ScaffoldMessenger.of(sheetContext).showSnackBar(
-            const SnackBar(content: Text('Order details copied.')),
+            SnackBar(content: Text(l10n.checkoutOrderDetailsCopied)),
           );
         }
 
@@ -385,8 +378,8 @@ class OrderCheckoutActionsSheet {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Order saved successfully',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.checkoutOrderSaved,
+                                style: AppFonts.jakarta(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF0F172A),
@@ -395,9 +388,11 @@ class OrderCheckoutActionsSheet {
                               const SizedBox(height: 4),
                               Text(
                                 orderNumber == null || orderNumber.isEmpty
-                                    ? 'Choose another way to send or save your receipt.'
-                                    : 'Order $orderNumber is saved. Choose another way to send or save your receipt.',
-                                style: GoogleFonts.plusJakartaSans(
+                                    ? l10n.checkoutChooseAnotherWay
+                                    : l10n.checkoutOrderSavedChooseAnotherWay(
+                                        orderNumber,
+                                      ),
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFF64748B),
@@ -428,7 +423,7 @@ class OrderCheckoutActionsSheet {
                           Expanded(
                             child: Text(
                               failureMessage,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF334155),
@@ -445,10 +440,8 @@ class OrderCheckoutActionsSheet {
                         onPressed: shareReceipt,
                         icon: const Icon(Icons.ios_share_rounded),
                         label: Text(
-                          'Share Receipt',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          l10n.checkoutShareReceipt,
+                          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -466,10 +459,8 @@ class OrderCheckoutActionsSheet {
                         ),
                         icon: const Icon(Icons.chat_bubble_outline_rounded),
                         label: Text(
-                          'Send WhatsApp Message',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          l10n.checkoutSendWhatsapp,
+                          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -480,10 +471,8 @@ class OrderCheckoutActionsSheet {
                         onPressed: copyOrderDetails,
                         icon: const Icon(Icons.copy_outlined),
                         label: Text(
-                          'Copy Order Details',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          l10n.checkoutCopyOrderDetails,
+                          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),

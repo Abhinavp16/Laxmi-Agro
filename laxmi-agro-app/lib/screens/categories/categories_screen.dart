@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/providers/locale_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 
 import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/product_image_placeholder.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 enum _CatalogStage { categories, subcategories, products }
 
@@ -139,7 +139,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   String _brandDisplayName(Map<String, dynamic> brand) {
     final name = brand['name']?.toString().trim() ?? '';
-    return name.toUpperCase() == 'GENERAL PRODUCTS' ? 'General Products' : name;
+    return name.toUpperCase() == 'GENERAL PRODUCTS'
+        ? context.l10n.categoryGeneralProducts
+        : name;
   }
 
   Future<void> _fetchBrands() async {
@@ -930,28 +932,16 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   String _getDisplayName(Map<String, dynamic> product) {
-    final currentLang = ref.watch(localeProvider);
-    final nameHindi = product['nameHindi']?.toString() ?? '';
-    final nameEnglish = product['name']?.toString() ?? '';
-
-    String name;
-    if (currentLang == 'Hindi') {
-      name = nameHindi.isNotEmpty ? nameHindi : nameEnglish;
-    } else {
-      name = nameEnglish;
-    }
-
-    return name;
+    return localizedName(context, product);
   }
 
   String _getDisplayCategoryName(Map<String, dynamic> category) {
-    final currentLang = ref.watch(localeProvider);
     final displayName = category['displayName']?.toString() ?? '';
     final nameEnglish = category['name']?.toString() ?? '';
-    final nameHindi = category['nameHindi']?.toString() ?? '';
+    final nameHindi = category['nameHindi']?.toString().trim() ?? '';
 
-    if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
-      return nameHindi;
+    if (context.isHindi && nameHindi.isNotEmpty) {
+      return latinDigits(nameHindi);
     }
     if (displayName.isNotEmpty) return displayName;
     return _formatCategoryTitle(nameEnglish);
@@ -1003,7 +993,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = ref.read(localeProvider.notifier).translate;
     final content = AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -1013,7 +1002,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _buildHeader(t),
+              _buildHeader(),
               // Main content
               Expanded(
                 child: _isLoadingBrands
@@ -1038,8 +1027,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'No brands found',
-                                    style: GoogleFonts.outfit(
+                                    context.l10n.categoryNoBrands,
+                                    style: AppFonts.outfit(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: textMuted,
@@ -1084,7 +1073,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     );
   }
 
-  Widget _buildHeader(String Function(String) t) {
+  Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
       child: Column(
@@ -1094,10 +1083,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             children: [
               Expanded(
                 child: Text(
-                  t('Categories'),
+                  context.l10n.categoryTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 28,
                     height: 1.0,
                     fontWeight: FontWeight.w900,
@@ -1269,7 +1258,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     const SizedBox(height: 8),
                     Text(
                       _brandDisplayName(brand),
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 9,
                         fontWeight: isSelected
                             ? FontWeight.w700
@@ -1322,10 +1311,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         Center(
           child: Text(
             _selectedBrandIndex == -1
-                ? 'Brand not found. Select a brand from the left.'
-                : 'No categories available for this brand',
+                ? context.l10n.categoryBrandNotFound
+                : context.l10n.categoryNoCategoriesForBrand,
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: textMuted,
@@ -1356,15 +1345,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       _brandDisplayName(brand),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
                       ),
                     ),
                     Text(
-                      'Select a category',
-                      style: GoogleFonts.outfit(
+                      context.l10n.categorySelectCategory,
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: textMuted,
@@ -1373,7 +1362,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   ],
                 ),
               ),
-              _buildCountBadge('${_categories.length} categories'),
+              _buildCountBadge(
+                context.l10n.categoryCategoriesCount(_categories.length),
+              ),
             ],
           ),
         ),
@@ -1401,19 +1392,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   final directCount = _numericValue(
                     category['directProductCount'],
                   ).toInt();
-                  final count = subcategoryCount > 0
-                      ? subcategoryCount
-                      : directCount;
-                  final countLabel = subcategoryCount > 0
-                      ? (subcategoryCount == 1
-                            ? 'subcategory'
-                            : 'subcategories')
-                      : (directCount == 1 ? 'item' : 'items');
+                  final countText = subcategoryCount > 0
+                      ? context.l10n.categorySubcategoriesCount(
+                          subcategoryCount,
+                        )
+                      : context.l10n.commonItemsCount(directCount);
                   return _buildCatalogCard(
                     name: _getDisplayCategoryName(category),
                     imageUrl: category['image']?.toString() ?? '',
-                    count: count,
-                    countLabel: countLabel,
+                    countText: countText,
                     icon: _categoryIcon(category['name']?.toString() ?? ''),
                     onTap: () => _onCategorySelected(index),
                   );
@@ -1435,7 +1422,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       ),
       child: Text(
         label,
-        style: GoogleFonts.outfit(
+        style: AppFonts.outfit(
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: primaryBlue,
@@ -1447,8 +1434,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Widget _buildCatalogCard({
     required String name,
     required String imageUrl,
-    required int count,
-    required String countLabel,
+    required String countText,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -1496,7 +1482,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             const SizedBox(height: 8),
             Text(
               name,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: textPrimary,
@@ -1507,8 +1493,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              '$count $countLabel',
-              style: GoogleFonts.outfit(
+              countText,
+              style: AppFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: textMuted,
@@ -1525,8 +1511,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'View',
-                    style: GoogleFonts.outfit(
+                    context.l10n.commonView,
+                    style: AppFonts.outfit(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -1584,7 +1570,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   children: [
                     Text(
                       _getDisplayCategoryName(category),
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
@@ -1594,8 +1580,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       _selectedBrandIndex >= 0 &&
                               _selectedBrandIndex < _brands.length
                           ? _brandDisplayName(_brands[_selectedBrandIndex])
-                          : 'Select a type',
-                      style: GoogleFonts.outfit(
+                          : context.l10n.categorySelectType,
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: textMuted,
@@ -1604,7 +1590,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   ],
                 ),
               ),
-              _buildCountBadge('${subcategories.length} types'),
+              _buildCountBadge(
+                context.l10n.categoryTypesCount(subcategories.length),
+              ),
             ],
           ),
         ),
@@ -1627,10 +1615,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 itemBuilder: (context, index) {
                   if (hasDirectProducts && index == 0) {
                     return _buildCatalogCard(
-                      name: 'Other Products',
+                      name: context.l10n.categoryOtherProducts,
                       imageUrl: category['image']?.toString() ?? '',
-                      count: directProductCount,
-                      countLabel: 'items',
+                      countText: context.l10n.commonItemsCount(
+                        directProductCount,
+                      ),
                       icon: Icons.inventory_2_outlined,
                       onTap: () {
                         setState(() {
@@ -1646,10 +1635,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   final subcategoryIndex = index - (hasDirectProducts ? 1 : 0);
                   final subcategory = subcategories[subcategoryIndex];
                   return _buildCatalogCard(
-                    name: subcategory['name']?.toString() ?? '',
+                    name: localizedName(context, subcategory),
                     imageUrl: subcategory['image']?.toString() ?? '',
-                    count: _numericValue(subcategory['productCount']).toInt(),
-                    countLabel: 'items',
+                    countText: context.l10n.commonItemsCount(
+                      _numericValue(subcategory['productCount']).toInt(),
+                    ),
                     icon: Icons.category_rounded,
                     onTap: () => _onSubcategorySelected(subcategory),
                   );
@@ -1689,7 +1679,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: textPrimary,
@@ -1700,7 +1690,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 if (subtitle.isNotEmpty)
                   Text(
                     subtitle,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: textMuted,
@@ -1718,8 +1708,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               borderRadius: BorderRadius.circular(100),
             ),
             child: Text(
-              '${_products.length} items',
-              style: GoogleFonts.outfit(
+              context.l10n.commonItemsCount(_products.length),
+              style: AppFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: primaryBlue,
@@ -1740,7 +1730,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
     final bool inSubcategory = _selectedSubcategory != null;
     final String headerTitle = inSubcategory
-        ? (_selectedSubcategory!['name']?.toString() ?? '')
+        ? localizedName(context, _selectedSubcategory)
         : (_categories.isNotEmpty
               ? _getDisplayCategoryName(_categories[_selectedCategoryIndex])
               : '');
@@ -1767,8 +1757,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Could not load products',
-                    style: GoogleFonts.outfit(
+                    context.l10n.categoryLoadProductsError,
+                    style: AppFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: textMuted,
@@ -1778,7 +1768,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   FilledButton.icon(
                     onPressed: _retryProductLoad,
                     icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Retry'),
+                    label: Text(context.l10n.commonRetry),
                   ),
                 ],
               ),
@@ -1806,9 +1796,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   const SizedBox(height: 12),
                   Text(
                     inSubcategory
-                        ? 'No products in this subcategory'
-                        : 'No products in this category',
-                    style: GoogleFonts.outfit(
+                        ? context.l10n.categoryNoProductsInSubcategory
+                        : context.l10n.categoryNoProductsInCategory,
+                    style: AppFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: textMuted,
@@ -1819,7 +1809,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     onPressed: _onBackToSubcategories,
                     icon: const Icon(Icons.arrow_back_rounded, size: 16),
                     label: Text(
-                      inSubcategory ? 'Back to types' : 'Back to categories',
+                      inSubcategory
+                          ? context.l10n.categoryBackToTypes
+                          : context.l10n.categoryBackToCategories,
                     ),
                   ),
                 ],
@@ -1947,8 +1939,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             borderRadius: BorderRadius.circular(2),
                           ),
                           child: Text(
-                            '$discount% OFF',
-                            style: GoogleFonts.outfit(
+                            context.l10n.commonPercentOff('$discount'),
+                            style: AppFonts.outfit(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -1972,8 +1964,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               borderRadius: BorderRadius.circular(2),
                             ),
                             child: Text(
-                              'Out of Stock',
-                              style: GoogleFonts.outfit(
+                              context.l10n.commonOutOfStock,
+                              style: AppFonts.outfit(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
@@ -2005,7 +1997,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             44, // More compact but still fits 3 lines tightly
                         child: Text(
                           _getDisplayName(product),
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12.5,
                             fontWeight:
                                 FontWeight.w600, // Make it a bit more readable
@@ -2027,7 +2019,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                                         rating?.toString() ?? '',
                                       )?.toStringAsFixed(1) ??
                                       '4.5'),
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: textPrimary,
@@ -2074,7 +2066,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           Flexible(
                             child: Text(
                               '₹${_formatPrice(product['price'])}',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 color: textPrimary,
@@ -2088,7 +2080,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             Flexible(
                               child: Text(
                                 '₹${_formatPrice(product['mrp'])}',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 10,
                                   color: const Color(0xFFEF4444),
                                   decoration: TextDecoration.lineThrough,
@@ -2128,8 +2120,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             ),
                           ),
                           child: Text(
-                            'View Product',
-                            style: GoogleFonts.plusJakartaSans(
+                            context.l10n.categoryViewProduct,
+                            style: AppFonts.jakarta(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -27,8 +28,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
-          'Add New Product',
-          style: GoogleFonts.plusJakartaSans(
+          context.l10n.addProductTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -66,8 +67,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Upload Product Images',
-                    style: GoogleFonts.plusJakartaSans(
+                    context.l10n.addProductUploadImages,
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -75,8 +76,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Add up to 5 images (JPG, PNG)',
-                    style: GoogleFonts.plusJakartaSans(
+                    context.l10n.addProductUploadHint,
+                    style: AppFonts.jakarta(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
@@ -88,8 +89,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
             // Basic Information
             Text(
-              'Basic Information',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.addProductBasicInfo,
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -97,7 +98,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildTextField('Product Name', 'Enter product name'),
+            _buildTextField(
+              context.l10n.addProductNameLabel,
+              context.l10n.addProductNameHint,
+            ),
             const SizedBox(height: 16),
 
             // Category Dropdown
@@ -105,8 +109,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Category',
-                  style: GoogleFonts.plusJakartaSans(
+                  context.l10n.addProductCategoryLabel,
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.gray700,
@@ -128,7 +132,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       items: _categories.map((String category) {
                         return DropdownMenuItem<String>(
                           value: category,
-                          child: Text(category),
+                          child: Text(_categoryLabel(context, category)),
                         );
                       }).toList(),
                       onChanged: (String? value) {
@@ -143,13 +147,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildTextField('Description', 'Enter product description', maxLines: 4),
+            _buildTextField(
+              context.l10n.addProductDescriptionLabel,
+              context.l10n.addProductDescriptionHint,
+              maxLines: 4,
+            ),
             const SizedBox(height: 24),
 
             // Pricing & Stock
             Text(
-              'Pricing & Stock',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.addProductPricingStock,
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -159,20 +167,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
             Row(
               children: [
-                Expanded(child: _buildTextField('Price (\$)', '0.00', keyboardType: TextInputType.number)),
+                Expanded(child: _buildTextField(context.l10n.addProductPriceLabel, '0.00', keyboardType: TextInputType.number)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Stock Qty', '0', keyboardType: TextInputType.number)),
+                Expanded(child: _buildTextField(context.l10n.addProductStockQtyLabel, '0', keyboardType: TextInputType.number)),
               ],
             ),
             const SizedBox(height: 16),
 
-            _buildTextField('Minimum Order Qty', '1', keyboardType: TextInputType.number),
+            _buildTextField(context.l10n.addProductMinOrderQtyLabel, '1', keyboardType: TextInputType.number),
             const SizedBox(height: 24),
 
             // Specifications
             Text(
-              'Specifications',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.addProductSpecifications,
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -182,26 +190,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
             Row(
               children: [
-                Expanded(child: _buildTextField('Engine Power', 'e.g., 7HP')),
+                Expanded(child: _buildTextField(context.l10n.addProductEnginePowerLabel, context.l10n.addProductEnginePowerHint)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Fuel Type', 'e.g., Petrol')),
+                Expanded(child: _buildTextField(context.l10n.addProductFuelTypeLabel, context.l10n.addProductFuelTypeHint)),
               ],
             ),
             const SizedBox(height: 16),
 
             Row(
               children: [
-                Expanded(child: _buildTextField('Warranty', 'e.g., 1 Year')),
+                Expanded(child: _buildTextField(context.l10n.addProductWarrantyLabel, context.l10n.addProductWarrantyHint)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Weight', 'e.g., 50kg')),
+                Expanded(child: _buildTextField(context.l10n.addProductWeightLabel, context.l10n.addProductWeightHint)),
               ],
             ),
             const SizedBox(height: 24),
 
             // Wholesale Settings
             Text(
-              'Wholesale Settings',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.addProductWholesaleSettings,
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -223,16 +231,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Allow Price Negotiation',
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.addProductAllowNegotiation,
+                          style: AppFonts.jakarta(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
                         Text(
-                          'Buyers can send price proposals',
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.addProductAllowNegotiationHint,
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
@@ -273,8 +281,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                   ),
                   child: Text(
-                    'Save Draft',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                    context.l10n.addProductSaveDraft,
+                    style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -284,7 +292,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Product published successfully!')),
+                      SnackBar(content: Text(context.l10n.addProductPublished)),
                     );
                     context.pop();
                   },
@@ -297,8 +305,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                   ),
                   child: Text(
-                    'Publish Product',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                    context.l10n.addProductPublish,
+                    style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -307,6 +315,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
       ),
     );
+  }
+
+  String _categoryLabel(BuildContext context, String category) {
+    final l10n = context.l10n;
+    switch (category) {
+      case 'Tillers':
+        return l10n.addProductCategoryTillers;
+      case 'Harvesters':
+        return l10n.addProductCategoryHarvesters;
+      case 'Pumps':
+        return l10n.addProductCategoryPumps;
+      case 'Sprayers':
+        return l10n.addProductCategorySprayers;
+      case 'Mills':
+        return l10n.addProductCategoryMills;
+      case 'Other':
+        return l10n.addProductCategoryOther;
+    }
+    return category;
   }
 
   Widget _buildTextField(
@@ -320,7 +347,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.gray700,

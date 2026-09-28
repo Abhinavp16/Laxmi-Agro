@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 class CustomerOrderPresentation {
   static String acceptanceStatus(Map<String, dynamic> order) =>
       order['acceptanceStatus']?.toString().toLowerCase() ?? '';
@@ -16,28 +18,29 @@ class CustomerOrderPresentation {
     return fulfillment;
   }
 
-  static String label(String stage) {
+  /// Localized customer-facing label for an order [stage] (see [stage]).
+  static String label(AppLocalizations l10n, String stage) {
     switch (stage) {
       case 'awaiting_acceptance':
-        return 'Submitted · Awaiting Approval';
+        return l10n.statusAwaitingAcceptance;
       case 'accepted_awaiting_payment':
-        return 'Accepted · Awaiting Payment';
+        return l10n.statusAcceptedAwaitingPayment;
       case 'pending_payment':
-        return 'Awaiting Payment Confirmation';
+        return l10n.statusPendingPayment;
       case 'payment_uploaded':
-        return 'Awaiting Shop Confirmation';
+        return l10n.statusPaymentUploaded;
       case 'payment_verified':
-        return 'Payment Confirmed';
+        return l10n.statusPaymentVerified;
       case 'processing':
-        return 'Processing';
+        return l10n.statusProcessing;
       case 'shipped':
-        return 'Shipped';
+        return l10n.statusShipped;
       case 'delivered':
-        return 'Delivered';
+        return l10n.statusDelivered;
       case 'rejected':
-        return 'Order Rejected';
+        return l10n.statusRejected;
       case 'cancelled':
-        return 'Cancelled';
+        return l10n.statusCancelled;
       default:
         return stage.replaceAll('_', ' ');
     }

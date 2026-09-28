@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../core/theme/app_fonts.dart';
+import '../l10n/l10n.dart';
 
 class PendingPriceChangeNotice extends StatefulWidget {
   final Map<String, dynamic>? pendingPriceChange;
@@ -80,14 +81,20 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
     return parsed.toStringAsFixed(0);
   }
 
-  String _formatDuration(Duration duration) {
+  String _formatDuration(AppLocalizations l10n, Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
     if (hours > 0) {
-      return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+      return l10n.priceNoticeDurationHoursMinutes(
+        '$hours',
+        minutes.toString().padLeft(2, '0'),
+      );
     }
-    return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
+    return l10n.priceNoticeDurationMinutesSeconds(
+      '$minutes',
+      seconds.toString().padLeft(2, '0'),
+    );
   }
 
   Widget _buildCompactNotice({
@@ -133,10 +140,10 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Price changes soon',
+                  context.l10n.priceNoticeChangesSoon,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: widget.primaryColor,
@@ -154,7 +161,7 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
                   '₹$currentPrice → ₹$newPrice',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: widget.accentColor,
@@ -171,7 +178,7 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
                 ),
                 child: Text(
                   timerText,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
                     color: widget.accentColor,
@@ -196,7 +203,7 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
 
     final currentPrice = data['currentPrice'];
     final newPrice = data['newPrice'];
-    final timerText = _formatDuration(remaining);
+    final timerText = _formatDuration(context.l10n, remaining);
     final currentPriceText = _formatPrice(currentPrice);
     final newPriceText = _formatPrice(newPrice);
 
@@ -245,8 +252,8 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Upcoming price change',
-                  style: GoogleFonts.outfit(
+                  context.l10n.priceNoticeUpcomingChange,
+                  style: AppFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: widget.primaryColor,
@@ -254,8 +261,12 @@ class _PendingPriceChangeNoticeState extends State<PendingPriceChangeNotice> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '₹$currentPriceText → ₹$newPriceText in $timerText',
-                  style: GoogleFonts.outfit(
+                  context.l10n.priceNoticeChangeIn(
+                    currentPriceText,
+                    newPriceText,
+                    timerText,
+                  ),
+                  style: AppFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: widget.accentColor,

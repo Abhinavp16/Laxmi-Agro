@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../core/theme/app_fonts.dart';
+import '../l10n/l10n.dart';
 
 class NotificationCountdownLabel extends StatefulWidget {
   final Map<String, dynamic>? data;
@@ -73,19 +74,28 @@ class _NotificationCountdownLabelState
     }
   }
 
-  String _format(Duration remaining) {
+  String _format(AppLocalizations l10n, Duration remaining) {
     final days = remaining.inDays;
     final hours = remaining.inHours.remainder(24);
     final minutes = remaining.inMinutes.remainder(60);
     final seconds = remaining.inSeconds.remainder(60);
 
     if (days > 0) {
-      return '${days}d ${hours.toString().padLeft(2, '0')}h';
+      return l10n.priceNoticeDurationDaysHours(
+        '$days',
+        hours.toString().padLeft(2, '0'),
+      );
     }
     if (remaining.inHours > 0) {
-      return '${remaining.inHours}h ${minutes.toString().padLeft(2, '0')}m';
+      return l10n.priceNoticeDurationHoursMinutes(
+        '${remaining.inHours}',
+        minutes.toString().padLeft(2, '0'),
+      );
     }
-    return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
+    return l10n.priceNoticeDurationMinutesSeconds(
+      '$minutes',
+      seconds.toString().padLeft(2, '0'),
+    );
   }
 
   @override
@@ -104,8 +114,8 @@ class _NotificationCountdownLabelState
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(
-        'Time left: ${_format(remaining)}',
-        style: GoogleFonts.plusJakartaSans(
+        context.l10n.priceNoticeTimeLeft(_format(context.l10n, remaining)),
+        style: AppFonts.jakarta(
           fontSize: widget.fontSize,
           fontWeight: FontWeight.w700,
           color: widget.color,

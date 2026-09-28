@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/app_image.dart';
 
 import '../../core/providers/wishlist_provider.dart';
-import '../../core/providers/locale_provider.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class WishlistScreen extends ConsumerWidget {
   const WishlistScreen({super.key});
@@ -55,9 +55,9 @@ class WishlistScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       child: Text(
-                        'My Wishlist',
+                        context.l10n.wishlistTitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -103,8 +103,8 @@ class WishlistScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Text(
-                          '${wishlist.items.length} ${wishlist.items.length == 1 ? 'item' : 'items'}',
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.commonItemsCount(wishlist.items.length),
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -126,11 +126,8 @@ class WishlistScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Swipe left on an item to remove it',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: textMuted,
-                        ),
+                        context.l10n.wishlistSwipeToRemove,
+                        style: AppFonts.jakarta(fontSize: 11, color: textMuted),
                       ),
                     ],
                   ),
@@ -139,7 +136,7 @@ class WishlistScreen extends ConsumerWidget {
               // Content
               Expanded(
                 child: wishlist.items.isEmpty
-                    ? _buildEmptyState()
+                    ? _buildEmptyState(context)
                     : ListView.builder(
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
@@ -158,7 +155,7 @@ class WishlistScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -178,8 +175,8 @@ class WishlistScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Your wishlist is empty',
-            style: GoogleFonts.plusJakartaSans(
+            context.l10n.wishlistEmptyTitle,
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: textPrimary,
@@ -187,9 +184,9 @@ class WishlistScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Save items you love by tapping the\nheart icon on product pages',
+            context.l10n.wishlistEmptySubtitle,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 14,
               color: textMuted,
               height: 1.5,
@@ -269,14 +266,10 @@ class WishlistScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (ref.watch(localeProvider) == 'Hindi' &&
-                              item.nameHindi != null &&
-                              item.nameHindi!.isNotEmpty)
-                          ? item.nameHindi!
-                          : item.name,
+                      pickLocalizedName(context, item.name, item.nameHindi),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
@@ -287,10 +280,7 @@ class WishlistScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         item.category!,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: textMuted,
-                        ),
+                        style: AppFonts.jakarta(fontSize: 12, color: textMuted),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -298,7 +288,7 @@ class WishlistScreen extends ConsumerWidget {
                       children: [
                         Text(
                           '₹${_formatPrice(item.price)}',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: textPrimary,
@@ -308,7 +298,7 @@ class WishlistScreen extends ConsumerWidget {
                           const SizedBox(width: 6),
                           Text(
                             '₹${_formatPrice(item.mrp)}',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               color: textMuted,
                               decoration: TextDecoration.lineThrough,
@@ -325,8 +315,8 @@ class WishlistScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '$discount% off',
-                              style: GoogleFonts.plusJakartaSans(
+                              context.l10n.commonPercentOff('$discount'),
+                              style: AppFonts.jakarta(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFF16A34A),
@@ -370,17 +360,17 @@ class WishlistScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Clear Wishlist?',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          context.l10n.wishlistClearTitle,
+          style: AppFonts.jakarta(fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Remove all items from your wishlist?',
-          style: GoogleFonts.plusJakartaSans(),
+          context.l10n.wishlistClearMessage,
+          style: AppFonts.jakarta(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () {
@@ -388,8 +378,8 @@ class WishlistScreen extends ConsumerWidget {
               Navigator.pop(ctx);
             },
             child: Text(
-              'Clear All',
-              style: GoogleFonts.plusJakartaSans(color: redAccent),
+              context.l10n.wishlistClearAll,
+              style: AppFonts.jakarta(color: redAccent),
             ),
           ),
         ],

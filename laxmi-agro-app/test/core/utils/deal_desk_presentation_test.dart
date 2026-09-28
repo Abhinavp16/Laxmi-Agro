@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laxmi_agro/core/utils/deal_desk_presentation.dart';
+import 'package:laxmi_agro/l10n/generated/app_localizations.dart';
 
 void main() {
   group('DealDeskPresentation', () {
@@ -63,6 +65,36 @@ void main() {
           'orderId': <String, dynamic>{'orderNumber': 'LA-456'},
         }),
         isFalse,
+      );
+    });
+
+    test('labels follow the requested language', () {
+      final hi = lookupAppLocalizations(const Locale('hi'));
+      final en = lookupAppLocalizations(const Locale('en'));
+      final pendingOrder = <String, dynamic>{'status': 'accepted'};
+      final createdOrder = <String, dynamic>{'status': 'converted'};
+
+      expect(
+        DealDeskPresentation.orderStatus(pendingOrder),
+        DealOrderStatus.acceptedOrderPending,
+      );
+      expect(
+        DealDeskPresentation.orderStatusLabel(pendingOrder, l10n: en),
+        'Accepted · Order Pending',
+      );
+      expect(
+        DealDeskPresentation.orderStatusLabel(pendingOrder, l10n: hi),
+        'स्वीकार · ऑर्डर लंबित',
+      );
+      expect(
+        DealDeskPresentation.orderStatusLabel(createdOrder, l10n: hi),
+        'ऑर्डर बन गया',
+      );
+      expect(
+        DealDeskPresentation.orderStatusLabel(<String, dynamic>{
+          'status': 'pending',
+        }, l10n: hi),
+        isNull,
       );
     });
   });

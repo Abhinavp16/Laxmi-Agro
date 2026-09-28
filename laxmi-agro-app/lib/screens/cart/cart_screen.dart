@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import '../../core/config/feature_flags.dart';
-import '../../core/providers/locale_provider.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/cart_provider.dart';
@@ -14,6 +12,10 @@ import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../core/utils/number_formatter.dart';
+import '../../l10n/api_error_text.dart';
+import '../../l10n/l10n.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -52,19 +54,73 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  String _fmt(double price) {
-    return price
-        .toStringAsFixed(0)
-        .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]},',
-        );
+  String _fmt(double price) => NumberFormatter.formatPrice(price.round());
+
+  String _rupees(double price) => context.l10n.commonRupees(_fmt(price));
+
+  String _count(num value) => NumberFormatter.formatPrice(value);
+
+  /// Localized text for one issue returned by `POST /cart/validate`.
+  String _stockIssueText(Map<String, dynamic> issue) {
+    final l10n = context.l10n;
+    final productId = issue['productId']?.toString();
+    CartItem? cartItem;
+    for (final item in ref.read(cartProvider).items) {
+      if (item.productId == productId) {
+        cartItem = item;
+        break;
+      }
+    }
+    final product = cartItem != null
+        ? pickLocalizedName(context, cartItem.name, cartItem.nameHindi)
+        : (issue['name']?.toString() ?? '');
+    final available = (issue['availableStock'] as num?)?.toInt() ?? 0;
+    switch (issue['type']) {
+      case 'unavailable':
+        return product.isEmpty
+            ? l10n.cartItemUnavailable
+            : l10n.cartIssueUnavailable(product);
+      case 'out_of_stock':
+        return product.isEmpty
+            ? l10n.cartItemOutOfStock
+            : l10n.cartIssueOutOfStock(product);
+      case 'insufficient_stock':
+        return product.isEmpty
+            ? l10n.cartOnlyUnitsAvailable(available)
+            : l10n.cartIssueInsufficientStock(available, product);
+      case 'minimum_wholesale_quantity':
+        final minimum = issue['minimumWholesaleQuantity'] as num? ?? 0;
+        return product.isEmpty
+            ? l10n.cartItemMinWholesale(_count(minimum))
+            : l10n.cartIssueMinWholesale(product, _count(minimum));
+      default:
+        final message = issue['message']?.toString();
+        return message != null && message.isNotEmpty && !context.isHindi
+            ? message
+            : l10n.cartIssueGeneric;
+    }
+  }
+
+  /// Localized text for the stock problem shown under a cart item.
+  String _itemIssueText(CartItem item, int minimumQuantity) {
+    final l10n = context.l10n;
+    if (item.stock == 0) return l10n.cartItemOutOfStock;
+    if (item.quantity < minimumQuantity) {
+      return l10n.cartItemMinWholesale(_count(minimumQuantity));
+    }
+    if (item.quantity > item.stock) {
+      return l10n.cartItemOnlyAvailable(
+        _count(item.stock),
+        _count(item.quantity),
+      );
+    }
+    return l10n.cartItemOnlyStockAvailable(_count(item.stock));
   }
 
   Future<void> _applyCoupon() async {
     if (_couponCode.isEmpty) {
       setState(() {
-        _couponError = 'Please enter a coupon code';
+        _couponError = context.l10n.cartCouponEnterCode;
         _couponSuccess = false;
       });
       return;
@@ -99,14 +155,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         });
       } else {
         setState(() {
-          _couponError = response.data['message'] ?? 'Invalid coupon code';
+          _couponError = context.isHindi
+              ? context.l10n.cartCouponInvalid
+              : (response.data['message']?.toString() ??
+                    context.l10n.cartCouponInvalid);
           _couponSuccess = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _couponError = 'Failed to apply coupon';
+        _couponError = apiErrorText(
+          context,
+          e,
+          fallback: context.l10n.cartCouponFailed,
+        );
         _couponSuccess = false;
       });
     } finally {
@@ -190,17 +253,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       final map = data is Map ? data : null;
       final error = map?['error'];
       final errorMap = error is Map ? error : null;
-      var msg =
-          map?['message']?.toString() ??
-          errorMap?['message']?.toString() ??
-          e.message ??
-          'Checkout failed';
-      if (e.type == DioExceptionType.connectionError ||
-          msg.contains('No route to host') ||
-          msg.contains('Connection refused')) {
-        msg =
-            'Cannot reach server. Check backend is running and API URL in api_config.dart.';
-      }
+      final msg = apiErrorText(
+        context,
+        e,
+        fallback: context.l10n.cartCheckoutFailed,
+      );
       final code = map?['code']?.toString() ?? errorMap?['code']?.toString();
       // If stock issue from server, refresh cart to show updated stock
       if (code == 'INSUFFICIENT_STOCK' ||
@@ -213,7 +270,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         SnackBar(
           content: Text(
             msg,
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -233,19 +290,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final shouldOpenLogin = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final l10n = dialogContext.l10n;
         return AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text(
-            'You can add products to cart, but login is required to place an order.',
-          ),
+          title: Text(l10n.cartLoginRequiredTitle),
+          content: Text(l10n.cartLoginRequiredMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Not now'),
+              child: Text(l10n.cartNotNow),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Login'),
+              child: Text(l10n.commonLogin),
             ),
           ],
         );
@@ -259,6 +315,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   void _showStockIssueDialog(List<Map<String, dynamic>> issues) {
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -273,8 +330,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              ref.read(localeProvider.notifier).translate('Stock Issues'),
-              style: GoogleFonts.plusJakartaSans(
+              l10n.cartStockIssuesTitle,
+              style: AppFonts.jakarta(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -287,12 +344,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              ref
-                  .read(localeProvider.notifier)
-                  .translate(
-                    'Some items in your cart have stock issues. Please update quantities before checkout.',
-                  ),
-              style: GoogleFonts.plusJakartaSans(
+              l10n.cartStockIssuesMessage,
+              style: AppFonts.jakarta(
                 fontSize: 13,
                 color: AppColors.textSecondary,
               ),
@@ -319,8 +372,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        issue['message']?.toString() ?? 'Stock issue',
-                        style: GoogleFonts.plusJakartaSans(
+                        _stockIssueText(issue),
+                        style: AppFonts.jakarta(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textPrimary,
@@ -337,8 +390,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              ref.read(localeProvider.notifier).translate('Got it'),
-              style: GoogleFonts.plusJakartaSans(
+              l10n.commonGotIt,
+              style: AppFonts.jakarta(
                 fontWeight: FontWeight.w700,
                 color: AppColors.primary,
               ),
@@ -366,6 +419,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final stateCtrl = TextEditingController(text: savedAddress?.state ?? '');
     final pinCtrl = TextEditingController(text: savedAddress?.pincode ?? '');
     final formKey = GlobalKey<FormState>();
+    final l10n = context.l10n;
 
     Map<String, String>? result =
         await showModalBottomSheet<Map<String, String>>(
@@ -404,38 +458,23 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         ),
                       ),
                       Text(
-                        ref
-                            .read(localeProvider.notifier)
-                            .translate('Shipping Address'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.checkoutShippingAddress,
+                        style: AppFonts.jakarta(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _field(
-                        ref
-                            .read(localeProvider.notifier)
-                            .translate('Full Name'),
-                        nameCtrl,
-                        ref,
-                      ),
+                      _field(l10n.checkoutFullName, nameCtrl),
                       const SizedBox(height: 12),
                       _field(
-                        ref.read(localeProvider.notifier).translate('Phone'),
+                        l10n.checkoutPhone,
                         phoneCtrl,
-                        ref,
                         keyboard: TextInputType.phone,
                       ),
                       const SizedBox(height: 12),
-                      _field(
-                        ref
-                            .read(localeProvider.notifier)
-                            .translate('Address Line 1'),
-                        addr1Ctrl,
-                        ref,
-                      ),
+                      _field(l10n.checkoutAddressLine1, addr1Ctrl),
                       const SizedBox(height: 12),
                       StateCityPincodeFields(
                         stateController: stateCtrl,
@@ -467,10 +506,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             ),
                           ),
                           child: Text(
-                            ref
-                                .read(localeProvider.notifier)
-                                .translate('Confirm & Pay'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.checkoutConfirmAndPay,
+                            style: AppFonts.jakarta(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
@@ -512,22 +549,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   Widget _field(
     String label,
-    TextEditingController ctrl,
-    WidgetRef ref, {
+    TextEditingController ctrl, {
     TextInputType? keyboard,
   }) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final requiredText = context.l10n.commonRequired;
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboard,
-      validator: (v) => (v == null || v.trim().isEmpty) ? t('Required') : null,
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
+      validator: (v) => (v == null || v.trim().isEmpty) ? requiredText : null,
+      style: AppFonts.jakarta(fontSize: 14, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(
+        labelStyle: AppFonts.jakarta(
           fontSize: 13,
           color: AppColors.textSecondary,
         ),
@@ -559,6 +592,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return _buildCustomerPreviewCart();
     }
     final cart = ref.watch(cartProvider);
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -570,8 +604,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
-          ref.watch(localeProvider.notifier).translate('Shopping Cart'),
-          style: GoogleFonts.plusJakartaSans(
+          l10n.cartTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -603,10 +637,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    ref
-                        .watch(localeProvider.notifier)
-                        .translate('Your cart is empty'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.cartEmpty,
+                    style: AppFonts.jakarta(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
@@ -616,10 +648,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   TextButton(
                     onPressed: () => context.go('/home'),
                     child: Text(
-                      ref
-                          .watch(localeProvider.notifier)
-                          .translate('Browse Products'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.cartBrowseProducts,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
@@ -664,10 +694,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          ref
-                              .watch(localeProvider.notifier)
-                              .translate('Price Summary'),
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.cartPriceSummary,
+                          style: AppFonts.jakarta(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
@@ -675,23 +703,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         ),
                         const SizedBox(height: 16),
                         _buildPriceRow(
-                          ref
-                              .watch(localeProvider.notifier)
-                              .translate('Subtotal'),
-                          '₹${_fmt(cart.subtotal)}',
+                          l10n.commonSubtotal,
+                          _rupees(cart.subtotal),
                         ),
                         const SizedBox(height: 8),
                         _buildPriceRow(
-                          ref
-                              .watch(localeProvider.notifier)
-                              .translate('Delivery Fee'),
-                          '₹${_fmt(cart.deliveryFee)}',
+                          l10n.cartDeliveryFee,
+                          _rupees(cart.deliveryFee),
                         ),
                         if (_discount > 0) ...[
                           const SizedBox(height: 8),
                           _buildPriceRow(
-                            'Discount',
-                            '-₹${_fmt(_discount)}',
+                            l10n.cartDiscount,
+                            l10n.cartMinusRupees(_fmt(_discount)),
                             isDiscount: true,
                           ),
                         ],
@@ -702,18 +726,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              ref
-                                  .watch(localeProvider.notifier)
-                                  .translate('Grand Total'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.cartGrandTotal,
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                               ),
                             ),
                             Text(
-                              '₹${_fmt(cart.grandTotal - _discount)}',
-                              style: GoogleFonts.plusJakartaSans(
+                              _rupees(cart.grandTotal - _discount),
+                              style: AppFonts.jakarta(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary,
@@ -751,8 +773,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       });
                                     },
                                     decoration: InputDecoration(
-                                      hintText: 'Enter coupon code',
-                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                      hintText: l10n.cartCouponHint,
+                                      hintStyle: AppFonts.jakarta(
                                         fontSize: 14,
                                         color: AppColors.textSecondary,
                                       ),
@@ -780,9 +802,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                         ),
                                       ),
                                     ),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                    ),
+                                    style: AppFonts.jakarta(fontSize: 14),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -814,8 +834,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                             ),
                                           )
                                         : Text(
-                                            'Apply',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            l10n.commonApply,
+                                            style: AppFonts.jakarta(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -831,7 +851,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             const SizedBox(height: 8),
                             Text(
                               _couponError!,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 12,
                                 color: AppColors.error,
                               ),
@@ -848,8 +868,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Code applied: -₹${_fmt(_discount)}',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.cartCouponApplied(_fmt(_discount)),
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     color: AppColors.success,
                                     fontWeight: FontWeight.w600,
@@ -886,12 +906,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      ref
-                                          .watch(localeProvider.notifier)
-                                          .translate(
-                                            'Some items have stock issues. Please adjust quantities.',
-                                          ),
-                                      style: GoogleFonts.plusJakartaSans(
+                                      l10n.cartStockIssuesBanner,
+                                      style: AppFonts.jakarta(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.orange.shade800,
@@ -938,19 +954,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       const SizedBox(width: 12),
                                       Text(
                                         _isValidating
-                                            ? ref
-                                                  .watch(
-                                                    localeProvider.notifier,
-                                                  )
-                                                  .translate(
-                                                    'Checking stock...',
-                                                  )
-                                            : ref
-                                                  .watch(
-                                                    localeProvider.notifier,
-                                                  )
-                                                  .translate('Processing...'),
-                                        style: GoogleFonts.plusJakartaSans(
+                                            ? l10n.cartCheckingStock
+                                            : l10n.cartProcessing,
+                                        style: AppFonts.jakarta(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -962,19 +968,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                     children: [
                                       Text(
                                         cart.hasStockIssues
-                                            ? ref
-                                                  .watch(
-                                                    localeProvider.notifier,
-                                                  )
-                                                  .translate('Fix Stock Issues')
-                                            : ref
-                                                  .watch(
-                                                    localeProvider.notifier,
-                                                  )
-                                                  .translate(
-                                                    'Proceed to Checkout',
-                                                  ),
-                                        style: GoogleFonts.plusJakartaSans(
+                                            ? l10n.cartFixStockIssues
+                                            : l10n.cartProceedToCheckout,
+                                        style: AppFonts.jakarta(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -995,6 +991,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCustomerPreviewCart() {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -1005,8 +1002,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
-          'Customer Cart Preview',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.cartPreviewTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -1026,9 +1023,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
               const SizedBox(height: 18),
               Text(
-                'Shopping is disabled in preview mode',
+                l10n.cartPreviewDisabled,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -1036,9 +1033,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your wholesaler cart is private and remains unchanged.',
+                l10n.cartPreviewPrivate,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -1053,9 +1050,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   void _showCustomerPreviewMessage() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Checkout is disabled in customer preview mode.'),
-      ),
+      SnackBar(content: Text(context.l10n.cartPreviewCheckoutDisabled)),
     );
   }
 
@@ -1066,6 +1061,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
     final minimumQuantity = isWholesaler ? item.minWholesaleQuantity : 1;
     final isAtMinimum = item.quantity <= minimumQuantity;
+    final l10n = context.l10n;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -1116,12 +1112,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        (ref.watch(localeProvider) == 'Hindi' &&
-                                item.nameHindi != null &&
-                                item.nameHindi!.isNotEmpty)
-                            ? item.nameHindi!
-                            : item.name,
-                        style: GoogleFonts.plusJakartaSans(
+                        pickLocalizedName(context, item.name, item.nameHindi),
+                        style: AppFonts.jakarta(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -1131,8 +1123,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '₹${_fmt(item.price)}',
-                        style: GoogleFonts.plusJakartaSans(
+                        _rupees(item.price),
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary,
@@ -1142,8 +1134,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            '${item.stock} ${ref.watch(localeProvider.notifier).translate('in stock')}',
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.cartInStockCount(_count(item.stock)),
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: item.stock <= 5
@@ -1178,7 +1170,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             alignment: Alignment.center,
                             child: Text(
                               '-',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: isAtMinimum
@@ -1193,7 +1185,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           alignment: Alignment.center,
                           child: Text(
                             '${item.quantity}',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: hasIssue
@@ -1208,8 +1200,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Only ${item.stock} units available',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        l10n.cartOnlyUnitsAvailable(item.stock),
+                                        style: AppFonts.jakarta(
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -1235,9 +1227,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   if (err != null && mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
+                                        // The provider's message is English.
                                         content: Text(
-                                          err,
-                                          style: GoogleFonts.plusJakartaSans(
+                                          l10n.cartOnlyUnitsAvailable(
+                                            item.stock,
+                                          ),
+                                          style: AppFonts.jakarta(
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -1260,7 +1255,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             alignment: Alignment.center,
                             child: Text(
                               '+',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: atStockLimit
@@ -1320,11 +1315,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          item.stockIssue ??
-                              (isOutOfStock
-                                  ? 'Out of stock — please remove this item'
-                                  : 'Only ${item.stock} available (you selected ${item.quantity})'),
-                          style: GoogleFonts.plusJakartaSans(
+                          _itemIssueText(item, minimumQuantity),
+                          style: AppFonts.jakarta(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: isOutOfStock
@@ -1350,8 +1342,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Set to ${item.stock}',
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.cartSetQuantity(_count(item.stock)),
+                              style: AppFonts.jakarta(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -1380,14 +1372,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
+          style: AppFonts.jakarta(fontSize: 14, color: AppColors.textSecondary),
         ),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: isDiscount ? FontWeight.w600 : FontWeight.w500,
             color: isDiscount

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
+
 /// A visually rich product placeholder that renders a category-specific
 /// illustration using Flutter Canvas. Shows when image URLs fail to load.
 class ProductImagePlaceholder extends StatelessWidget {
@@ -15,7 +17,7 @@ class ProductImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = _configFor(category, name);
+    final config = _configFor(context.l10n, category, name);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -71,7 +73,11 @@ class ProductImagePlaceholder extends StatelessWidget {
     );
   }
 
-  _PlaceholderConfig _configFor(String category, String name) {
+  _PlaceholderConfig _configFor(
+    AppLocalizations l10n,
+    String category,
+    String name,
+  ) {
     final key = '${category.toLowerCase()} ${name.toLowerCase()}';
 
     if (key.contains('tractor') ||
@@ -81,7 +87,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF1B4332), const Color(0xFF2D6A4F)],
         accentColor: const Color(0xFF40916C),
         icon: Icons.agriculture_rounded,
-        label: 'Tractor',
+        label: l10n.productPlaceholderTractor,
       );
     } else if (key.contains('drone') ||
         key.contains('uav') ||
@@ -90,7 +96,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF1E3A5F), const Color(0xFF2563EB)],
         accentColor: const Color(0xFF3B82F6),
         icon: Icons.flight_rounded,
-        label: 'Agri Drone',
+        label: l10n.productPlaceholderDrone,
       );
     } else if (key.contains('seed') ||
         key.contains('tomato') ||
@@ -100,7 +106,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF14532D), const Color(0xFF16A34A)],
         accentColor: const Color(0xFF22C55E),
         icon: Icons.grass_rounded,
-        label: 'Seeds',
+        label: l10n.productPlaceholderSeeds,
       );
     } else if (key.contains('fertil') ||
         key.contains('npk') ||
@@ -110,7 +116,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF78350F), const Color(0xFFD97706)],
         accentColor: const Color(0xFFF59E0B),
         icon: Icons.science_rounded,
-        label: 'Fertilizer',
+        label: l10n.productPlaceholderFertilizer,
       );
     } else if (key.contains('spray') ||
         key.contains('brush') ||
@@ -121,7 +127,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF7C2D12), const Color(0xFFEA580C)],
         accentColor: const Color(0xFFF97316),
         icon: Icons.hardware_rounded,
-        label: 'Farm Tool',
+        label: l10n.productPlaceholderFarmTool,
       );
     } else if (key.contains('irrigation') ||
         key.contains('drip') ||
@@ -133,7 +139,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF0C4A6E), const Color(0xFF0284C7)],
         accentColor: const Color(0xFF38BDF8),
         icon: Icons.water_drop_rounded,
-        label: 'Irrigation',
+        label: l10n.productPlaceholderIrrigation,
       );
     } else if (key.contains('elbow') ||
         key.contains('socket') ||
@@ -152,21 +158,21 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF334155), const Color(0xFF64748B)],
         accentColor: const Color(0xFF94A3B8),
         icon: Icons.plumbing_rounded,
-        label: 'GI Fitting',
+        label: l10n.productPlaceholderGiFitting,
       );
     } else if (key.contains('wire') || key.contains('cable')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF312E81), const Color(0xFF4338CA)],
         accentColor: const Color(0xFF818CF8),
         icon: Icons.cable_rounded,
-        label: 'Wire & Cable',
+        label: l10n.productPlaceholderWireCable,
       );
     } else if (key.contains('pipe') || key.contains('column')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF374151), const Color(0xFF6B7280)],
         accentColor: const Color(0xFFD1D5DB),
         icon: Icons.linear_scale_rounded,
-        label: 'Pipe',
+        label: l10n.productPlaceholderPipe,
       );
     } else if (key.contains('jhatka') ||
         key.contains('fencing') ||
@@ -177,7 +183,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF78350F), const Color(0xFFB45309)],
         accentColor: const Color(0xFFF59E0B),
         icon: Icons.fence_rounded,
-        label: 'Fencing',
+        label: l10n.productPlaceholderFencing,
       );
     } else if (key.contains('panel') ||
         key.contains('contactor') ||
@@ -186,21 +192,21 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF111827), const Color(0xFF1F2937)],
         accentColor: const Color(0xFF9CA3AF),
         icon: Icons.electrical_services_rounded,
-        label: 'Control Panel',
+        label: l10n.productPlaceholderControlPanel,
       );
     } else if (key.contains('starter') || key.contains('oil')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF7C2D12), const Color(0xFFC2410C)],
         accentColor: const Color(0xFFF97316),
         icon: Icons.oil_barrel_rounded,
-        label: 'Starter & Oil',
+        label: l10n.productPlaceholderStarterOil,
       );
     } else if (key.contains('pump') || key.contains('submersible')) {
       return _PlaceholderConfig(
         gradientColors: [const Color(0xFF14532D), const Color(0xFF15803D)],
         accentColor: const Color(0xFF4ADE80),
         icon: Icons.propane_tank_rounded,
-        label: 'Pump Set',
+        label: l10n.productPlaceholderPumpSet,
       );
     } else if (key.contains('harvest') ||
         key.contains('combine') ||
@@ -209,7 +215,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF78350F), const Color(0xFFA16207)],
         accentColor: const Color(0xFFCA8A04),
         icon: Icons.agriculture_rounded,
-        label: 'Harvester',
+        label: l10n.productPlaceholderHarvester,
       );
     } else if (key.contains('pesticide') ||
         key.contains('insect') ||
@@ -220,7 +226,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF4C1D95), const Color(0xFF7C3AED)],
         accentColor: const Color(0xFFA78BFA),
         icon: Icons.bug_report_rounded,
-        label: 'Pesticide',
+        label: l10n.productPlaceholderPesticide,
       );
     } else if (key.contains('soil') ||
         key.contains('test') ||
@@ -230,7 +236,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF1C1917), const Color(0xFF78716C)],
         accentColor: const Color(0xFFA8A29E),
         icon: Icons.biotech_rounded,
-        label: 'Testing Kit',
+        label: l10n.productPlaceholderTestingKit,
       );
     } else if (key.contains('rice') ||
         key.contains('mill') ||
@@ -239,7 +245,7 @@ class ProductImagePlaceholder extends StatelessWidget {
         gradientColors: [const Color(0xFF1E3A8A), const Color(0xFF1D4ED8)],
         accentColor: const Color(0xFF60A5FA),
         icon: Icons.factory_rounded,
-        label: 'Rice Mill',
+        label: l10n.productPlaceholderRiceMill,
       );
     }
 
@@ -248,7 +254,7 @@ class ProductImagePlaceholder extends StatelessWidget {
       gradientColors: [const Color(0xFF064E3B), const Color(0xFF059669)],
       accentColor: const Color(0xFF34D399),
       icon: Icons.eco_rounded,
-      label: category.isNotEmpty ? category : 'Product',
+      label: category.isNotEmpty ? category : l10n.productPlaceholderProduct,
     );
   }
 }

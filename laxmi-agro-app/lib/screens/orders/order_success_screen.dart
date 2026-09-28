@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
@@ -11,6 +12,7 @@ class OrderSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -34,8 +36,8 @@ class OrderSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               Text(
-                'Order Confirmed!',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.orderSuccessTitle,
+                style: AppFonts.jakarta(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -43,9 +45,9 @@ class OrderSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Your order has been placed successfully.\nWe\'ll notify you once it\'s shipped.',
+                l10n.orderSuccessMessage,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   color: AppColors.textSecondary,
                   fontSize: 16,
                   height: 1.5,
@@ -64,15 +66,18 @@ class OrderSuccessScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildDetailRow(
-                      'Order ID',
+                      l10n.orderIdLabel,
                       '#AGRI-${orderId.hashCode.abs() % 100000}',
                     ),
                     const Divider(height: 24, color: AppColors.gray200),
-                    _buildDetailRow('Status', 'Payment Verification Pending'),
+                    _buildDetailRow(
+                      l10n.commonStatus,
+                      l10n.orderSuccessPaymentPending,
+                    ),
                     const Divider(height: 24, color: AppColors.gray200),
                     _buildDetailRow(
-                      'Delivery',
-                      'Contact Laxmi Agro to confirm arrangements',
+                      l10n.ordersDelivery,
+                      l10n.orderSuccessDeliveryNote,
                     ),
                   ],
                 ),
@@ -93,8 +98,8 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Track Order',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.ordersTrackOrder,
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -115,8 +120,8 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Continue Shopping',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.checkoutContinueShopping,
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -136,17 +141,18 @@ class OrderSuccessScreen extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
+          style: AppFonts.jakarta(color: AppColors.textSecondary, fontSize: 14),
         ),
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.textPrimary,
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: AppFonts.jakarta(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ],

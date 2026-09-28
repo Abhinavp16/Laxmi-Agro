@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +9,8 @@ import '../../core/config/api_config.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/utils/customer_order_presentation.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../l10n/l10n.dart';
 
 class ShipmentTrackingScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -27,7 +28,7 @@ class _ShipmentTrackingScreenState
   Map<String, dynamic>? _order;
   bool _isLoading = true;
   bool _requiresLogin = false;
-  String? _error;
+  _TrackingError? _error;
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _ShipmentTrackingScreenState
     if (orderId.isEmpty) {
       if (!mounted) return;
       setState(() {
-        _error = 'This notification does not contain a valid order.';
+        _error = _TrackingError.invalidOrder;
         _isLoading = false;
       });
       return;
@@ -93,7 +94,7 @@ class _ShipmentTrackingScreenState
 
       if (!mounted) return;
       setState(() {
-        _error = 'Order details are unavailable.';
+        _error = _TrackingError.unavailable;
         _isLoading = false;
       });
     } on DioException catch (error) {
@@ -102,9 +103,9 @@ class _ShipmentTrackingScreenState
       setState(() {
         _requiresLogin = statusCode == 401 || statusCode == 403;
         _error = switch (statusCode) {
-          401 || 403 => 'Please sign in to view this order.',
-          404 => 'This order is no longer available.',
-          _ => 'Could not load order details. Please try again.',
+          401 || 403 => _TrackingError.signInRequired,
+          404 => _TrackingError.orderGone,
+          _ => _TrackingError.loadFailed,
         };
         _isLoading = false;
       });
@@ -112,7 +113,7 @@ class _ShipmentTrackingScreenState
       debugPrint('Error fetching order: $error');
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load order details. Please try again.';
+        _error = _TrackingError.loadFailed;
         _isLoading = false;
       });
     }
@@ -127,7 +128,31 @@ class _ShipmentTrackingScreenState
   }
 
   String _getStatusDisplay(String status) {
-    return CustomerOrderPresentation.label(status);
+    return CustomerOrderPresentation.label(context.l10n, status);
+  }
+
+  String _errorText(AppLocalizations l10n, _TrackingError? error) {
+    switch (error) {
+      case _TrackingError.invalidOrder:
+        return l10n.trackingInvalidOrder;
+      case _TrackingError.unavailable:
+        return l10n.trackingUnavailable;
+      case _TrackingError.signInRequired:
+        return l10n.trackingSignInToView;
+      case _TrackingError.orderGone:
+        return l10n.trackingOrderGone;
+      case _TrackingError.loadFailed:
+        return l10n.trackingLoadFailed;
+      case null:
+        return l10n.trackingOrderNotFound;
+    }
+  }
+
+  String _formatDate(DateTime value, String pattern) {
+    return DateFormat(
+      pattern,
+      Localizations.localeOf(context).languageCode,
+    ).format(value);
   }
 
   Color _getStatusColor(String status) =>
@@ -160,11 +185,12 @@ class _ShipmentTrackingScreenState
     final parsed = value == null ? null : DateTime.tryParse(value.toString());
     return parsed == null
         ? null
-        : DateFormat('MMM dd, yyyy hh:mm a').format(parsed.toLocal());
+        : _formatDate(parsed.toLocal(), 'MMM dd, yyyy hh:mm a');
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppColors.backgroundLight,
@@ -179,8 +205,8 @@ class _ShipmentTrackingScreenState
             ),
           ),
           title: Text(
-            'Shipment Details',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.trackingTitle,
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
@@ -208,8 +234,8 @@ class _ShipmentTrackingScreenState
             ),
           ),
           title: Text(
-            'Shipment Details',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.trackingTitle,
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
@@ -230,9 +256,9 @@ class _ShipmentTrackingScreenState
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _error ?? 'Order not found',
+                  _errorText(l10n, _error),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 16,
                     color: AppColors.textSecondary,
                   ),
@@ -241,18 +267,18 @@ class _ShipmentTrackingScreenState
                 if (_requiresLogin)
                   FilledButton(
                     onPressed: () => context.go('/login'),
-                    child: const Text('Sign In'),
+                    child: Text(l10n.commonLogin),
                   )
                 else
                   FilledButton.icon(
                     onPressed: _fetchOrder,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Try Again'),
+                    label: Text(l10n.commonTryAgain),
                   ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => context.go('/previous-orders'),
-                  child: const Text('View Previous Orders'),
+                  child: Text(l10n.trackingViewPreviousOrders),
                 ),
               ],
             ),
@@ -285,8 +311,8 @@ class _ShipmentTrackingScreenState
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
         ),
         title: Text(
-          'Shipment Details',
-          style: GoogleFonts.plusJakartaSans(
+          l10n.trackingTitle,
+          style: AppFonts.jakarta(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -322,8 +348,8 @@ class _ShipmentTrackingScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Order ID',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.orderIdLabel,
+                                style: AppFonts.jakarta(
                                   fontSize: 14,
                                   color: AppColors.textSecondary,
                                 ),
@@ -331,7 +357,7 @@ class _ShipmentTrackingScreenState
                               const SizedBox(height: 4),
                               Text(
                                 '#$orderNumber',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary,
@@ -339,21 +365,25 @@ class _ShipmentTrackingScreenState
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              statusDisplay,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: statusColor,
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                statusDisplay,
+                                textAlign: TextAlign.center,
+                                style: AppFonts.jakarta(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: statusColor,
+                                ),
                               ),
                             ),
                           ),
@@ -405,9 +435,16 @@ class _ShipmentTrackingScreenState
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            item['productSnapshot']?['name'] ??
-                                                'Product',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            localizedName(
+                                              context,
+                                              item['productSnapshot'] is Map
+                                                  ? item['productSnapshot']
+                                                        as Map
+                                                  : null,
+                                              fallback:
+                                                  l10n.ordersProductFallback,
+                                            ),
+                                            style: AppFonts.jakarta(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                               color: AppColors.textPrimary,
@@ -416,8 +453,13 @@ class _ShipmentTrackingScreenState
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           Text(
-                                            'Qty: ${item['quantity']} • ₹${NumberFormatter.formatPrice(item['totalPrice'])}',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            l10n.trackingItemQtyTotal(
+                                              '${item['quantity']}',
+                                              NumberFormatter.formatPrice(
+                                                item['totalPrice'],
+                                              ),
+                                            ),
+                                            style: AppFonts.jakarta(
                                               fontSize: 12,
                                               color: AppColors.textSecondary,
                                             ),
@@ -431,8 +473,8 @@ class _ShipmentTrackingScreenState
                             ),
                         if (items.length > 2)
                           Text(
-                            '+${items.length - 2} more items',
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.trackingMoreItems(items.length - 2),
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               color: AppColors.textTertiary,
                             ),
@@ -447,8 +489,8 @@ class _ShipmentTrackingScreenState
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Order Journey',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.trackingOrderJourney,
+                  style: AppFonts.jakarta(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
@@ -472,8 +514,8 @@ class _ShipmentTrackingScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order not approved',
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.trackingNotApproved,
+                          style: AppFonts.jakarta(
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF991B1B),
                           ),
@@ -486,8 +528,8 @@ class _ShipmentTrackingScreenState
                                       .isNotEmpty ==
                                   true
                               ? order['rejectionReason'].toString()
-                              : 'Contact support if you need more information.',
-                          style: GoogleFonts.plusJakartaSans(
+                              : l10n.trackingContactSupport,
+                          style: AppFonts.jakarta(
                             fontSize: 13,
                             height: 1.4,
                             color: const Color(0xFF7F1D1D),
@@ -519,7 +561,7 @@ class _ShipmentTrackingScreenState
                       isCompleted: isCompleted,
                       isLast: isLast,
                       isCurrent: isCurrent,
-                      badge: isCurrent ? 'LATEST' : null,
+                      badge: isCurrent ? l10n.trackingLatestBadge : null,
                     );
                   }).toList(),
                 ),
@@ -530,8 +572,8 @@ class _ShipmentTrackingScreenState
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Courier Information',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.trackingCourierInfo,
+                    style: AppFonts.jakarta(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -551,26 +593,28 @@ class _ShipmentTrackingScreenState
                     child: Column(
                       children: [
                         if (courierName != null && courierName.isNotEmpty)
-                          _buildInfoRow('Courier', courierName),
+                          _buildInfoRow(l10n.trackingCourier, courierName),
                         if (courierName != null && courierName.isNotEmpty)
                           const SizedBox(height: 12),
-                        _buildInfoRow('Tracking Number', trackingNumber),
+                        _buildInfoRow(l10n.trackingNumberLabel, trackingNumber),
                         if (shippedAt != null) ...[
                           const SizedBox(height: 12),
                           _buildInfoRow(
-                            'Shipped Date',
-                            DateFormat(
+                            l10n.trackingShippedDate,
+                            _formatDate(
+                              DateTime.parse(shippedAt),
                               'MMM dd, yyyy',
-                            ).format(DateTime.parse(shippedAt)),
+                            ),
                           ),
                         ],
                         if (deliveredAt != null) ...[
                           const SizedBox(height: 12),
                           _buildInfoRow(
-                            'Delivered Date',
-                            DateFormat(
+                            l10n.trackingDeliveredDate,
+                            _formatDate(
+                              DateTime.parse(deliveredAt),
                               'MMM dd, yyyy',
-                            ).format(DateTime.parse(deliveredAt)),
+                            ),
                           ),
                         ],
                       ],
@@ -585,8 +629,8 @@ class _ShipmentTrackingScreenState
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Shipping Address',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.checkoutShippingAddress,
+                    style: AppFonts.jakarta(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -608,7 +652,7 @@ class _ShipmentTrackingScreenState
                       children: [
                         Text(
                           order['shippingAddress']['fullName'] ?? '',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
@@ -617,14 +661,14 @@ class _ShipmentTrackingScreenState
                         const SizedBox(height: 8),
                         Text(
                           '${order['shippingAddress']['addressLine1'] ?? ''}${order['shippingAddress']['addressLine2'] != null ? ', ${order['shippingAddress']['addressLine2']}' : ''}',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                           ),
                         ),
                         Text(
                           '${order['shippingAddress']['city'] ?? ''}, ${order['shippingAddress']['state'] ?? ''} - ${order['shippingAddress']['pincode'] ?? ''}',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                           ),
@@ -632,8 +676,10 @@ class _ShipmentTrackingScreenState
                         if (order['shippingAddress']['phone'] != null) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Phone: ${order['shippingAddress']['phone']}',
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.checkoutPhoneValue(
+                              '${order['shippingAddress']['phone']}',
+                            ),
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               color: AppColors.textTertiary,
                             ),
@@ -662,7 +708,7 @@ class _ShipmentTrackingScreenState
             children: [
               Text(
                 label,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 12,
                   color: AppColors.textTertiary,
                 ),
@@ -670,7 +716,7 @@ class _ShipmentTrackingScreenState
               const SizedBox(height: 2),
               Text(
                 value,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
@@ -723,14 +769,16 @@ class _ShipmentTrackingScreenState
               children: [
                 Row(
                   children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isCurrent
-                            ? AppColors.textPrimary
-                            : AppColors.textPrimary.withOpacity(0.7),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: AppFonts.jakarta(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isCurrent
+                              ? AppColors.textPrimary
+                              : AppColors.textPrimary.withOpacity(0.7),
+                        ),
                       ),
                     ),
                     if (badge != null) ...[
@@ -746,7 +794,7 @@ class _ShipmentTrackingScreenState
                         ),
                         child: Text(
                           badge,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -760,7 +808,7 @@ class _ShipmentTrackingScreenState
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
@@ -773,4 +821,12 @@ class _ShipmentTrackingScreenState
       ],
     );
   }
+}
+
+enum _TrackingError {
+  invalidOrder,
+  unavailable,
+  signInRequired,
+  orderGone,
+  loadFailed,
 }

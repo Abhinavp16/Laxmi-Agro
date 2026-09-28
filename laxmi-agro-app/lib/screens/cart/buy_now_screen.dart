@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -11,6 +10,10 @@ import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
+import '../../core/theme/app_fonts.dart';
+import '../../core/utils/number_formatter.dart';
+import '../../l10n/api_error_text.dart';
+import '../../l10n/l10n.dart';
 
 class BuyNowScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -99,17 +102,13 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     });
   }
 
-  String _fmt(double price) {
-    return price
-        .toStringAsFixed(0)
-        .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]},',
-        );
-  }
+  String _fmt(double price) => NumberFormatter.formatPrice(price.round());
+
+  String _rupees(double price) => context.l10n.commonRupees(_fmt(price));
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (ref.watch(guestModeProvider)) {
       return Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
@@ -119,15 +118,15 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
             onPressed: () => context.pop(),
             icon: const Icon(Icons.arrow_back_ios_new),
           ),
-          title: const Text('Customer Preview'),
+          title: Text(l10n.buyNowPreviewTitle),
         ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-              'Buy Now is disabled in customer preview mode. Your wholesaler account remains unchanged.',
+              l10n.buyNowPreviewDisabled,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF475569),
@@ -162,9 +161,9 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Order Summary',
+                        l10n.buyNowTitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF0f172a),
@@ -241,8 +240,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Submit Order',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.buyNowSubmitOrder,
+                                style: AppFonts.jakarta(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -269,6 +268,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   }
 
   Widget _buildProductCard() {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -322,7 +322,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                             word.substring(1).toLowerCase();
                       })
                       .join(' '),
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF0f172a),
@@ -332,8 +332,10 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Qty: ${widget.quantity}',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.commonQtyValue(
+                    NumberFormatter.formatPrice(widget.quantity),
+                  ),
+                  style: AppFonts.jakarta(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF64748b),
@@ -343,8 +345,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                 Row(
                   children: [
                     Text(
-                      '₹${_fmt(widget.price)}',
-                      style: GoogleFonts.plusJakartaSans(
+                      _rupees(widget.price),
+                      style: AppFonts.jakarta(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF135bec),
@@ -353,8 +355,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     if (widget.mrp != null && widget.mrp! > widget.price) ...[
                       const SizedBox(width: 8),
                       Text(
-                        '₹${_fmt(widget.mrp!)}',
-                        style: GoogleFonts.plusJakartaSans(
+                        _rupees(widget.mrp!),
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFFEF4444),
@@ -373,6 +375,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   }
 
   Widget _buildAddressSection() {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -387,8 +390,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Delivery Address',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.buyNowDeliveryAddress,
+                style: AppFonts.jakarta(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF0f172a),
@@ -397,8 +400,10 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
               TextButton(
                 onPressed: _showAddressSelectionDialog,
                 child: Text(
-                  _savedAddresses.isEmpty ? 'Add' : 'Change',
-                  style: GoogleFonts.plusJakartaSans(
+                  _savedAddresses.isEmpty
+                      ? l10n.buyNowAddAddress
+                      : l10n.buyNowChangeAddress,
+                  style: AppFonts.jakarta(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF135bec),
@@ -431,8 +436,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Add Delivery Address',
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.buyNowAddDeliveryAddress,
+                      style: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF135bec),
@@ -462,7 +467,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                       const SizedBox(width: 8),
                       Text(
                         _name,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF0f172a),
@@ -477,7 +482,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                       const SizedBox(width: 8),
                       Text(
                         _phone,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           color: const Color(0xFF64748b),
                         ),
@@ -497,7 +502,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                       Expanded(
                         child: Text(
                           _fullAddress,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 14,
                             color: const Color(0xFF64748b),
                           ),
@@ -514,6 +519,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   }
 
   Widget _buildPriceSummary() {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -525,8 +531,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Price Summary',
-            style: GoogleFonts.plusJakartaSans(
+            l10n.cartPriceSummary,
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF0f172a),
@@ -534,14 +540,14 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
           ),
           const SizedBox(height: 12),
           _buildPriceRow(
-            'Subtotal',
-            '₹${_fmt(widget.price * widget.quantity)}',
+            l10n.commonSubtotal,
+            _rupees(widget.price * widget.quantity),
             const Color(0xFF64748b),
           ),
           const SizedBox(height: 8),
           _buildPriceRow(
-            'Delivery Fee',
-            '₹${_fmt(50)}',
+            l10n.cartDeliveryFee,
+            _rupees(50),
             const Color(0xFF64748b),
           ),
           Container(
@@ -553,16 +559,16 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Total',
-                style: GoogleFonts.plusJakartaSans(
+                l10n.commonTotal,
+                style: AppFonts.jakarta(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0f172a),
                 ),
               ),
               Text(
-                '₹${_fmt((widget.price * widget.quantity) + 50)}',
-                style: GoogleFonts.plusJakartaSans(
+                _rupees((widget.price * widget.quantity) + 50),
+                style: AppFonts.jakarta(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF135bec),
@@ -581,7 +587,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF64748b),
@@ -589,7 +595,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
         ),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
+          style: AppFonts.jakarta(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: valueColor,
@@ -607,6 +613,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     final stateController = TextEditingController(text: _state);
     final pinController = TextEditingController(text: _pincode);
     final formKey = GlobalKey<FormState>();
+    final l10n = context.l10n;
 
     final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
@@ -640,8 +647,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     ),
                   ),
                   Text(
-                    'Shipping Address',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.checkoutShippingAddress,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF0f172a),
@@ -649,19 +656,19 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildAddressField(
-                    'Full Name',
+                    l10n.checkoutFullName,
                     nameController,
                     TextInputType.text,
                   ),
                   const SizedBox(height: 12),
                   _buildAddressField(
-                    'Phone',
+                    l10n.checkoutPhone,
                     phoneController,
                     TextInputType.phone,
                   ),
                   const SizedBox(height: 12),
                   _buildAddressField(
-                    'Address Line 1',
+                    l10n.checkoutAddressLine1,
                     address1Controller,
                     TextInputType.text,
                   ),
@@ -697,8 +704,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                         ),
                       ),
                       child: Text(
-                        'Confirm & Pay',
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.checkoutConfirmAndPay,
+                        style: AppFonts.jakarta(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -754,14 +761,12 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
+      validator: (v) =>
+          (v == null || v.trim().isEmpty) ? context.l10n.commonRequired : null,
+      style: AppFonts.jakarta(fontSize: 14, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF64748b)),
+        labelStyle: AppFonts.jakarta(color: const Color(0xFF64748b)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFe2e8f0)),
@@ -798,6 +803,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       return;
     }
 
+    final l10n = context.l10n;
     final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -815,8 +821,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Select Address',
-                  style: GoogleFonts.plusJakartaSans(
+                  l10n.buyNowSelectAddress,
+                  style: AppFonts.jakarta(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0f172a),
@@ -832,8 +838,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                     });
                   },
                   child: Text(
-                    '+ Add New',
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.buyNowAddNewAddress,
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF135bec),
@@ -879,7 +885,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                               children: [
                                 Text(
                                   address.fullName,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF0f172a),
@@ -899,8 +905,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      'Primary',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      l10n.buyNowPrimaryAddress,
+                                      style: AppFonts.jakarta(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
                                         color: const Color(0xFF135bec),
@@ -913,15 +919,15 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                             const SizedBox(height: 4),
                             Text(
                               '${address.addressLine1}, ${address.city}, ${address.state} - ${address.pincode}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 12,
                                 color: const Color(0xFF64748b),
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Phone: ${address.phone}',
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.checkoutPhoneValue(address.phone),
+                              style: AppFonts.jakarta(
                                 fontSize: 12,
                                 color: const Color(0xFF64748b),
                               ),
@@ -954,19 +960,18 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
     final shouldOpenLogin = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final l10n = dialogContext.l10n;
         return AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text(
-            'Login is required before placing an order. Please log in to continue checkout.',
-          ),
+          title: Text(l10n.cartLoginRequiredTitle),
+          content: Text(l10n.buyNowLoginRequiredMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Not now'),
+              child: Text(l10n.cartNotNow),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Login'),
+              child: Text(l10n.commonLogin),
             ),
           ],
         );
@@ -1031,8 +1036,9 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              response.data['message'] ?? 'Order creation failed',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              response.data['message']?.toString() ??
+                  context.l10n.buyNowOrderFailed,
+              style: AppFonts.jakarta(fontWeight: FontWeight.w600),
             ),
             backgroundColor: AppColors.error,
           ),
@@ -1042,16 +1048,17 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       if (!mounted) return;
       setState(() => _isCheckingOut = false);
 
-      String msg = 'Failed to create order';
-      if (e.response?.data?['message'] != null) {
-        msg = e.response!.data['message'].toString();
-      }
+      final msg = apiErrorText(
+        context,
+        e,
+        fallback: context.l10n.buyNowOrderFailed,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             msg,
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppColors.error,
         ),
@@ -1062,8 +1069,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Failed to create order',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            context.l10n.buyNowOrderFailed,
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: AppColors.error,
         ),

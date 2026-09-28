@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:dio/dio.dart';
@@ -16,6 +15,9 @@ import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../core/providers/locale_provider.dart';
+import '../../l10n/api_error_text.dart';
+import '../../l10n/l10n.dart';
+import '../../widgets/language_picker_sheet.dart';
 import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/cart_provider.dart';
@@ -26,7 +28,6 @@ import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/services/storage_service.dart';
-import '../../core/services/transliteration_service.dart';
 import '../categories/categories_screen.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
@@ -39,6 +40,7 @@ import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/product_search.dart';
+import '../../core/theme/app_fonts.dart';
 
 enum _SearchScope { product, brand, category }
 
@@ -145,9 +147,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   int _currentPromoBannerIndex = 0;
   final PageController _promoBannerController = PageController();
   Timer? _promoAutoRotateTimer;
-  final Set<String> _pendingHindiTransliterations = <String>{};
-  final Set<String> _completedHindiTransliterations = <String>{};
-  final Map<String, String> _localHindiNames = <String, String>{};
 
   // Notification state
   List<Map<String, dynamic>> _notifications = [];
@@ -316,18 +315,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text(
-            'Please login or sign up to continue enjoying all features.',
-          ),
+          title: Text(context.l10n.homeGuestPromptTitle),
+          content: Text(context.l10n.homeGuestPromptMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Skip'),
+              child: Text(context.l10n.commonSkip),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Login / Sign Up'),
+              child: Text(context.l10n.homeLoginOrSignUp),
             ),
           ],
         );
@@ -884,9 +881,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               'type': discountType,
               'value': discountValue,
               'code': item['code']?.toString(),
-              'rule': discountType == 'percentage'
-                  ? 'Up to $discountValue% off on selected products'
-                  : 'Flat Rs $discountValue off on eligible orders',
             };
           }).toList();
           _isLoadingOffers = false;
@@ -920,9 +914,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     'type': discountType,
                     'value': discountValue,
                     'code': item['code']?.toString(),
-                    'rule': discountType == 'percentage'
-                        ? 'Up to $discountValue% off on selected products'
-                        : 'Flat Rs $discountValue off on eligible orders',
                   };
                 }).toList();
               });
@@ -1105,11 +1096,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       setState(() {
         _isSearching = false;
         _isLoadingMoreSearch = false;
-        _searchError = 'Unable to load products. Please try again.';
+        _searchError = context.l10n.homeSearchLoadFailed;
       });
       if (append) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not load more products.')),
+          SnackBar(content: Text(context.l10n.homeSearchLoadMoreFailed)),
         );
       }
     } catch (error) {
@@ -1118,11 +1109,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       setState(() {
         _isSearching = false;
         _isLoadingMoreSearch = false;
-        _searchError = 'Unable to load products. Please try again.';
+        _searchError = context.l10n.homeSearchLoadFailed;
       });
       if (append) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not load more products.')),
+          SnackBar(content: Text(context.l10n.homeSearchLoadMoreFailed)),
         );
       }
     }
@@ -1166,15 +1157,27 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     required Widget child,
     bool openSearch = false,
   }) {
-    final t = ref.read(localeProvider.notifier).translate;
-    const options = <(_SearchScope, String, IconData)>[
-      (_SearchScope.product, 'Product', Icons.inventory_2_outlined),
-      (_SearchScope.brand, 'Brand', Icons.storefront_outlined),
-      (_SearchScope.category, 'Category', Icons.category_outlined),
+    final l10n = context.l10n;
+    final options = <(_SearchScope, String, IconData)>[
+      (
+        _SearchScope.product,
+        l10n.homeSearchScopeProduct,
+        Icons.inventory_2_outlined,
+      ),
+      (
+        _SearchScope.brand,
+        l10n.homeSearchScopeBrand,
+        Icons.storefront_outlined,
+      ),
+      (
+        _SearchScope.category,
+        l10n.homeSearchScopeCategory,
+        Icons.category_outlined,
+      ),
     ];
 
     return PopupMenuButton<_SearchScope>(
-      tooltip: t('Search filter'),
+      tooltip: l10n.homeSearchFilterTooltip,
       position: PopupMenuPosition.under,
       offset: const Offset(-132, 6),
       constraints: const BoxConstraints.tightFor(width: 184),
@@ -1199,8 +1202,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
-                  t(option.$2),
-                  style: GoogleFonts.plusJakartaSans(
+                  option.$2,
+                  style: AppFonts.jakarta(
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     color: selected ? primaryBlue : textPrimary,
@@ -1300,12 +1303,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   void _showNotificationPopup() {
     if (ref.read(guestModeProvider)) {
-      _showGuestModePopup('Notifications hidden in preview mode');
+      _showGuestModePopup(context.l10n.homePreviewNotificationsHidden);
       return;
     }
     _isLoadingNotifications = true;
     _dialogSetter = null;
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     showDialog(
       context: context,
       barrierColor: Colors.black26,
@@ -1370,8 +1373,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        t('Notifications'),
-                                        style: GoogleFonts.plusJakartaSans(
+                                        l10n.homeNotificationsTitle,
+                                        style: AppFonts.jakarta(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w800,
                                           color: textPrimary,
@@ -1392,7 +1395,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           ),
                                           child: Text(
                                             '$_unreadCount',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.white,
@@ -1412,13 +1415,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           child: Padding(
                                             padding: const EdgeInsets.all(8),
                                             child: Text(
-                                              t('Mark all read'),
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: primaryBlue,
-                                                  ),
+                                              l10n.homeNotificationsMarkAllRead,
+                                              style: AppFonts.jakarta(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryBlue,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1474,8 +1476,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         ),
                                         const SizedBox(height: 12),
                                         Text(
-                                          t('No notifications yet'),
-                                          style: GoogleFonts.plusJakartaSans(
+                                          l10n.homeNotificationsEmptyTitle,
+                                          style: AppFonts.jakarta(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: textPrimary,
@@ -1483,8 +1485,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          t("You're all caught up!"),
-                                          style: GoogleFonts.plusJakartaSans(
+                                          l10n.homeNotificationsEmptySubtitle,
+                                          style: AppFonts.jakarta(
                                             fontSize: 13,
                                             color: textMuted,
                                           ),
@@ -1565,8 +1567,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     vertical: 14,
                                   ),
                                   child: Text(
-                                    t('View All Notifications'),
-                                    style: GoogleFonts.plusJakartaSans(
+                                    l10n.homeNotificationsViewAll,
+                                    style: AppFonts.jakarta(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: primaryBlue,
@@ -1651,13 +1653,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         final dt = DateTime.parse(createdAt);
         final diff = DateTime.now().difference(dt);
         if (diff.inMinutes < 1) {
-          timeAgo = 'Just now';
+          timeAgo = context.l10n.homeTimeJustNow;
         } else if (diff.inMinutes < 60) {
-          timeAgo = '${diff.inMinutes}m ago';
+          timeAgo = context.l10n.homeTimeMinutesAgo('${diff.inMinutes}');
         } else if (diff.inHours < 24) {
-          timeAgo = '${diff.inHours}h ago';
+          timeAgo = context.l10n.homeTimeHoursAgo('${diff.inHours}');
         } else {
-          timeAgo = '${diff.inDays}d ago';
+          timeAgo = context.l10n.homeTimeDaysAgo('${diff.inDays}');
         }
       } catch (_) {}
     }
@@ -1689,7 +1691,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         notification['title'] ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: isRead
                               ? FontWeight.w600
@@ -1715,7 +1717,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   notification['body'] ?? '',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     color: textSecondary,
                     height: 1.4,
@@ -1730,10 +1732,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   const SizedBox(height: 4),
                   Text(
                     timeAgo,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: textMuted,
-                    ),
+                    style: AppFonts.jakarta(fontSize: 11, color: textMuted),
                   ),
                 ],
               ],
@@ -1770,59 +1769,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return ref.read(effectiveIsWholesalerProvider);
   }
 
-  String _getDisplayName(Map<String, dynamic> product, String currentLang) {
-    final nameHindi = product['nameHindi']?.toString() ?? '';
-    final nameEnglish = product['name']?.toString() ?? '';
-    final productId =
-        product['id']?.toString() ?? product['_id']?.toString() ?? '';
+  /// Product name in the current language (Hindi name when available).
+  String _getDisplayName(Map<String, dynamic> product) =>
+      localizedName(context, product);
 
-    if (currentLang == 'Hindi') {
-      if (nameHindi.isNotEmpty) return nameHindi;
-
-      if (nameEnglish.isNotEmpty && productId.isNotEmpty) {
-        final syncKey = '$productId|$nameEnglish';
-        final localName = _localHindiNames[syncKey];
-        if (localName != null) return localName;
-        if (!_pendingHindiTransliterations.contains(syncKey) &&
-            !_completedHindiTransliterations.contains(syncKey)) {
-          _pendingHindiTransliterations.add(syncKey);
-          Future.microtask(
-            () => _triggerBackgroundTransliteration(
-              productId,
-              nameEnglish,
-              syncKey,
-            ),
-          );
-        }
-      }
-      return nameEnglish;
-    }
-
-    return nameEnglish;
-  }
-
-  Future<void> _triggerBackgroundTransliteration(
-    String productId,
-    String nameEnglish,
-    String syncKey,
-  ) async {
-    if (productId.isEmpty || nameEnglish.isEmpty) {
-      _pendingHindiTransliterations.remove(syncKey);
-      _completedHindiTransliterations.add(syncKey);
-      return;
-    }
-
-    try {
-      final transliterated = await TransliterationService.transliterateToHindi(
-        nameEnglish,
-      );
-      if (mounted && transliterated != nameEnglish) {
-        setState(() => _localHindiNames[syncKey] = transliterated);
-      }
-    } finally {
-      _pendingHindiTransliterations.remove(syncKey);
-      _completedHindiTransliterations.add(syncKey);
-    }
+  /// Offer rule line, built at display time so it follows the language.
+  String _offerRuleText(Map<String, dynamic> offer) {
+    final l10n = context.l10n;
+    final type = offer['type']?.toString() ?? '';
+    final value = offer['value'];
+    if (!offer.containsKey('type')) return l10n.homeOfferRuleFallback;
+    return type == 'percentage'
+        ? l10n.homeOfferRulePercent('$value')
+        : l10n.homeOfferRuleFlat('$value');
   }
 
   List<Widget> get _bodyPages {
@@ -1964,23 +1923,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ],
                   _buildProductsSection(
                     _isWholesaler
-                        ? ref
-                              .read(localeProvider.notifier)
-                              .translate('Fast-Moving Products')
-                        : ref
-                              .read(localeProvider.notifier)
-                              .translate('Popular Products'),
+                        ? context.l10n.homePopularProductsDealer
+                        : context.l10n.homePopularProductsCustomer,
                     true,
                   ),
                   const SizedBox(height: 8),
                   _buildProductsSection(
                     _isWholesaler
-                        ? ref
-                              .read(localeProvider.notifier)
-                              .translate('Dealer Schemes')
-                        : ref
-                              .read(localeProvider.notifier)
-                              .translate('Hot Deals'),
+                        ? context.l10n.homeHotDealsDealer
+                        : context.l10n.homeHotDealsCustomer,
                     false,
                   ),
                   const SizedBox(height: 8),
@@ -2006,20 +1957,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildTrustStrip() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     return _TrustBadgeMarquee(
       isActive: _selectedNavIndex == 0,
       items: [
-        {'icon': Icons.local_shipping_rounded, 'text': t('Pan-India Delivery')},
-        {'icon': Icons.verified_user_rounded, 'text': t('Certified Products')},
-        {'icon': Icons.support_agent_rounded, 'text': t('24/7 Expert Support')},
-        {'icon': Icons.local_offer_rounded, 'text': t('Bulk Sale Active')},
+        {
+          'icon': Icons.local_shipping_rounded,
+          'text': l10n.homeTrustPanIndiaDelivery,
+        },
+        {
+          'icon': Icons.verified_user_rounded,
+          'text': l10n.homeTrustCertifiedProducts,
+        },
+        {
+          'icon': Icons.support_agent_rounded,
+          'text': l10n.homeTrustExpertSupport,
+        },
+        {'icon': Icons.local_offer_rounded, 'text': l10n.homeTrustBulkSale},
       ],
     );
   }
 
   Widget _buildHomeSearchBar() {
-    final t = ref.read(localeProvider.notifier).translate;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Container(
@@ -2061,10 +2020,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          t('Search products, brands, categories...'),
+                          context.l10n.homeSearchHint,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             color: textMuted,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -2098,7 +2057,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildOfferSection() {
-    final t = ref.read(localeProvider.notifier).translate;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2108,16 +2066,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                t('Exclusive Offers'),
-                style: GoogleFonts.plusJakartaSans(
+                context.l10n.homeExclusiveOffers,
+                style: AppFonts.jakarta(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: textPrimary,
                 ),
               ),
               Text(
-                t('View Deals'),
-                style: GoogleFonts.plusJakartaSans(
+                context.l10n.homeViewDeals,
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: primaryBlue,
@@ -2181,9 +2139,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   colors[index % colors.length],
                   icons[index % icons.length],
                   couponCode: offer['code']?.toString(),
-                  rule:
-                      offer['rule']?.toString() ??
-                      'Apply during checkout to unlock offer',
+                  rule: _offerRuleText(offer),
                 );
               }).toList(),
             ),
@@ -2200,7 +2156,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     String? couponCode,
     String? rule,
   }) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 700;
     final double cardW = isTablet ? 250 : 218;
@@ -2334,7 +2290,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           title.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: isTablet ? 9.2 : 8.4,
                             fontWeight: FontWeight.w800,
@@ -2350,7 +2306,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   discountText.toUpperCase(),
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     color: Colors.white,
                                     fontSize: showOff
                                         ? (isTablet ? 37 : 32)
@@ -2367,8 +2323,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 2),
                                 child: Text(
-                                  t('OFF'),
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.homeOfferOff,
+                                  style: AppFonts.jakarta(
                                     color: Colors.white,
                                     fontSize: isTablet ? 15 : 13,
                                     fontWeight: FontWeight.w900,
@@ -2379,10 +2335,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ],
                         ),
                         Text(
-                          rule ?? t('Apply during checkout'),
+                          rule ?? l10n.homeOfferApplyDuringCheckout,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             color: Colors.white.withOpacity(0.92),
                             fontSize: isTablet ? 9 : 8,
                             fontWeight: FontWeight.w600,
@@ -2392,10 +2348,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                '${t('Code')}: $code',
+                                l10n.homeOfferCode(code),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   color: Colors.white,
                                   fontSize: isTablet ? 9.8 : 8.7,
                                   fontWeight: FontWeight.w800,
@@ -2414,9 +2370,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           onTap: () => _redeemOffer(
                             code: code,
                             title: title,
-                            rule:
-                                rule ??
-                                'Apply during checkout to unlock this offer',
+                            rule: rule ?? l10n.homeOfferRuleFallback,
                           ),
                           child: Container(
                             height: isTablet ? 30 : 27,
@@ -2426,8 +2380,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              t('APPLY COUPON'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.homeApplyCoupon,
+                              style: AppFonts.jakarta(
                                 color: colorDark,
                                 fontSize: isTablet ? 9.5 : 8.5,
                                 fontWeight: FontWeight.w900,
@@ -2506,9 +2460,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           children: [
             Center(
               child: Text(
-                'AUTHORIZED REPRESENTATIVE & PARTNERSHIPS',
+                context.l10n.homePartnershipsTitle,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 3,
@@ -2536,7 +2490,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     required String rule,
   }) async {
     if (ref.read(guestModeProvider)) {
-      await _showGuestModePopup('Offers are read-only in preview mode');
+      await _showGuestModePopup(context.l10n.homePreviewOffersReadOnly);
       return;
     }
     final user = ref.read(authProvider).user;
@@ -2563,8 +2517,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '$code copied! Use it in cart or find it in "My Coupons" in Profile.',
-                style: GoogleFonts.plusJakartaSans(
+                context.l10n.homeCouponCopied(code),
+                style: AppFonts.jakarta(
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -2593,13 +2547,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   String _getDisplayCategoryName(Map<String, dynamic> category) {
-    final currentLang = ref.watch(localeProvider);
     final displayName = category['displayName']?.toString() ?? '';
     final nameEnglish = category['name']?.toString() ?? '';
-    final nameHindi = category['nameHindi']?.toString() ?? '';
+    final nameHindi = category['nameHindi']?.toString().trim() ?? '';
 
-    if (currentLang == 'Hindi' && nameHindi.isNotEmpty) {
-      return nameHindi;
+    if (context.isHindi && nameHindi.isNotEmpty) {
+      return latinDigits(nameHindi);
     }
     if (displayName.isNotEmpty) return displayName;
     return _fmtCatName(nameEnglish);
@@ -2669,7 +2622,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildCategorySection() {
-    final t = ref.read(localeProvider.notifier).translate;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 700;
     final categoryCardWidth = isTablet ? 132.0 : 108.0;
@@ -2712,8 +2664,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t('Categories'),
-                      style: GoogleFonts.plusJakartaSans(
+                      context.l10n.homeCategoriesTitle,
+                      style: AppFonts.jakarta(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
@@ -2752,8 +2704,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     child: Row(
                       children: [
                         Text(
-                          t('See All'),
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.commonSeeAll,
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -2861,7 +2813,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
@@ -2973,7 +2925,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildScopedEmptyState(String message) {
-    final t = ref.read(localeProvider.notifier).translate;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2981,8 +2932,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           const Icon(Icons.search_off_rounded, size: 48, color: textMuted),
           const SizedBox(height: 14),
           Text(
-            t(message),
-            style: GoogleFonts.plusJakartaSans(
+            message,
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: textPrimary,
@@ -2990,8 +2941,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            t('Try a different search term'),
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textMuted),
+            context.l10n.homeTryDifferentSearch,
+            style: AppFonts.jakarta(fontSize: 13, color: textMuted),
           ),
         ],
       ),
@@ -3003,7 +2954,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return const Center(child: CircularProgressIndicator(color: primaryBlue));
     }
     final brands = _filteredSearchBrands;
-    if (brands.isEmpty) return _buildScopedEmptyState('No brands found');
+    if (brands.isEmpty) {
+      return _buildScopedEmptyState(context.l10n.homeNoBrandsFound);
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
@@ -3063,7 +3016,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   Expanded(
                     child: Text(
                       name,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
@@ -3090,7 +3043,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
     final categories = _filteredSearchCategories;
     if (categories.isEmpty) {
-      return _buildScopedEmptyState('No categories found');
+      return _buildScopedEmptyState(context.l10n.homeNoCategoriesFound);
     }
 
     return ListView.separated(
@@ -3143,7 +3096,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       children: [
                         Text(
                           displayName,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: textPrimary,
@@ -3153,7 +3106,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           const SizedBox(height: 3),
                           Text(
                             brandName,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               color: textMuted,
                             ),
@@ -3177,7 +3130,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildSearchContent() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final catalogCategories = _categoryData
         .where(_categoryHasProducts)
         .take(8)
@@ -3186,8 +3139,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ? _featuredProducts
         : _products;
     final suggestionTitle = _featuredProducts.isNotEmpty
-        ? t('Featured Products')
-        : t('Catalog Products');
+        ? l10n.homeFeaturedProducts
+        : l10n.homeCatalogProducts;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3199,8 +3152,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                t('Explore'),
-                style: GoogleFonts.plusJakartaSans(
+                l10n.homeExploreTitle,
+                style: AppFonts.jakarta(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                   color: textPrimary,
@@ -3242,14 +3195,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     onChanged: _handleSearchTextChanged,
                     onSubmitted: _submitSearch,
                     textInputAction: TextInputAction.search,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                       color: textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: t('Search products, brands, categories...'),
-                      hintStyle: GoogleFonts.plusJakartaSans(
+                      hintText: l10n.homeSearchHint,
+                      hintStyle: AppFonts.jakarta(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: textMuted,
@@ -3343,8 +3296,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              _searchError!,
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.homeSearchLoadFailed,
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 color: textSecondary,
                               ),
@@ -3353,7 +3306,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             OutlinedButton(
                               onPressed: () =>
                                   _searchProducts(_searchController.text),
-                              child: Text(t('Retry')),
+                              child: Text(l10n.commonRetry),
                             ),
                           ],
                         ),
@@ -3370,8 +3323,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              t('No results found'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.homeSearchNoResults,
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: textPrimary,
@@ -3379,12 +3332,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              t(
-                                _searchQuery.trim().isEmpty
-                                    ? 'Try changing your filters'
-                                    : 'Try a different search term',
-                              ),
-                              style: GoogleFonts.plusJakartaSans(
+                              _searchQuery.trim().isEmpty
+                                  ? l10n.homeSearchTryChangingFilters
+                                  : l10n.homeTryDifferentSearch,
+                              style: AppFonts.jakarta(
                                 fontSize: 13,
                                 color: textMuted,
                               ),
@@ -3435,8 +3386,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    t('Recent Searches'),
-                                    style: GoogleFonts.plusJakartaSans(
+                                    l10n.homeRecentSearches,
+                                    style: AppFonts.jakarta(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
                                       color: textPrimary,
@@ -3446,8 +3397,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     onTap: () =>
                                         setState(() => _recentSearches.clear()),
                                     child: Text(
-                                      t('CLEAR ALL'),
-                                      style: GoogleFonts.plusJakartaSans(
+                                      l10n.homeClearAll,
+                                      style: AppFonts.jakarta(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: primaryBlue,
@@ -3500,7 +3451,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           },
                                           child: Text(
                                             _recentSearches[i],
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w400,
                                               color: textPrimary,
@@ -3539,8 +3490,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   horizontal: 16,
                                 ),
                                 child: Text(
-                                  t('Browse Categories'),
-                                  style: GoogleFonts.plusJakartaSans(
+                                  l10n.homeBrowseCategories,
+                                  style: AppFonts.jakarta(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
@@ -3594,7 +3545,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         child: Center(
                                           child: Text(
                                             label,
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w700,
                                               color: textPrimary,
@@ -3620,7 +3571,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               children: [
                                 Text(
                                   suggestionTitle,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                     color: textPrimary,
@@ -3646,8 +3597,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildSuggestionCard(Map<String, dynamic> product) {
-    final t = ref.read(localeProvider.notifier).translate;
-    final currentLang = ref.read(localeProvider);
     final heroTag = 'search-product-${product['id']}';
     final hasOriginalPrice =
         product['originalPrice'] != null &&
@@ -3713,8 +3662,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _getDisplayName(product, currentLang),
-                          style: GoogleFonts.outfit(
+                          _getDisplayName(product),
+                          style: AppFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: textPrimary,
@@ -3744,7 +3693,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               const SizedBox(width: 2),
                               Text(
                                 '${product['rating']}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                   color: const Color(0xFF15803D),
@@ -3792,8 +3741,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             const SizedBox(width: 3),
                             Flexible(
                               child: Text(
-                                '$count sold in 24hrs',
-                                style: GoogleFonts.plusJakartaSans(
+                                context.l10n.homeSoldIn24Hrs('$count'),
+                                style: AppFonts.jakarta(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFFEF4444),
@@ -3810,7 +3759,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   if ((product['brand'] ?? '').toString().isNotEmpty)
                     Text(
                       product['brand'],
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         color: textMuted,
@@ -3824,7 +3773,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         children: [
                           Text(
                             '₹${_formatPrice(product['price'] ?? 0)}',
-                            style: GoogleFonts.montserrat(
+                            style: AppFonts.montserrat(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -3834,7 +3783,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             const SizedBox(width: 6),
                             Text(
                               '₹${_formatPrice(product['originalPrice'])}',
-                              style: GoogleFonts.montserrat(
+                              style: AppFonts.montserrat(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFFEF4444),
@@ -3854,8 +3803,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          t('View'),
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.commonView,
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -3878,7 +3827,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return _buildCustomerPreviewCart();
     }
     final cart = ref.watch(cartProvider);
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final hasActiveCoupon = _hasActiveAppliedCoupon(cart);
     final isCouponLocked =
         _appliedCouponCode != null &&
@@ -3899,8 +3848,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    t('My Cart'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.homeMyCart,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
@@ -3920,10 +3869,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Text(
-                            t(
-                              '${cart.itemCount} ${cart.itemCount == 1 ? 'item' : 'items'}',
-                            ),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.commonItemsCount(cart.itemCount),
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: primaryBlue,
@@ -3979,11 +3926,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         Expanded(
                           child: Text(
                             _addr1Ctrl.text.trim().isEmpty
-                                ? t('Add Shipping Details')
+                                ? l10n.homeAddShippingDetails
                                 : '${_nameCtrl.text.trim()}, ${_addr1Ctrl.text.trim()}, ${_cityCtrl.text.trim()}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -3991,8 +3938,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                         ),
                         Text(
-                          _addr1Ctrl.text.trim().isEmpty ? t('Add') : t('Edit'),
-                          style: GoogleFonts.plusJakartaSans(
+                          _addr1Ctrl.text.trim().isEmpty
+                              ? l10n.homeAdd
+                              : l10n.commonEdit,
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -4029,8 +3978,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        t('Your cart is empty'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.homeCartEmptyTitle,
+                        style: AppFonts.jakarta(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -4038,8 +3987,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        t('Discover products and add them here'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.homeCartEmptySubtitle,
+                        style: AppFonts.jakarta(
                           fontSize: 14,
                           color: textSecondary,
                         ),
@@ -4064,8 +4013,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ],
                           ),
                           child: Text(
-                            t('Browse Products'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.homeBrowseProducts,
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
@@ -4165,10 +4114,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    item.name,
+                                    pickLocalizedName(
+                                      context,
+                                      item.name,
+                                      item.nameHindi,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: textPrimary,
@@ -4187,10 +4140,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         if (item.brand?.trim().isNotEmpty ??
                                             false)
                                           Text(
-                                            '${t('Brand')}: ${item.brand!.trim()}',
+                                            l10n.homeBrandValue(
+                                              item.brand!.trim(),
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 11,
                                               color: textSecondary,
                                             ),
@@ -4198,10 +4153,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         if (item.category?.trim().isNotEmpty ??
                                             false)
                                           Text(
-                                            '${t('Category')}: ${item.category!.trim()}',
+                                            l10n.homeCategoryValue(
+                                              item.category!.trim(),
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 11,
                                               color: textSecondary,
                                             ),
@@ -4212,8 +4169,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   if (_isWholesaler) ...[
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${t('Min. wholesale quantity')}: ${item.minWholesaleQuantity}',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      l10n.homeMinWholesaleQtyValue(
+                                        '${item.minWholesaleQuantity}',
+                                      ),
+                                      style: AppFonts.jakarta(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: textSecondary,
@@ -4225,7 +4184,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     children: [
                                       Text(
                                         '₹${_formatPrice(item.price)}',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           color: primaryBlue,
@@ -4236,7 +4195,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         const SizedBox(width: 6),
                                         Text(
                                           '₹${_formatPrice(item.mrp!)}',
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: AppFonts.jakarta(
                                             fontSize: 12,
                                             color: const Color(0xFFEF4444),
                                             decoration:
@@ -4291,7 +4250,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           alignment: Alignment.center,
                                           child: Text(
                                             '${item.quantity}',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w700,
                                               color: textPrimary,
@@ -4368,15 +4327,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              t('Subtotal'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.commonSubtotal,
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 color: textSecondary,
                               ),
                             ),
                             Text(
                               '₹${_formatPrice(cart.subtotal)}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: textPrimary,
@@ -4389,15 +4348,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              t('Delivery'),
-                              style: GoogleFonts.plusJakartaSans(
+                              l10n.homeDelivery,
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 color: textSecondary,
                               ),
                             ),
                             Text(
                               '₹${_formatPrice(cart.deliveryFee)}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: textPrimary,
@@ -4411,8 +4370,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                '${t('Coupon')} (${_appliedCouponCode ?? ''})',
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.homeCouponWithCode(
+                                  _appliedCouponCode ?? '',
+                                ),
+                                style: AppFonts.jakarta(
                                   fontSize: 14,
                                   color: const Color(0xFF16A34A),
                                   fontWeight: FontWeight.w700,
@@ -4420,7 +4381,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                               Text(
                                 '-\u20B9${_formatPrice(couponDiscount)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF16A34A),
@@ -4436,8 +4397,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              hasActiveCoupon ? t('Payable Total') : t('Total'),
-                              style: GoogleFonts.plusJakartaSans(
+                              hasActiveCoupon
+                                  ? l10n.homePayableTotal
+                                  : l10n.commonTotal,
+                              style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: textPrimary,
@@ -4445,7 +4408,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             Text(
                               '₹${_formatPrice(payableTotal)}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                                 color: primaryBlue,
@@ -4477,18 +4440,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 setState(() => _clearAppliedCouponPreview());
                               }
                             },
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                             decoration: InputDecoration(
-                              labelText: t('Coupon / Affiliate Code'),
-                              hintText: t('Enter coupon or affiliate code'),
-                              labelStyle: GoogleFonts.plusJakartaSans(
+                              labelText: l10n.homeCouponFieldLabel,
+                              hintText: l10n.homeCouponFieldHint,
+                              labelStyle: AppFonts.jakarta(
                                 fontSize: 13,
                                 color: textSecondary,
                               ),
-                              hintStyle: GoogleFonts.plusJakartaSans(
+                              hintStyle: AppFonts.jakarta(
                                 fontSize: 13,
                                 color: textMuted,
                               ),
@@ -4543,8 +4506,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     ),
                                   )
                                 : Text(
-                                    t(isCouponLocked ? 'Applied' : 'Apply'),
-                                    style: GoogleFonts.plusJakartaSans(
+                                    isCouponLocked
+                                        ? l10n.homeCouponAppliedButton
+                                        : l10n.commonApply,
+                                    style: AppFonts.jakarta(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -4562,8 +4527,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             () => _clearAppliedCouponPreview(clearInput: true),
                           ),
                           child: Text(
-                            t('Change code'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.homeChangeCode,
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: primaryBlue,
@@ -4609,9 +4574,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ],
                           Text(
                             _isCheckingOut
-                                ? t('Creating Order...')
-                                : t('Proceed to Checkout'),
-                            style: GoogleFonts.plusJakartaSans(
+                                ? l10n.homeCreatingOrder
+                                : l10n.homeProceedToCheckout,
+                            style: AppFonts.jakarta(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
@@ -4638,7 +4603,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildCustomerPreviewCart() {
-    final t = ref.read(localeProvider.notifier).translate;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -4662,9 +4626,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              t('Customer cart preview'),
+              context.l10n.homePreviewCartTitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: textPrimary,
@@ -4672,11 +4636,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              t(
-                'Shopping is disabled in preview mode. Your wholesaler cart remains unchanged.',
-              ),
+              context.l10n.homePreviewCartMessage,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 height: 1.5,
                 color: textSecondary,
@@ -4815,6 +4777,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       derived.add({
         'id': (product['id'] ?? '').toString(),
         'name': (product['name'] ?? '').toString(),
+        'nameHindi': (product['nameHindi'] ?? '').toString(),
         'image': (product['image'] ?? '').toString(),
         'currentPrice': pending['currentPrice'] ?? product['price'] ?? 0,
         'newPrice': pending['newPrice'] ?? 0,
@@ -4837,7 +4800,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (productId.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product unavailable for repeat')),
+        SnackBar(content: Text(context.l10n.homeRepeatProductUnavailable)),
       );
       return;
     }
@@ -4872,7 +4835,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              (createRes.data['message'] ?? 'Could not repeat requirement')
+              (createRes.data['message'] ?? context.l10n.homeRepeatFailed)
                   .toString(),
             ),
           ),
@@ -4880,9 +4843,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not repeat requirement')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.homeRepeatFailed)));
     } finally {
       if (mounted) setState(() => _repeatingOrderId = null);
     }
@@ -4912,52 +4875,55 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     String status,
     Map<String, dynamic> negotiation,
   ) {
-    final t = ref.read(localeProvider.notifier).translate;
-    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(negotiation);
+    final l10n = context.l10n;
+    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(
+      negotiation,
+      l10n: l10n,
+    );
     switch (status) {
       case 'pending':
         return {
           'label': orderStatusLabel == null
-              ? t('PENDING')
-              : t(orderStatusLabel).toUpperCase(),
+              ? l10n.homeDealStatusPending
+              : orderStatusLabel.toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'countered':
         return {
           'label': orderStatusLabel == null
-              ? t('COUNTER-OFFER')
-              : t(orderStatusLabel).toUpperCase(),
+              ? l10n.homeDealStatusCountered
+              : orderStatusLabel.toUpperCase(),
           'color': const Color(0xFFF59E0B),
           'bg': const Color(0xFFFEF3C7),
         };
       case 'accepted':
         return {
-          'label': t(
-            orderStatusLabel ?? 'Accepted · Order Pending',
-          ).toUpperCase(),
+          'label': (orderStatusLabel ?? l10n.statusDealAcceptedOrderPending)
+              .toUpperCase(),
           'color': const Color(0xFF16A34A),
           'bg': const Color(0xFFDCFCE7),
         };
       case 'rejected':
         return {
           'label': orderStatusLabel == null
-              ? t('REJECTED')
-              : t(orderStatusLabel).toUpperCase(),
+              ? l10n.homeDealStatusRejected
+              : orderStatusLabel.toUpperCase(),
           'color': const Color(0xFFDC2626),
           'bg': const Color(0xFFFEE2E2),
         };
       case 'expired':
         return {
           'label': orderStatusLabel == null
-              ? t('EXPIRED')
-              : t(orderStatusLabel).toUpperCase(),
+              ? l10n.homeDealStatusExpired
+              : orderStatusLabel.toUpperCase(),
           'color': const Color(0xFF9CA3AF),
           'bg': const Color(0xFFF3F4F6),
         };
       case 'converted':
         return {
-          'label': t(orderStatusLabel ?? 'Order Created').toUpperCase(),
+          'label': (orderStatusLabel ?? l10n.statusDealOrderCreated)
+              .toUpperCase(),
           'color': const Color(0xFF7C3AED),
           'bg': const Color(0xFFF3E8FF),
         };
@@ -4965,7 +4931,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         return {
           'label': orderStatusLabel == null
               ? status.toUpperCase()
-              : t(orderStatusLabel).toUpperCase(),
+              : orderStatusLabel.toUpperCase(),
           'color': const Color(0xFF6B7280),
           'bg': const Color(0xFFF3F4F6),
         };
@@ -4973,7 +4939,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildNegotiationsContent() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     return Column(
       children: [
         // Header
@@ -4981,8 +4947,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           color: backgroundWhite,
           child: Text(
-            t('Deal Desk'),
-            style: GoogleFonts.plusJakartaSans(
+            l10n.homeDealDeskTitle,
+            style: AppFonts.jakarta(
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: textPrimary,
@@ -4999,8 +4965,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             child: Row(
               children: [
-                _buildNegotiationTab(t('Active'), 0),
-                _buildNegotiationTab(t('Completed'), 1),
+                _buildNegotiationTab(l10n.homeDealTabActive, 0),
+                _buildNegotiationTab(l10n.homeDealTabCompleted, 1),
               ],
             ),
           ),
@@ -5024,9 +4990,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _negotiationTab == 0
-                            ? t('No active negotiations')
-                            : t('No completed negotiations'),
-                        style: GoogleFonts.plusJakartaSans(
+                            ? l10n.homeDealEmptyActive
+                            : l10n.homeDealEmptyCompleted,
+                        style: AppFonts.jakarta(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: textMuted,
@@ -5034,8 +5000,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        t('Start negotiating on product pages'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.homeDealEmptyHint,
+                        style: AppFonts.jakarta(
                           fontSize: 13,
                           color: const Color(0xFF4C669A),
                         ),
@@ -5075,7 +5041,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
@@ -5088,11 +5054,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildNegotiationCard(Map<String, dynamic> negotiation) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
+    final languageCode = Localizations.localeOf(context).languageCode;
     final status = negotiation['status'] as String? ?? 'pending';
     final statusDisplay = _getNegStatusDisplay(status, negotiation);
     final product = negotiation['product'] as Map<String, dynamic>? ?? {};
-    final productName = product['name'] as String? ?? t('Unknown Product');
+    final productName = localizedName(
+      context,
+      product,
+      fallback: l10n.homeUnknownProduct,
+    );
     final imageUrl = product['image'] as String? ?? '';
     final quantity = negotiation['requestedQuantity'] ?? 0;
     final requestedPrice = negotiation['requestedPricePerUnit'] ?? 0;
@@ -5110,8 +5081,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (createdAt.isNotEmpty) {
       try {
         final dateTime = DateTime.parse(createdAt);
-        formattedDate = DateFormat('MMM d, yyyy').format(dateTime);
-        formattedTime = DateFormat('h:mm a').format(dateTime);
+        formattedDate = DateFormat(
+          'MMM d, yyyy',
+          languageCode,
+        ).format(dateTime);
+        formattedTime = DateFormat('h:mm a', languageCode).format(dateTime);
       } catch (_) {}
     }
 
@@ -5197,10 +5171,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     Text(
                                       formattedDate.isNotEmpty
                                           ? formattedDate
-                                          : 'No date',
+                                          : l10n.homeNoDate,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 11,
                                         color: textMuted,
                                         fontWeight: FontWeight.w500,
@@ -5211,7 +5185,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         formattedTime,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 10,
                                           color: textMuted,
                                           fontWeight: FontWeight.w400,
@@ -5235,7 +5209,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     statusDisplay['label'] as String,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w800,
                                       color: statusDisplay['color'] as Color,
@@ -5251,10 +5225,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           Text(
                             negotiationNumber.isNotEmpty
                                 ? negotiationNumber
-                                : 'NEGOTIATION',
+                                : l10n.homeNegotiationFallback,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF4C669A),
@@ -5267,7 +5241,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             productName,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -5278,10 +5252,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           const SizedBox(height: 8),
                           // Quantity
                           Text(
-                            t('Qty: $quantity units'),
+                            l10n.homeQtyUnits('$quantity'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: const Color(0xFF4C669A),
@@ -5315,8 +5289,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            t('Your Price:'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.homeYourPriceLabel,
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               color: const Color(0xFF4C669A),
                               fontWeight: FontWeight.w500,
@@ -5324,7 +5298,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           Text(
                             '₹$requestedPrice',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -5338,9 +5312,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         children: [
                           Text(
                             status == 'countered' && currentOfferBy == 'admin'
-                                ? t('Counter:')
-                                : t('Current:'),
-                            style: GoogleFonts.plusJakartaSans(
+                                ? l10n.homeCounterLabel
+                                : l10n.homeCurrentLabel,
+                            style: AppFonts.jakarta(
                               fontSize: 11,
                               color: const Color(0xFF4C669A),
                               fontWeight: FontWeight.w500,
@@ -5348,7 +5322,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           Text(
                             '₹$currentPrice',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: status == 'accepted'
@@ -5363,8 +5337,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            t('Total:'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.homeTotalLabel,
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -5372,7 +5346,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           Text(
                             '₹$currentTotal',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
                               color: status == 'accepted'
@@ -5407,13 +5381,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     bool canPay,
     String negotiationId,
   ) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     String label;
     String style;
     IconData? icon;
     VoidCallback? onTap;
     if (status == 'countered' && currentOfferBy == 'admin') {
-      label = t('Respond to Counter');
+      label = l10n.homeRespondToCounter;
       style = 'primary';
       icon = Icons.reply_rounded;
       onTap = () async {
@@ -5421,21 +5395,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         if (r == true) _fetchNegotiations();
       };
     } else if (status == 'accepted' && canPay) {
-      label = t('Proceed to Order');
+      label = l10n.homeProceedToOrder;
       style = 'primary';
       icon = Icons.account_balance_wallet_rounded;
       onTap = () => _proceedToNegotiationOrder(negotiationId);
     } else if (status == 'pending') {
-      label = t('Under Review');
+      label = l10n.homeUnderReview;
       style = 'disabled';
     } else if (status == 'rejected') {
-      label = t('Rejected');
+      label = l10n.homeRejected;
       style = 'disabled';
     } else if (status == 'expired') {
-      label = t('Expired');
+      label = l10n.homeExpired;
       style = 'disabled';
     } else {
-      label = t('View Details');
+      label = l10n.commonViewDetails;
       style = 'outline';
       onTap = () async {
         final r = await context.push('/negotiation-detail/$negotiationId');
@@ -5475,7 +5449,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ],
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: style == 'primary'
@@ -5495,7 +5469,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (ref.watch(guestModeProvider)) {
       return _buildCustomerPreviewProfile();
     }
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final user = ref.watch(authProvider).user;
     final isGuest = user == null;
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -5507,9 +5481,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final profileItems = [
       {
         'type': 'setting',
+        'icon': Icons.translate,
+        'color': const Color(0xFF2563EB),
+        'title': context.isHindi
+            ? l10n.languageTitle
+            : '${l10n.languageTitle} / भाषा',
+        'subtitle': context.isHindi ? l10n.languageHindi : l10n.languageEnglish,
+        'onTap': () => showLanguagePicker(context, ref),
+      },
+      {
+        'type': 'setting',
         'icon': HugeIcons.strokeRoundedLocation01,
         'color': const Color(0xFF059669),
-        'title': t('Addresses'),
+        'title': l10n.homeProfileAddresses,
         'subtitle': null,
         'onTap': () {
           context.push('/addresses').then((_) => _loadSavedShippingAddresses());
@@ -5519,7 +5503,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'type': 'setting',
         'icon': HugeIcons.strokeRoundedNotification02,
         'color': const Color(0xFF7C3AED),
-        'title': t('Notifications'),
+        'title': l10n.homeNotificationsTitle,
         'subtitle': null,
         'onTap': () => context.push('/notifications', extra: {'bottomTab': 4}),
       },
@@ -5527,7 +5511,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'type': 'setting',
         'icon': HugeIcons.strokeRoundedHelpCircle,
         'color': const Color(0xFFD97706),
-        'title': t('Help & Support'),
+        'title': l10n.homeProfileHelpSupport,
         'subtitle': null,
         'onTap': () => context.push('/help'),
       },
@@ -5535,7 +5519,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'type': 'setting',
         'icon': HugeIcons.strokeRoundedFile01,
         'color': const Color(0xFF0891B2),
-        'title': t('Legal & Policies'),
+        'title': l10n.homeProfileLegalPolicies,
         'subtitle': null,
         'onTap': () => _showLegalPoliciesSheet(),
       },
@@ -5543,7 +5527,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'type': 'setting',
         'icon': Icons.privacy_tip_outlined,
         'color': const Color(0xFF0F766E),
-        'title': t('Account & Privacy'),
+        'title': l10n.homeProfileAccountPrivacy,
         'subtitle': null,
         'onTap': () => context.push(isGuest ? '/login' : '/account-privacy'),
       },
@@ -5551,7 +5535,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'type': 'setting',
         'icon': HugeIcons.strokeRoundedInformationCircle,
         'color': const Color(0xFF4338CA),
-        'title': t('About'),
+        'title': l10n.homeProfileAbout,
         'subtitle': null,
         'onTap': () => context.push('/about'),
       },
@@ -5560,7 +5544,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'type': 'setting',
           'icon': HugeIcons.strokeRoundedTicket01,
           'color': const Color(0xFFDC2626),
-          'title': t('My Coupon & Offer Code'),
+          'title': l10n.homeProfileMyCoupons,
           'subtitle': null,
           'onTap': () => context.push('/my-coupons'),
         },
@@ -5569,8 +5553,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'type': 'setting',
           'icon': HugeIcons.strokeRoundedShoppingCart01,
           'color': primaryBlue,
-          'title': t('View Customer App'),
-          'subtitle': t('See what customers see'),
+          'title': l10n.homeProfileViewCustomerApp,
+          'subtitle': l10n.homeProfileViewCustomerAppSubtitle,
           'onTap': () async {
             ref.read(guestModeProvider.notifier).enableGuestMode();
             try {
@@ -5586,8 +5570,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'type': 'setting',
           'icon': HugeIcons.strokeRoundedStore02,
           'color': primaryBlue,
-          'title': t('Apply for wholesaler account'),
-          'subtitle': t('Unlock bulk pricing & deals'),
+          'title': l10n.homeProfileApplyWholesaler,
+          'subtitle': l10n.homeProfileApplyWholesalerSubtitle,
           'onTap': () => context.push('/convert-to-wholesaler'),
         },
     ];
@@ -5678,8 +5662,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ),
                               ),
                               Text(
-                                t('Profile'),
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.homeProfileTitle,
+                                style: AppFonts.jakarta(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -5756,8 +5740,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
                         // User Name
                         Text(
-                          user?.name ?? 'Guest User',
-                          style: GoogleFonts.plusJakartaSans(
+                          user?.name ?? l10n.homeGuestUser,
+                          style: AppFonts.jakarta(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -5783,7 +5767,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     const SizedBox(width: 6),
                                     Text(
                                       user.phone!,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 15,
                                         color: Colors.white.withOpacity(0.95),
                                         fontWeight: FontWeight.w600,
@@ -5811,7 +5795,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         user.address!,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 14,
                                           color: Colors.white.withOpacity(0.9),
                                           fontWeight: FontWeight.w500,
@@ -5824,8 +5808,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             if (isGuest ||
                                 (user.phone == null && user.address == null))
                               Text(
-                                user?.email ?? 'Sign in to sync data',
-                                style: GoogleFonts.plusJakartaSans(
+                                user?.email ?? l10n.homeSignInToSync,
+                                style: AppFonts.jakarta(
                                   fontSize: 14,
                                   color: Colors.white.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
@@ -5857,8 +5841,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       ),
                                     ),
                                     child: Text(
-                                      'Login',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      l10n.commonLogin,
+                                      style: AppFonts.jakarta(
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -5905,7 +5889,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           children: [
                             _buildQuickStat(
                               HugeIcons.strokeRoundedPackage,
-                              t('My Orders'),
+                              l10n.homeMyOrders,
                               orderCount.toString(),
                               size: quickStatSize,
                               color: const Color(0xFF6366F1), // Premium Indigo
@@ -5913,7 +5897,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             _buildQuickStat(
                               HugeIcons.strokeRoundedFavourite,
-                              t('Wishlist'),
+                              _isWholesaler
+                                  ? l10n.homeWishlistDealer
+                                  : l10n.homeWishlistCustomer,
                               wishlistCount.toString(),
                               size: quickStatSize,
                               color: const Color(0xFFF43F5E), // Vibrant Rose
@@ -5921,7 +5907,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             _buildQuickStat(
                               HugeIcons.strokeRoundedUserEdit01,
-                              t('Edit Profile'),
+                              l10n.homeEditProfile,
                               '0',
                               size: quickStatSize,
                               color: const Color(0xFFF59E0B), // Amber
@@ -5970,7 +5956,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       item['title'] as String,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: textMuted,
@@ -6028,8 +6014,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             size: 20,
                           ),
                           label: Text(
-                            t('Log Out'),
-                            style: GoogleFonts.plusJakartaSans(
+                            l10n.commonLogout,
+                            style: AppFonts.jakarta(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                             ),
@@ -6071,8 +6057,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Guest Customer',
-              style: GoogleFonts.plusJakartaSans(
+              context.l10n.homePreviewGuestCustomer,
+              style: AppFonts.jakarta(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: textPrimary,
@@ -6080,9 +6066,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'This read-only profile shows the guest customer experience without exposing or changing your wholesaler account.',
+              context.l10n.homePreviewProfileMessage,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 height: 1.5,
                 color: textSecondary,
@@ -6094,7 +6080,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 context.pop();
               },
               icon: const Icon(Icons.logout_rounded),
-              label: const Text('Exit Customer Preview'),
+              label: Text(context.l10n.homeExitCustomerPreview),
               style: FilledButton.styleFrom(
                 backgroundColor: primaryBlue,
                 foregroundColor: Colors.white,
@@ -6170,7 +6156,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             const SizedBox(height: 16),
             Text(
               label.toUpperCase(),
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
                 color: textPrimary.withOpacity(0.8),
@@ -6224,7 +6210,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
@@ -6234,7 +6220,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         color: textMuted,
@@ -6256,7 +6242,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Future<void> _showLegalPoliciesSheet() async {
-    final t = ref.read(localeProvider.notifier).translate;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -6285,8 +6270,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    t('Legal & Policies'),
-                    style: GoogleFonts.plusJakartaSans(
+                    context.l10n.homeProfileLegalPolicies,
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
@@ -6301,7 +6286,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         return _buildPolicySheetItem(
                           icon: policy.icon,
                           color: policy.color,
-                          title: t(policy.title),
+                          title: policy.localizedTitle(context),
                           policyId: policy.id,
                         );
                       },
@@ -6335,7 +6320,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       ),
       title: Text(
         title,
-        style: GoogleFonts.plusJakartaSans(
+        style: AppFonts.jakarta(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: textPrimary,
@@ -6354,7 +6339,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildAppBar() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       color: backgroundWhite,
@@ -6398,7 +6383,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         text: TextSpan(
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                             height: 1,
@@ -6406,22 +6391,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           children: [
                             TextSpan(
-                              text: 'Laxmi ',
+                              text: '${l10n.homeBrandFirstWord} ',
                               style: TextStyle(color: textPrimary),
                             ),
-                            const TextSpan(
-                              text: 'Agro',
-                              style: TextStyle(color: primaryBlue),
+                            TextSpan(
+                              text: l10n.homeBrandSecondWord,
+                              style: const TextStyle(color: primaryBlue),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Grow Together  •  Trade Better',
+                        l10n.homeBrandTagline,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 7,
                           fontWeight: FontWeight.w600,
                           color: textMuted,
@@ -6438,17 +6423,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              PopupMenuButton<String>(
+              PopupMenuButton<Locale>(
                 offset: const Offset(0, 42),
+                tooltip: l10n.languageTitle,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                onSelected: (String value) {
-                  ref.read(localeProvider.notifier).setLanguage(value);
+                onSelected: (Locale value) {
+                  ref.read(localeProvider.notifier).setLocale(value);
                 },
-                itemBuilder: (context) => [
-                  _buildLanguageItem('English', '', t('English')),
-                  _buildLanguageItem('Hindi', '', t('Hindi')),
+                itemBuilder: (_) => [
+                  _buildLanguageItem(
+                    LocaleNotifier.english,
+                    l10n.languageEnglish,
+                  ),
+                  _buildLanguageItem(LocaleNotifier.hindi, l10n.languageHindi),
                 ],
                 child: Container(
                   height: 38,
@@ -6475,8 +6464,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        ref.watch(localeProvider) == 'English' ? 'EN' : 'HI',
-                        style: GoogleFonts.plusJakartaSans(
+                        context.isHindi ? 'HI' : 'EN',
+                        style: AppFonts.jakarta(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                           color: primaryBlue,
@@ -6538,7 +6527,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           child: Text(
                             '$_unreadCount',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 8,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -6556,20 +6545,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
-  PopupMenuItem<String> _buildLanguageItem(
-    String value,
-    String emoji,
-    String label,
-  ) {
-    final currentLang = ref.watch(localeProvider);
-    final isSelected = currentLang == value;
-    return PopupMenuItem<String>(
+  PopupMenuItem<Locale> _buildLanguageItem(Locale value, String label) {
+    final isSelected = (value.languageCode == 'hi') == context.isHindi;
+    return PopupMenuItem<Locale>(
       value: value,
       child: Row(
         children: [
           Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected ? primaryBlue : textPrimary,
@@ -6608,7 +6592,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (_heroBanners.isEmpty) {
       return const SizedBox.shrink();
     }
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     return Column(
       children: [
         SizedBox(
@@ -6722,8 +6706,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  item['tag'] ?? t('NEW ARRIVAL'),
-                                  style: GoogleFonts.plusJakartaSans(
+                                  item['tag'] ?? l10n.homeBannerNewArrival,
+                                  style: AppFonts.jakarta(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
@@ -6733,8 +6717,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                item['title'] ?? t('Explore Products'),
-                                style: GoogleFonts.plusJakartaSans(
+                                item['title'] ?? l10n.homeBannerExploreProducts,
+                                style: AppFonts.jakarta(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
@@ -6758,8 +6742,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      item['buttonText'] ?? t('Shop Now'),
-                                      style: GoogleFonts.plusJakartaSans(
+                                      item['buttonText'] ??
+                                          l10n.homeBannerShopNow,
+                                      style: AppFonts.jakarta(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w800,
                                         color: primaryBlue,
@@ -6844,7 +6829,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildBrandsSection() {
-    final t = ref.read(localeProvider.notifier).translate;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 600;
     final cardGap = isTablet ? 10.0 : 6.0;
@@ -6880,8 +6864,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t('Top Brands'),
-                      style: GoogleFonts.plusJakartaSans(
+                      context.l10n.homeTopBrands,
+                      style: AppFonts.jakarta(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
@@ -6914,8 +6898,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     child: Row(
                       children: [
                         Text(
-                          t('See All'),
-                          style: GoogleFonts.plusJakartaSans(
+                          context.l10n.commonSeeAll,
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -6957,8 +6941,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 : _brands.isEmpty
                 ? Center(
                     child: Text(
-                      t('No brands available'),
-                      style: GoogleFonts.plusJakartaSans(color: textMuted),
+                      context.l10n.homeNoBrandsAvailable,
+                      style: AppFonts.jakarta(color: textMuted),
                     ),
                   )
                 : ListView.builder(
@@ -7045,7 +7029,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       textAlign: TextAlign.center,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: isTablet ? 10 : 8.5,
                                         fontWeight: FontWeight.w700,
                                         color: textPrimary,
@@ -7080,7 +7064,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         child: Center(
           child: Text(
             initial,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w900,
               color: color,
@@ -7105,15 +7089,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       '🔵 [DISPLAY] Section: $title | isFeatured: $isFeatured | Available: ${sectionProducts.length} | Displayed: ${filteredProducts.length}',
     );
 
-    final t = ref.read(localeProvider.notifier).translate;
-    final currentLang = ref.read(localeProvider);
+    final l10n = context.l10n;
     final subtitle = _isWholesaler
         ? isFeatured
-              ? t('Popular dealer picks')
-              : t('Bulk offers for your business')
+              ? l10n.homePopularSubtitleDealer
+              : l10n.homeHotDealsSubtitleDealer
         : isFeatured
-        ? t('Loved by farmers')
-        : t('Limited-time savings');
+        ? l10n.homePopularSubtitleCustomer
+        : l10n.homeHotDealsSubtitleCustomer;
     const productGridSpacing = 7.0;
     const productGridHorizontalPadding = 10.0;
     final productCardHeight = productGridColumns == 2 ? 244.0 : 220.0;
@@ -7141,7 +7124,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: textPrimary,
@@ -7153,7 +7136,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
                           color: textMuted,
@@ -7186,8 +7169,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     child: Row(
                       children: [
                         Text(
-                          t(isFeatured ? 'See All' : 'View all'),
-                          style: GoogleFonts.plusJakartaSans(
+                          isFeatured ? l10n.commonSeeAll : l10n.commonViewAll,
+                          style: AppFonts.jakarta(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: primaryBlue,
@@ -7242,10 +7225,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            t('No products available'),
-                            style: GoogleFonts.plusJakartaSans(
-                              color: textMuted,
-                            ),
+                            l10n.homeNoProductsAvailable,
+                            style: AppFonts.jakarta(color: textMuted),
                           ),
                         ],
                       ),
@@ -7266,7 +7247,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       // Only show HOT badge in Hot Deals section, not in Popular Products
                       return _buildProductCard(
                         product,
-                        currentLang: currentLang,
                         showHotBadge: !isFeatured,
                       );
                     },
@@ -7279,10 +7259,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildProductCard(
     Map<String, dynamic> product, {
-    required String currentLang,
     bool showHotBadge = true,
   }) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final productId = product['id'].toString();
     final heroTag = 'product-image-$productId';
     final hasOriginalPrice =
@@ -7303,13 +7282,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (showHotBadge &&
         (product['isHot'] == true ||
             product['badge']?.toString().contains('HOT') == true)) {
-      badgeLabel = 'HOT'; // Force clean label without flames
+      badgeLabel = l10n.homeBadgeHot; // Force clean label without flames
       badgeColor = const Color(0xFFEF4444);
     } else if (discount > 0) {
-      badgeLabel = t('SALE');
+      badgeLabel = l10n.homeBadgeSale;
       badgeColor = const Color(0xFF16A34A);
     } else if (product['isNew'] == true) {
-      badgeLabel = t('NEW');
+      badgeLabel = l10n.homeBadgeNew;
       badgeColor = primaryBlue;
     }
 
@@ -7392,8 +7371,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
-                            t('Out of Stock'),
-                            style: GoogleFonts.outfit(
+                            l10n.commonOutOfStock,
+                            style: AppFonts.outfit(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -7417,7 +7396,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           child: Text(
                             badgeLabel,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 7.5,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -7436,7 +7415,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           onTap: () {
                             if (ref.read(guestModeProvider)) {
                               _showGuestModePopup(
-                                'Wishlist disabled in preview mode',
+                                l10n.homePreviewWishlistDisabled,
                               );
                               return;
                             }
@@ -7488,8 +7467,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    brand.isEmpty ? t('Laxmi Agro') : brand,
-                    style: GoogleFonts.plusJakartaSans(
+                    brand.isEmpty ? l10n.homeBrandLaxmiAgro : brand,
+                    style: AppFonts.jakarta(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w700,
                       color: primaryBlue,
@@ -7501,8 +7480,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   SizedBox(
                     height: 30,
                     child: Text(
-                      _getDisplayName(product, currentLang),
-                      style: GoogleFonts.plusJakartaSans(
+                      _getDisplayName(product),
+                      style: AppFonts.jakarta(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: textPrimary,
@@ -7524,7 +7503,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         const SizedBox(width: 2),
                         Text(
                           '$rating',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             color: textSecondary,
@@ -7536,7 +7515,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           Flexible(
                             child: Text(
                               '($reviewCount)',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 8,
                                 color: textMuted,
                                 fontWeight: FontWeight.w500,
@@ -7561,7 +7540,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 '₹${_formatPrice(product['price'] ?? 0)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: textPrimary,
@@ -7571,7 +7550,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             if (hasOriginalPrice)
                               Text(
                                 '₹${_formatPrice(product['originalPrice'])}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 7.5,
                                   color: textMuted,
                                   decoration: TextDecoration.lineThrough,
@@ -7588,7 +7567,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ? () {
                                 if (ref.read(guestModeProvider)) {
                                   _showGuestModePopup(
-                                    'Add to Cart disabled in preview mode',
+                                    l10n.homePreviewAddToCartDisabled,
                                   );
                                   return;
                                 }
@@ -7627,8 +7606,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      t('Added to cart'),
-                                      style: GoogleFonts.outfit(
+                                      l10n.homeAddedToCart,
+                                      style: AppFonts.outfit(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -7664,8 +7643,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                               const SizedBox(width: 2),
                               Text(
-                                t('Add'),
-                                style: GoogleFonts.plusJakartaSans(
+                                l10n.homeAdd,
+                                style: AppFonts.jakarta(
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
@@ -7696,27 +7675,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   String _dealerDealLabel(String status, String currentOfferBy) {
     if (status == 'countered' && currentOfferBy == 'admin') {
-      return 'New Price Received';
+      return context.l10n.homeDealNewPriceReceived;
     }
-    return 'Requirement Sent';
+    return context.l10n.homeDealRequirementSent;
   }
 
   String _dealerOrderStage(String status) {
+    final l10n = context.l10n;
     switch (status) {
       case 'pending_payment':
-        return 'Payment Pending';
+        return l10n.homeStagePaymentPending;
       case 'payment_uploaded':
-        return 'Verification Pending';
+        return l10n.homeStageVerificationPending;
       case 'payment_verified':
-        return 'Payment Verified';
+        return l10n.homeStagePaymentVerified;
       case 'processing':
-        return 'Packing';
+        return l10n.homeStagePacking;
       case 'shipped':
-        return 'Dispatched';
+        return l10n.homeStageDispatched;
       case 'delivered':
-        return 'Delivered';
+        return l10n.homeStageDelivered;
       case 'cancelled':
-        return 'Cancelled';
+        return l10n.homeStageCancelled;
       default:
         return status.replaceAll('_', ' ');
     }
@@ -7749,7 +7729,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         children: [
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: textPrimary,
@@ -7760,7 +7740,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             onTap: onTap,
             child: Text(
               actionLabel,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: primaryBlue,
@@ -7813,8 +7793,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _dealerSectionHeader(
-          'Continue Deal Chat',
-          'Deal Desk',
+          context.l10n.homeContinueDealChat,
+          context.l10n.homeDealDeskTitle,
           () => _selectNavIndex(3),
         ),
         if (_isNegotiationsLoading)
@@ -7842,8 +7822,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'No open deals — browse the catalogue to send your first requirement',
-                        style: GoogleFonts.plusJakartaSans(
+                        context.l10n.homeNoOpenDeals,
+                        style: AppFonts.jakarta(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: textPrimary,
@@ -7937,7 +7917,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           .toString(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
                                         color: textMuted,
@@ -7946,11 +7926,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      (product['name'] ?? 'Requirement')
-                                          .toString(),
+                                      localizedName(
+                                        context,
+                                        product,
+                                        fallback: context
+                                            .l10n
+                                            .homeRequirementFallback,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: textPrimary,
@@ -7967,10 +7952,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Qty ${deal['requestedQuantity'] ?? ''} · ₹${_formatPrice(total)}',
+                                  context.l10n.homeDealQtyTotal(
+                                    '${deal['requestedQuantity'] ?? ''}',
+                                    _formatPrice(total),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: primaryBlue,
@@ -7994,7 +7982,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 child: Text(
                                   _dealerDealLabel(status, offerBy),
                                   maxLines: 1,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 8,
                                     fontWeight: FontWeight.w800,
                                     color: isCounter
@@ -8026,8 +8014,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _dealerSectionHeader(
-          'Track Active Orders',
-          'All Orders',
+          context.l10n.homeTrackActiveOrders,
+          context.l10n.homeAllOrders,
           () => context.push('/previous-orders'),
         ),
         ...orders.map((order) {
@@ -8062,8 +8050,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Order ${(order['orderNumber'] ?? '').toString()}',
-                            style: GoogleFonts.plusJakartaSans(
+                            context.l10n.homeOrderNumber(
+                              (order['orderNumber'] ?? '').toString(),
+                            ),
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: textPrimary,
@@ -8071,8 +8061,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${_dealerOrderStage(status)} · ₹${_formatPrice(order['total'])}',
-                            style: GoogleFonts.plusJakartaSans(
+                            context.l10n.homeOrderStageTotal(
+                              _dealerOrderStage(status),
+                              _formatPrice(order['total']),
+                            ),
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: textMuted,
@@ -8105,8 +8098,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _dealerSectionHeader(
-          'Repeat Requirement',
-          'All Orders',
+          context.l10n.homeRepeatRequirement,
+          context.l10n.homeAllOrders,
           () => context.push('/previous-orders'),
         ),
         ...orders.map((order) {
@@ -8127,10 +8120,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${(first['name'] ?? 'Order').toString()} × ${first['quantity'] ?? ''}',
+                            context.l10n.homeRepeatItemQty(
+                              localizedName(
+                                context,
+                                first,
+                                fallback: context.l10n.homeOrderFallback,
+                              ),
+                              '${first['quantity'] ?? ''}',
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: textPrimary,
@@ -8138,8 +8138,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Order ${(order['orderNumber'] ?? '').toString()} · ₹${_formatPrice(order['total'])}',
-                            style: GoogleFonts.plusJakartaSans(
+                            context.l10n.homeOrderNumberTotal(
+                              (order['orderNumber'] ?? '').toString(),
+                              _formatPrice(order['total']),
+                            ),
+                            style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: textMuted,
@@ -8172,8 +8175,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ),
                               )
                             : Text(
-                                'Repeat',
-                                style: GoogleFonts.plusJakartaSans(
+                                context.l10n.homeRepeatButton,
+                                style: AppFonts.jakarta(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
@@ -8229,7 +8232,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     bool showErrorToast = true,
     bool recordRedeem = true,
   }) async {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final cart = ref.read(cartProvider);
     final couponCode = _normalizedCouponInput;
     if (_isApplyingCoupon || couponCode.isEmpty || cart.items.isEmpty) return;
@@ -8263,7 +8266,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           userKey: userKey,
           code: couponCode,
           title: couponCode,
-          rule: 'Applied successfully during checkout',
+          rule: l10n.homeCouponAppliedAtCheckout,
         );
       }
       if (showSuccessToast) {
@@ -8271,12 +8274,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              t(
-                discountSource == 'affiliate'
-                    ? 'Affiliate code applied'
-                    : 'Coupon applied successfully',
-              ),
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              discountSource == 'affiliate'
+                  ? l10n.homeAffiliateCodeApplied
+                  : l10n.homeCouponAppliedSuccess,
+              style: AppFonts.jakarta(fontWeight: FontWeight.w600),
             ),
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
@@ -8290,7 +8291,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     } on DioException catch (e) {
       if (!mounted) return;
       final msg =
-          e.response?.data?['message']?.toString() ?? t('Invalid coupon code');
+          e.response?.data?['message']?.toString() ?? l10n.homeInvalidCoupon;
       setState(() {
         _isApplyingCoupon = false;
         _clearAppliedCouponPreview();
@@ -8300,7 +8301,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           SnackBar(
             content: Text(
               msg,
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              style: AppFonts.jakarta(fontWeight: FontWeight.w600),
             ),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
@@ -8387,7 +8388,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Future<bool> _openCartAddressBottomSheet() async {
     final auth = ref.read(authProvider);
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final fk = GlobalKey<FormState>();
 
     final selected = _getSelectedShippingAddress();
@@ -8452,8 +8453,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                     ),
                     Text(
-                      t('Shipping Address'),
-                      style: GoogleFonts.plusJakartaSans(
+                      l10n.homeShippingAddress,
+                      style: AppFonts.jakarta(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: textPrimary,
@@ -8471,7 +8472,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               child: ChoiceChip(
                                 label: Text(
                                   '${a.fullName} • ${a.shortAddress}',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: active ? Colors.white : textPrimary,
@@ -8496,15 +8497,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    _addrField(t('Full Name'), nameC),
+                    _addrField(l10n.homeFieldFullName, nameC),
                     const SizedBox(height: 12),
                     _addrField(
-                      t('Phone'),
+                      l10n.homeFieldPhone,
                       phoneC,
                       keyboard: TextInputType.phone,
                     ),
                     const SizedBox(height: 12),
-                    _addrField(t('Address Line 1'), addr1C),
+                    _addrField(l10n.homeFieldAddressLine1, addr1C),
                     const SizedBox(height: 12),
                     StateCityPincodeFields(
                       stateController: stateC,
@@ -8536,8 +8537,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                         ),
                         child: Text(
-                          t('Save Address'),
-                          style: GoogleFonts.plusJakartaSans(
+                          l10n.homeSaveAddress,
+                          style: AppFonts.jakarta(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                           ),
@@ -8580,7 +8581,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Future<void> _proceedToCheckout() async {
     // Check if in guest mode first
     if (ref.read(guestModeProvider)) {
-      await _showGuestModePopup('Checkout disabled in demo mode');
+      await _showGuestModePopup(context.l10n.homePreviewCheckoutDisabled);
       return;
     }
 
@@ -8592,13 +8593,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final cart = ref.read(cartProvider);
     final hasActiveCoupon = _hasActiveAppliedCoupon(cart);
     final typedCoupon = _normalizedCouponInput;
-    final t = ref.read(localeProvider.notifier).translate;
     if (typedCoupon.isNotEmpty && !hasActiveCoupon) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            t('Tap Apply to use this coupon'),
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            context.l10n.homeTapApplyCoupon,
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: const Color(0xFFF59E0B),
           behavior: SnackBarBehavior.floating,
@@ -8634,7 +8634,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   void _showStockIssueSnackbar(List<Map<String, dynamic>> issues) {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Column(
@@ -8642,8 +8642,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              t('Cannot proceed — stock issues:'),
-              style: GoogleFonts.plusJakartaSans(
+              l10n.homeStockIssuesTitle,
+              style: AppFonts.jakarta(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -8653,8 +8653,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               (i) => Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
-                  '• ${i['message'] ?? t('Stock issue')}',
-                  style: GoogleFonts.plusJakartaSans(
+                  '• ${i['message'] ?? l10n.homeStockIssueFallback}',
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -8673,7 +8673,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Future<void> _confirmAndPay() async {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final cart = ref.read(cartProvider);
     final hasActiveCoupon = _hasActiveAppliedCoupon(cart);
 
@@ -8722,17 +8722,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       final map = data is Map ? data : null;
       final error = map?['error'];
       final errorMap = error is Map ? error : null;
-      var msg =
-          map?['message']?.toString() ??
-          errorMap?['message']?.toString() ??
-          e.message ??
-          t('Checkout failed');
-      if (e.type == DioExceptionType.connectionError ||
-          msg.contains('No route to host') ||
-          msg.contains('Connection refused')) {
-        msg =
-            'Cannot reach server. Check backend is running and API URL in api_config.dart.';
-      }
+      final msg = apiErrorText(context, e, fallback: l10n.homeCheckoutFailed);
       // If it's a stock issue from the server, refresh cart to show updated stock
       final code = map?['code']?.toString() ?? errorMap?['code']?.toString();
       if (code == 'INSUFFICIENT_STOCK' ||
@@ -8744,7 +8734,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         SnackBar(
           content: Text(
             msg,
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -8768,18 +8758,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text(
-            'You can add products to cart and view them, but login is required to buy.',
-          ),
+          title: Text(context.l10n.homeGuestPromptTitle),
+          content: Text(context.l10n.homeCheckoutLoginMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Not now'),
+              child: Text(context.l10n.homeNotNow),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Login'),
+              child: Text(context.l10n.commonLogin),
             ),
           ],
         );
@@ -8800,13 +8788,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(title),
-          content: const Text(
-            'This feature is disabled while viewing the customer experience. Exit the demo mode to return to your wholesaler account.',
-          ),
+          content: Text(context.l10n.homePreviewFeatureDisabled),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Close'),
+              child: Text(context.l10n.commonClose),
             ),
           ],
         );
@@ -8823,7 +8809,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final stateC = TextEditingController();
     final pinC = TextEditingController();
     final fk = GlobalKey<FormState>();
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
 
     final address = await showModalBottomSheet<Map<String, String>>(
       context: context,
@@ -8861,30 +8847,34 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     ),
                   ),
                   Text(
-                    t('Shipping Address'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.homeShippingAddress,
+                    style: AppFonts.jakarta(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _addrField(t('Full Name'), nameC),
+                  _addrField(l10n.homeFieldFullName, nameC),
                   const SizedBox(height: 12),
-                  _addrField(t('Phone'), phoneC, keyboard: TextInputType.phone),
+                  _addrField(
+                    l10n.homeFieldPhone,
+                    phoneC,
+                    keyboard: TextInputType.phone,
+                  ),
                   const SizedBox(height: 12),
-                  _addrField(t('Address Line 1'), addr1C),
+                  _addrField(l10n.homeFieldAddressLine1, addr1C),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _addrField(t('City'), cityC)),
+                      Expanded(child: _addrField(l10n.homeFieldCity, cityC)),
                       const SizedBox(width: 12),
-                      Expanded(child: _addrField(t('State'), stateC)),
+                      Expanded(child: _addrField(l10n.homeFieldState, stateC)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   _addrField(
-                    t('Pincode'),
+                    l10n.homeFieldPincode,
                     pinC,
                     keyboard: TextInputType.number,
                   ),
@@ -8913,8 +8903,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         ),
                       ),
                       child: Text(
-                        t('Confirm & Proceed'),
-                        style: GoogleFonts.plusJakartaSans(
+                        l10n.homeConfirmAndProceed,
+                        style: AppFonts.jakarta(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -8957,12 +8947,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       if (!mounted) return;
       final msg =
           e.response?.data?['message']?.toString() ??
-          t('Failed to create order');
+          l10n.homeCreateOrderFailed;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             msg,
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -8977,8 +8967,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Error: $e',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            l10n.homeErrorWithDetails('$e'),
+            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -8999,14 +8989,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboard,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-      style: GoogleFonts.plusJakartaSans(fontSize: 14),
+      validator: (v) =>
+          (v == null || v.trim().isEmpty) ? context.l10n.commonRequired : null,
+      style: AppFonts.jakarta(fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
-          color: textSecondary,
-        ),
+        labelStyle: AppFonts.jakarta(fontSize: 14, color: textSecondary),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -9037,7 +9025,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       );
     }
     if (_promoBanners.isEmpty) return const SizedBox.shrink();
-    final t = ref.read(localeProvider.notifier).translate;
     return Column(
       children: [
         SizedBox(
@@ -9155,7 +9142,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                             banner['tag'],
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w800,
                                               color: Colors.white,
@@ -9168,7 +9155,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         Flexible(
                                           child: Text(
                                             banner['title'],
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: isCompact ? 18 : 20,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.white,
@@ -9198,17 +9185,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                               Flexible(
                                                 child: Text(
                                                   banner['buttonText'] ??
-                                                      t('Shop Now'),
+                                                      context
+                                                          .l10n
+                                                          .homeBannerShopNow,
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color: primaryBlue,
-                                                      ),
+                                                  style: AppFonts.jakarta(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: primaryBlue,
+                                                  ),
                                                 ),
                                               ),
                                               _getBannerIcon(
@@ -9429,35 +9416,35 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildWhyBuySection() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     final items = [
       {
         'icon': Icons.verified_rounded,
         'color': const Color(0xFF2563EB),
         'bg': const Color(0xFFEFF6FF),
-        'title': t('Premium Quality'),
-        'subtitle': t('Certified products'),
+        'title': l10n.homeWhyBuyQualityTitle,
+        'subtitle': l10n.homeWhyBuyQualitySubtitle,
       },
       {
         'icon': Icons.local_offer_rounded,
         'color': const Color(0xFF7C3AED),
         'bg': const Color(0xFFF5F3FF),
-        'title': t('Bulk Pricing'),
-        'subtitle': t('Best wholesale rates'),
+        'title': l10n.homeWhyBuyPricingTitle,
+        'subtitle': l10n.homeWhyBuyPricingSubtitle,
       },
       {
         'icon': Icons.local_shipping_rounded,
         'color': const Color(0xFF0891B2),
         'bg': const Color(0xFFECFEFF),
-        'title': t('Fast Delivery'),
-        'subtitle': t('Pan-India shipping'),
+        'title': l10n.homeWhyBuyDeliveryTitle,
+        'subtitle': l10n.homeWhyBuyDeliverySubtitle,
       },
       {
         'icon': Icons.support_agent_rounded,
         'color': const Color(0xFF16A34A),
         'bg': const Color(0xFFF0FDF4),
-        'title': t('24/7 Support'),
-        'subtitle': t('Always here to help'),
+        'title': l10n.homeWhyBuySupportTitle,
+        'subtitle': l10n.homeWhyBuySupportSubtitle,
       },
     ];
 
@@ -9480,9 +9467,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         child: Column(
           children: [
             Text(
-              t('Why Buy From Us?'),
+              l10n.homeWhyBuyTitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: textPrimary,
@@ -9531,7 +9518,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             item['title'] as String,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: textPrimary,
@@ -9542,10 +9529,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             item['subtitle'] as String,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: textSecondary,
-            ),
+            style: AppFonts.jakarta(fontSize: 12, color: textSecondary),
           ),
         ],
       ),
@@ -9553,7 +9537,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildReviewSection() {
-    final t = ref.watch(localeProvider.notifier).translate;
+    final l10n = context.l10n;
 
     if (_isLoadingReviews && _dynamicReviews.isEmpty) {
       return const SizedBox.shrink();
@@ -9563,31 +9547,27 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ? _dynamicReviews
         : [
             {
-              'name': 'Rajesh Kumar',
-              'role': 'Progressive Farmer, Punjab',
-              'review':
-                  'Laxmi Agro has completely changed how I source my tools. The bulk pricing and quality are unbeatable for my 50-acre farm.',
+              'name': l10n.homeSampleReview1Name,
+              'role': l10n.homeSampleReview1Role,
+              'review': l10n.homeSampleReview1Text,
               'rating': 5.0,
             },
             {
-              'name': 'Priya Sharma',
-              'role': 'Agri-Retailer, Delhi',
-              'review':
-                  "As a retailer, I need reliable delivery and authentic brands. Laxmi Agro's pan-India service is a lifesaver for my business.",
+              'name': l10n.homeSampleReview2Name,
+              'role': l10n.homeSampleReview2Role,
+              'review': l10n.homeSampleReview2Text,
               'rating': 5.0,
             },
             {
-              'name': 'Amit Patel',
-              'role': 'Wholesale Distributor, Gujarat',
-              'review':
-                  "I've been using Laxmi Agro for a year now. It has greatly simplified how I manage large orders and track inventory.",
+              'name': l10n.homeSampleReview3Name,
+              'role': l10n.homeSampleReview3Role,
+              'review': l10n.homeSampleReview3Text,
               'rating': 4.5,
             },
             {
-              'name': 'Anjali Singh',
-              'role': 'Organic Farm Owner, UP',
-              'review':
-                  "The variety of premium seeds and modern irrigation tools on Laxmi Agro is impressive. Truly a one-stop shop for modern farming.",
+              'name': l10n.homeSampleReview4Name,
+              'role': l10n.homeSampleReview4Role,
+              'review': l10n.homeSampleReview4Text,
               'rating': 5.0,
             },
           ];
@@ -9604,8 +9584,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t('Voices of Trust'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.homeReviewsEyebrow,
+                    style: AppFonts.jakarta(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: primaryBlue,
@@ -9614,8 +9594,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    t('What Our Customers Say'),
-                    style: GoogleFonts.plusJakartaSans(
+                    l10n.homeReviewsTitle,
+                    style: AppFonts.jakarta(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
@@ -9649,9 +9629,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 .map(
                   (review) => _buildReviewCard(
                     Map<String, String>.from({
-                      'name': t(review['name'].toString()),
-                      'role': t(review['role'].toString()),
-                      'review': t(review['review'].toString()),
+                      'name': review['name'].toString(),
+                      'role': review['role'].toString(),
+                      'review': review['review'].toString(),
                       'rating': review['rating'].toString(),
                     }),
                   ),
@@ -9719,7 +9699,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         child: Center(
                           child: Text(
                             review['name']!.substring(0, 1).toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -9737,7 +9717,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 Flexible(
                                   child: Text(
                                     review['name']!,
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: textPrimary,
@@ -9755,7 +9735,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             const SizedBox(height: 2),
                             Text(
                               review['role']!,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 13,
                                 color: textMuted,
                                 fontWeight: FontWeight.w600,
@@ -9794,7 +9774,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       const SizedBox(width: 8),
                       Text(
                         review['rating']!,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
@@ -9805,7 +9785,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   const SizedBox(height: 16),
                   Text(
                     review['review']!,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 15,
                       color: textSecondary.withOpacity(0.9),
                       height: 1.6,
@@ -9823,7 +9803,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildBottomNav() {
-    final t = ref.read(localeProvider.notifier).translate;
+    final l10n = context.l10n;
     return Container(
       decoration: BoxDecoration(
         color: surfaceWhite,
@@ -9841,38 +9821,54 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           child: Row(
             children: _isWholesaler
                 ? [
-                    _buildNavItem(HugeIcons.strokeRoundedHome01, t('Home'), 0),
+                    _buildNavItem(
+                      HugeIcons.strokeRoundedHome01,
+                      l10n.homeNavHome,
+                      0,
+                    ),
                     _buildNavItem(
                       HugeIcons.strokeRoundedSearch01,
-                      t('Search'),
+                      l10n.homeNavSearch,
                       1,
                     ),
                     _buildNavItem(
                       HugeIcons.strokeRoundedDashboardSquare01,
-                      t('Categories'),
+                      l10n.homeNavCategories,
                       2,
                     ),
                     _buildNavItem(
                       HugeIcons.strokeRoundedBriefcase01,
-                      t('Deal Desk'),
+                      l10n.homeNavDealDesk,
                       3,
                     ),
-                    _buildNavItem(HugeIcons.strokeRoundedUser, t('Profile'), 4),
+                    _buildNavItem(
+                      HugeIcons.strokeRoundedUser,
+                      l10n.homeNavProfile,
+                      4,
+                    ),
                   ]
                 : [
-                    _buildNavItem(HugeIcons.strokeRoundedHome01, t('Home'), 0),
+                    _buildNavItem(
+                      HugeIcons.strokeRoundedHome01,
+                      l10n.homeNavHome,
+                      0,
+                    ),
                     _buildNavItem(
                       HugeIcons.strokeRoundedSearch01,
-                      t('Search'),
+                      l10n.homeNavSearch,
                       1,
                     ),
                     _buildNavItem(
                       HugeIcons.strokeRoundedDashboardSquare01,
-                      t('Categories'),
+                      l10n.homeNavCategories,
                       2,
                     ),
                     _buildCartNavItem(3),
-                    _buildNavItem(HugeIcons.strokeRoundedUser, t('Profile'), 4),
+                    _buildNavItem(
+                      HugeIcons.strokeRoundedUser,
+                      l10n.homeNavProfile,
+                      4,
+                    ),
                   ],
           ),
         ),
@@ -9928,7 +9924,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         ),
                         child: Text(
                           '$itemCount',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -9942,12 +9938,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               const SizedBox(height: 4),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? primaryBlue : textMuted,
                 ),
-                child: const Text('Cart'),
+                child: Text(context.l10n.homeNavCart),
               ),
             ],
           ),
@@ -9987,7 +9983,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               const SizedBox(height: 4),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? primaryBlue : textMuted,
@@ -10117,7 +10113,7 @@ class _TrustBadgeMarqueeState extends State<_TrustBadgeMarquee> {
                 const SizedBox(width: 6),
                 Text(
                   item['text'] as String,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _txtSec,
@@ -10300,7 +10296,7 @@ class _PartnershipMarqueeState extends State<_PartnershipMarquee> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: _txtSec,
@@ -10528,16 +10524,20 @@ Color pulseAccentFor(DateTime? effectiveAt) {
   return primaryBlue;
 }
 
-String changeCountdownFor(DateTime effectiveAt) {
+String changeCountdownFor(AppLocalizations l10n, DateTime effectiveAt) {
   final diff = effectiveAt.difference(DateTime.now());
-  if (diff.isNegative) return 'Applying soon';
+  if (diff.isNegative) return l10n.homePriceApplyingSoon;
   if (diff.inHours >= 1) {
     final mins = diff.inMinutes % 60;
-    final when = mins > 0 ? '${diff.inHours}h ${mins}m' : '${diff.inHours}h';
-    return 'New price effective in $when';
+    final when = mins > 0
+        ? l10n.homeDurationHoursMinutes('${diff.inHours}', '$mins')
+        : l10n.homeDurationHours('${diff.inHours}');
+    return l10n.homeNewPriceEffectiveIn(when);
   }
   final mins = diff.inMinutes;
-  return mins > 0 ? 'New price effective in ${mins}m' : 'Applying soon';
+  return mins > 0
+      ? l10n.homeNewPriceEffectiveIn(l10n.homeDurationMinutes('$mins'))
+      : l10n.homePriceApplyingSoon;
 }
 
 /// Compact auto-scrolling price-change strip carousel.
@@ -10683,13 +10683,17 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                         final remain =
                             effectiveAt?.difference(DateTime.now()) ??
                             Duration.zero;
+                        final l10n = context.l10n;
                         final remainLabel = effectiveAt == null
                             ? '--'
                             : remain.isNegative
-                            ? 'Soon'
+                            ? l10n.homeCountdownSoon
                             : remain.inHours >= 1
-                            ? '${remain.inHours}h ${remain.inMinutes % 60}m'
-                            : '${remain.inMinutes}m';
+                            ? l10n.homeDurationHoursMinutes(
+                                '${remain.inHours}',
+                                '${remain.inMinutes % 60}',
+                              )
+                            : l10n.homeDurationMinutes('${remain.inMinutes}');
                         return GestureDetector(
                           onTap: productId.isEmpty
                               ? null
@@ -10738,10 +10742,10 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        (item['name'] ?? '').toString(),
+                                        localizedName(context, item),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w800,
                                           color: _textPrimary,
@@ -10756,18 +10760,17 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                               '₹${_fmt(current)} → ₹${_fmt(next)}',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 12.5,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: accent,
-                                                  ),
+                                              style: AppFonts.jakarta(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: accent,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
                                             '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
-                                            style: GoogleFonts.plusJakartaSans(
+                                            style: AppFonts.jakarta(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w800,
                                               color: accent,
@@ -10777,11 +10780,14 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                       ),
                                       Text(
                                         effectiveAt == null
-                                            ? 'Scheduled'
-                                            : changeCountdownFor(effectiveAt),
+                                            ? l10n.homeScheduled
+                                            : changeCountdownFor(
+                                                l10n,
+                                                effectiveAt,
+                                              ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w700,
                                           color: urgency,
@@ -10806,7 +10812,7 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                       Text(
                                         remainLabel,
                                         maxLines: 1,
-                                        style: GoogleFonts.plusJakartaSans(
+                                        style: AppFonts.jakarta(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                           color: urgency,
@@ -10814,8 +10820,8 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                         ),
                                       ),
                                       Text(
-                                        'LEFT',
-                                        style: GoogleFonts.plusJakartaSans(
+                                        l10n.homeTimeLeft,
+                                        style: AppFonts.jakarta(
                                           fontSize: 8,
                                           fontWeight: FontWeight.w800,
                                           color: urgency.withOpacity(0.7),
@@ -11177,9 +11183,9 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Text(
-                    'Shop Now',
-                    style: TextStyle(
+                  child: Text(
+                    context.l10n.homeBannerShopNow,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF2563EB),
