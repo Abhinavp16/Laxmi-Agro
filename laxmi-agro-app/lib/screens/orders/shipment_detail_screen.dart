@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 
 class ShipmentDetailScreen extends StatelessWidget {
   const ShipmentDetailScreen({super.key});
@@ -42,7 +42,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                       child: Text(
                         'Shipment Details',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textDark,
@@ -93,7 +93,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Order ID',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 14,
                                       color: gray500,
                                     ),
@@ -101,7 +101,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     '#AGRI-882910',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
                                       color: textDark,
@@ -117,7 +117,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                 ),
                                 child: Text(
                                   'IN TRANSIT',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: primary,
@@ -145,7 +145,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Industrial Seed Drill X200',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: textDark,
@@ -153,7 +153,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                   ),
                                   Text(
                                     'Qty: 1 Unit • \$12,450.00',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 12,
                                       color: gray500,
                                     ),
@@ -175,7 +175,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Order Journey',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: textDark,
@@ -184,7 +184,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                         ),
                         Text(
                           'Update Status',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: primary,
@@ -245,7 +245,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: Text(
                       'Courier Information',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: textDark,
@@ -282,7 +282,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   'Tracking Link',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                     color: textDark,
@@ -290,7 +290,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                 ),
                                 Text(
                                   'track.agri-logistics.com/SHP990123',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 12,
                                     color: textSecondary,
                                   ),
@@ -307,7 +307,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                             ),
                             child: Text(
                               'Copy',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: primary,
@@ -336,7 +336,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Buyer: Robert Miller',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: textDark,
@@ -353,7 +353,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                     icon: const Icon(Icons.chat, size: 18),
                                     label: Text(
                                       'WhatsApp',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -378,7 +378,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                                     icon: const Icon(Icons.call, size: 18),
                                     label: Text(
                                       'Call Buyer',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: AppFonts.jakarta(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -406,7 +406,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                     child: Text(
                       'Shipment Map',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: textDark,
@@ -457,7 +457,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                               ),
                               child: Text(
                                 'Last sync: 2 mins ago',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: textDark,
@@ -498,7 +498,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                   ),
                   child: Text(
                     'Update Status',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -550,7 +550,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: isCompleted ? textDark : textDark.withOpacity(0.5),
@@ -566,7 +566,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                         ),
                         child: Text(
                           badge,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: primary,
@@ -579,7 +579,7 @@ class ShipmentDetailScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 14,
                     color: textSecondary,
                   ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
@@ -35,7 +35,7 @@ class HelpCenterScreen extends StatelessWidget {
                     const SizedBox(width: 16),
                     Text(
                       'Help & Support',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: slate900,
@@ -65,7 +65,7 @@ class HelpCenterScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Hello, how can we help you today?',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                             color: slate900,
@@ -94,7 +94,7 @@ class HelpCenterScreen extends StatelessWidget {
                                 child: TextField(
                                   decoration: InputDecoration(
                                     hintText: 'Search for help topics...',
-                                    hintStyle: GoogleFonts.plusJakartaSans(
+                                    hintStyle: AppFonts.jakarta(
                                       color: slate400,
                                       fontSize: 16,
                                     ),
@@ -117,7 +117,7 @@ class HelpCenterScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Support Categories',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: slate900,
@@ -153,7 +153,7 @@ class HelpCenterScreen extends StatelessWidget {
                           children: [
                             Text(
                               'Frequently Asked Questions',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: slate900,
@@ -161,7 +161,7 @@ class HelpCenterScreen extends StatelessWidget {
                             ),
                             Text(
                               'View all',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: primary,
@@ -223,7 +223,7 @@ class HelpCenterScreen extends StatelessWidget {
                                   ),
                                   child: Text(
                                     'NEW',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: slate900,
@@ -234,7 +234,7 @@ class HelpCenterScreen extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 Text(
                                   'Safe Trading Guide 2024',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
@@ -243,7 +243,7 @@ class HelpCenterScreen extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Learn how to protect your payments and get the best deals.',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 14,
                                     color: Color(0xFFe2e8f0),
                                   ),
@@ -298,7 +298,7 @@ class HelpCenterScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Text(
                     'Chat with Us on WhatsApp',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -341,7 +341,7 @@ class HelpCenterScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: slate900,
@@ -366,7 +366,7 @@ class HelpCenterScreen extends StatelessWidget {
           Expanded(
             child: Text(
               question,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: slate900,

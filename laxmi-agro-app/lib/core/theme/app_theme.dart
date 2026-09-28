@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_fonts.dart';
 
 class AppColors {
   // Primary colors from UI designs
@@ -57,77 +58,77 @@ class AppTheme {
         error: AppColors.error,
       ),
       textTheme: GoogleFonts.plusJakartaSansTextTheme().copyWith(
-        displayLarge: GoogleFonts.plusJakartaSans(
+        displayLarge: AppFonts.jakarta(
           fontSize: 32,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        displayMedium: GoogleFonts.plusJakartaSans(
+        displayMedium: AppFonts.jakarta(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        displaySmall: GoogleFonts.plusJakartaSans(
+        displaySmall: AppFonts.jakarta(
           fontSize: 24,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        headlineLarge: GoogleFonts.plusJakartaSans(
+        headlineLarge: AppFonts.jakarta(
           fontSize: 22,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
+        headlineMedium: AppFonts.jakarta(
           fontSize: 20,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        headlineSmall: GoogleFonts.plusJakartaSans(
+        headlineSmall: AppFonts.jakarta(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        titleLarge: GoogleFonts.plusJakartaSans(
+        titleLarge: AppFonts.jakarta(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        titleMedium: GoogleFonts.plusJakartaSans(
+        titleMedium: AppFonts.jakarta(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        titleSmall: GoogleFonts.plusJakartaSans(
+        titleSmall: AppFonts.jakarta(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        bodyLarge: GoogleFonts.plusJakartaSans(
+        bodyLarge: AppFonts.jakarta(
           fontSize: 16,
           fontWeight: FontWeight.w400,
           color: AppColors.textPrimary,
         ),
-        bodyMedium: GoogleFonts.plusJakartaSans(
+        bodyMedium: AppFonts.jakarta(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: AppColors.textSecondary,
         ),
-        bodySmall: GoogleFonts.plusJakartaSans(
+        bodySmall: AppFonts.jakarta(
           fontSize: 12,
           fontWeight: FontWeight.w400,
           color: AppColors.textSecondary,
         ),
-        labelLarge: GoogleFonts.plusJakartaSans(
+        labelLarge: AppFonts.jakarta(
           fontSize: 14,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        labelMedium: GoogleFonts.plusJakartaSans(
+        labelMedium: AppFonts.jakarta(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        labelSmall: GoogleFonts.plusJakartaSans(
+        labelSmall: AppFonts.jakarta(
           fontSize: 10,
           fontWeight: FontWeight.w700,
           color: AppColors.textSecondary,
@@ -139,7 +140,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: AppFonts.jakarta(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
@@ -154,7 +155,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: AppFonts.jakarta(
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -168,7 +169,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: AppFonts.jakarta(
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -194,12 +195,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        hintStyle: GoogleFonts.plusJakartaSans(
+        hintStyle: AppFonts.jakarta(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: AppColors.gray400,
         ),
-        labelStyle: GoogleFonts.plusJakartaSans(
+        labelStyle: AppFonts.jakarta(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.gray700,
@@ -222,11 +223,11 @@ class AppTheme {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.gray400,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(
+        selectedLabelStyle: AppFonts.jakarta(
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(
+        unselectedLabelStyle: AppFonts.jakarta(
           fontSize: 10,
           fontWeight: FontWeight.w500,
         ),

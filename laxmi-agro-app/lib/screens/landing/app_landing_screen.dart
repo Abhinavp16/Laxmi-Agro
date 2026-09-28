@@ -4,10 +4,10 @@ import 'package:dio/dio.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../core/config/api_config.dart';
 import '../../widgets/product_image_placeholder.dart';
+import '../../core/theme/app_fonts.dart';
 
 class AppLandingScreen extends ConsumerStatefulWidget {
   const AppLandingScreen({super.key});
@@ -247,7 +247,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
               const SizedBox(width: 12),
               Text(
                 'AgriMarket',
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: textDark,
@@ -312,7 +312,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
             Expanded(
               child: Text(
                 'Search products, brands...',
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   color: textMuted,
                   fontSize: 14,
                 ),
@@ -463,7 +463,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                   const SizedBox(height: 12),
                   Text(
                     banner['title']?.toString() ?? '',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
@@ -473,7 +473,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                   const SizedBox(height: 8),
                   Text(
                     banner['subtitle']?.toString() ?? '',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 14,
                     ),
@@ -495,7 +495,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
         children: [
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: textDark,
@@ -504,7 +504,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
           if (action.isNotEmpty)
             Text(
               action,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: primary,
@@ -675,7 +675,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                 Text(
                                   title.toUpperCase(),
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     color: Colors.white.withOpacity(0.92),
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
@@ -704,7 +704,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                             child: Text(
                                               '₹',
                                               style:
-                                                  GoogleFonts.plusJakartaSans(
+                                                  AppFonts.jakarta(
                                                     color: Colors.white,
                                                     fontSize: 28,
                                                     fontWeight: FontWeight.w900,
@@ -716,7 +716,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                           discount
                                               .replaceAll('%', '')
                                               .replaceAll('₹', ''),
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: AppFonts.jakarta(
                                             color: Colors.white,
                                             fontSize: 62,
                                             fontWeight: FontWeight.w900,
@@ -732,7 +732,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                             child: Text(
                                               '%',
                                               style:
-                                                  GoogleFonts.plusJakartaSans(
+                                                  AppFonts.jakarta(
                                                     color: Colors.white,
                                                     fontSize: 28,
                                                     fontWeight: FontWeight.w900,
@@ -746,7 +746,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                 ),
                                 Text(
                                   'OFF',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     color: Colors.white,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w900,
@@ -800,7 +800,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                               child: Center(
                                 child: Text(
                                   'REDEEM',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     color: colors[0],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
@@ -896,7 +896,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: textDark,
@@ -1060,7 +1060,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
           const SizedBox(height: 10),
           Text(
             product['category']!,
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               color: primary,
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
@@ -1081,7 +1081,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                   .join(' '),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontWeight: FontWeight.w400,
                 fontSize: 12.5,
                 color: textDark,
@@ -1100,7 +1100,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
               const SizedBox(width: 3),
               Text(
                 product['rating']!,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: textDark,
@@ -1114,7 +1114,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
             children: [
               Text(
                 product['price']!,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   color: textDark,
@@ -1146,7 +1146,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
         children: [
           Text(
             'Why Buy From Us?',
-            style: GoogleFonts.plusJakartaSans(
+            style: AppFonts.jakarta(
               fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
@@ -1314,7 +1314,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                                 banner['tag'].toString().isNotEmpty)
                               Text(
                                 banner['tag'].toString().toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   color: primary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -1324,7 +1324,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                             const SizedBox(height: 8),
                             Text(
                               banner['title'] ?? '',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.w800,
@@ -1333,7 +1333,7 @@ class _AppLandingScreenState extends ConsumerState<AppLandingScreen> {
                             const SizedBox(height: 4),
                             Text(
                               banner['subtitle'] ?? '',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 color: Colors.white70,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,

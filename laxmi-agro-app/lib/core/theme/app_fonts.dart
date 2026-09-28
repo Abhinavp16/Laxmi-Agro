@@ -2,6 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppFonts {
+  // Set by the language provider. When Hindi is shown, text falls back to a
+  // Devanagari font and tight (negative) letter spacing is removed, because it
+  // squeezes Hindi vowel signs together.
+  static bool hindi = false;
+
+  static List<String> get _fallback => [
+    GoogleFonts.notoSansDevanagari().fontFamily!,
+  ];
+
+  /// Letter spacing actually used (negative spacing is removed for Hindi).
+  static double? spacingFor(double? letterSpacing) {
+    if (!hindi || letterSpacing == null) return letterSpacing;
+    return letterSpacing < 0 ? 0 : letterSpacing;
+  }
+
+  /// Font size actually used (at least 10 for Hindi).
+  static double? sizeFor(double? fontSize) {
+    if (!hindi || fontSize == null) return fontSize;
+    return fontSize < 10 ? 10 : fontSize;
+  }
+
+  // Plus Jakarta Sans - the app's main font. Drop-in for
+  // GoogleFonts.plusJakartaSans(...) that also renders Hindi well.
+  static TextStyle jakarta({
+    TextStyle? textStyle,
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    double? decorationThickness,
+    List<Shadow>? shadows,
+  }) {
+    return GoogleFonts.plusJakartaSans(
+      textStyle: textStyle,
+      color: color,
+      fontSize: sizeFor(fontSize),
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      letterSpacing: spacingFor(letterSpacing),
+      height: height,
+      decoration: decoration,
+      decorationColor: decorationColor,
+      decorationThickness: decorationThickness,
+      shadows: shadows,
+    ).copyWith(fontFamilyFallback: _fallback);
+  }
+
   // Montserrat - Primary headings and titles
   static TextStyle montserrat({
     double fontSize = 16,
@@ -9,14 +60,16 @@ class AppFonts {
     Color? color,
     double? height,
     double? letterSpacing,
+    TextDecoration? decoration,
   }) {
     return GoogleFonts.montserrat(
-      fontSize: fontSize,
+      decoration: decoration,
+      fontSize: sizeFor(fontSize),
       fontWeight: fontWeight,
       color: color,
       height: height,
-      letterSpacing: letterSpacing,
-    );
+      letterSpacing: spacingFor(letterSpacing),
+    ).copyWith(fontFamilyFallback: _fallback);
   }
 
   // Outfit - Body text and subtitles
@@ -26,14 +79,16 @@ class AppFonts {
     Color? color,
     double? height,
     double? letterSpacing,
+    TextDecoration? decoration,
   }) {
     return GoogleFonts.outfit(
-      fontSize: fontSize,
+      decoration: decoration,
+      fontSize: sizeFor(fontSize),
       fontWeight: fontWeight,
       color: color,
       height: height,
-      letterSpacing: letterSpacing,
-    );
+      letterSpacing: spacingFor(letterSpacing),
+    ).copyWith(fontFamilyFallback: _fallback);
   }
 
   // Heading Styles

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 
 class WholesaleProductDetailScreen extends StatefulWidget {
   const WholesaleProductDetailScreen({super.key});
@@ -65,7 +65,7 @@ class _WholesaleProductDetailScreenState
                   ),
                   title: Text(
                     'Wholesale Details',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: gray900,
@@ -172,7 +172,7 @@ class _WholesaleProductDetailScreenState
                               ),
                               child: Text(
                                 'TOP RATED',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: blue700,
@@ -192,7 +192,7 @@ class _WholesaleProductDetailScreenState
                               ),
                               child: Text(
                                 'WHOLESALE ONLY',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
@@ -207,7 +207,7 @@ class _WholesaleProductDetailScreenState
                         // Title
                         Text(
                           'Multi-Crop Power Tiller',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                             color: gray900,
@@ -219,7 +219,7 @@ class _WholesaleProductDetailScreenState
                         // Price
                         Text(
                           'Wholesale Price: Negotiable',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: primary,
@@ -228,7 +228,7 @@ class _WholesaleProductDetailScreenState
                         const SizedBox(height: 4),
                         Text(
                           'Minimum Order Quantity: 5 Units',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: AppFonts.jakarta(
                             fontSize: 12,
                             color: gray500,
                           ),
@@ -257,7 +257,7 @@ class _WholesaleProductDetailScreenState
                             const SizedBox(width: 8),
                             Text(
                               'Delivery within 5 days of Purchase',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 12,
                                 color: gray500,
                                 fontWeight: FontWeight.w500,
@@ -295,7 +295,7 @@ class _WholesaleProductDetailScreenState
                             const SizedBox(width: 12),
                             Text(
                               'Specifications',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: AppFonts.jakarta(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: gray500,
@@ -343,7 +343,7 @@ class _WholesaleProductDetailScreenState
                               children: [
                                 Text(
                                   'Product Description',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                     color: gray900,
@@ -369,7 +369,7 @@ class _WholesaleProductDetailScreenState
                               children: [
                                 Text(
                                   'The Multi-Crop Power Tiller is a robust and versatile machine designed for modern agriculture. Equipped with a heavy-duty 7HP petrol engine, it provides exceptional power-to-weight ratio for tilling, weeding, and soil preparation across diverse terrains.',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: AppFonts.jakarta(
                                     fontSize: 14,
                                     color: gray600,
                                     height: 1.6,
@@ -400,7 +400,7 @@ class _WholesaleProductDetailScreenState
                             children: [
                               Text(
                                 'Wholesale Logistics',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: gray900,
@@ -422,7 +422,7 @@ class _WholesaleProductDetailScreenState
                             children: [
                               Text(
                                 'Bulk Order Reviews',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: gray900,
@@ -438,7 +438,7 @@ class _WholesaleProductDetailScreenState
                                   const SizedBox(width: 4),
                                   Text(
                                     '4.9',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: AppFonts.jakarta(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: gray900,
@@ -478,7 +478,7 @@ class _WholesaleProductDetailScreenState
                     const SizedBox(height: 4),
                     Text(
                       'EXPERT HELP',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: AppFonts.jakarta(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
                         color: primary,
@@ -509,7 +509,7 @@ class _WholesaleProductDetailScreenState
                           const SizedBox(width: 8),
                           Text(
                             'Initiate Negotiation',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
@@ -545,14 +545,14 @@ class _WholesaleProductDetailScreenState
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               text: TextSpan(
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 14,
                   color: textDark,
                 ),
                 children: [
                   TextSpan(
                     text: '$title: ',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontWeight: FontWeight.w600,
                       color: gray500,
                       fontSize: 13,
@@ -560,7 +560,7 @@ class _WholesaleProductDetailScreenState
                   ),
                   TextSpan(
                     text: value,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontWeight: FontWeight.w700,
                       color: gray900,
                       fontSize: 14,
@@ -586,7 +586,7 @@ class _WholesaleProductDetailScreenState
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: gray600),
+              style: AppFonts.jakarta(fontSize: 14, color: gray600),
             ),
           ),
         ],

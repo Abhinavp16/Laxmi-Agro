@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 
 class NegotiationCelebrationScreen extends StatelessWidget {
   const NegotiationCelebrationScreen({super.key});
@@ -33,7 +33,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                       child: Text(
                         'Negotiation Status',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: AppFonts.jakarta(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textDark,
@@ -135,7 +135,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Deal Sealed!',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: AppFonts.jakarta(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
                       color: textDark,
@@ -161,7 +161,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
               child: RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: GoogleFonts.plusJakartaSans(
+                  style: AppFonts.jakarta(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                     color: textDark,
@@ -171,7 +171,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                     const TextSpan(text: 'Your offer for the '),
                     TextSpan(
                       text: 'Mahindra 575 DI',
-                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      style: AppFonts.jakarta(fontWeight: FontWeight.w700),
                     ),
                     const TextSpan(text: ' has been accepted.'),
                   ],
@@ -198,7 +198,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                         children: [
                           Text(
                             'FINAL PRICE',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: textDark.withOpacity(0.6),
@@ -208,7 +208,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             '₹4,85,000',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: textDark,
@@ -234,7 +234,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                         children: [
                           Text(
                             'TOTAL SAVINGS',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: backgroundDark,
@@ -246,7 +246,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                             children: [
                               Text(
                                 '₹15,000',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: AppFonts.jakarta(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
                                   color: backgroundDark,
@@ -291,7 +291,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Proceed to Payment',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
@@ -320,7 +320,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Keep Browsing',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: AppFonts.jakarta(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
@@ -341,7 +341,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
               child: Text(
                 'Transaction ID: WH-99283-XPL | Prices are inclusive of GST',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: AppFonts.jakarta(
                   fontSize: 12,
                   color: textDark.withOpacity(0.6),
                 ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/theme/app_fonts.dart';
 
 class CouponOfferScreen extends ConsumerStatefulWidget {
   const CouponOfferScreen({super.key});
@@ -51,7 +51,7 @@ class _CouponOfferScreenState extends ConsumerState<CouponOfferScreen> {
       SnackBar(
         content: Text(
           '$code copied',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+          style: AppFonts.jakarta(fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -74,7 +74,7 @@ class _CouponOfferScreenState extends ConsumerState<CouponOfferScreen> {
             ),
             child: Text(
               'Apply coupons during checkout to unlock discounts and bulk offers.',
-              style: GoogleFonts.plusJakartaSans(
+              style: AppFonts.jakarta(
                 fontSize: 14,
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -94,7 +94,7 @@ class _CouponOfferScreenState extends ConsumerState<CouponOfferScreen> {
               ),
               child: Text(
                 'No redeemed coupons yet. Redeem coupons from Home > Exclusive Offers.',
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, height: 1.5),
+                style: AppFonts.jakarta(fontSize: 14, height: 1.5),
               ),
             )
           else
@@ -124,10 +124,10 @@ class _CouponOfferScreenState extends ConsumerState<CouponOfferScreen> {
           backgroundColor: Color(0xFFFEE2E2),
           child: Icon(Icons.local_offer_outlined, color: Color(0xFFDC2626)),
         ),
-        title: Text(code, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
+        title: Text(code, style: AppFonts.jakarta(fontWeight: FontWeight.w800)),
         subtitle: Text(
           '$title\n$rule',
-          style: GoogleFonts.plusJakartaSans(fontSize: 12, height: 1.5),
+          style: AppFonts.jakarta(fontSize: 12, height: 1.5),
         ),
         trailing: TextButton(
           onPressed: () => _copyCode(code),

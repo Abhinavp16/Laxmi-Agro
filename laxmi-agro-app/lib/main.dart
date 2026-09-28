@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -11,6 +13,8 @@ import 'core/router/app_router.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/app_update_provider.dart';
+import 'core/providers/locale_provider.dart';
+import 'l10n/l10n.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/app_lifecycle_service.dart';
@@ -32,7 +36,18 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const ProviderScope(child: LaxmiAgroApp()));
+  // Saved language (English/Hindi) and Hindi month/day names for dates.
+  final savedLocale = await LocaleNotifier.loadSaved();
+  await initializeDateFormatting('en');
+  await initializeDateFormatting('hi');
+  runApp(
+    ProviderScope(
+      overrides: [
+        localeProvider.overrideWith((ref) => LocaleNotifier(savedLocale)),
+      ],
+      child: const LaxmiAgroApp(),
+    ),
+  );
 }
 
 class LaxmiAgroApp extends StatelessWidget {
@@ -79,6 +94,10 @@ class _NotificationBootstrapState extends ConsumerState<_NotificationBootstrap>
       if (justAuthenticated) {
         unawaited(_registerNotificationsForAuthenticatedUser());
       }
+      // Keep the account's language in sync (used for notifications).
+      if (next.isAuthenticated) {
+        unawaited(ref.read(localeProvider.notifier).syncWithServer());
+      }
     }, fireImmediately: true);
   }
 
@@ -110,11 +129,20 @@ class _NotificationBootstrapState extends ConsumerState<_NotificationBootstrap>
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp.router(
       scaffoldMessengerKey: scafoldMessengerKey,
-      title: 'Laxmi Agro Enterprises',
+      onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      locale: locale,
+      supportedLocales: LocaleNotifier.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: appRouter,
     );
   }
