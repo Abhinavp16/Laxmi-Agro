@@ -37,8 +37,11 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _cartBounce;
+  // Time spent on this product page, reported to the backend for leads.
+  final Stopwatch _watchTimer = Stopwatch();
+  String? _watchAuthToken;
   final PageController _imgCtrl = PageController();
   final TextEditingController _quantityController = TextEditingController(
     text: '1',
@@ -103,6 +106,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _cartBounce = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -117,6 +121,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _flushWatchTime();
     _cartBounce.dispose();
     _imgCtrl.dispose();
     _quantityController.dispose();
@@ -382,11 +388,46 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return cleaned.isEmpty ? rawLabel : cleaned;
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_product != null && !_watchTimer.isRunning) _watchTimer.start();
+    } else {
+      // Backgrounded, locked or interrupted: report what we have so far.
+      _flushWatchTime();
+    }
+  }
+
+  // Sends the seconds spent on the page since the last report. Fire-and-forget
+  // so it also works from dispose(); guests and customer preview are skipped
+  // because no token is captured for them.
+  void _flushWatchTime() {
+    final seconds = _watchTimer.elapsed.inSeconds;
+    _watchTimer
+      ..stop()
+      ..reset();
+    final token = _watchAuthToken;
+    if (seconds < 1 || token == null) return;
+    _dio
+        .post(
+          '/products/${widget.productId}/watch-time',
+          data: {'seconds': seconds},
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        )
+        .then((_) {}, onError: (_) {});
+  }
+
   Future<void> _trackView() async {
     try {
       final token = ref.read(guestModeProvider)
           ? null
           : await StorageService.getAccessToken();
+      _watchAuthToken = token;
+      if (mounted) {
+        _watchTimer
+          ..reset()
+          ..start();
+      }
       await _dio.post(
         '/products/${widget.productId}/view',
         data: {'source': 'direct'},
