@@ -47,6 +47,7 @@
     "test:lead-interest": "node tests/leadInterest.test.js",
     "test:hindi-names": "node tests/hindiNames.test.js",
     "test:notification-templates": "node tests/notificationTemplates.test.js",
+    "test:search-query": "node tests/searchQuery.test.js",
     "leads:backfill": "CONFIRM_PRODUCT_INTEREST_BACKFILL=yes CONFIRM_ANALYTICS_TTL_FIX=yes node src/scripts/backfillProductInterest.js"
   },
   "keywords": [

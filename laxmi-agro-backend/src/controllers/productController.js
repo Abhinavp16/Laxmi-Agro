@@ -17,12 +17,12 @@ const {
 } = require('../utils/categoryAccess');
 const {
   buildCategoryScopeCondition,
-  categoryMatchesTerm,
   collectCategoryScope,
   pruneCategoriesWithInaccessibleAncestors,
 } = require('../services/productSearchService');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
 const { isLeadRole, sanitizeWatchSeconds } = require('../utils/leadInterest');
+const { buildSearchTerms, groupPattern, normalizeSearchText } = require('../utils/searchQuery');
 const logger = require('../utils/logger');
 
 const formatProductCard = (product, userRole, req, discounts = null) => {
@@ -395,6 +395,65 @@ exports.getFeaturedProducts = async (req, res, next) => {
   }
 };
 
+const SEARCH_RESULT_FIELDS = 'name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef createdAt';
+
+// Relevance: words found in the product name (English or Hindi) score
+// highest, all words in the name score a bonus; description/category-only
+// matches come after. Ties: newest first.
+function searchScoreExpression(termGroups) {
+  const nameText = {
+    $concat: [
+      { $ifNull: ['$name', ''] }, ' ',
+      { $ifNull: ['$nameHindi', ''] }, ' ',
+      { $ifNull: ['$searchTextHindi', ''] },
+    ],
+  };
+  const inName = termGroups.map((variants) => ({
+    $regexMatch: { input: nameText, regex: groupPattern(variants), options: 'i' },
+  }));
+  return {
+    $add: [
+      ...inName.map((matched) => ({ $cond: [matched, 2, 0] })),
+      { $cond: [{ $and: inName }, 3, 0] },
+    ],
+  };
+}
+
+async function runSearch(filter, termGroups, skip, limit) {
+  const castFilter = Product.find().cast(Product, filter);
+  const [products, total] = await Promise.all([
+    termGroups.length > 0
+      ? Product.aggregate([
+        { $match: castFilter },
+        { $addFields: { _searchScore: searchScoreExpression(termGroups) } },
+        { $sort: { _searchScore: -1, createdAt: -1, _id: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: Object.fromEntries(SEARCH_RESULT_FIELDS.split(' ').map((field) => [field, 1])) },
+      ]).then((docs) => Product.populate(docs, { path: 'company', select: 'name' }))
+      : Product.find(filter)
+        .select(SEARCH_RESULT_FIELDS)
+        .populate('company', 'name')
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    Product.countDocuments(filter),
+  ]);
+  return { products, total };
+}
+
+async function findSearchResults({ query, termGroups, termFilterIndex, skip, limit }) {
+  const strict = await runSearch(query, termGroups, skip, limit);
+  if (strict.total > 0 || termGroups.length < 2) return strict;
+
+  // Nothing matched every word: allow any word, best matches first.
+  const relaxed = { ...query, $and: [...(query.$and || [])] };
+  const termConditions = relaxed.$and.splice(termFilterIndex, termGroups.length);
+  relaxed.$and.push({ $or: termConditions });
+  return runSearch(relaxed, termGroups, skip, limit);
+}
+
 exports.searchProducts = async (req, res, next) => {
   try {
     const { q, categoryId, brandId, category, brand } = req.query;
@@ -403,9 +462,10 @@ exports.searchProducts = async (req, res, next) => {
 
     const query = { status: PRODUCT_STATUS.ACTIVE };
     const andConditions = [];
-    const normalizedQuery = String(q || '').trim();
-    const terms = normalizedQuery.toLowerCase().split(/\s+/).filter(Boolean);
-    const needsCompanyCatalog = Boolean(brandId) || Boolean(brand) || terms.length > 0;
+    // One group of equivalent variants per meaningful word (Hindi, Hinglish,
+    // English), e.g. "पम्प wala" -> [[पंप, pump, motor, मोटर, ...]].
+    const termGroups = buildSearchTerms(q);
+    const needsCompanyCatalog = Boolean(brandId) || Boolean(brand) || termGroups.length > 0;
     const [allCategories, allCompanies] = await Promise.all([
       Category.find({}).select('_id name nameHindi slug parent company isActive').lean(),
       needsCompanyCatalog
@@ -426,27 +486,27 @@ exports.searchProducts = async (req, res, next) => {
       (categoryItem) => !accessibleCategoryIds.has(String(categoryItem._id)),
     );
 
-    for (const term of terms) {
-      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(escaped, 'i');
+    const includesAny = (values, variants) => values
+      .filter(Boolean)
+      .map((value) => normalizeSearchText(value))
+      .some((value) => variants.some((variant) => value.includes(variant)));
+    const termConditions = termGroups.map((variants) => {
+      const regex = new RegExp(groupPattern(variants), 'i');
       const companyIds = allCompanies
-        .filter((company) => [company.name, company.slug]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term)))
+        .filter((company) => includesAny([company.name, company.slug], variants))
         .map((company) => company._id);
-      const categoryIds = new Set();
       const categoryScopeById = new Map();
-      for (const matched of accessibleCategories.filter((item) => categoryMatchesTerm(item, term))) {
+      for (const matched of accessibleCategories.filter((item) => includesAny([item.name, item.nameHindi, item.slug], variants))) {
         for (const scoped of collectCategoryScope(accessibleCategories, matched._id)) {
-          categoryIds.add(scoped._id);
           categoryScopeById.set(String(scoped._id), scoped);
         }
       }
       const categoryScope = [...categoryScopeById.values()];
-      andConditions.push({
+      return {
         $or: [
           { name: regex },
           { nameHindi: regex },
+          { searchTextHindi: regex },
           { description: regex },
           { shortDescription: regex },
           { category: regex },
@@ -454,12 +514,13 @@ exports.searchProducts = async (req, res, next) => {
           { tags: { $in: [regex] } },
           { sku: regex },
           ...(companyIds.length > 0 ? [{ company: { $in: companyIds } }] : []),
-          ...(categoryIds.size > 0
-            ? [buildCategoryScopeCondition(categoryScope)]
-            : []),
+          ...(categoryScope.length > 0 ? [buildCategoryScopeCondition(categoryScope)] : []),
         ],
-      });
-    }
+      };
+    });
+    // Every word must match; if that finds nothing, any word may match (ranked).
+    const termFilterIndex = andConditions.length;
+    andConditions.push(...termConditions);
 
     if (categoryId) {
       const scope = collectCategoryScope(accessibleCategories, categoryId);
@@ -474,7 +535,7 @@ exports.searchProducts = async (req, res, next) => {
       const legacyBrandValues = [company?.name, company?.slug].filter(Boolean);
       andConditions.push({
         $or: [
-          { company: brandId },
+          { company: mongoose.isValidObjectId(brandId) ? new mongoose.Types.ObjectId(String(brandId)) : brandId },
           ...legacyBrandValues.map((value) => ({
             brand: { $regex: new RegExp(`^${String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
           })),
@@ -508,17 +569,13 @@ exports.searchProducts = async (req, res, next) => {
       ];
     }
 
-    const [products, total] = await Promise.all([
-      Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
-        .populate('company', 'name')
-        .sort({ createdAt: -1, _id: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Product.countDocuments(query),
-    ]);
-
+    const { products, total } = await findSearchResults({
+      query,
+      termGroups,
+      termFilterIndex,
+      skip,
+      limit,
+    });
     const formattedProducts = await formatProductCards(products, userRole, req);
 
     res.json({

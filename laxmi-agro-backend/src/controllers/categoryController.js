@@ -160,7 +160,7 @@ exports.getCategories = async (req, res, next) => {
 
     // Search by name
     if (search) {
-      query.name = { $regex: search, $options: 'i' };
+      query.name = { $regex: String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
     }
 
     const companyFilter = await resolveCompanyId(company || brand);

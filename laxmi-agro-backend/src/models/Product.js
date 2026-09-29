@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { normalizeSearchText } = require('../utils/searchQuery');
 const slugify = require('slugify');
 const { PRODUCT_STATUS } = require('../utils/constants');
 const {
@@ -111,6 +112,12 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: '',
+  },
+  // Normalized nameHindi used only by search (spelling variants, digits).
+  searchTextHindi: {
+    type: String,
+    default: '',
+    select: false,
   },
   // 'manual' = typed by an admin (never overwritten); 'auto' = generated.
   nameHindiSource: {
@@ -345,6 +352,10 @@ productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 
 productSchema.pre('save', function (next) {
   this.variants = [];
+
+  if (this.isModified('nameHindi') || this.isNew) {
+    this.searchTextHindi = normalizeSearchText(this.nameHindi);
+  }
 
   if (this.isModified('name') || !this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });

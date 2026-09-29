@@ -1,5 +1,6 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { normalizeSearchText } = require('../utils/searchQuery');
 const {
   HINDI_NAME_SOURCES,
   buildHindiName,
@@ -100,9 +101,11 @@ async function fillHindiNames(model, { mode = 'missing', ids = null, limit = 0, 
         stats.failedItems.push({ id: String(doc._id), name: englishName });
         return;
       }
+      const update = { nameHindi: hindiName, nameHindiSource: HINDI_NAME_SOURCES.AUTO };
+      if (model.schema.path('searchTextHindi')) update.searchTextHindi = normalizeSearchText(hindiName);
       const result = await model.updateOne(
         { _id: doc._id, nameHindi: doc.nameHindi ?? { $in: [null, ''] } },
-        { $set: { nameHindi: hindiName, nameHindiSource: HINDI_NAME_SOURCES.AUTO } },
+        { $set: update },
       );
       if (result.modifiedCount > 0) stats.updated += 1;
       else stats.skipped += 1;
