@@ -344,7 +344,7 @@ export default function MemberOrdersPage() {
       {hasMore && <div className="flex justify-center"><Button variant="outline" className="border-[#d8dfca] bg-white" disabled={isLoadingMore} onClick={() => { const nextPage = page + 1; setPage(nextPage); void fetchOrders(nextPage) }}>{isLoadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Load more orders</Button></div>}
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-h-[88vh] max-w-[95vw] overflow-y-auto border-[#dfe6d1] bg-white text-slate-800 sm:max-w-2xl">
+        <DialogContent className="max-h-[90dvh] max-w-[95vw] overflow-y-auto overscroll-contain border-[#dfe6d1] bg-white text-slate-800 sm:max-w-2xl">
           <DialogHeader><DialogTitle>Order Details: {selectedOrder?.orderNumber}</DialogTitle><DialogDescription>Customer: {selectedOrder?.customerSnapshot?.name} | {selectedOrder?.customerSnapshot?.phone}</DialogDescription></DialogHeader>
           {selectedOrder && <div className="space-y-5">
             {(selectedOrder.inventoryCommittedAt || selectedOrder.inventoryReleasedAt) && <section className="rounded-lg border border-[#e3e9d8] bg-[#fcfdf9] p-4 text-sm"><h3 className="mb-3 font-semibold">Inventory</h3><div className="space-y-1 text-slate-600">{selectedOrder.inventoryCommittedAt && <p>Committed: {new Date(selectedOrder.inventoryCommittedAt).toLocaleString("en-IN")}</p>}{selectedOrder.inventoryReleasedAt && <p>Released: {new Date(selectedOrder.inventoryReleasedAt).toLocaleString("en-IN")}</p>}</div></section>}

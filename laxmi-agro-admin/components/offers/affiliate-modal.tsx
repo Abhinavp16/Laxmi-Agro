@@ -151,7 +151,7 @@ export function AffiliateModal({ isOpen, onClose, onSuccess, code }: AffiliateMo
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
-                    <div className="space-y-4 py-4 overflow-y-auto pr-1">
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4 pr-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="personName">Person Name</Label>

@@ -625,7 +625,7 @@ export default function OrdersPage() {
             </Card>
 
             <Dialog open={isdetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="max-h-[85vh] max-w-[95vw] border-[#333] bg-[#161616] text-white sm:max-w-2xl">
+                <DialogContent className="flex max-h-[90dvh] max-w-[95vw] flex-col overflow-hidden border-[#333] bg-[#161616] text-white sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Order Details: {selectedOrder?.orderNumber}</DialogTitle>
                         <DialogDescription>
@@ -634,7 +634,7 @@ export default function OrdersPage() {
                     </DialogHeader>
 
                     {selectedOrder && (
-                        <div className="space-y-6 overflow-y-auto pr-1 sm:pr-2">
+                        <div className="-mr-1 min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-2 sm:-mr-2 sm:pr-3">
                             {(selectedOrder.inventoryCommittedAt || selectedOrder.inventoryReleasedAt) && <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4 text-sm"><h3 className="mb-3 font-medium">Inventory</h3><div className="space-y-1 text-gray-300">{selectedOrder.inventoryCommittedAt && <div>Committed: {new Date(selectedOrder.inventoryCommittedAt).toLocaleString("en-IN")}</div>}{selectedOrder.inventoryReleasedAt && <div>Released: {new Date(selectedOrder.inventoryReleasedAt).toLocaleString("en-IN")}</div>}</div></div>}
                             {selectedOrder.acceptanceStatus != null && (
                                 <div className="rounded-lg border border-[#333] bg-[#0D0D0D] p-4">
