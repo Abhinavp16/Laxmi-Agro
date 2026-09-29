@@ -1,3 +1,9 @@
+import '../../l10n/l10n.dart' show latinDigits;
+
+/// Query as sent to the server: Hindi digits as 0-9, single spaces, trimmed.
+String normalizeSearchQuery(String query) =>
+    latinDigits(query).replaceAll(RegExp(r'\s+'), ' ').trim();
+
 class ProductSearchCriteria {
   final String query;
   final String? categoryId;
@@ -6,13 +12,15 @@ class ProductSearchCriteria {
   const ProductSearchCriteria({this.query = '', this.categoryId, this.brandId});
 
   bool get isActive =>
-      query.trim().isNotEmpty || categoryId != null || brandId != null;
+      normalizeSearchQuery(query).isNotEmpty ||
+      categoryId != null ||
+      brandId != null;
 
   Map<String, dynamic> toQueryParameters({
     required int page,
     required int limit,
   }) {
-    final trimmedQuery = query.trim();
+    final trimmedQuery = normalizeSearchQuery(query);
     return {
       'page': page,
       'limit': limit,
@@ -25,13 +33,14 @@ class ProductSearchCriteria {
   @override
   bool operator ==(Object other) {
     return other is ProductSearchCriteria &&
-        other.query.trim() == query.trim() &&
+        normalizeSearchQuery(other.query) == normalizeSearchQuery(query) &&
         other.categoryId == categoryId &&
         other.brandId == brandId;
   }
 
   @override
-  int get hashCode => Object.hash(query.trim(), categoryId, brandId);
+  int get hashCode =>
+      Object.hash(normalizeSearchQuery(query), categoryId, brandId);
 }
 
 class ProductSearchPage {

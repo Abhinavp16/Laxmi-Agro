@@ -40,6 +40,7 @@ import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/product_search.dart';
+import '../../core/utils/recent_searches.dart';
 import '../../core/theme/app_fonts.dart';
 
 enum _SearchScope { product, brand, category }
@@ -122,7 +123,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   String _searchQuery = '';
   _SearchScope _searchScope = _SearchScope.product;
   Timer? _searchDebounce;
-  final List<String> _recentSearches = [];
+  List<String> _recentSearches = [];
 
   // Filter state
   String? _selectedFilterCategoryId;
@@ -177,6 +178,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     super.initState();
     final isCustomerPreview = ref.read(guestModeProvider);
     _selectedNavIndex = widget.initialTab ?? 0;
+    _loadRecentSearches();
     _fetchBrands();
     _fetchProducts();
     _fetchCategories();
@@ -1087,6 +1089,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         _isLoadingMoreSearch = false;
         _searchError = null;
       });
+      // Remember searches that found something once the user pauses typing.
+      if (!append && mapped.isNotEmpty && query.trim().length >= 3) {
+        _rememberSearch(query);
+      }
     } on DioException catch (error) {
       if (CancelToken.isCancel(error) ||
           !mounted ||
@@ -2861,21 +2867,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  Future<void> _loadRecentSearches() async {
+    final saved = await RecentSearchStore.load();
+    if (!mounted || saved.isEmpty) return;
+    setState(() => _recentSearches = List<String>.from(saved));
+  }
+
+  void _rememberSearch(String query) {
+    final next = addRecentSearch(_recentSearches, query);
+    setState(() => _recentSearches = next);
+    RecentSearchStore.save(next);
+  }
+
   void _submitSearch(String value) {
     final query = value.trim();
     if (query.isEmpty) return;
 
     _searchDebounce?.cancel();
-    setState(() {
-      _recentSearches.removeWhere(
-        (item) => item.toLowerCase() == query.toLowerCase(),
-      );
-      _recentSearches.insert(0, query);
-      if (_recentSearches.length > 5) {
-        _recentSearches.removeRange(5, _recentSearches.length);
-      }
-      _searchQuery = query;
-    });
+    _rememberSearch(query);
+    setState(() => _searchQuery = query);
 
     if (_searchScope == _SearchScope.product) {
       _searchProducts(query);
@@ -2911,15 +2921,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredSearchCategories {
-    final query = _searchQuery.trim().toLowerCase();
+    final query = normalizeSearchQuery(_searchQuery).toLowerCase();
     if (query.isEmpty) return _searchCategoryData;
     return _searchCategoryData.where((category) {
-      final searchableText = [
-        _getDisplayCategoryName(category),
+      // Match English and Hindi names whatever the app language is.
+      final searchableText = latinDigits([
         category['name'],
+        category['nameHindi'],
         category['queryName'],
         category['brandName'],
-      ].whereType<Object>().join(' ').toLowerCase();
+      ].whereType<Object>().join(' ')).toLowerCase();
       return searchableText.contains(query);
     }).toList();
   }
@@ -3394,8 +3405,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     ),
                                   ),
                                   GestureDetector(
-                                    onTap: () =>
-                                        setState(() => _recentSearches.clear()),
+                                    onTap: () {
+                                      setState(() => _recentSearches = []);
+                                      RecentSearchStore.save(const []);
+                                    },
                                     child: Text(
                                       l10n.homeClearAll,
                                       style: AppFonts.jakarta(

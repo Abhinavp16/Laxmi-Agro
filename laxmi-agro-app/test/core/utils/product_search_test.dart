@@ -19,6 +19,19 @@ void main() {
     });
   });
 
+  test('Hindi query keeps Devanagari words and sends Latin digits', () {
+    expect(normalizeSearchQuery('  १० मिमी   केबल '), '10 मिमी केबल');
+    expect(
+      const ProductSearchCriteria(query: '२ इंच पाइप')
+          .toQueryParameters(page: 1, limit: 20)['q'],
+      '2 इंच पाइप',
+    );
+    expect(
+      const ProductSearchCriteria(query: '१० मिमी'),
+      const ProductSearchCriteria(query: '10 मिमी'),
+    );
+  });
+
   test('filter-only criteria stays active', () {
     expect(
       const ProductSearchCriteria(categoryId: 'category-id').isActive,
