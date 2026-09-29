@@ -21,3 +21,6 @@ LAXMI AGRO/
 **/.env
 **/.env.*
 !**/.env.example
+
+# Markdown notes are kept locally only
+*.md
