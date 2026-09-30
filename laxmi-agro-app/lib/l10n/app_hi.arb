@@ -1075,5 +1075,7 @@
   "pdpYouSave": "आपकी बचत {amount}",
   "pdpViewFullScreen": "पूरी स्क्रीन पर देखें",
   "pdpImageOf": "{total} में से फोटो {current}",
-  "searchRemoveFilter": "फ़िल्टर हटाएं"
+  "searchRemoveFilter": "फ़िल्टर हटाएं",
+  "homeLogoutConfirmTitle": "लॉग आउट करें?",
+  "homeLogoutConfirmMessage": "अपने ऑर्डर देखने और नया ऑर्डर देने के लिए आपको फिर से लॉग इन करना होगा।"
 }

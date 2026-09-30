@@ -1854,5 +1854,7 @@
   "pdpViewFullScreen": "View full screen",
   "pdpImageOf": "Image {current} of {total}",
   "@pdpImageOf": {"placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},
-  "searchRemoveFilter": "Remove filter"
+  "searchRemoveFilter": "Remove filter",
+  "homeLogoutConfirmTitle": "Log out?",
+  "homeLogoutConfirmMessage": "You'll need to log in again to see your orders and place new ones."
 }

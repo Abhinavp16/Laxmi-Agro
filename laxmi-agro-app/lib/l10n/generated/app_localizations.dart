@@ -6553,6 +6553,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove filter'**
   String get searchRemoveFilter;
+
+  /// No description provided for @homeLogoutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get homeLogoutConfirmTitle;
+
+  /// No description provided for @homeLogoutConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to log in again to see your orders and place new ones.'**
+  String get homeLogoutConfirmMessage;
 }
 
 class _AppLocalizationsDelegate

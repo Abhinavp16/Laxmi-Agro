@@ -25,6 +25,7 @@ import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/models/user_model.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/notification_navigation_service.dart';
 import '../../core/services/redeemed_coupon_service.dart';
@@ -1358,21 +1359,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       child: Container(
                         width: MediaQuery.of(context).size.width * 0.88,
                         constraints: const BoxConstraints(maxHeight: 420),
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.06),
-                              blurRadius: 40,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(AppRadius.xl - 4),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: AppShadows.raised,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -1422,28 +1414,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   Row(
                                     children: [
                                       if (_unreadCount > 0)
-                                        GestureDetector(
-                                          onTap: () => _markNotificationsRead(
-                                            setDialogState,
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8),
-                                            child: Text(
-                                              l10n.homeNotificationsMarkAllRead,
-                                              style: AppFonts.jakarta(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primary,
+                                        TextButton(
+                                          onPressed: () =>
+                                              _markNotificationsRead(
+                                                setDialogState,
                                               ),
+                                          child: Text(
+                                            l10n.homeNotificationsMarkAllRead,
+                                            style: AppFonts.jakarta(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                         ),
                                       IconButton(
+                                        tooltip: l10n.commonClose,
                                         onPressed: () => Navigator.pop(ctx),
-                                        icon: const Icon(
-                                          Icons.close_rounded,
+                                        icon: const HugeIcon(
+                                          icon: HugeIcons.strokeRoundedCancel01,
                                           size: 20,
-                                          color: AppColors.textTertiary,
+                                          color: AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -1451,62 +1441,56 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ],
                               ),
                             ),
-                            const Divider(height: 1, color: AppColors.gray100),
+                            const Divider(height: 1),
                             // Content
                             _isLoadingNotifications
-                                ? const Padding(
-                                    padding: EdgeInsets.all(40),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        color: AppColors.primary,
-                                        strokeWidth: 2,
+                                ? Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: SkeletonShimmer(
+                                      child: Column(
+                                        children: [
+                                          for (var i = 0; i < 3; i++)
+                                            const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                vertical: 8,
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Skeleton(
+                                                    width: 40,
+                                                    height: 40,
+                                                    radius: AppRadius.md,
+                                                  ),
+                                                  SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Skeleton(height: 12),
+                                                        SizedBox(height: 6),
+                                                        Skeleton(
+                                                          width: 140,
+                                                          height: 10,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   )
                                 : _notifications.isEmpty
-                                ? Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 40,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withOpacity(
-                                              0.08,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.notifications_none_rounded,
-                                            size: 28,
-                                            color: AppColors.primary.withOpacity(0.5),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          l10n.homeNotificationsEmptyTitle,
-                                          style: AppFonts.jakarta(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          l10n.homeNotificationsEmptySubtitle,
-                                          style: AppFonts.jakarta(
-                                            fontSize: 13,
-                                            color: AppColors.textTertiary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                ? EmptyState(
+                                    icon: HugeIcons.strokeRoundedNotification02,
+                                    title: l10n.homeNotificationsEmptyTitle,
+                                    message:
+                                        l10n.homeNotificationsEmptySubtitle,
+                                    compact: true,
                                   )
                                 : Flexible(
                                     child: ListView.separated(
@@ -1515,12 +1499,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         vertical: 4,
                                       ),
                                       itemCount: _notifications.length,
-                                      separatorBuilder: (_, __) =>
-                                          const Divider(
-                                            height: 1,
-                                            color: AppColors.gray100,
-                                            indent: 60,
-                                          ),
+                                      separatorBuilder: (_, _) =>
+                                          const Divider(height: 1, indent: 68),
                                       itemBuilder: (_, i) {
                                         final notification = _notifications[i];
                                         final rawData = notification['data'];
@@ -1544,7 +1524,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                                     'general',
                                               };
 
-                                        return GestureDetector(
+                                        return InkWell(
                                           onTap: () {
                                             Navigator.of(ctx).pop();
                                             WidgetsBinding.instance
@@ -1570,22 +1550,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   ),
                             // Footer
                             if (_notifications.isNotEmpty) ...[
-                              const Divider(height: 1, color: AppColors.gray100),
-                              GestureDetector(
+                              const Divider(height: 1),
+                              InkWell(
                                 onTap: () {
                                   Navigator.pop(ctx);
                                   context.push('/notifications');
                                 },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  child: Text(
-                                    l10n.homeNotificationsViewAll,
-                                    style: AppFonts.jakarta(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: Center(
+                                    child: Text(
+                                      l10n.homeNotificationsViewAll,
+                                      style: AppFonts.jakarta(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1624,22 +1605,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
     switch (type) {
       case 'payment_verified':
-        icon = Icons.check_circle_rounded;
+        icon = HugeIcons.strokeRoundedCheckmarkCircle02;
         iconColor = AppColors.success;
         iconBg = AppColors.successSoft;
         break;
       case 'payment_rejected':
-        icon = Icons.cancel_rounded;
+        icon = HugeIcons.strokeRoundedCancelCircle;
         iconColor = AppColors.error;
         iconBg = AppColors.errorSoft;
         break;
       case 'order_update':
-        icon = Icons.local_shipping_rounded;
+        icon = HugeIcons.strokeRoundedDeliveryTruck01;
         iconColor = AppColors.primary;
         iconBg = AppColors.primaryTint;
         break;
       case 'negotiation_update':
-        icon = Icons.handshake_rounded;
+        icon = HugeIcons.strokeRoundedAgreement02;
         iconColor = AppColors.warning;
         iconBg = AppColors.warningSoft;
         break;
@@ -1651,12 +1632,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       case 'price_change_campaign_1h':
       case 'price_change_campaign_5m':
       case 'price_change_campaign_applied':
-        icon = Icons.schedule_rounded;
+        icon = HugeIcons.strokeRoundedClock01;
         iconColor = AppColors.warning;
         iconBg = AppColors.warningSoft;
         break;
       default:
-        icon = Icons.notifications_rounded;
+        icon = HugeIcons.strokeRoundedNotification02;
         iconColor = AppColors.secondary;
         iconBg = AppColors.secondarySoft;
     }
@@ -1679,7 +1660,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     }
 
     return Container(
-      color: isRead ? Colors.transparent : AppColors.primary.withOpacity(0.02),
+      color: isRead ? Colors.transparent : AppColors.primaryTint,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1689,9 +1670,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             height: 40,
             decoration: BoxDecoration(
               color: iconBg,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(icon, size: 20, color: iconColor),
+            child: Center(child: HugeIcon(icon: icon, size: 20, color: iconColor)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1732,7 +1713,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppFonts.jakarta(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                     height: 1.4,
                   ),
@@ -5369,6 +5350,61 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  /// Account badge: verified wholesaler, pending/rejected application, etc.
+  (String, ChipTone, IconData) _accountStatus(UserModel? user) {
+    final l10n = context.l10n;
+    final businessInfo = user?.businessInfo;
+    if (user?.isWholesaler == true && businessInfo?.verified == true) {
+      return (
+        l10n.profileStatusVerifiedWholesaler,
+        ChipTone.success,
+        HugeIcons.strokeRoundedCheckmarkCircle01,
+      );
+    }
+    if (businessInfo?.status == 'pending') {
+      return (
+        l10n.profileStatusApplicationPending,
+        ChipTone.warning,
+        HugeIcons.strokeRoundedTime02,
+      );
+    }
+    if (businessInfo?.status == 'rejected') {
+      return (
+        l10n.profileStatusApplicationRejected,
+        ChipTone.error,
+        HugeIcons.strokeRoundedAlert02,
+      );
+    }
+    if (user?.isWholesaler == true) {
+      return (
+        l10n.profileStatusVerificationRequired,
+        ChipTone.warning,
+        HugeIcons.strokeRoundedAlert02,
+      );
+    }
+    return (
+      l10n.profileStatusCustomer,
+      ChipTone.brand,
+      HugeIcons.strokeRoundedUser,
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final l10n = context.l10n;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: l10n.homeLogoutConfirmTitle,
+      message: l10n.homeLogoutConfirmMessage,
+      confirmLabel: l10n.commonLogout,
+      cancelLabel: l10n.commonCancel,
+      destructive: true,
+      icon: HugeIcons.strokeRoundedLogout02,
+    );
+    if (!confirmed || !mounted) return;
+    await ref.read(authProvider.notifier).logout();
+    if (mounted) context.go('/login');
+  }
+
   Widget _buildProfileContent() {
     if (ref.watch(guestModeProvider)) {
       return _buildCustomerPreviewProfile();
@@ -5378,770 +5414,372 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final isGuest = user == null;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 700;
-    final profileMaxWidth = isTablet ? 760.0 : double.infinity;
-    final profileAvatarSize = isTablet ? 108.0 : 100.0;
-    final quickStatSize = isTablet ? 128.0 : 100.0;
-
-    final profileItems = [
-      {
-        'type': 'setting',
-        'icon': Icons.translate,
-        'color': AppColors.primary,
-        'title': context.isHindi
-            ? l10n.languageTitle
-            : '${l10n.languageTitle} / भाषा',
-        'subtitle': context.isHindi ? l10n.languageHindi : l10n.languageEnglish,
-        'onTap': () => showLanguagePicker(context, ref),
-      },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedLocation01,
-        'color': AppColors.success,
-        'title': l10n.homeProfileAddresses,
-        'subtitle': null,
-        'onTap': () {
-          context.push('/addresses').then((_) => _loadSavedShippingAddresses());
-        },
-      },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedNotification02,
-        'color': AppColors.secondary,
-        'title': l10n.homeNotificationsTitle,
-        'subtitle': null,
-        'onTap': () => context.push('/notifications', extra: {'bottomTab': 4}),
-      },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedHelpCircle,
-        'color': AppColors.warning,
-        'title': l10n.homeProfileHelpSupport,
-        'subtitle': null,
-        'onTap': () => context.push('/help'),
-      },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedFile01,
-        'color': AppColors.secondary,
-        'title': l10n.homeProfileLegalPolicies,
-        'subtitle': null,
-        'onTap': () => _showLegalPoliciesSheet(),
-      },
-      {
-        'type': 'setting',
-        'icon': Icons.privacy_tip_outlined,
-        'color': AppColors.primaryDeep,
-        'title': l10n.homeProfileAccountPrivacy,
-        'subtitle': null,
-        'onTap': () => context.push(isGuest ? '/login' : '/account-privacy'),
-      },
-      {
-        'type': 'setting',
-        'icon': HugeIcons.strokeRoundedInformationCircle,
-        'color': AppColors.secondary,
-        'title': l10n.homeProfileAbout,
-        'subtitle': null,
-        'onTap': () => context.push('/about'),
-      },
-      if (!kHideOfferCouponUi)
-        {
-          'type': 'setting',
-          'icon': HugeIcons.strokeRoundedTicket01,
-          'color': AppColors.error,
-          'title': l10n.homeProfileMyCoupons,
-          'subtitle': null,
-          'onTap': () => context.push('/my-coupons'),
-        },
-      if (user?.isWholesaler == true)
-        {
-          'type': 'setting',
-          'icon': HugeIcons.strokeRoundedShoppingCart01,
-          'color': AppColors.primary,
-          'title': l10n.homeProfileViewCustomerApp,
-          'subtitle': l10n.homeProfileViewCustomerAppSubtitle,
-          'onTap': () async {
-            ref.read(guestModeProvider.notifier).enableGuestMode();
-            try {
-              await context.push('/guest-app-preview');
-            } finally {
-              await Future<void>.delayed(Duration.zero);
-              ref.read(guestModeProvider.notifier).disableGuestMode();
-            }
-          },
-        },
-      if (user?.role != 'wholesaler')
-        {
-          'type': 'setting',
-          'icon': HugeIcons.strokeRoundedStore02,
-          'color': AppColors.primary,
-          'title': l10n.homeProfileApplyWholesaler,
-          'subtitle': l10n.homeProfileApplyWholesalerSubtitle,
-          'onTap': () => context.push('/convert-to-wholesaler'),
-        },
-    ];
-
+    final profileMaxWidth = isTablet ? 720.0 : double.infinity;
     final wishlistCount = ref.watch(wishlistProvider).items.length;
     final orderCount = ref.watch(orderCountProvider).value ?? 0;
+    final (statusLabel, statusTone, statusIcon) = _accountStatus(user);
+    final name = user?.name ?? l10n.homeGuestUser;
+
+    Widget avatar() {
+      final hasAvatar = user?.avatar != null && user!.avatar!.isNotEmpty;
+      final initial = name.trim().isEmpty
+          ? '?'
+          : name.trim().substring(0, 1).toUpperCase();
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primarySoft,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: hasAvatar
+            ? CachedNetworkImage(
+                imageUrl: user.avatar!,
+                fit: BoxFit.cover,
+                fadeInDuration: AppMotion.base,
+                placeholder: (_, _) => const SizedBox.shrink(),
+                errorWidget: (_, _, _) => Center(
+                  child: Text(
+                    initial,
+                    style: AppFonts.jakarta(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDeep,
+                    ),
+                  ),
+                ),
+              )
+            : Center(
+                child: isGuest
+                    ? const HugeIcon(
+                        icon: HugeIcons.strokeRoundedUser,
+                        size: 28,
+                        color: AppColors.primaryDeep,
+                      )
+                    : Text(
+                        initial,
+                        style: AppFonts.jakarta(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryDeep,
+                        ),
+                      ),
+              ),
+      );
+    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          // Premium Profile Header
-          Stack(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: profileMaxWidth),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Gradient Background with decorative shapes (fills header content)
-              Positioned.fill(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.secondary, // Vibrant Purple
-                        AppColors.secondary, // Indigo
-                        AppColors.secondary, // Deeper Indigo
-                      ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 12, 4),
+                child: Row(
+                  children: [
+                    AppBackButton(
+                      onPressed: () {
+                        if (_selectedNavIndex != 0) _selectNavIndex(0);
+                      },
                     ),
-                  ),
-                  child: Stack(
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.homeProfileTitle,
+                        style: AppFonts.jakarta(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    HeaderIconButton(
+                      icon: HugeIcons.strokeRoundedSettings01,
+                      tooltip: l10n.homeEditProfile,
+                      onPressed: () =>
+                          context.push(isGuest ? '/login' : '/edit-profile'),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: AppCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Decorative Circle 1
-                      Positioned(
-                        top: -50,
-                        right: -50,
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.1),
+                      Row(
+                        children: [
+                          avatar(),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppFonts.jakarta(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  isGuest
+                                      ? l10n.homeSignInToSync
+                                      : (user.phone?.isNotEmpty == true
+                                            ? user.phone!
+                                            : user.email),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppFonts.jakarta(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                if (!isGuest) ...[
+                                  const SizedBox(height: 8),
+                                  StatusChip(
+                                    label: statusLabel,
+                                    tone: statusTone,
+                                    icon: statusIcon,
+                                    dense: true,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      // Decorative Circle 2
-                      Positioned(
-                        bottom: 40,
-                        left: -30,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.05),
-                          ),
+                      if (!isGuest &&
+                          user.address != null &&
+                          user.address!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedLocation01,
+                              size: 16,
+                              color: AppColors.textTertiary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                user.address!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFonts.jakarta(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
+                      if (isGuest) ...[
+                        const SizedBox(height: 14),
+                        AppButton(
+                          label: l10n.commonLogin,
+                          icon: HugeIcons.strokeRoundedLogin01,
+                          size: AppButtonSize.medium,
+                          onPressed: () => context.push('/login'),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
-
-              // Header Content
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(top: 40, bottom: 56),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: profileMaxWidth),
-                    child: Column(
-                      children: [
-                        // Back Button & Settings Icon Row
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                onPressed: () {
-                                  if (_selectedNavIndex != 0) {
-                                    setState(() => _selectedNavIndex = 0);
-                                  }
-                                },
-                                icon: const Icon(
-                                  HugeIcons.strokeRoundedArrowLeft01,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              Text(
-                                l10n.homeProfileTitle,
-                                style: AppFonts.jakarta(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => context.push(
-                                  isGuest ? '/login' : '/edit-profile',
-                                ),
-                                icon: const Icon(
-                                  HugeIcons.strokeRoundedSettings01,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Animated Avatar
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Transform.scale(
-                              scale: value,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white24,
-                                ),
-                                child: Container(
-                                  width: profileAvatarSize,
-                                  height: profileAvatarSize,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child:
-                                      user?.avatar != null &&
-                                          user!.avatar!.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: user.avatar!,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const Center(
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              const Icon(
-                                                HugeIcons.strokeRoundedUser,
-                                                size: 40,
-                                                color: AppColors.secondary,
-                                              ),
-                                        )
-                                      : const Icon(
-                                          HugeIcons.strokeRoundedUser,
-                                          size: 40,
-                                          color: AppColors.secondary,
-                                        ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // User Name
-                        Text(
-                          user?.name ?? l10n.homeGuestUser,
-                          style: AppFonts.jakarta(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // User Email/Phone/Address
-                        Column(
-                          children: [
-                            if (user != null && user.phone != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      HugeIcons.strokeRoundedCall02,
-                                      size: 14,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      user.phone!,
-                                      style: AppFonts.jakarta(
-                                        fontSize: 15,
-                                        color: Colors.white.withOpacity(0.95),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (user != null &&
-                                user.address != null &&
-                                user.address!.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      HugeIcons.strokeRoundedLocation01,
-                                      size: 14,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        user.address!,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppFonts.jakarta(
-                                          fontSize: 14,
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (isGuest ||
-                                (user.phone == null && user.address == null))
-                              Text(
-                                user?.email ?? l10n.homeSignInToSync,
-                                style: AppFonts.jakarta(
-                                  fontSize: 14,
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            if (isGuest) ...[
-                              const SizedBox(height: 14),
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  isTablet ? 0 : 24,
-                                  0,
-                                  isTablet ? 0 : 24,
-                                  24,
-                                ),
-                                child: SizedBox(
-                                  width: isTablet ? 420 : double.infinity,
-                                  child: OutlinedButton(
-                                    onPressed: () => context.push('/login'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.white,
-                                      side: BorderSide(
-                                        color: Colors.white.withOpacity(0.9),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      l10n.commonLogin,
-                                      style: AppFonts.jakarta(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: QuickActionTile(
+                        icon: HugeIcons.strokeRoundedPackage,
+                        label: l10n.homeMyOrders,
+                        count: orderCount,
+                        onTap: () => context.push('/previous-orders'),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: QuickActionTile(
+                        icon: HugeIcons.strokeRoundedFavourite,
+                        label: _isWholesaler
+                            ? l10n.homeWishlistDealer
+                            : l10n.homeWishlistCustomer,
+                        count: wishlistCount,
+                        onTap: () => context.push('/wishlist'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: QuickActionTile(
+                        icon: HugeIcons.strokeRoundedUserEdit01,
+                        label: l10n.homeEditProfile,
+                        onTap: () =>
+                            context.push(isGuest ? '/login' : '/edit-profile'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-
-          // Main Content Card (overlapping the header)
-          Transform.translate(
-            offset: const Offset(0, -40),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 40 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: profileMaxWidth),
-                  child: Column(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                child: SettingsGroup(
+                  title: l10n.profileSectionAccount,
+                  children: [
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedLanguageSkill,
+                      title: context.isHindi
+                          ? l10n.languageTitle
+                          : '${l10n.languageTitle} / भाषा',
+                      trailing: Text(
+                        context.isHindi
+                            ? l10n.languageHindi
+                            : l10n.languageEnglish,
+                        style: AppFonts.jakarta(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                      onTap: () => showLanguagePicker(context, ref),
+                    ),
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedLocation01,
+                      title: l10n.homeProfileAddresses,
+                      onTap: () => context
+                          .push('/addresses')
+                          .then((_) => _loadSavedShippingAddresses()),
+                    ),
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedNotification02,
+                      title: l10n.homeNotificationsTitle,
+                      onTap: () => context.push(
+                        '/notifications',
+                        extra: {'bottomTab': 4},
+                      ),
+                    ),
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedShield01,
+                      title: l10n.homeProfileAccountPrivacy,
+                      onTap: () => context.push(
+                        isGuest ? '/login' : '/account-privacy',
+                      ),
+                    ),
+                    if (!kHideOfferCouponUi)
+                      SettingsTile(
+                        icon: HugeIcons.strokeRoundedTicket01,
+                        title: l10n.homeProfileMyCoupons,
+                        onTap: () => context.push('/my-coupons'),
+                      ),
+                  ],
+                ),
+              ),
+              if (user?.isWholesaler == true || user?.role != 'wholesaler')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: SettingsGroup(
+                    title: l10n.profileSectionWholesale,
                     children: [
-                      // Fast Actions / Stats row
-                      // Fast Actions / Stats row
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildQuickStat(
-                              HugeIcons.strokeRoundedPackage,
-                              l10n.homeMyOrders,
-                              orderCount.toString(),
-                              size: quickStatSize,
-                              color: AppColors.secondary, // Premium Indigo
-                              onTap: () => context.push('/previous-orders'),
-                            ),
-                            _buildQuickStat(
-                              HugeIcons.strokeRoundedFavourite,
-                              _isWholesaler
-                                  ? l10n.homeWishlistDealer
-                                  : l10n.homeWishlistCustomer,
-                              wishlistCount.toString(),
-                              size: quickStatSize,
-                              color: AppColors.error, // Vibrant Rose
-                              onTap: () => context.push('/wishlist'),
-                            ),
-                            _buildQuickStat(
-                              HugeIcons.strokeRoundedUserEdit01,
-                              l10n.homeEditProfile,
-                              '0',
-                              size: quickStatSize,
-                              color: AppColors.warning, // Amber
-                              onTap: () => context.push(
-                                isGuest ? '/login' : '/edit-profile',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Settings List Card
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: AppColors.gray100.withOpacity(0.7),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: List.generate(profileItems.length, (
-                              index,
-                            ) {
-                              final item = profileItems[index];
-                              final isHeader = item['type'] == 'header';
-                              if (isHeader) {
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    16,
-                                    16,
-                                    8,
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      item['title'] as String,
-                                      style: AppFonts.jakarta(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textTertiary,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final nextIsHeader =
-                                  index < profileItems.length - 1 &&
-                                  profileItems[index + 1]['type'] == 'header';
-                              final showDivider =
-                                  index < profileItems.length - 1 &&
-                                  !nextIsHeader;
-
-                              return _buildSettingItem(
-                                icon: item['icon'] as IconData,
-                                iconColor: item['color'] as Color,
-                                title: item['title'] as String,
-                                subtitle: item['subtitle'] as String?,
-                                showDivider: showDivider,
-                                onTap: item['onTap'] as VoidCallback,
-                              );
-                            }),
-                          ),
-                        ),
-                      ),
-
-                      // Danger Zone / Logout
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 120),
-                        child: TextButton.icon(
-                          onPressed: () async {
-                            await ref.read(authProvider.notifier).logout();
-                            if (mounted) {
-                              context.go('/login');
+                      if (user?.isWholesaler == true)
+                        SettingsTile(
+                          icon: HugeIcons.strokeRoundedView,
+                          title: l10n.homeProfileViewCustomerApp,
+                          subtitle: l10n.homeProfileViewCustomerAppSubtitle,
+                          onTap: () async {
+                            ref
+                                .read(guestModeProvider.notifier)
+                                .enableGuestMode();
+                            try {
+                              await context.push('/guest-app-preview');
+                            } finally {
+                              await Future<void>.delayed(Duration.zero);
+                              ref
+                                  .read(guestModeProvider.notifier)
+                                  .disableGuestMode();
                             }
                           },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            foregroundColor: AppColors.error,
-                            backgroundColor: AppColors.errorSoft,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          icon: HugeIcon(
-                            icon: HugeIcons.strokeRoundedLogout02,
-                            color: AppColors.error,
-                            size: 20,
-                          ),
-                          label: Text(
-                            l10n.commonLogout,
-                            style: AppFonts.jakarta(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
                         ),
+                      if (user?.role != 'wholesaler')
+                        SettingsTile(
+                          icon: HugeIcons.strokeRoundedStore02,
+                          title: l10n.homeProfileApplyWholesaler,
+                          subtitle: l10n.homeProfileApplyWholesalerSubtitle,
+                          onTap: () => context.push('/convert-to-wholesaler'),
+                        ),
+                    ],
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: SettingsGroup(
+                  title: l10n.profileSectionSupportLegal,
+                  children: [
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedHelpCircle,
+                      title: l10n.homeProfileHelpSupport,
+                      onTap: () => context.push('/help'),
+                    ),
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedFile01,
+                      title: l10n.homeProfileLegalPolicies,
+                      onTap: _showLegalPoliciesSheet,
+                    ),
+                    SettingsTile(
+                      icon: HugeIcons.strokeRoundedInformationCircle,
+                      title: l10n.homeProfileAbout,
+                      onTap: () => context.push('/about'),
+                    ),
+                  ],
+                ),
+              ),
+              // Logout only for signed-in users, and only after confirming.
+              if (!isGuest)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: SettingsGroup(
+                    children: [
+                      SettingsTile(
+                        icon: HugeIcons.strokeRoundedLogout02,
+                        title: l10n.commonLogout,
+                        destructive: true,
+                        showChevron: false,
+                        onTap: _confirmLogout,
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCustomerPreviewProfile() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: const BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: HugeIcon(
-                  icon: HugeIcons.strokeRoundedUser,
-                  color: AppColors.primary,
-                  size: 42,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              context.l10n.homePreviewGuestCustomer,
-              style: AppFonts.jakarta(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.homePreviewProfileMessage,
-              textAlign: TextAlign.center,
-              style: AppFonts.jakarta(
-                fontSize: 14,
-                height: 1.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () {
-                context.pop();
-              },
-              icon: const Icon(Icons.logout_rounded),
-              label: Text(context.l10n.homeExitCustomerPreview),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 14,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickStat(
-    IconData icon,
-    String label,
-    String value, {
-    double size = 100,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                HugeIcon(icon: icon, color: color, size: 24),
-                if (value != '0')
-                  Positioned(
-                    right: -10,
-                    top: -8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Text(
-                        value,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              label.toUpperCase(),
-              style: AppFonts.jakarta(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary.withOpacity(0.8),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    required bool showDivider,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: showDivider
-              ? Border(
-                  bottom: BorderSide(
-                    color: AppColors.gray100.withOpacity(0.5),
-                    width: 1,
-                  ),
-                )
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: HugeIcon(icon: icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppFonts.jakarta(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppFonts.jakarta(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            HugeIcon(
-              icon: HugeIcons.strokeRoundedArrowRight01,
-              color: AppColors.textTertiary,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: HugeIcons.strokeRoundedUser,
+      title: context.l10n.homePreviewGuestCustomer,
+      message: context.l10n.homePreviewProfileMessage,
+      actionLabel: context.l10n.homeExitCustomerPreview,
+      onAction: () => context.pop(),
     );
   }
 
@@ -6149,95 +5787,49 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (sheetContext) {
         return SafeArea(
           child: FractionallySizedBox(
-            heightFactor: 0.88,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 38,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.gray100,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
+            heightFactor: 0.8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SheetHandle(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Text(
                     context.l10n.homeProfileLegalPolicies,
                     style: AppFonts.jakarta(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: LegalPolicyCatalog.items.length,
-                      itemBuilder: (context, index) {
-                        final policy = LegalPolicyCatalog.items[index];
-                        return _buildPolicySheetItem(
-                          icon: policy.icon,
-                          color: policy.color,
-                          title: policy.localizedTitle(context),
-                          policyId: policy.id,
-                        );
-                      },
-                    ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    children: [
+                      SettingsGroup(
+                        children: [
+                          for (final policy in LegalPolicyCatalog.items)
+                            SettingsTile(
+                              icon: policy.icon,
+                              title: policy.localizedTitle(context),
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                context.push('/legal/${policy.id}');
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
-      },
-    );
-  }
-
-  Widget _buildPolicySheetItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String policyId,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: HugeIcon(icon: icon, color: color, size: 18),
-      ),
-      title: Text(
-        title,
-        style: AppFonts.jakarta(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      trailing: HugeIcon(
-        icon: HugeIcons.strokeRoundedArrowRight01,
-        color: AppColors.textTertiary,
-        size: 18,
-      ),
-      onTap: () {
-        Navigator.of(context).pop();
-        context.push('/legal/$policyId');
       },
     );
   }
@@ -7126,50 +6718,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     VoidCallback onTap,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: AppFonts.jakarta(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          GestureDetector(
-            onTap: onTap,
-            child: Text(
-              actionLabel,
-              style: AppFonts.jakarta(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 20, bottom: 10),
+      child: SectionHeader(
+        title: title,
+        actionLabel: actionLabel,
+        onAction: onTap,
       ),
     );
   }
 
   Widget _dealerCard({required Widget child, VoidCallback? onTap}) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      color: AppColors.surfaceLight,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.border),
         ),
         child: child,
       ),
@@ -7202,23 +6768,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ),
         if (_isNegotiationsLoading)
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: SizedBox(
-              height: 120,
-              child: Center(child: CircularProgressIndicator()),
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: SkeletonShimmer(
+              child: Skeleton(height: 118, radius: AppRadius.lg),
             ),
           )
         else if (deals.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _dealerCard(
               onTap: () => _selectNavIndex(2),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.handshake_outlined,
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedAgreement02,
                       color: AppColors.primary,
                       size: 24,
                     ),
@@ -7243,9 +6808,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             height: 118,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: deals.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final deal = deals[index];
                 final product = deal['product'] as Map<String, dynamic>? ?? {};
@@ -7282,14 +6847,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         width: 48,
                                         height: 48,
                                         fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => Container(
+                                        errorWidget: (_, _, _) => Container(
                                           width: 48,
                                           height: 48,
-                                          color: AppColors.backgroundLight,
-                                          child: const Icon(
-                                            Icons.handshake_outlined,
-                                            color: AppColors.textTertiary,
-                                            size: 24,
+                                          color: AppColors.gray50,
+                                          child: const Center(
+                                            child: HugeIcon(
+                                              icon: HugeIcons.strokeRoundedAgreement02,
+                                              color: AppColors.textTertiary,
+                                              size: 22,
+                                            ),
                                           ),
                                         ),
                                       )
@@ -7297,15 +6864,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withOpacity(0.08),
+                                          color: AppColors.primarySoft,
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            AppRadius.md,
                                           ),
                                         ),
-                                        child: const Icon(
-                                          Icons.handshake_outlined,
-                                          color: AppColors.primary,
-                                          size: 24,
+                                        child: const Center(
+                                          child: HugeIcon(
+                                            icon: HugeIcons.strokeRoundedAgreement02,
+                                            color: AppColors.primary,
+                                            size: 22,
+                                          ),
                                         ),
                                       ),
                               ),
@@ -7321,10 +6890,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: AppFonts.jakarta(
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textTertiary,
-                                        letterSpacing: 0.4,
+                                        letterSpacing: 0.3,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -7369,29 +6938,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      (isCounter
-                                              ? AppColors.warning
-                                              : AppColors.textTertiary)
-                                          .withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(100),
-                                ),
-                                child: Text(
-                                  _dealerDealLabel(status, offerBy),
-                                  maxLines: 1,
-                                  style: AppFonts.jakarta(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w800,
-                                    color: isCounter
-                                        ? AppColors.warning
-                                        : AppColors.textTertiary,
-                                  ),
+                              Flexible(
+                                child: StatusChip(
+                                  label: _dealerDealLabel(status, offerBy),
+                                  tone: isCounter
+                                      ? ChipTone.warning
+                                      : ChipTone.neutral,
+                                  dense: true,
                                 ),
                               ),
                             ],
@@ -7426,7 +6979,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           final status = (order['status'] ?? '').toString();
           final stageColor = _dealerStageColor(status);
           return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: _dealerCard(
               onTap: orderId.isEmpty
                   ? null
@@ -7436,15 +6989,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: stageColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: stageColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      child: Icon(
-                        Icons.local_shipping_outlined,
-                        color: stageColor,
-                        size: 22,
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedDeliveryTruck01,
+                          color: stageColor,
+                          size: 22,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -7477,9 +7033,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 14,
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowRight01,
+                      size: 18,
                       color: AppColors.textTertiary,
                     ),
                   ],
@@ -7512,7 +7068,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           final orderId = (order['id'] ?? '').toString();
           final isRepeating = _repeatingOrderId == orderId;
           return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: _dealerCard(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -7555,37 +7111,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: isRepeating
-                          ? null
-                          : () => _repeatRequirement(order),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: isRepeating
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                context.l10n.homeRepeatButton,
-                                style: AppFonts.jakarta(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
+                    AppButton(
+                      label: context.l10n.homeRepeatButton,
+                      icon: HugeIcons.strokeRoundedRepeat,
+                      variant: AppButtonVariant.tonal,
+                      size: AppButtonSize.small,
+                      expand: false,
+                      loading: isRepeating,
+                      onPressed: () => _repeatRequirement(order),
                     ),
                   ],
                 ),
@@ -9412,14 +8945,14 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                             ),
                             decoration: BoxDecoration(
                               color: _surfaceWhite,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
                               border: Border.all(
-                                color: urgency.withOpacity(0.55),
+                                color: urgency.withValues(alpha: 0.45),
                                 width: 1.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: urgency.withOpacity(0.1),
+                                  color: urgency.withValues(alpha: 0.1),
                                   blurRadius: 14,
                                   offset: const Offset(0, 5),
                                 ),
@@ -9432,11 +8965,11 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: urgency.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: urgency.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
                                   ),
                                   child: Icon(
-                                    Icons.notifications_active_rounded,
+                                    Icons.notifications_active_outlined,
                                     color: urgency,
                                     size: 20,
                                   ),
@@ -9495,7 +9028,7 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: AppFonts.jakarta(
-                                          fontSize: 10.5,
+                                          fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
                                           color: urgency,
                                         ),
@@ -9510,8 +9043,8 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: urgency.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: urgency.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -9529,9 +9062,9 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                                       Text(
                                         l10n.homeTimeLeft,
                                         style: AppFonts.jakarta(
-                                          fontSize: 8,
+                                          fontSize: 10,
                                           fontWeight: FontWeight.w800,
-                                          color: urgency.withOpacity(0.7),
+                                          color: urgency.withValues(alpha: 0.7),
                                           letterSpacing: 1.2,
                                         ),
                                       ),
@@ -9551,7 +9084,7 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
           ),
         ),
         if (widget.items.length > 1) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
@@ -9564,8 +9097,8 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
                 decoration: BoxDecoration(
                   color: _index == i
                       ? _primaryBlue
-                      : _primaryBlue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(3),
+                      : AppColors.gray300,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
             ),

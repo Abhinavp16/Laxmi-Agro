@@ -3742,4 +3742,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchRemoveFilter => 'Remove filter';
+
+  @override
+  String get homeLogoutConfirmTitle => 'Log out?';
+
+  @override
+  String get homeLogoutConfirmMessage =>
+      'You\'ll need to log in again to see your orders and place new ones.';
 }

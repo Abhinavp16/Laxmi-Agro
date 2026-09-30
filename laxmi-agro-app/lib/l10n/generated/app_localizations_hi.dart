@@ -3708,4 +3708,11 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get searchRemoveFilter => 'फ़िल्टर हटाएं';
+
+  @override
+  String get homeLogoutConfirmTitle => 'लॉग आउट करें?';
+
+  @override
+  String get homeLogoutConfirmMessage =>
+      'अपने ऑर्डर देखने और नया ऑर्डर देने के लिए आपको फिर से लॉग इन करना होगा।';
 }
