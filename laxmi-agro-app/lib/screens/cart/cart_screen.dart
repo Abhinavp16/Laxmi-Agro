@@ -11,6 +11,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/cart_requirement.dart';
+import '../../widgets/delivery_note.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/theme/app_fonts.dart';
@@ -758,7 +759,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         const SizedBox(height: 8),
                         _buildPriceRow(
                           l10n.cartDeliveryFee,
-                          _rupees(cart.deliveryFee),
+                          isWholesaler
+                              ? l10n.dealDeliveryOnConfirmation
+                              : _rupees(cart.deliveryFee),
                         ),
                         if (_discount > 0) ...[
                           const SizedBox(height: 8),
@@ -775,7 +778,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              l10n.cartGrandTotal,
+                              isWholesaler
+                                  ? l10n.dealEstimatedTotal
+                                  : l10n.cartGrandTotal,
                               style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -783,7 +788,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ),
                             Text(
-                              _rupees(cart.grandTotal - _discount),
+                              _rupees(
+                                (isWholesaler
+                                        ? cart.subtotal
+                                        : cart.grandTotal) -
+                                    _discount,
+                              ),
                               style: AppFonts.jakarta(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -792,6 +802,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             ),
                           ],
                         ),
+                        if (isWholesaler) ...[
+                          const SizedBox(height: 8),
+                          const DeliveryNote(),
+                        ],
                         if (!kHideOfferCouponUi) ...[
                           const SizedBox(height: 16),
 

@@ -9,7 +9,10 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../core/theme/app_fonts.dart';
+import '../../core/utils/packing.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/pack_text.dart';
+import '../../widgets/deal_desk_groups.dart';
 
 class NegotiationsScreen extends ConsumerStatefulWidget {
   const NegotiationsScreen({super.key});
@@ -246,14 +249,25 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                             ),
                           ],
                         )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                          itemCount: _filteredNegotiations.length,
-                          itemBuilder: (context, index) =>
-                              _buildNegotiationCard(
-                                _filteredNegotiations[index],
+                      : Builder(
+                          builder: (context) {
+                            final entries = dealDeskEntries(
+                              context,
+                              _filteredNegotiations,
+                              _buildNegotiationCard,
+                            );
+                            return ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                12,
+                                16,
+                                20,
                               ),
+                              itemCount: entries.length,
+                              itemBuilder: (context, index) => entries[index],
+                            );
+                          },
                         ),
                 ),
               ),
@@ -526,7 +540,13 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
                       Text(
                         l10n.dealQtyUnits(
                           int.tryParse(
-                                NumberFormatter.formatQuantity(quantity),
+                                packInfoOf(product).isPack && quantity is num
+                                    ? packQuantityText(
+                                        l10n,
+                                        packInfoOf(product),
+                                        quantity.toInt(),
+                                      )
+                                    : NumberFormatter.formatQuantity(quantity),
                               ) ??
                               0,
                         ),

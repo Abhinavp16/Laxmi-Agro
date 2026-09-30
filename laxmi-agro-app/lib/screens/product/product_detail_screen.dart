@@ -27,6 +27,7 @@ import '../../core/utils/packing.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
+import '../../widgets/delivery_note.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -4746,6 +4747,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              const DeliveryNote(),
             ],
           ),
         ),

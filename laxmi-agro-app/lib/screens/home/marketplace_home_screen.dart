@@ -20,6 +20,8 @@ import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import '../../widgets/cart_requirement.dart';
+import '../../widgets/deal_desk_groups.dart';
+import '../../widgets/delivery_note.dart';
 import '../../widgets/language_picker_sheet.dart';
 import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
@@ -3859,8 +3861,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         _appliedCouponCode != null &&
         _normalizedCouponInput == _appliedCouponCode;
     final couponDiscount = hasActiveCoupon ? _appliedCouponDiscount : 0.0;
+    // Wholesalers: delivery is set by Laxmi Agro when the order is confirmed.
     final payableTotal = math
-        .max(cart.grandTotal - couponDiscount, 0)
+        .max(
+          (_isWholesaler ? cart.subtotal : cart.grandTotal) - couponDiscount,
+          0,
+        )
         .toDouble();
     return Column(
       children: [
@@ -4468,7 +4474,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                             ),
                             Text(
-                              '₹${_formatPrice(cart.deliveryFee)}',
+                              _isWholesaler
+                                  ? l10n.dealDeliveryOnConfirmation
+                                  : '₹${_formatPrice(cart.deliveryFee)}',
                               style: AppFonts.jakarta(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -4510,7 +4518,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              hasActiveCoupon
+                              _isWholesaler
+                                  ? l10n.dealEstimatedTotal
+                                  : hasActiveCoupon
                                   ? l10n.homePayableTotal
                                   : l10n.commonTotal,
                               style: AppFonts.jakarta(
@@ -4529,6 +4539,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                           ],
                         ),
+                        if (_isWholesaler) ...[
+                          const SizedBox(height: 8),
+                          const DeliveryNote(),
+                        ],
                       ],
                     ),
                   ),
@@ -5140,11 +5154,20 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _fetchNegotiations,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: _filteredNegotiations.length,
-                    itemBuilder: (context, index) =>
-                        _buildNegotiationCard(_filteredNegotiations[index]),
+                  child: Builder(
+                    builder: (context) {
+                      final entries = dealDeskEntries(
+                        context,
+                        _filteredNegotiations,
+                        _buildNegotiationCard,
+                        color: primaryBlue,
+                      );
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) => entries[index],
+                      );
+                    },
                   ),
                 ),
         ),
@@ -5381,7 +5404,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           const SizedBox(height: 8),
                           // Quantity
                           Text(
-                            l10n.homeQtyUnits('$quantity'),
+                            packInfoOf(product).isPack && quantity is num
+                                ? packQuantityText(
+                                    l10n,
+                                    packInfoOf(product),
+                                    quantity.toInt(),
+                                  )
+                                : l10n.homeQtyUnits('$quantity'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppFonts.jakarta(

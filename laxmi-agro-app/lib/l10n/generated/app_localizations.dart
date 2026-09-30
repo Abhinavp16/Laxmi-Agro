@@ -2984,6 +2984,30 @@ abstract class AppLocalizations {
   /// **'Current:'**
   String get homeCurrentLabel;
 
+  /// No description provided for @dealDeliveryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Delivery charges, if any, will be added by Laxmi Agro when your order is confirmed.'**
+  String get dealDeliveryNote;
+
+  /// No description provided for @dealDeliveryOnConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Added on confirmation'**
+  String get dealDeliveryOnConfirmation;
+
+  /// No description provided for @dealEstimatedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated total'**
+  String get dealEstimatedTotal;
+
+  /// No description provided for @dealDeskRequirementGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Requirement {number} · {count, plural, =1{1 product} other{{count} products}} · ₹{total}'**
+  String dealDeskRequirementGroup(String number, int count, String total);
+
   /// No description provided for @homeDealDeskTitle.
   ///
   /// In en, this message translates to:
@@ -4853,7 +4877,7 @@ abstract class AppLocalizations {
   /// No description provided for @productBulkUpiNote.
   ///
   /// In en, this message translates to:
-  /// **'Bulk orders require manual UPI verification before processing.'**
+  /// **'Bulk orders require manual payment verification before processing.'**
   String get productBulkUpiNote;
 
   /// No description provided for @productBuyNow.

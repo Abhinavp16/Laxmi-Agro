@@ -1694,6 +1694,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeCurrentLabel => 'Current:';
 
   @override
+  String get dealDeliveryNote =>
+      '+ Delivery charges, if any, will be added by Laxmi Agro when your order is confirmed.';
+
+  @override
+  String get dealDeliveryOnConfirmation => 'Added on confirmation';
+
+  @override
+  String get dealEstimatedTotal => 'Estimated total';
+
+  @override
+  String dealDeskRequirementGroup(String number, int count, String total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count products',
+      one: '1 product',
+    );
+    return 'Requirement $number · $_temp0 · ₹$total';
+  }
+
+  @override
   String get homeDealDeskTitle => 'Deal Desk';
 
   @override
@@ -2743,7 +2764,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productBulkUpiNote =>
-      'Bulk orders require manual UPI verification before processing.';
+      'Bulk orders require manual payment verification before processing.';
 
   @override
   String get productBuyNow => 'Buy Now';

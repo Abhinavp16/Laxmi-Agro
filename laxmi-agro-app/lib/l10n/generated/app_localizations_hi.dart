@@ -1694,6 +1694,21 @@ class AppLocalizationsHi extends AppLocalizations {
   String get homeCurrentLabel => 'मौजूदा कीमत:';
 
   @override
+  String get dealDeliveryNote =>
+      '+ डिलीवरी शुल्क (यदि लागू हो) ऑर्डर कन्फर्म होते समय लक्ष्मी एग्रो द्वारा जोड़ा जाएगा।';
+
+  @override
+  String get dealDeliveryOnConfirmation => 'कन्फर्म होने पर जुड़ेगा';
+
+  @override
+  String get dealEstimatedTotal => 'अनुमानित कुल';
+
+  @override
+  String dealDeskRequirementGroup(String number, int count, String total) {
+    return 'रिक्वायरमेंट $number · $count प्रोडक्ट · ₹$total';
+  }
+
+  @override
   String get homeDealDeskTitle => 'डील डेस्क';
 
   @override
@@ -2741,7 +2756,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get productBulkUpiNote =>
-      'थोक ऑर्डर आगे बढ़ाने से पहले UPI भुगतान की जांच की जाती है।';
+      'थोक ऑर्डर आगे बढ़ाने से पहले भुगतान की मैन्युअल जांच की जाती है।';
 
   @override
   String get productBuyNow => 'अभी खरीदें';
