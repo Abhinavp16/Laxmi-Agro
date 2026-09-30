@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/providers/cart_provider.dart';
 import '../l10n/api_error_text.dart';
 import '../l10n/l10n.dart';
+import 'ui/app_feedback.dart';
 
 /// Wholesalers: sends the whole cart to the Deal Desk as a requirement and
 /// shows the result. Returns true when it was sent (the cart is then empty).
@@ -13,22 +14,19 @@ Future<bool> sendCartRequirement(BuildContext context, WidgetRef ref) async {
   final l10n = context.l10n;
   try {
     final sent = await ref.read(cartProvider.notifier).sendAsRequirement();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(l10n.cartRequirementSent(sent.length)),
-        backgroundColor: const Color(0xFF16A34A),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final message = l10n.cartRequirementSent(sent.length);
+    if (context.mounted) {
+      showAppSnack(context, message, tone: SnackTone.success);
+    } else {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    }
     return true;
   } catch (error) {
     if (!context.mounted) return false;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(cartRequirementErrorText(context, error)),
-        backgroundColor: const Color(0xFFDC2626),
-        behavior: SnackBarBehavior.floating,
-      ),
+    showAppSnack(
+      context,
+      cartRequirementErrorText(context, error),
+      tone: SnackTone.error,
     );
     return false;
   }

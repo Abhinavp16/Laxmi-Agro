@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../config/public_business_config.dart';
 import 'api_client.dart';
 
 class OrderExportDownloadResult {
@@ -45,8 +46,48 @@ class OrderExportService {
     if (responseData is! Map) return null;
     final data = responseData['data'];
     if (data is! Map) return null;
-    final raw = data['orderId']?.toString().trim();
+    // Checkout responses carry `orderId`; order objects (order history) carry
+    // `id` / `_id`.
+    final raw = (data['orderId'] ?? data['id'] ?? data['_id'])
+        ?.toString()
+        .trim();
     return (raw == null || raw.isEmpty) ? null : raw;
+  }
+
+  /// Wraps an order object from `GET /orders` in the same envelope a checkout
+  /// response has, so order history can reuse the checkout receipt flow
+  /// (PDF export + WhatsApp). Falls back to the shop's public WhatsApp number
+  /// and the standard caption when the order has none.
+  static Map<String, dynamic> receiptResponseFromOrder(
+    Map<String, dynamic> order,
+  ) {
+    String? text(dynamic value) {
+      final raw = value?.toString().trim();
+      return (raw == null || raw.isEmpty) ? null : raw;
+    }
+
+    final orderId = text(order['orderId'] ?? order['id'] ?? order['_id']);
+    final whatsappNumber =
+        text(order['whatsappNumber']) ?? PublicBusinessConfig.whatsappNumber;
+    final caption =
+        text(order['whatsappMessage']) ??
+        'Hi, I am customer. Please find my order receipt attached.';
+    return {
+      'success': true,
+      'data': {
+        ...order,
+        'orderId': orderId,
+        'orderNumber': text(order['orderNumber']),
+        'exportPath':
+            text(order['exportPath']) ??
+            (orderId == null ? null : '/orders/$orderId/export?format=pdf'),
+        'whatsappNumber': whatsappNumber,
+        'whatsappMessage': caption,
+        'whatsappUrl':
+            text(order['whatsappUrl']) ??
+            'https://wa.me/$whatsappNumber?text=${Uri.encodeComponent(caption)}',
+      },
+    };
   }
 
   static String? extractOrderNumber(dynamic responseData) {
