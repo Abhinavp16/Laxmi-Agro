@@ -6043,6 +6043,516 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open cart'**
   String get uiOpenCart;
+
+  /// No description provided for @uiPerMeter.
+  ///
+  /// In en, this message translates to:
+  /// **'/m'**
+  String get uiPerMeter;
+
+  /// No description provided for @uiPerPiece.
+  ///
+  /// In en, this message translates to:
+  /// **'/pc'**
+  String get uiPerPiece;
+
+  /// No description provided for @cartPlaceOrderRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Place order request'**
+  String get cartPlaceOrderRequest;
+
+  /// No description provided for @cartClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear your cart?'**
+  String get cartClearTitle;
+
+  /// No description provided for @cartClearMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Every item in your cart will be removed.'**
+  String get cartClearMessage;
+
+  /// No description provided for @cartClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cart'**
+  String get cartClearConfirm;
+
+  /// No description provided for @cartItemTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Item total'**
+  String get cartItemTotal;
+
+  /// No description provided for @cartYouSave.
+  ///
+  /// In en, this message translates to:
+  /// **'You save ₹{amount}'**
+  String cartYouSave(String amount);
+
+  /// No description provided for @cartViewBreakup.
+  ///
+  /// In en, this message translates to:
+  /// **'View breakup'**
+  String get cartViewBreakup;
+
+  /// No description provided for @cartHideBreakup.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide breakup'**
+  String get cartHideBreakup;
+
+  /// No description provided for @cartBillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bill details'**
+  String get cartBillTitle;
+
+  /// No description provided for @cartQtySheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter quantity'**
+  String get cartQtySheetTitle;
+
+  /// No description provided for @cartQtyPackCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} count'**
+  String cartQtyPackCount(String unit);
+
+  /// No description provided for @cartQtyEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a quantity'**
+  String get cartQtyEnter;
+
+  /// No description provided for @cartQtyUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update quantity'**
+  String get cartQtyUpdate;
+
+  /// No description provided for @cartQtyTapToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to type the quantity'**
+  String get cartQtyTapToEdit;
+
+  /// No description provided for @ordActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What you need to do'**
+  String get ordActionTitle;
+
+  /// No description provided for @ordNeedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Need help with this order?'**
+  String get ordNeedHelp;
+
+  /// No description provided for @ordNeedHelpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to the Laxmi Agro shop directly'**
+  String get ordNeedHelpSubtitle;
+
+  /// No description provided for @ordWhatsappHelpMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, I need help with my order {orderNumber}.'**
+  String ordWhatsappHelpMessage(String orderNumber);
+
+  /// No description provided for @ordStepUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get ordStepUpcoming;
+
+  /// No description provided for @ordDeliveredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order was delivered'**
+  String get ordDeliveredTitle;
+
+  /// No description provided for @ordPlacedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Placed on {date}'**
+  String ordPlacedOn(String date);
+
+  /// No description provided for @ordTransporterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Transporter / Courier'**
+  String get ordTransporterLabel;
+
+  /// No description provided for @ordLrNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'LR / Tracking number'**
+  String get ordLrNumberLabel;
+
+  /// No description provided for @ordHideDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get ordHideDetails;
+
+  /// No description provided for @ordCancelledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This order was cancelled'**
+  String get ordCancelledTitle;
+
+  /// No description provided for @dealNeedsReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your reply'**
+  String get dealNeedsReply;
+
+  /// No description provided for @dealNeedsReplyCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 deal needs your reply} other{{count} deals need your reply}}'**
+  String dealNeedsReplyCount(int count);
+
+  /// No description provided for @dealLastMoveLaxmi.
+  ///
+  /// In en, this message translates to:
+  /// **'Laxmi Agro replied · your turn'**
+  String get dealLastMoveLaxmi;
+
+  /// No description provided for @dealLastMoveYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for Laxmi Agro'**
+  String get dealLastMoveYou;
+
+  /// No description provided for @dealPriceYours.
+  ///
+  /// In en, this message translates to:
+  /// **'Your price'**
+  String get dealPriceYours;
+
+  /// No description provided for @dealPriceLaxmi.
+  ///
+  /// In en, this message translates to:
+  /// **'Laxmi Agro\'s price'**
+  String get dealPriceLaxmi;
+
+  /// No description provided for @dealPriceCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current price'**
+  String get dealPriceCurrent;
+
+  /// No description provided for @dealPriceAgreed.
+  ///
+  /// In en, this message translates to:
+  /// **'Agreed price'**
+  String get dealPriceAgreed;
+
+  /// No description provided for @dealAwaitingPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting reply'**
+  String get dealAwaitingPrice;
+
+  /// No description provided for @dealToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get dealToday;
+
+  /// No description provided for @dealYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get dealYesterday;
+
+  /// No description provided for @dealQuickBetterPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Can you do a better price?'**
+  String get dealQuickBetterPrice;
+
+  /// No description provided for @dealQuickDeliveryTime.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the delivery time?'**
+  String get dealQuickDeliveryTime;
+
+  /// No description provided for @dealQuickConfirmStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Please confirm stock'**
+  String get dealQuickConfirmStock;
+
+  /// No description provided for @dealQuickRepliesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick replies'**
+  String get dealQuickRepliesLabel;
+
+  /// No description provided for @dealExplainerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How Deal Desk works'**
+  String get dealExplainerTitle;
+
+  /// No description provided for @dealSummaryShowDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Show details'**
+  String get dealSummaryShowDetails;
+
+  /// No description provided for @dealSummaryHideDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get dealSummaryHideDetails;
+
+  /// No description provided for @dealStepRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get dealStepRequested;
+
+  /// No description provided for @dealStepTalking.
+  ///
+  /// In en, this message translates to:
+  /// **'Price talk'**
+  String get dealStepTalking;
+
+  /// No description provided for @dealStepAgreed.
+  ///
+  /// In en, this message translates to:
+  /// **'Agreed'**
+  String get dealStepAgreed;
+
+  /// No description provided for @dealStepOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Order'**
+  String get dealStepOrder;
+
+  /// No description provided for @dealOfferPerUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Per unit'**
+  String get dealOfferPerUnit;
+
+  /// No description provided for @dealSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get dealSend;
+
+  /// No description provided for @accLogoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get accLogoutTitle;
+
+  /// No description provided for @accLogoutMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can log in again anytime with your phone number and password.'**
+  String get accLogoutMessage;
+
+  /// No description provided for @accUpgradeBenefitsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What you get as a wholesaler'**
+  String get accUpgradeBenefitsTitle;
+
+  /// No description provided for @accBenefitDealerPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'Dealer prices on wholesale products'**
+  String get accBenefitDealerPrices;
+
+  /// No description provided for @accBenefitDealDesk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for a better price on Deal Desk'**
+  String get accBenefitDealDesk;
+
+  /// No description provided for @accBenefitBulkPacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy in full packets, coils and bundles'**
+  String get accBenefitBulkPacks;
+
+  /// No description provided for @accBenefitCartRequirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Send your whole cart as one requirement'**
+  String get accBenefitCartRequirement;
+
+  /// No description provided for @accStepBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get accStepBusiness;
+
+  /// No description provided for @accStepLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop location'**
+  String get accStepLocation;
+
+  /// No description provided for @accStepProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Proof photos'**
+  String get accStepProof;
+
+  /// No description provided for @accStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String accStepOf(int current, int total);
+
+  /// No description provided for @accReviewNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Our team reviews every application before approving it. You\'ll see the status here.'**
+  String get accReviewNote;
+
+  /// No description provided for @accTrackSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get accTrackSubmitted;
+
+  /// No description provided for @accTrackUnderReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get accTrackUnderReview;
+
+  /// No description provided for @accTrackApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get accTrackApproved;
+
+  /// No description provided for @accTrackNeedsChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs changes'**
+  String get accTrackNeedsChanges;
+
+  /// No description provided for @accGstInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid 15-character GSTIN, e.g. 22AAAAA0000A1Z5'**
+  String get accGstInvalidFormat;
+
+  /// No description provided for @authTroubleSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Trouble signing in?'**
+  String get authTroubleSignIn;
+
+  /// No description provided for @authContactSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support'**
+  String get authContactSupport;
+
+  /// No description provided for @homeTrustSince1993.
+  ///
+  /// In en, this message translates to:
+  /// **'Since 1993'**
+  String get homeTrustSince1993;
+
+  /// No description provided for @homeTrustGstInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'GST invoice'**
+  String get homeTrustGstInvoice;
+
+  /// No description provided for @homeTrustAuthorisedDealer.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorised dealer'**
+  String get homeTrustAuthorisedDealer;
+
+  /// No description provided for @homeTrustCallWhatsapp.
+  ///
+  /// In en, this message translates to:
+  /// **'Call or WhatsApp'**
+  String get homeTrustCallWhatsapp;
+
+  /// No description provided for @catBrandsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load brands'**
+  String get catBrandsLoadError;
+
+  /// No description provided for @catCategoriesLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load categories'**
+  String get catCategoriesLoadError;
+
+  /// No description provided for @catLoadErrorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get catLoadErrorHint;
+
+  /// No description provided for @catPerMeterShort.
+  ///
+  /// In en, this message translates to:
+  /// **'/m'**
+  String get catPerMeterShort;
+
+  /// No description provided for @catPerPieceShort.
+  ///
+  /// In en, this message translates to:
+  /// **'/pc'**
+  String get catPerPieceShort;
+
+  /// No description provided for @pdpKeySpecs.
+  ///
+  /// In en, this message translates to:
+  /// **'Key specs'**
+  String get pdpKeySpecs;
+
+  /// No description provided for @pdpFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Features'**
+  String get pdpFeatures;
+
+  /// No description provided for @pdpYouSave.
+  ///
+  /// In en, this message translates to:
+  /// **'You save {amount}'**
+  String pdpYouSave(String amount);
+
+  /// No description provided for @pdpViewFullScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'View full screen'**
+  String get pdpViewFullScreen;
+
+  /// No description provided for @pdpImageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Image {current} of {total}'**
+  String pdpImageOf(int current, int total);
+
+  /// No description provided for @searchRemoveFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove filter'**
+  String get searchRemoveFilter;
 }
 
 class _AppLocalizationsDelegate

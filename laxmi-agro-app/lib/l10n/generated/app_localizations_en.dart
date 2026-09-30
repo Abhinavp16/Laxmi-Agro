@@ -3460,4 +3460,286 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uiOpenCart => 'Open cart';
+
+  @override
+  String get uiPerMeter => '/m';
+
+  @override
+  String get uiPerPiece => '/pc';
+
+  @override
+  String get cartPlaceOrderRequest => 'Place order request';
+
+  @override
+  String get cartClearTitle => 'Clear your cart?';
+
+  @override
+  String get cartClearMessage => 'Every item in your cart will be removed.';
+
+  @override
+  String get cartClearConfirm => 'Clear cart';
+
+  @override
+  String get cartItemTotal => 'Item total';
+
+  @override
+  String cartYouSave(String amount) {
+    return 'You save ₹$amount';
+  }
+
+  @override
+  String get cartViewBreakup => 'View breakup';
+
+  @override
+  String get cartHideBreakup => 'Hide breakup';
+
+  @override
+  String get cartBillTitle => 'Bill details';
+
+  @override
+  String get cartQtySheetTitle => 'Enter quantity';
+
+  @override
+  String cartQtyPackCount(String unit) {
+    return '$unit count';
+  }
+
+  @override
+  String get cartQtyEnter => 'Please enter a quantity';
+
+  @override
+  String get cartQtyUpdate => 'Update quantity';
+
+  @override
+  String get cartQtyTapToEdit => 'Tap to type the quantity';
+
+  @override
+  String get ordActionTitle => 'What you need to do';
+
+  @override
+  String get ordNeedHelp => 'Need help with this order?';
+
+  @override
+  String get ordNeedHelpSubtitle => 'Talk to the Laxmi Agro shop directly';
+
+  @override
+  String ordWhatsappHelpMessage(String orderNumber) {
+    return 'Hi, I need help with my order $orderNumber.';
+  }
+
+  @override
+  String get ordStepUpcoming => 'Upcoming';
+
+  @override
+  String get ordDeliveredTitle => 'Your order was delivered';
+
+  @override
+  String ordPlacedOn(String date) {
+    return 'Placed on $date';
+  }
+
+  @override
+  String get ordTransporterLabel => 'Transporter / Courier';
+
+  @override
+  String get ordLrNumberLabel => 'LR / Tracking number';
+
+  @override
+  String get ordHideDetails => 'Hide details';
+
+  @override
+  String get ordCancelledTitle => 'This order was cancelled';
+
+  @override
+  String get dealNeedsReply => 'Needs your reply';
+
+  @override
+  String dealNeedsReplyCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count deals need your reply',
+      one: '1 deal needs your reply',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dealLastMoveLaxmi => 'Laxmi Agro replied · your turn';
+
+  @override
+  String get dealLastMoveYou => 'Waiting for Laxmi Agro';
+
+  @override
+  String get dealPriceYours => 'Your price';
+
+  @override
+  String get dealPriceLaxmi => 'Laxmi Agro\'s price';
+
+  @override
+  String get dealPriceCurrent => 'Current price';
+
+  @override
+  String get dealPriceAgreed => 'Agreed price';
+
+  @override
+  String get dealAwaitingPrice => 'Awaiting reply';
+
+  @override
+  String get dealToday => 'Today';
+
+  @override
+  String get dealYesterday => 'Yesterday';
+
+  @override
+  String get dealQuickBetterPrice => 'Can you do a better price?';
+
+  @override
+  String get dealQuickDeliveryTime => 'What is the delivery time?';
+
+  @override
+  String get dealQuickConfirmStock => 'Please confirm stock';
+
+  @override
+  String get dealQuickRepliesLabel => 'Quick replies';
+
+  @override
+  String get dealExplainerTitle => 'How Deal Desk works';
+
+  @override
+  String get dealSummaryShowDetails => 'Show details';
+
+  @override
+  String get dealSummaryHideDetails => 'Hide details';
+
+  @override
+  String get dealStepRequested => 'Requested';
+
+  @override
+  String get dealStepTalking => 'Price talk';
+
+  @override
+  String get dealStepAgreed => 'Agreed';
+
+  @override
+  String get dealStepOrder => 'Order';
+
+  @override
+  String get dealOfferPerUnit => 'Per unit';
+
+  @override
+  String get dealSend => 'Send';
+
+  @override
+  String get accLogoutTitle => 'Log out?';
+
+  @override
+  String get accLogoutMessage =>
+      'You can log in again anytime with your phone number and password.';
+
+  @override
+  String get accUpgradeBenefitsTitle => 'What you get as a wholesaler';
+
+  @override
+  String get accBenefitDealerPrices => 'Dealer prices on wholesale products';
+
+  @override
+  String get accBenefitDealDesk => 'Ask for a better price on Deal Desk';
+
+  @override
+  String get accBenefitBulkPacks => 'Buy in full packets, coils and bundles';
+
+  @override
+  String get accBenefitCartRequirement =>
+      'Send your whole cart as one requirement';
+
+  @override
+  String get accStepBusiness => 'Business';
+
+  @override
+  String get accStepLocation => 'Shop location';
+
+  @override
+  String get accStepProof => 'Proof photos';
+
+  @override
+  String accStepOf(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get accReviewNote =>
+      'Our team reviews every application before approving it. You\'ll see the status here.';
+
+  @override
+  String get accTrackSubmitted => 'Submitted';
+
+  @override
+  String get accTrackUnderReview => 'Under review';
+
+  @override
+  String get accTrackApproved => 'Approved';
+
+  @override
+  String get accTrackNeedsChanges => 'Needs changes';
+
+  @override
+  String get accGstInvalidFormat =>
+      'Enter a valid 15-character GSTIN, e.g. 22AAAAA0000A1Z5';
+
+  @override
+  String get authTroubleSignIn => 'Trouble signing in?';
+
+  @override
+  String get authContactSupport => 'Contact support';
+
+  @override
+  String get homeTrustSince1993 => 'Since 1993';
+
+  @override
+  String get homeTrustGstInvoice => 'GST invoice';
+
+  @override
+  String get homeTrustAuthorisedDealer => 'Authorised dealer';
+
+  @override
+  String get homeTrustCallWhatsapp => 'Call or WhatsApp';
+
+  @override
+  String get catBrandsLoadError => 'Couldn\'t load brands';
+
+  @override
+  String get catCategoriesLoadError => 'Couldn\'t load categories';
+
+  @override
+  String get catLoadErrorHint =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get catPerMeterShort => '/m';
+
+  @override
+  String get catPerPieceShort => '/pc';
+
+  @override
+  String get pdpKeySpecs => 'Key specs';
+
+  @override
+  String get pdpFeatures => 'Features';
+
+  @override
+  String pdpYouSave(String amount) {
+    return 'You save $amount';
+  }
+
+  @override
+  String get pdpViewFullScreen => 'View full screen';
+
+  @override
+  String pdpImageOf(int current, int total) {
+    return 'Image $current of $total';
+  }
+
+  @override
+  String get searchRemoveFilter => 'Remove filter';
 }

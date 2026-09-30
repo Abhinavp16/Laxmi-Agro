@@ -3433,4 +3433,279 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get uiOpenCart => 'कार्ट खोलें';
+
+  @override
+  String get uiPerMeter => '/मी';
+
+  @override
+  String get uiPerPiece => '/पीस';
+
+  @override
+  String get cartPlaceOrderRequest => 'ऑर्डर रिक्वेस्ट भेजें';
+
+  @override
+  String get cartClearTitle => 'कार्ट खाली करें?';
+
+  @override
+  String get cartClearMessage => 'कार्ट में रखे सारे आइटम हट जाएंगे।';
+
+  @override
+  String get cartClearConfirm => 'हां, खाली करें';
+
+  @override
+  String get cartItemTotal => 'आइटम का कुल';
+
+  @override
+  String cartYouSave(String amount) {
+    return 'आपकी ₹$amount की बचत';
+  }
+
+  @override
+  String get cartViewBreakup => 'पूरा हिसाब देखें';
+
+  @override
+  String get cartHideBreakup => 'हिसाब छिपाएं';
+
+  @override
+  String get cartBillTitle => 'बिल की जानकारी';
+
+  @override
+  String get cartQtySheetTitle => 'मात्रा डालें';
+
+  @override
+  String cartQtyPackCount(String unit) {
+    return '$unit की संख्या';
+  }
+
+  @override
+  String get cartQtyEnter => 'कृपया मात्रा डालें';
+
+  @override
+  String get cartQtyUpdate => 'मात्रा अपडेट करें';
+
+  @override
+  String get cartQtyTapToEdit => 'मात्रा लिखने के लिए टैप करें';
+
+  @override
+  String get ordActionTitle => 'आपको क्या करना है';
+
+  @override
+  String get ordNeedHelp => 'इस ऑर्डर में मदद चाहिए?';
+
+  @override
+  String get ordNeedHelpSubtitle => 'लक्ष्मी एग्रो की दुकान से सीधे बात करें';
+
+  @override
+  String ordWhatsappHelpMessage(String orderNumber) {
+    return 'नमस्ते, मुझे अपने ऑर्डर $orderNumber के बारे में मदद चाहिए।';
+  }
+
+  @override
+  String get ordStepUpcoming => 'आगे होगा';
+
+  @override
+  String get ordDeliveredTitle => 'आपका ऑर्डर डिलीवर हो गया';
+
+  @override
+  String ordPlacedOn(String date) {
+    return 'ऑर्डर की तारीख: $date';
+  }
+
+  @override
+  String get ordTransporterLabel => 'ट्रांसपोर्टर / कूरियर';
+
+  @override
+  String get ordLrNumberLabel => 'LR / ट्रैकिंग नंबर';
+
+  @override
+  String get ordHideDetails => 'विवरण छिपाएं';
+
+  @override
+  String get ordCancelledTitle => 'यह ऑर्डर रद्द हो गया';
+
+  @override
+  String get dealNeedsReply => 'आपका जवाब चाहिए';
+
+  @override
+  String dealNeedsReplyCount(int count) {
+    return '$count डील पर आपका जवाब चाहिए';
+  }
+
+  @override
+  String get dealLastMoveLaxmi => 'Laxmi Agro ने जवाब दिया · अब आपकी बारी';
+
+  @override
+  String get dealLastMoveYou => 'Laxmi Agro के जवाब का इंतज़ार';
+
+  @override
+  String get dealPriceYours => 'आपका रेट';
+
+  @override
+  String get dealPriceLaxmi => 'Laxmi Agro का रेट';
+
+  @override
+  String get dealPriceCurrent => 'मौजूदा रेट';
+
+  @override
+  String get dealPriceAgreed => 'तय रेट';
+
+  @override
+  String get dealAwaitingPrice => 'जवाब का इंतज़ार';
+
+  @override
+  String get dealToday => 'आज';
+
+  @override
+  String get dealYesterday => 'कल';
+
+  @override
+  String get dealQuickBetterPrice => 'क्या रेट थोड़ा और कम हो सकता है?';
+
+  @override
+  String get dealQuickDeliveryTime => 'डिलीवरी में कितना समय लगेगा?';
+
+  @override
+  String get dealQuickConfirmStock => 'कृपया स्टॉक कन्फ़र्म करें';
+
+  @override
+  String get dealQuickRepliesLabel => 'झटपट जवाब';
+
+  @override
+  String get dealExplainerTitle => 'डील डेस्क कैसे काम करता है';
+
+  @override
+  String get dealSummaryShowDetails => 'पूरी जानकारी देखें';
+
+  @override
+  String get dealSummaryHideDetails => 'जानकारी छुपाएं';
+
+  @override
+  String get dealStepRequested => 'भेजा';
+
+  @override
+  String get dealStepTalking => 'रेट पर बात';
+
+  @override
+  String get dealStepAgreed => 'तय';
+
+  @override
+  String get dealStepOrder => 'ऑर्डर';
+
+  @override
+  String get dealOfferPerUnit => 'प्रति यूनिट';
+
+  @override
+  String get dealSend => 'भेजें';
+
+  @override
+  String get accLogoutTitle => 'लॉग आउट करें?';
+
+  @override
+  String get accLogoutMessage =>
+      'आप कभी भी अपने फ़ोन नंबर और पासवर्ड से फिर से लॉग इन कर सकते हैं।';
+
+  @override
+  String get accUpgradeBenefitsTitle => 'होलसेलर बनकर आपको क्या मिलेगा';
+
+  @override
+  String get accBenefitDealerPrices => 'होलसेल प्रोडक्ट्स पर डीलर रेट';
+
+  @override
+  String get accBenefitDealDesk => 'डील डेस्क पर बेहतर रेट मांगें';
+
+  @override
+  String get accBenefitBulkPacks => 'पूरे पैकेट, कॉइल और बंडल में खरीदें';
+
+  @override
+  String get accBenefitCartRequirement =>
+      'पूरा कार्ट एक साथ ज़रूरत के रूप में भेजें';
+
+  @override
+  String get accStepBusiness => 'बिज़नेस';
+
+  @override
+  String get accStepLocation => 'दुकान की लोकेशन';
+
+  @override
+  String get accStepProof => 'प्रूफ़ फ़ोटो';
+
+  @override
+  String accStepOf(int current, int total) {
+    return 'स्टेप $current / $total';
+  }
+
+  @override
+  String get accReviewNote =>
+      'हमारी टीम हर आवेदन जांचकर ही मंज़ूरी देती है। स्टेटस आपको यहीं दिखेगा।';
+
+  @override
+  String get accTrackSubmitted => 'जमा हुआ';
+
+  @override
+  String get accTrackUnderReview => 'जांच चल रही है';
+
+  @override
+  String get accTrackApproved => 'मंज़ूर';
+
+  @override
+  String get accTrackNeedsChanges => 'बदलाव ज़रूरी';
+
+  @override
+  String get accGstInvalidFormat =>
+      'सही 15 अक्षर का GSTIN डालें, जैसे 22AAAAA0000A1Z5';
+
+  @override
+  String get authTroubleSignIn => 'लॉग इन में दिक्कत?';
+
+  @override
+  String get authContactSupport => 'सपोर्ट से बात करें';
+
+  @override
+  String get homeTrustSince1993 => '1993 से भरोसा';
+
+  @override
+  String get homeTrustGstInvoice => 'GST बिल';
+
+  @override
+  String get homeTrustAuthorisedDealer => 'अधिकृत डीलर';
+
+  @override
+  String get homeTrustCallWhatsapp => 'कॉल या WhatsApp';
+
+  @override
+  String get catBrandsLoadError => 'ब्रांड लोड नहीं हो पाए';
+
+  @override
+  String get catCategoriesLoadError => 'कैटेगरी लोड नहीं हो पाईं';
+
+  @override
+  String get catLoadErrorHint => 'अपना इंटरनेट देखें और फिर से कोशिश करें।';
+
+  @override
+  String get catPerMeterShort => '/मी';
+
+  @override
+  String get catPerPieceShort => '/पीस';
+
+  @override
+  String get pdpKeySpecs => 'मुख्य जानकारी';
+
+  @override
+  String get pdpFeatures => 'खूबियां';
+
+  @override
+  String pdpYouSave(String amount) {
+    return 'आपकी बचत $amount';
+  }
+
+  @override
+  String get pdpViewFullScreen => 'पूरी स्क्रीन पर देखें';
+
+  @override
+  String pdpImageOf(int current, int total) {
+    return '$total में से फोटो $current';
+  }
+
+  @override
+  String get searchRemoveFilter => 'फ़िल्टर हटाएं';
 }
