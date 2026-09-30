@@ -1,11 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/utils/packing.dart';
 import '../../core/config/api_config.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
@@ -141,6 +140,9 @@ class _FeaturedProductsScreenState
               item['reviewCount'] ?? item['review'] ?? item['reviews'] ?? '',
           'inStock': item['inStock'] != false,
           'minWholesaleQuantity': item['minWholesaleQuantity'],
+          'priceUnit': item['priceUnit'],
+          'packing': item['packing'],
+          'minCustomerQuantity': item['minCustomerQuantity'],
           'isHot': item['isHot'] == true,
           'isNew': item['isNew'] == true,
           'pendingPriceChange': item['pendingPriceChange'],
@@ -591,10 +593,14 @@ class _FeaturedProductsScreenState
                                             configuredMinimum?.toString() ?? '',
                                           ) ??
                                           1;
+                                // Pieces; whole packets for packet products.
+                                final wholesaleQuantity = wholesaleMinimumOf(
+                                  product,
+                                );
                                 final quantity =
                                     ref.read(effectiveIsWholesalerProvider)
-                                    ? math.max(minimumWholesaleQuantity, 1)
-                                    : 1;
+                                    ? wholesaleQuantity
+                                    : customerMinimumOf(product);
                                 ref
                                     .read(cartProvider.notifier)
                                     .addItem(
@@ -606,6 +612,12 @@ class _FeaturedProductsScreenState
                                       category: product['category']?.toString(),
                                       minWholesaleQuantity:
                                           minimumWholesaleQuantity,
+                                      minCustomerQuantity: customerMinimumOf(
+                                        product,
+                                      ),
+                                      priceUnit: product['priceUnit']
+                                          ?.toString(),
+                                      packing: product['packing']?.toString(),
                                       price: price.toDouble(),
                                       mrp: hasDiscount
                                           ? originalPrice.toDouble()

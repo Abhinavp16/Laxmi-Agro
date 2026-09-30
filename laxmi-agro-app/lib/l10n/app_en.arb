@@ -75,6 +75,8 @@
   "apiErrorInsufficientStock": "Some items don't have enough stock. Please update the quantity.",
   "apiErrorInvalidCoupon": "Invalid or expired coupon code.",
   "apiErrorInvalidQuantity": "Please enter a valid quantity.",
+  "apiErrorPackQuantity": "This product is sold in whole packets, coils or bundles only.",
+  "apiErrorMinCustomerQuantity": "Please order at least the minimum quantity.",
   "apiErrorMinWholesaleQuantity": "Please order at least the minimum wholesale quantity.",
   "apiErrorNegotiationCheckoutDisabled": "Ordering from a deal is turned off right now.",
   "apiErrorNegotiationDisabled": "Negotiation is not available for this product.",
@@ -183,7 +185,7 @@
       }
     }
   },
-  "cartIssueOutOfStock": "{product} is out of stock",
+  "cartIssueOutOfStock": "{product} is sold out",
   "@cartIssueOutOfStock": {
     "placeholders": {
       "product": {
@@ -226,7 +228,7 @@
       }
     }
   },
-  "cartItemOutOfStock": "Out of stock — please remove this item",
+  "cartItemOutOfStock": "Sold out — please remove this item",
   "cartItemUnavailable": "This product is currently unavailable",
   "cartLoginRequiredMessage": "You can add products to cart, but login is required to place an order.",
   "cartLoginRequiredTitle": "Login Required",
@@ -265,6 +267,11 @@
   "cartStockIssuesBanner": "Some items have stock issues. Please adjust quantities.",
   "cartStockIssuesMessage": "Some items in your cart have stock issues. Please update quantities before checkout.",
   "cartStockIssuesTitle": "Stock Issues",
+  "cartSendingRequirement": "Sending requirement...",
+  "cartRequirementSent": "{count, plural, =1{Requirement sent for 1 product} other{Requirement sent for {count} products}}. Laxmi Agro will reply in Deal Desk.",
+  "@cartRequirementSent": {"placeholders": {"count": {"type": "int"}}},
+  "cartRequirementBlockedItems": "Remove these items to send the requirement: {names}",
+  "@cartRequirementBlockedItems": {"placeholders": {"names": {"type": "String"}}},
   "cartTitle": "Shopping Cart",
   "categoryBackToCategories": "Back to categories",
   "categoryBackToTypes": "Back to types",
@@ -378,7 +385,7 @@
   "commonNoDataFound": "Nothing to show yet",
   "commonOk": "OK",
   "commonOptional": "Optional",
-  "commonOutOfStock": "Out of Stock",
+  "commonOutOfStock": "Sold Out",
   "commonPerUnit": "/unit",
   "commonPercentOff": "{percent}% OFF",
   "@commonPercentOff": {
@@ -1393,6 +1400,8 @@
   "privacyTitle": "Account & Privacy",
   "productAddShort": "Add",
   "productAddToCart": "Add to Cart",
+  "productCartShort": "Cart",
+  "productViewCart": "View Cart",
   "productAddToCartDisabledDemo": "Add to Cart disabled in demo mode",
   "productAddToCartDisabledPreview": "Add to Cart disabled in preview mode",
   "productAddedToCart": "Added to cart",
@@ -1710,5 +1719,39 @@
   "wishlistEmptySubtitle": "Save items you love by tapping the\nheart icon on product pages",
   "wishlistEmptyTitle": "Your wishlist is empty",
   "wishlistSwipeToRemove": "Swipe left on an item to remove it",
-  "wishlistTitle": "My Wishlist"
+  "wishlistTitle": "My Wishlist",
+  "productPiecesCount": "{count, plural, =1{1 piece} other{{count} pieces}}",
+  "@productPiecesCount": {"placeholders": {"count": {"type": "int"}}},
+  "productMetersCount": "{count} m",
+  "@productMetersCount": {"placeholders": {"count": {"type": "String"}}},
+  "productPacketsCount": "{count, plural, =1{1 Packet} other{{count} Packets}}",
+  "@productPacketsCount": {"placeholders": {"count": {"type": "int"}}},
+  "productCoilsCount": "{count, plural, =1{1 Coil} other{{count} Coils}}",
+  "@productCoilsCount": {"placeholders": {"count": {"type": "int"}}},
+  "productBundlesCount": "{count, plural, =1{1 Bundle} other{{count} Bundles}}",
+  "@productBundlesCount": {"placeholders": {"count": {"type": "int"}}},
+  "productPackWithContents": "{pack} ({contents})",
+  "@productPackWithContents": {"placeholders": {"pack": {"type": "String"}, "contents": {"type": "String"}}},
+  "productPackPrice": "{pack} = ₹{price}",
+  "@productPackPrice": {"placeholders": {"pack": {"type": "String"}, "price": {"type": "String"}}},
+  "productUnitCoil": "Coil",
+  "productUnitBundle": "Bundle",
+  "productMinOrderQuantity": "Minimum order: {quantity}",
+  "@productMinOrderQuantity": {"placeholders": {"quantity": {"type": "String"}}},
+  "productPacketContainsPieces": "1 Packet contains {count, plural, =1{1 piece} other{{count} pieces}}",
+  "productPacketContains": "1 Packet contains {contents}",
+  "@productPacketContainsPieces": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@productPacketContains": {
+    "placeholders": {
+      "contents": {
+        "type": "String"
+      }
+    }
+  }
 }

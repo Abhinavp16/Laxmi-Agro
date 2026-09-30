@@ -228,6 +228,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorInvalidQuantity => 'Please enter a valid quantity.';
 
   @override
+  String get apiErrorPackQuantity =>
+      'This product is sold in whole packets, coils or bundles only.';
+
+  @override
+  String get apiErrorMinCustomerQuantity =>
+      'Please order at least the minimum quantity.';
+
+  @override
   String get apiErrorMinWholesaleQuantity =>
       'Please order at least the minimum wholesale quantity.';
 
@@ -482,7 +490,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String cartIssueOutOfStock(String product) {
-    return '$product is out of stock';
+    return '$product is sold out';
   }
 
   @override
@@ -506,7 +514,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get cartItemOutOfStock => 'Out of stock — please remove this item';
+  String get cartItemOutOfStock => 'Sold out — please remove this item';
 
   @override
   String get cartItemUnavailable => 'This product is currently unavailable';
@@ -575,6 +583,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cartStockIssuesTitle => 'Stock Issues';
+
+  @override
+  String get cartSendingRequirement => 'Sending requirement...';
+
+  @override
+  String cartRequirementSent(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Requirement sent for $count products',
+      one: 'Requirement sent for 1 product',
+    );
+    return '$_temp0. Laxmi Agro will reply in Deal Desk.';
+  }
+
+  @override
+  String cartRequirementBlockedItems(String names) {
+    return 'Remove these items to send the requirement: $names';
+  }
 
   @override
   String get cartTitle => 'Shopping Cart';
@@ -839,7 +866,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonOptional => 'Optional';
 
   @override
-  String get commonOutOfStock => 'Out of Stock';
+  String get commonOutOfStock => 'Sold Out';
 
   @override
   String get commonPerUnit => '/unit';
@@ -2664,6 +2691,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get productAddToCart => 'Add to Cart';
 
   @override
+  String get productCartShort => 'Cart';
+
+  @override
+  String get productViewCart => 'View Cart';
+
+  @override
   String get productAddToCartDisabledDemo =>
       'Add to Cart disabled in demo mode';
 
@@ -3318,4 +3351,90 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wishlistTitle => 'My Wishlist';
+
+  @override
+  String productPiecesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pieces',
+      one: '1 piece',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String productMetersCount(String count) {
+    return '$count m';
+  }
+
+  @override
+  String productPacketsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Packets',
+      one: '1 Packet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String productCoilsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Coils',
+      one: '1 Coil',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String productBundlesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Bundles',
+      one: '1 Bundle',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String productPackWithContents(String pack, String contents) {
+    return '$pack ($contents)';
+  }
+
+  @override
+  String productPackPrice(String pack, String price) {
+    return '$pack = ₹$price';
+  }
+
+  @override
+  String get productUnitCoil => 'Coil';
+
+  @override
+  String get productUnitBundle => 'Bundle';
+
+  @override
+  String productMinOrderQuantity(String quantity) {
+    return 'Minimum order: $quantity';
+  }
+
+  @override
+  String productPacketContainsPieces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pieces',
+      one: '1 piece',
+    );
+    return '1 Packet contains $_temp0';
+  }
+
+  @override
+  String productPacketContains(String contents) {
+    return '1 Packet contains $contents';
+  }
 }

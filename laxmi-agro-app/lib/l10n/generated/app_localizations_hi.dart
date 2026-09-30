@@ -227,6 +227,14 @@ class AppLocalizationsHi extends AppLocalizations {
   String get apiErrorInvalidQuantity => 'कृपया सही मात्रा डालें।';
 
   @override
+  String get apiErrorPackQuantity =>
+      'यह प्रोडक्ट केवल पूरे पैकेट, कॉइल या बंडल में बिकता है।';
+
+  @override
+  String get apiErrorMinCustomerQuantity =>
+      'कृपया कम से कम न्यूनतम मात्रा का ऑर्डर करें।';
+
+  @override
   String get apiErrorMinWholesaleQuantity =>
       'कृपया कम से कम न्यूनतम थोक मात्रा का ऑर्डर करें।';
 
@@ -484,7 +492,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String cartIssueOutOfStock(String product) {
-    return '$product स्टॉक में नहीं है';
+    return '$product सोल्ड आउट है';
   }
 
   @override
@@ -508,7 +516,7 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get cartItemOutOfStock => 'स्टॉक में नहीं है — कृपया यह आइटम हटाएं';
+  String get cartItemOutOfStock => 'सोल्ड आउट — कृपया यह आइटम हटाएं';
 
   @override
   String get cartItemUnavailable => 'यह उत्पाद अभी उपलब्ध नहीं है';
@@ -577,6 +585,25 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get cartStockIssuesTitle => 'स्टॉक की समस्या';
+
+  @override
+  String get cartSendingRequirement => 'रिक्वायरमेंट भेजी जा रही है...';
+
+  @override
+  String cartRequirementSent(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count प्रोडक्ट',
+      one: '1 प्रोडक्ट',
+    );
+    return '$_temp0 की रिक्वायरमेंट भेज दी गई। लक्ष्मी एग्रो डील डेस्क में जवाब देगा।';
+  }
+
+  @override
+  String cartRequirementBlockedItems(String names) {
+    return 'रिक्वायरमेंट भेजने के लिए ये आइटम हटाएं: $names';
+  }
 
   @override
   String get cartTitle => 'शॉपिंग कार्ट';
@@ -842,7 +869,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get commonOptional => 'वैकल्पिक';
 
   @override
-  String get commonOutOfStock => 'स्टॉक में नहीं है';
+  String get commonOutOfStock => 'सोल्ड आउट';
 
   @override
   String get commonPerUnit => '/यूनिट';
@@ -2662,6 +2689,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get productAddToCart => 'कार्ट में डालें';
 
   @override
+  String get productCartShort => 'कार्ट';
+
+  @override
+  String get productViewCart => 'कार्ट देखें';
+
+  @override
   String get productAddToCartDisabledDemo =>
       'डेमो मोड में कार्ट में डालना बंद है';
 
@@ -3315,4 +3348,66 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get wishlistTitle => 'मेरी विशलिस्ट';
+
+  @override
+  String productPiecesCount(int count) {
+    return '$count पीस';
+  }
+
+  @override
+  String productMetersCount(String count) {
+    return '$count मी';
+  }
+
+  @override
+  String productPacketsCount(int count) {
+    return '$count पैकेट';
+  }
+
+  @override
+  String productCoilsCount(int count) {
+    return '$count कॉइल';
+  }
+
+  @override
+  String productBundlesCount(int count) {
+    return '$count बंडल';
+  }
+
+  @override
+  String productPackWithContents(String pack, String contents) {
+    return '$pack ($contents)';
+  }
+
+  @override
+  String productPackPrice(String pack, String price) {
+    return '$pack = ₹$price';
+  }
+
+  @override
+  String get productUnitCoil => 'कॉइल';
+
+  @override
+  String get productUnitBundle => 'बंडल';
+
+  @override
+  String productMinOrderQuantity(String quantity) {
+    return 'न्यूनतम ऑर्डर: $quantity';
+  }
+
+  @override
+  String productPacketContainsPieces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count पीस',
+      one: '1 पीस',
+    );
+    return '1 पैकेट में $_temp0';
+  }
+
+  @override
+  String productPacketContains(String contents) {
+    return '1 पैकेट में: $contents';
+  }
 }

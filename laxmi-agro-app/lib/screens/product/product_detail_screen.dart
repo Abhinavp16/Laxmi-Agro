@@ -23,7 +23,10 @@ import '../../core/providers/guest_mode_provider.dart';
 import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/verified_seller_badge.dart';
 import '../../core/theme/app_fonts.dart';
+import '../../core/utils/packing.dart';
+import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/pack_text.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -49,6 +52,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   final FocusNode _quantityFocusNode = FocusNode();
   int _imgIndex = 0;
   bool _addedToCart = false;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _cartSnackBar;
   int _quantity = 1;
   bool _descExpanded = false;
   // _isFav removed â€“ now using wishlistProvider
@@ -124,6 +128,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     WidgetsBinding.instance.removeObserver(this);
     _flushWatchTime();
     _cartBounce.dispose();
+    // The cart message belongs to this page; don't carry it to the next one.
+    _cartSnackBar?.close();
     _imgCtrl.dispose();
     _quantityController.dispose();
     _quantityFocusNode.dispose();
@@ -136,30 +142,44 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return 99;
   }
 
+  // Quantities are in pieces or meters. Wholesalers buy pack products
+  // (packets, coils, bundles) in whole packs, so their quantity box counts
+  // packs; customers buy loose pieces / cut lengths (see packing.dart).
   int _minimumQuantity([Map<String, dynamic>? product]) {
-    if (!ref.read(effectiveIsWholesalerProvider)) return 1;
-    final configured =
-        product?['minWholesaleQuantity'] ?? _product?['minWholesaleQuantity'];
-    final quantity = configured is num
-        ? configured.toInt()
-        : int.tryParse(configured?.toString() ?? '');
-    return quantity != null && quantity > 0 ? quantity : 1;
+    if (!ref.read(effectiveIsWholesalerProvider)) {
+      return customerMinimumOf(product ?? _product);
+    }
+    return wholesaleMinimumOf(product ?? _product);
   }
 
-  void _setQuantity(int value, dynamic stock) {
-    final minimum = _minimumQuantity();
-    final limit = math.max(minimum, _stockLimit(stock));
-    final next = value.clamp(minimum, limit).toInt();
-    setState(() => _quantity = next);
-    _quantityController.text = '$next';
+  int _quantityStep([Map<String, dynamic>? product]) {
+    if (!ref.read(effectiveIsWholesalerProvider)) return 1;
+    return packSizeOf(product ?? _product);
+  }
+
+  void _showQuantity(int pieces, [Map<String, dynamic>? product]) {
+    _quantityController.text = '${pieces ~/ _quantityStep(product)}';
     _quantityController.selection = TextSelection.collapsed(
       offset: _quantityController.text.length,
     );
   }
 
+  void _setQuantity(int value, dynamic stock) {
+    final step = _quantityStep();
+    final minimum = _minimumQuantity();
+    final limit = math.max(minimum, _stockLimit(stock) ~/ step * step);
+    final clamped = value.clamp(minimum, limit).toInt();
+    final next = math.max(minimum, clamped ~/ step * step);
+    setState(() => _quantity = next);
+    _showQuantity(next);
+  }
+
   void _commitQuantityInput(dynamic stock) {
     final parsed = int.tryParse(_quantityController.text.trim());
-    _setQuantity(parsed ?? _minimumQuantity(), stock);
+    _setQuantity(
+      parsed == null ? _minimumQuantity() : parsed * _quantityStep(),
+      stock,
+    );
   }
 
   void _onQuantityTextChanged(String value, dynamic stock) {
@@ -167,18 +187,41 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final parsed = int.tryParse(value);
     if (parsed == null) return;
 
+    final pieces = parsed * _quantityStep();
     final minimum = _minimumQuantity();
     final limit = math.max(minimum, _stockLimit(stock));
-    if (parsed > limit) {
+    if (pieces > limit) {
       _setQuantity(limit, stock);
       return;
     }
 
-    setState(() => _quantity = parsed < minimum ? minimum : parsed);
+    setState(() => _quantity = pieces < minimum ? minimum : pieces);
   }
+
+  /// Quantity in words: "2 Bundles (1,000 m)" for pack products bought by
+  /// wholesalers, "50 m" for cut lengths, otherwise "30 units".
+  String _quantityText(int amount, AppLocalizations l10n) {
+    if (_quantityStep() > 1) return packQuantityText(l10n, _pack, amount);
+    if (isMeterProduct(_product)) {
+      return contentsText(l10n, ContentUnit.meter, amount);
+    }
+    return l10n.commonUnitsCount(amount);
+  }
+
+  PackInfo get _pack => packInfoOf(_product);
+
+  /// Unit the price is quoted in: pack products are priced per piece/meter.
+  String _priceUnitLabel() => _pack.isPack
+      ? contentUnitLabel(context.l10n, _pack.contentUnit!)
+      : _quantityUnitLabel();
 
   String _quantityUnitLabel() {
     final l10n = context.l10n;
+    if (_pack.isPack) {
+      return _quantityStep() > 1
+          ? packUnitLabel(l10n, _pack.packUnit!)
+          : contentUnitLabel(l10n, _pack.contentUnit!);
+    }
     final raw =
         (_product?['priceUnit'] ?? _product?['unit'] ?? _product?['uom'])
             ?.toString()
@@ -201,6 +244,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     }
 
     return raw;
+  }
+
+  /// "1 Coil (500 m) = ₹37,500" / "1 Packet (15 pieces) = ₹10,800" for pack
+  /// products, from the per-meter / per-piece [price]. For a Packet whose
+  /// Packing isn't a piece count, "1 Packet contains …". Null otherwise.
+  String? _packetContentsLabel({dynamic price}) {
+    final l10n = context.l10n;
+    if (_pack.isPack) {
+      return price is num
+          ? packPriceText(l10n, _pack, price)
+          : packQuantityText(l10n, _pack, _pack.size);
+    }
+    final unit =
+        _product?['priceUnit'] ?? _product?['unit'] ?? _product?['uom'];
+    if (!isPacketUnit(unit?.toString())) return null;
+    final packing = (_product?['packing'] ?? '').toString().trim();
+    if (packing.isEmpty) return null;
+    final count = packingPieceCount(packing);
+    return count != null
+        ? l10n.productPacketContainsPieces(count)
+        : l10n.productPacketContains(packing);
   }
 
   void _initYoutube() {
@@ -259,10 +323,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           _product = productData;
           _selectedVariantId = _resolveInitialVariantId(productData);
           _quantity = _minimumQuantity(productData);
-          _quantityController.text = '$_quantity';
-          _quantityController.selection = TextSelection.collapsed(
-            offset: _quantityController.text.length,
-          );
+          _showQuantity(_quantity, productData);
           _isLoading = false;
         });
         _trackView();
@@ -1477,9 +1538,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           text: isWholesaler
                               ? l10n.productPriceWithUnit(
                                   _fmt(wsPrice ?? price),
-                                  _quantityUnitLabel(),
+                                  _priceUnitLabel(),
                                 )
-                              : '₹${_fmt(price)}',
+                              : (_pack.isPack
+                                    ? l10n.productPriceWithUnit(
+                                        _fmt(price),
+                                        _priceUnitLabel(),
+                                      )
+                                    : '₹${_fmt(price)}'),
                           style: AppFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -3060,7 +3126,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                                                 item['category']
                                                                     ?.toString(),
                                                             minWholesaleQuantity:
-                                                                minimumQuantity,
+                                                                int.tryParse(
+                                                                  '${item['minWholesaleQuantity'] ?? ''}',
+                                                                ) ??
+                                                                1,
+                                                            minCustomerQuantity:
+                                                                customerMinimumOf(
+                                                                  item,
+                                                                ),
+                                                            priceUnit:
+                                                                item['priceUnit']
+                                                                    ?.toString(),
+                                                            packing:
+                                                                item['packing']
+                                                                    ?.toString(),
                                                             price: price is num
                                                                 ? price
                                                                       .toDouble()
@@ -3499,6 +3578,97 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
+  // Adds the current product (with the selected quantity) to the cart.
+  Future<void> _addToCart(
+    String name,
+    dynamic price,
+    dynamic mrp,
+    dynamic stock,
+    dynamic minQty,
+    AppLocalizations l10n,
+  ) async {
+    if (ref.read(guestModeProvider)) {
+      _showGuestModePopup(l10n.productAddToCartDisabledDemo);
+      return;
+    }
+
+    final isWholesaler = ref.read(effectiveIsWholesalerProvider);
+    final img = _images.isNotEmpty ? _images[0] : null;
+    setState(() => _addedToCart = true);
+    final error = await ref
+        .read(cartProvider.notifier)
+        .addItem(
+          productId: widget.productId,
+          name: _product?['name']?.toString() ?? name,
+          nameHindi: _product?['nameHindi']?.toString(),
+          image: img,
+          price: (price as num?)?.toDouble() ?? 0,
+          mrp: (mrp as num?)?.toDouble(),
+          // Admin's minimum as configured (packets for packet products).
+          minWholesaleQuantity:
+              int.tryParse('${_product?['minWholesaleQuantity'] ?? ''}') ?? 1,
+          minCustomerQuantity: customerMinimumOf(_product),
+          priceUnit: _product?['priceUnit']?.toString(),
+          packing: _product?['packing']?.toString(),
+          quantity: _quantity,
+          stock: stock is int ? stock : 99,
+        );
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    if (error != null) {
+      setState(() => _addedToCart = false);
+      _showCartSnackBar(
+        messenger,
+        SnackBar(
+          content: Text(apiErrorText(context, error)),
+          behavior: SnackBarBehavior.floating,
+          margin: _snackBarMarginAboveBottomBar(),
+        ),
+      );
+      return;
+    }
+
+    _trackEvent('cart_add');
+    _cartBounce.forward().then((_) => _cartBounce.reverse());
+    // Wholesalers have no Cart tab, so offer a direct link to the cart.
+    if (isWholesaler) {
+      _showCartSnackBar(
+        messenger,
+        SnackBar(
+          content: Text(l10n.productAddedToCart),
+          duration: const Duration(seconds: 3),
+          persist: false,
+          behavior: SnackBarBehavior.floating,
+          margin: _snackBarMarginAboveBottomBar(),
+          action: SnackBarAction(
+            label: l10n.productViewCart,
+            onPressed: () => context.push('/cart'),
+          ),
+        ),
+      );
+    }
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _addedToCart = false);
+      }
+    });
+  }
+
+  void _showCartSnackBar(ScaffoldMessengerState messenger, SnackBar snackBar) {
+    final controller = messenger.showSnackBar(snackBar);
+    _cartSnackBar = controller;
+    controller.closed.then((_) {
+      if (identical(_cartSnackBar, controller)) _cartSnackBar = null;
+    });
+  }
+
+  // Keeps snack bars clear of the quantity selector and action buttons.
+  EdgeInsets _snackBarMarginAboveBottomBar() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return EdgeInsets.fromLTRB(16, 0, 16, 190 + bottomInset);
+  }
+
   // -- BOTTOM BAR --
   Widget _bottomBar(
     String name,
@@ -3517,6 +3687,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final minimumQuantity = minQty is num
         ? minQty.toInt()
         : int.tryParse(minQty?.toString() ?? '') ?? 1;
+    final packetLabel = _packetContentsLabel(price: price);
+    final quantityStep = _quantityStep();
+    final minimumText = quantityStep > 1
+        ? packQuantityText(l10n, _pack, minimumQuantity)
+        : '$minimumQuantity';
+    final showMinimum = quantityStep > 1
+        ? minimumQuantity > quantityStep
+        : (packetLabel == null || minimumQuantity > 1);
+    // Customers: smallest cut length / number of pieces, when the admin set one.
+    final customerMinimumText = !isWholesaler && minimumQuantity > 1
+        ? l10n.productMinOrderQuantity(_quantityText(minimumQuantity, l10n))
+        : null;
 
     return Positioned(
       left: 0,
@@ -3538,11 +3720,38 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isWholesaler && inStock)
+            if (inStock && packetLabel != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  l10n.productMinWholesaleQuantity('$minimumQuantity'),
+                  packetLabel,
+                  textAlign: TextAlign.center,
+                  style: AppFonts.jakarta(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _txtSec,
+                  ),
+                ),
+              ),
+            // With a packet size shown, the minimum is only worth showing
+            // when it is more than 1.
+            if (inStock && customerMinimumText != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  customerMinimumText,
+                  style: AppFonts.jakarta(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _txtSec,
+                  ),
+                ),
+              ),
+            if (isWholesaler && inStock && showMinimum)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  l10n.productMinWholesaleQuantity(minimumText),
                   style: AppFonts.jakarta(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -3575,7 +3784,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                         children: [
                           _qtyBtn(
                             Icons.remove,
-                            () => _setQuantity(_quantity - 1, stock),
+                            () => _setQuantity(
+                              _quantity - _quantityStep(),
+                              stock,
+                            ),
                           ),
                           Container(
                             width: 46,
@@ -3607,7 +3819,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                           ),
                           _qtyBtn(
                             Icons.add,
-                            () => _setQuantity(_quantity + 1, stock),
+                            () => _setQuantity(
+                              _quantity + _quantityStep(),
+                              stock,
+                            ),
                           ),
                         ],
                       ),
@@ -3633,66 +3848,111 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 ),
               ),
             if (isWholesaler)
-              GestureDetector(
-                onTap: inStock
-                    ? () => _openNegotiateSheet(
-                        name,
-                        price,
-                        wsPrice,
-                        minQty,
-                        l10n,
-                      )
-                    : null,
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: inStock ? _blue : _txtMuted,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: inStock
-                        ? [
-                            BoxShadow(
-                              color: _blue.withOpacity(0.25),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: inStock && !_addedToCart
+                        ? () =>
+                              _addToCart(name, price, mrp, stock, minQty, l10n)
                         : null,
-                  ),
-                  child: Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.send_rounded,
-                          size: 20,
-                          color: Colors.white,
+                    child: Container(
+                      height: 56,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: inStock ? _border : _txtMuted.withOpacity(0.4),
                         ),
-                        const SizedBox(width: 8),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              l10n.productSendRequirement,
-                              style: AppFonts.jakarta(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _addedToCart
+                                ? Icons.check_rounded
+                                : Icons.shopping_cart_outlined,
+                            size: 20,
+                            color: inStock ? _txt : _txtMuted,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.productCartShort,
+                            style: AppFonts.jakarta(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: inStock ? _txt : _txtMuted,
                             ),
-                            Text(
-                              l10n.productOnlyLaxmiCanConfirm,
-                              style: AppFonts.jakarta(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withOpacity(0.85),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: inStock
+                          ? () => _openNegotiateSheet(
+                              name,
+                              price,
+                              wsPrice,
+                              minQty,
+                              l10n,
+                            )
+                          : null,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: inStock ? _blue : _txtMuted,
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: inStock
+                              ? [
+                                  BoxShadow(
+                                    color: _blue.withOpacity(0.25),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.send_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    l10n.productSendRequirement,
+                                    style: AppFonts.jakarta(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    l10n.productOnlyLaxmiCanConfirm,
+                                    style: AppFonts.jakarta(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withOpacity(0.85),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             if (!isWholesaler)
               Row(
@@ -3700,52 +3960,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   Expanded(
                     child: GestureDetector(
                       onTap: inStock && !_addedToCart
-                          ? () {
-                              // Check guest mode
-                              if (ref.read(guestModeProvider)) {
-                                _showGuestModePopup(
-                                  l10n.productAddToCartDisabledDemo,
-                                );
-                                return;
-                              }
-
-                              final img = _images.isNotEmpty
-                                  ? _images[0]
-                                  : null;
-                              ref
-                                  .read(cartProvider.notifier)
-                                  .addItem(
-                                    productId: widget.productId,
-                                    name: _product?['name']?.toString() ?? name,
-                                    nameHindi: _product?['nameHindi']
-                                        ?.toString(),
-                                    image: img,
-                                    price: (price is int)
-                                        ? price.toDouble()
-                                        : (price as num?)?.toDouble() ?? 0,
-                                    mrp: (mrp is int)
-                                        ? mrp.toDouble()
-                                        : (mrp as num?)?.toDouble(),
-                                    minWholesaleQuantity: minQty is num
-                                        ? minQty.toInt()
-                                        : int.tryParse(
-                                                minQty?.toString() ?? '',
-                                              ) ??
-                                              1,
-                                    quantity: _quantity,
-                                    stock: stock is int ? stock : 99,
-                                  );
-                              _trackEvent('cart_add');
-                              setState(() => _addedToCart = true);
-                              _cartBounce.forward().then(
-                                (_) => _cartBounce.reverse(),
-                              );
-                              Future.delayed(const Duration(seconds: 2), () {
-                                if (mounted) {
-                                  setState(() => _addedToCart = false);
-                                }
-                              });
-                            }
+                          ? () => _addToCart(
+                              name,
+                              price,
+                              mrp,
+                              stock,
+                              minQty,
+                              l10n,
+                            )
                           : null,
                       child: Container(
                         height: 56,
@@ -4490,7 +4712,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             children: [
               _reviewLine(l10n.productReviewProduct, productName),
               _divider(),
-              _reviewLine(l10n.commonQuantity, l10n.commonUnitsCount(qty)),
+              _reviewLine(l10n.commonQuantity, _quantityText(qty, l10n)),
               _divider(),
               _reviewLine(
                 l10n.productYourExpectedPrice,

@@ -506,6 +506,18 @@ abstract class AppLocalizations {
   /// **'Please enter a valid quantity.'**
   String get apiErrorInvalidQuantity;
 
+  /// No description provided for @apiErrorPackQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'This product is sold in whole packets, coils or bundles only.'**
+  String get apiErrorPackQuantity;
+
+  /// No description provided for @apiErrorMinCustomerQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Please order at least the minimum quantity.'**
+  String get apiErrorMinCustomerQuantity;
+
   /// No description provided for @apiErrorMinWholesaleQuantity.
   ///
   /// In en, this message translates to:
@@ -953,7 +965,7 @@ abstract class AppLocalizations {
   /// No description provided for @cartIssueOutOfStock.
   ///
   /// In en, this message translates to:
-  /// **'{product} is out of stock'**
+  /// **'{product} is sold out'**
   String cartIssueOutOfStock(String product);
 
   /// No description provided for @cartIssueUnavailable.
@@ -983,7 +995,7 @@ abstract class AppLocalizations {
   /// No description provided for @cartItemOutOfStock.
   ///
   /// In en, this message translates to:
-  /// **'Out of stock — please remove this item'**
+  /// **'Sold out — please remove this item'**
   String get cartItemOutOfStock;
 
   /// No description provided for @cartItemUnavailable.
@@ -1087,6 +1099,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stock Issues'**
   String get cartStockIssuesTitle;
+
+  /// No description provided for @cartSendingRequirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending requirement...'**
+  String get cartSendingRequirement;
+
+  /// No description provided for @cartRequirementSent.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Requirement sent for 1 product} other{Requirement sent for {count} products}}. Laxmi Agro will reply in Deal Desk.'**
+  String cartRequirementSent(int count);
+
+  /// No description provided for @cartRequirementBlockedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove these items to send the requirement: {names}'**
+  String cartRequirementBlockedItems(String names);
 
   /// No description provided for @cartTitle.
   ///
@@ -1517,7 +1547,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonOutOfStock.
   ///
   /// In en, this message translates to:
-  /// **'Out of Stock'**
+  /// **'Sold Out'**
   String get commonOutOfStock;
 
   /// No description provided for @commonPerUnit.
@@ -4730,6 +4760,18 @@ abstract class AppLocalizations {
   /// **'Add to Cart'**
   String get productAddToCart;
 
+  /// No description provided for @productCartShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get productCartShort;
+
+  /// No description provided for @productViewCart.
+  ///
+  /// In en, this message translates to:
+  /// **'View Cart'**
+  String get productViewCart;
+
   /// No description provided for @productAddToCartDisabledDemo.
   ///
   /// In en, this message translates to:
@@ -5887,6 +5929,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My Wishlist'**
   String get wishlistTitle;
+
+  /// No description provided for @productPiecesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 piece} other{{count} pieces}}'**
+  String productPiecesCount(int count);
+
+  /// No description provided for @productMetersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} m'**
+  String productMetersCount(String count);
+
+  /// No description provided for @productPacketsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Packet} other{{count} Packets}}'**
+  String productPacketsCount(int count);
+
+  /// No description provided for @productCoilsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Coil} other{{count} Coils}}'**
+  String productCoilsCount(int count);
+
+  /// No description provided for @productBundlesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Bundle} other{{count} Bundles}}'**
+  String productBundlesCount(int count);
+
+  /// No description provided for @productPackWithContents.
+  ///
+  /// In en, this message translates to:
+  /// **'{pack} ({contents})'**
+  String productPackWithContents(String pack, String contents);
+
+  /// No description provided for @productPackPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'{pack} = ₹{price}'**
+  String productPackPrice(String pack, String price);
+
+  /// No description provided for @productUnitCoil.
+  ///
+  /// In en, this message translates to:
+  /// **'Coil'**
+  String get productUnitCoil;
+
+  /// No description provided for @productUnitBundle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundle'**
+  String get productUnitBundle;
+
+  /// No description provided for @productMinOrderQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order: {quantity}'**
+  String productMinOrderQuantity(String quantity);
+
+  /// No description provided for @productPacketContainsPieces.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Packet contains {count, plural, =1{1 piece} other{{count} pieces}}'**
+  String productPacketContainsPieces(int count);
+
+  /// No description provided for @productPacketContains.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Packet contains {contents}'**
+  String productPacketContains(String contents);
 }
 
 class _AppLocalizationsDelegate

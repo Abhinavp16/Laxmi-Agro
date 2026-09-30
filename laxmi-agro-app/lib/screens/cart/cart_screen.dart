@@ -10,12 +10,15 @@ import '../../core/providers/cart_provider.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../widgets/cart_requirement.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/utils/packing.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/pack_text.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -190,6 +193,51 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       apiClient: api,
       responseData: responseData,
     );
+  }
+
+  // Wholesalers send the whole cart to the Deal Desk instead of checking out.
+  Widget _sendRequirementButton(AppLocalizations l10n) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: _isCheckingOut ? null : _sendRequirement,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.gray300,
+          disabledForegroundColor: Colors.white70,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        icon: _isCheckingOut
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.send_rounded, size: 20),
+        label: Text(
+          _isCheckingOut
+              ? l10n.cartSendingRequirement
+              : l10n.productSendRequirement,
+          style: AppFonts.jakarta(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendRequirement() async {
+    if (ref.read(cartProvider).items.isEmpty) return;
+    setState(() => _isCheckingOut = true);
+    final sent = await sendCartRequirement(context, ref);
+    if (!mounted) return;
+    setState(() => _isCheckingOut = false);
+    if (sent) context.go('/home', extra: {'tab': 3});
   }
 
   Future<void> _proceedToCheckout() async {
@@ -593,6 +641,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
     final cart = ref.watch(cartProvider);
     final l10n = context.l10n;
+    final isWholesaler = ref.watch(effectiveIsWholesalerProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -918,69 +967,77 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ),
                           ),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed:
-                                (_isCheckingOut ||
-                                    _isValidating ||
-                                    cart.hasStockIssues)
-                                ? null
-                                : _proceedToCheckout,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: cart.hasStockIssues
-                                  ? AppColors.gray300
-                                  : AppColors.primary,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.gray300,
-                              disabledForegroundColor: Colors.white70,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        if (isWholesaler)
+                          _sendRequirementButton(l10n)
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed:
+                                  (_isCheckingOut ||
+                                      _isValidating ||
+                                      cart.hasStockIssues)
+                                  ? null
+                                  : _proceedToCheckout,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: cart.hasStockIssues
+                                    ? AppColors.gray300
+                                    : AppColors.primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: AppColors.gray300,
+                                disabledForegroundColor: Colors.white70,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
+                              child: (_isCheckingOut || _isValidating)
+                                  ? Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          _isValidating
+                                              ? l10n.cartCheckingStock
+                                              : l10n.cartProcessing,
+                                          style: AppFonts.jakarta(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          cart.hasStockIssues
+                                              ? l10n.cartFixStockIssues
+                                              : l10n.cartProceedToCheckout,
+                                          style: AppFonts.jakarta(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.chevron_right,
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
                             ),
-                            child: (_isCheckingOut || _isValidating)
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        _isValidating
-                                            ? l10n.cartCheckingStock
-                                            : l10n.cartProcessing,
-                                        style: AppFonts.jakarta(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        cart.hasStockIssues
-                                            ? l10n.cartFixStockIssues
-                                            : l10n.cartProceedToCheckout,
-                                        style: AppFonts.jakarta(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.chevron_right, size: 20),
-                                    ],
-                                  ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1057,9 +1114,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   Widget _buildCartItem(CartItem item) {
     final hasIssue = item.hasStockIssue;
     final isOutOfStock = item.stock == 0;
-    final bool atStockLimit = item.stock > 0 && item.quantity >= item.stock;
     final isWholesaler = ref.watch(authProvider).user?.isWholesaler == true;
-    final minimumQuantity = isWholesaler ? item.minWholesaleQuantity : 1;
+    // Quantities are in pieces; wholesalers step by whole packets for
+    // packet products.
+    final quantityStep = item.quantityStep(isWholesaler);
+    final bool atStockLimit =
+        item.stock > 0 && item.quantity + quantityStep > item.stock;
+    final minimumQuantity = item.minimumQuantity(isWholesaler);
     final isAtMinimum = item.quantity <= minimumQuantity;
     final l10n = context.l10n;
 
@@ -1123,18 +1184,45 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _rupees(item.price),
+                        item.pack.isPack || item.isMeter
+                            ? l10n.productPriceWithUnit(
+                                _fmt(item.price),
+                                item.pack.isPack
+                                    ? contentUnitLabel(
+                                        l10n,
+                                        item.pack.contentUnit!,
+                                      )
+                                    : l10n.productUnitMeter,
+                              )
+                            : _rupees(item.price),
                         style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary,
                         ),
                       ),
+                      if (item.pack.isPack)
+                        Text(
+                          packPriceText(l10n, item.pack, item.price),
+                          style: AppFonts.jakarta(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       if (item.stock > 0)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            l10n.cartInStockCount(_count(item.stock)),
+                            l10n.cartInStockCount(
+                              item.isMeter
+                                  ? contentsText(
+                                      l10n,
+                                      ContentUnit.meter,
+                                      item.stock,
+                                    )
+                                  : _count(item.stock),
+                            ),
                             style: AppFonts.jakarta(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -1162,7 +1250,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                     .read(cartProvider.notifier)
                                     .updateQuantity(
                                       item.productId,
-                                      item.quantity - 1,
+                                      item.quantity - quantityStep,
                                     ),
                           child: Container(
                             width: 32,
@@ -1184,7 +1272,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           width: 28,
                           alignment: Alignment.center,
                           child: Text(
-                            '${item.quantity}',
+                            '${item.displayQuantity(isWholesaler)}',
                             style: AppFonts.jakarta(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -1222,7 +1310,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                         item.productId,
                                         item.quantity < minimumQuantity
                                             ? minimumQuantity
-                                            : item.quantity + 1,
+                                            : item.quantity + quantityStep,
                                       );
                                   if (err != null && mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1268,22 +1356,23 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ],
                     ),
                   ),
-                if (isOutOfStock)
-                  IconButton(
-                    onPressed: () => ref
-                        .read(cartProvider.notifier)
-                        .removeItem(item.productId),
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.error,
-                      size: 22,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
-                    ),
+                // Remove just this product (always available).
+                IconButton(
+                  tooltip: l10n.commonRemove,
+                  onPressed: () => ref
+                      .read(cartProvider.notifier)
+                      .removeItem(item.productId),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.error,
+                    size: 22,
                   ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                ),
               ],
             ),
             // Stock issue message

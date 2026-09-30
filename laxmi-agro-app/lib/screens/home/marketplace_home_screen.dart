@@ -14,9 +14,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+import '../../core/utils/packing.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/pack_text.dart';
+import '../../widgets/cart_requirement.dart';
 import '../../widgets/language_picker_sheet.dart';
 import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
@@ -494,6 +497,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'purchaseCountMin': item['purchaseCountMin'] ?? 0,
         'purchaseCountMax': item['purchaseCountMax'] ?? 0,
         'minWholesaleQuantity': item['minWholesaleQuantity'],
+        'priceUnit': item['priceUnit'],
+        'packing': item['packing'],
+        'minCustomerQuantity': item['minCustomerQuantity'],
         'pendingPriceChange': item['pendingPriceChange'],
       };
     }
@@ -1019,6 +1025,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       'purchaseCountMin': item['purchaseCountMin'] ?? 0,
       'purchaseCountMax': item['purchaseCountMax'] ?? 0,
       'minWholesaleQuantity': item['minWholesaleQuantity'],
+      'priceUnit': item['priceUnit'],
+      'packing': item['packing'],
+      'minCustomerQuantity': item['minCustomerQuantity'],
       'pendingPriceChange': item['pendingPriceChange'],
     };
   }
@@ -1792,9 +1801,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   List<Widget> get _bodyPages {
     if (_isWholesaler) {
-      // Planned wholesaler nav: Home, Search, Categories, Deal Desk, Profile.
-      // Cart removed for wholesalers (orders via Send Requirement + Deal Desk).
-      // Search tab kept for now; full removal + Orders/Dealer Club tabs in Phase 5.
+      // Wholesaler nav: Home, Search, Categories, Cart, Deal Desk. Profile is
+      // opened from the button next to notifications in the home header.
+      // Page indexes stay fixed (Deal Desk 3, Profile 4) so existing links
+      // such as /home?tab=4 keep working; Cart is page 5.
       return [
         _buildHomeContent(),
         _buildSearchContent(),
@@ -1808,6 +1818,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         ),
         _buildNegotiationsContent(),
         _buildProfileContent(),
+        _buildCartContent(),
       ];
     }
     return [
@@ -2925,12 +2936,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (query.isEmpty) return _searchCategoryData;
     return _searchCategoryData.where((category) {
       // Match English and Hindi names whatever the app language is.
-      final searchableText = latinDigits([
-        category['name'],
-        category['nameHindi'],
-        category['queryName'],
-        category['brandName'],
-      ].whereType<Object>().join(' ')).toLowerCase();
+      final searchableText = latinDigits(
+        [
+          category['name'],
+          category['nameHindi'],
+          category['queryName'],
+          category['brandName'],
+        ].whereType<Object>().join(' '),
+      ).toLowerCase();
       return searchableText.contains(query);
     }).toList();
   }
@@ -3882,7 +3895,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Text(
-                            l10n.commonItemsCount(cart.itemCount),
+                            l10n.commonItemsCount(
+                              cart.displayItemCount(_isWholesaler),
+                            ),
                             style: AppFonts.jakarta(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -4043,9 +4058,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
-                    final minimumQuantity = _isWholesaler
-                        ? item.minWholesaleQuantity
-                        : 1;
+                    // Quantities are in pieces; wholesalers step by whole
+                    // packets for packet products.
+                    final minimumQuantity = item.minimumQuantity(_isWholesaler);
+                    final quantityStep = item.quantityStep(_isWholesaler);
                     final isAtMinimum = item.quantity <= minimumQuantity;
                     return Dismissible(
                       key: Key(item.cartItemKey),
@@ -4126,20 +4142,51 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    pickLocalizedName(
-                                      context,
-                                      item.name,
-                                      item.nameHindi,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppFonts.jakarta(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: textPrimary,
-                                      height: 1.2,
-                                    ),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          pickLocalizedName(
+                                            context,
+                                            item.name,
+                                            item.nameHindi,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppFonts.jakarta(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: textPrimary,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ),
+                                      // Remove just this product.
+                                      Semantics(
+                                        button: true,
+                                        label: l10n.commonRemove,
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              _removeCartItemAndRefreshCoupon(
+                                                item.productId,
+                                              ),
+                                          behavior: HitTestBehavior.opaque,
+                                          child: const Padding(
+                                            padding: EdgeInsets.only(
+                                              left: 8,
+                                              bottom: 4,
+                                            ),
+                                            child: Icon(
+                                              Icons.delete_outline_rounded,
+                                              size: 20,
+                                              color: Color(0xFFEF4444),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   if ((item.brand?.trim().isNotEmpty ??
                                           false) ||
@@ -4183,7 +4230,33 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       l10n.homeMinWholesaleQtyValue(
-                                        '${item.minWholesaleQuantity}',
+                                        item.pack.isPack
+                                            ? packQuantityText(
+                                                l10n,
+                                                item.pack,
+                                                minimumQuantity,
+                                              )
+                                            : '${item.minWholesaleQuantity}',
+                                      ),
+                                      style: AppFonts.jakarta(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                  if (!_isWholesaler &&
+                                      item.minCustomerQuantity > 1) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      l10n.productMinOrderQuantity(
+                                        item.isMeter
+                                            ? contentsText(
+                                                l10n,
+                                                ContentUnit.meter,
+                                                item.minCustomerQuantity,
+                                              )
+                                            : '${item.minCustomerQuantity}',
                                       ),
                                       style: AppFonts.jakarta(
                                         fontSize: 11,
@@ -4196,7 +4269,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        '₹${_formatPrice(item.price)}',
+                                        item.pack.isPack || item.isMeter
+                                            ? l10n.productPriceWithUnit(
+                                                _formatPrice(item.price),
+                                                item.pack.isPack
+                                                    ? contentUnitLabel(
+                                                        l10n,
+                                                        item.pack.contentUnit!,
+                                                      )
+                                                    : l10n.productUnitMeter,
+                                              )
+                                            : '₹${_formatPrice(item.price)}',
                                         style: AppFonts.jakarta(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -4218,6 +4301,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       ],
                                     ],
                                   ),
+                                  if (item.pack.isPack) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      packPriceText(
+                                        l10n,
+                                        item.pack,
+                                        item.price,
+                                      ),
+                                      style: AppFonts.jakarta(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 8),
                                   // Quantity Controls
                                   Container(
@@ -4235,7 +4333,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                               : () =>
                                                     _updateCartQtyAndRefreshCoupon(
                                                       item.productId,
-                                                      item.quantity - 1,
+                                                      item.quantity -
+                                                          quantityStep,
                                                     ),
                                           child: Container(
                                             width: 32,
@@ -4262,7 +4361,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                           width: 36,
                                           alignment: Alignment.center,
                                           child: Text(
-                                            '${item.quantity}',
+                                            '${item.displayQuantity(_isWholesaler)}',
                                             style: AppFonts.jakarta(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w700,
@@ -4276,7 +4375,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                                 item.productId,
                                                 item.quantity < minimumQuantity
                                                     ? minimumQuantity
-                                                    : item.quantity + 1,
+                                                    : item.quantity +
+                                                          quantityStep,
                                               ),
                                           child: Container(
                                             width: 32,
@@ -4552,9 +4652,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     ],
                   ],
                   const SizedBox(height: 12),
-                  // Checkout Button
+                  // Checkout Button (wholesalers send the cart as a requirement)
                   GestureDetector(
-                    onTap: _isCheckingOut ? null : _proceedToCheckout,
+                    onTap: _isCheckingOut
+                        ? null
+                        : (_isWholesaler
+                              ? _sendCartAsRequirement
+                              : _proceedToCheckout),
                     child: Container(
                       width: double.infinity,
                       height: 48,
@@ -4585,17 +4689,29 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                             const SizedBox(width: 12),
                           ],
+                          if (_isWholesaler && !_isCheckingOut) ...[
+                            const Icon(
+                              Icons.send_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Text(
-                            _isCheckingOut
-                                ? l10n.homeCreatingOrder
-                                : l10n.homeProceedToCheckout,
+                            _isWholesaler
+                                ? (_isCheckingOut
+                                      ? l10n.cartSendingRequirement
+                                      : l10n.productSendRequirement)
+                                : (_isCheckingOut
+                                      ? l10n.homeCreatingOrder
+                                      : l10n.homeProceedToCheckout),
                             style: AppFonts.jakarta(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                             ),
                           ),
-                          if (!_isCheckingOut) ...[
+                          if (!_isCheckingOut && !_isWholesaler) ...[
                             const SizedBox(width: 8),
                             const Icon(
                               Icons.arrow_forward_rounded,
@@ -6551,6 +6667,35 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   ],
                 ),
               ),
+              if (_isWholesaler) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _selectNavIndex(4),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: surfaceWhite,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderLight),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0F172A).withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedUser,
+                        color: textPrimary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -7369,7 +7514,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                       ),
                     ),
-                    // Out of stock overlay
+                    // Sold out overlay
                     if (!inStock)
                       Container(
                         color: Colors.white.withOpacity(0.65),
@@ -7593,9 +7738,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                             configuredMinimum?.toString() ?? '',
                                           ) ??
                                           1;
+                                // Pieces; whole packets for packet products.
+                                final wholesaleQuantity = wholesaleMinimumOf(
+                                  product,
+                                );
                                 final quantity = _isWholesaler
-                                    ? math.max(minimumWholesaleQuantity, 1)
-                                    : 1;
+                                    ? wholesaleQuantity
+                                    : customerMinimumOf(product);
                                 ref
                                     .read(cartProvider.notifier)
                                     .addItem(
@@ -7607,6 +7756,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                       category: product['category']?.toString(),
                                       minWholesaleQuantity:
                                           minimumWholesaleQuantity,
+                                      minCustomerQuantity: customerMinimumOf(
+                                        product,
+                                      ),
+                                      priceUnit: product['priceUnit']
+                                          ?.toString(),
+                                      packing: product['packing']?.toString(),
                                       price: (product['price'] as num)
                                           .toDouble(),
                                       mrp: hasOriginalPrice
@@ -8589,6 +8744,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     await _loadSavedShippingAddresses();
     _setAddressControllersFromMap(savedAddress.toOrderPayload());
     return true;
+  }
+
+  // Wholesalers: the whole cart goes to the Deal Desk as a requirement.
+  Future<void> _sendCartAsRequirement() async {
+    if (ref.read(cartProvider).items.isEmpty) return;
+    setState(() => _isCheckingOut = true);
+    final sent = await sendCartRequirement(context, ref);
+    if (!mounted) return;
+    setState(() => _isCheckingOut = false);
+    if (sent) _selectNavIndex(3);
   }
 
   Future<void> _proceedToCheckout() async {
@@ -9849,15 +10014,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       l10n.homeNavCategories,
                       2,
                     ),
+                    _buildCartNavItem(5),
                     _buildNavItem(
                       HugeIcons.strokeRoundedBriefcase01,
                       l10n.homeNavDealDesk,
                       3,
-                    ),
-                    _buildNavItem(
-                      HugeIcons.strokeRoundedUser,
-                      l10n.homeNavProfile,
-                      4,
                     ),
                   ]
                 : [
@@ -9892,7 +10053,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildCartNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
     final cart = ref.watch(cartProvider);
-    final itemCount = ref.watch(guestModeProvider) ? 0 : cart.itemCount;
+    final itemCount = ref.watch(guestModeProvider)
+        ? 0
+        : cart.displayItemCount(_isWholesaler);
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _selectedNavIndex = index),
