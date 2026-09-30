@@ -462,7 +462,7 @@ export default function PotentialCustomersPage() {
                                             </TableCell>
                                             <TableCell>
                                                 {lead.product.stock === 0 ? (
-                                                    <span className="px-2 py-1 rounded-full text-xs font-medium text-red-400 bg-red-500/10">Out of stock</span>
+                                                    <span className="px-2 py-1 rounded-full text-xs font-medium text-red-400 bg-red-500/10">Sold out</span>
                                                 ) : lead.product.stock <= 10 ? (
                                                     <span className="px-2 py-1 rounded-full text-xs font-medium text-yellow-400 bg-yellow-500/10">{lead.product.stock} left</span>
                                                 ) : (

@@ -26,11 +26,17 @@ import {
 } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
 import { displayActivityText } from "@/lib/role-labels"
+import { quantityWithPacks } from "@/lib/pack-size"
 
 interface Order {
     _id: string
     orderNumber: string
-    items: { productSnapshot: { name: string }; quantity: number; pricePerUnit: number }[]
+    items: {
+        productSnapshot: { name: string }
+        variantSnapshot?: { priceUnit?: string; packing?: string }
+        quantity: number
+        pricePerUnit: number
+    }[]
     customerSnapshot: { name: string; email: string; phone: string }
     total: number
     status: string
@@ -765,7 +771,7 @@ export default function OrdersPage() {
                                         <div key={idx} className="flex items-start justify-between gap-4 border-b border-[#222] pb-3 last:border-0 last:pb-0">
                                             <div>
                                                 <p className="text-sm font-medium">{item.productSnapshot?.name || "Product"}</p>
-                                                <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                                                <p className="text-xs text-gray-400">Qty: {quantityWithPacks(item.variantSnapshot, item.quantity)}</p>
                                             </div>
                                             <p className="text-sm font-semibold">Rs {(item.pricePerUnit * item.quantity).toLocaleString("en-IN")}</p>
                                         </div>

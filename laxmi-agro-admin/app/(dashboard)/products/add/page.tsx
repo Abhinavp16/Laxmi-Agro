@@ -73,6 +73,13 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { apiFetch, buildApiUrl } from "@/lib/api";
 import { EffectivePricePreview } from "@/components/effective-price-preview";
+import {
+  PackPreview,
+  StockInPacks,
+  baseUnitSuffix,
+  packingHint,
+} from "@/components/pack-preview";
+import { getPackInfo, packLabel, packQuantityText } from "@/lib/pack-size";
 import { HINDI_AUTO_NOTE, SuggestHindiButton } from "@/components/hindi-name-tools";
 
 interface Category {
@@ -219,6 +226,10 @@ const productSchema = z.object({
   minWholesaleQuantity: z
     .string()
     .refine((val) => !isNaN(Number(val)), "Must be a number"),
+  minCustomerQuantity: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), "Must be a number")
+    .default("1"),
   negotiationEnabled: z.boolean().default(true),
   status: z.enum(["active", "draft", "archived"]),
   isFeatured: z.boolean().default(false),
@@ -292,6 +303,7 @@ export default function AddProductPage() {
       stock: "0",
       lowStockThreshold: "5",
       minWholesaleQuantity: "10",
+      minCustomerQuantity: "1",
       negotiationEnabled: true,
       status: "active",
       isFeatured: false,
@@ -306,6 +318,9 @@ export default function AddProductPage() {
       purchaseCountMax: "0",
     },
   });
+  // Packet / coil / bundle products: prices, stock and customer minimum are
+  // per piece or meter; Min Wholesale Qty is in packs (lib/pack-size.ts).
+  const pack = getPackInfo(form.watch("priceUnit"), form.watch("packing"));
 
   useEffect(() => {
     const initData = async () => {
@@ -420,6 +435,7 @@ export default function AddProductPage() {
         stock: String(product.stock || "0"),
         lowStockThreshold: String(product.lowStockThreshold ?? "5"),
         minWholesaleQuantity: String(product.minWholesaleQuantity || "10"),
+        minCustomerQuantity: String(product.minCustomerQuantity || "1"),
         negotiationEnabled: product.negotiationEnabled !== false,
         status: product.status || "draft",
         isFeatured: product.isFeatured || false,
@@ -776,6 +792,7 @@ export default function AddProductPage() {
         stock: Number(values.stock),
         lowStockThreshold: Number(values.lowStockThreshold || 5),
         minWholesaleQuantity: Number(values.minWholesaleQuantity),
+        minCustomerQuantity: Math.max(1, Number(values.minCustomerQuantity) || 1),
         negotiationEnabled: values.negotiationEnabled,
         isFeatured: values.isFeatured,
         isHot: values.isHot,
@@ -1746,9 +1763,22 @@ export default function AddProductPage() {
                               className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                           </FormControl>
-                          <FormDescription className="text-gray-500">
-                            Packaging or pack size shown to customers.
-                          </FormDescription>
+                          {(() => {
+                            const hint = packingHint(
+                              form.watch("priceUnit"),
+                              field.value,
+                            );
+                            return (
+                              <FormDescription
+                                className={
+                                  hint.warn ? "text-amber-400" : "text-gray-500"
+                                }
+                                data-testid="packing-hint"
+                              >
+                                {hint.text}
+                              </FormDescription>
+                            );
+                          })()}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1761,7 +1791,9 @@ export default function AddProductPage() {
                       name="stock"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-white">Stock</FormLabel>
+                          <FormLabel className="text-white">
+                            Stock{baseUnitSuffix(pack)}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1770,6 +1802,11 @@ export default function AddProductPage() {
                               className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                           </FormControl>
+                          <StockInPacks
+                            info={pack}
+                            stock={String(field.value ?? "")}
+                            onStockChange={field.onChange}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1780,7 +1817,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-white">
-                            Low Stock Threshold
+                            Low Stock Threshold{baseUnitSuffix(pack)}
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -1804,6 +1841,9 @@ export default function AddProductPage() {
                         <FormItem>
                           <FormLabel className="text-white">
                             Min Wholesale Qty
+                            {pack.packUnit
+                              ? ` (${packLabel(pack.packUnit, 2).toLowerCase()})`
+                              : ""}
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -1813,6 +1853,18 @@ export default function AddProductPage() {
                               className="bg-[#0D0D0D] border-[#333] text-white"
                             />
                           </FormControl>
+                          {pack.packUnit && (
+                            <FormDescription className="text-gray-500">
+                              ={" "}
+                              {packQuantityText(
+                                pack,
+                                Math.max(1, Number(field.value) || 1) *
+                                  pack.size,
+                              )}
+                              . Wholesalers buy whole{" "}
+                              {packLabel(pack.packUnit, 2).toLowerCase()} only.
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1840,6 +1892,45 @@ export default function AddProductPage() {
                       )}
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="minCustomerQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">
+                            Min Customer Qty{baseUnitSuffix(pack)}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              placeholder="1"
+                              {...field}
+                              className="bg-[#0D0D0D] border-[#333] text-white"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-gray-500">
+                            {pack.contentUnit === "meter"
+                              ? "Smallest cut length a customer can order, e.g. 10."
+                              : "Smallest quantity a customer can order."}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <PackPreview
+                    priceUnit={form.watch("priceUnit")}
+                    packing={form.watch("packing")}
+                    retailPrice={form.watch("retailPrice")}
+                    wholesalePrice={form.watch("wholesalePrice")}
+                    stock={form.watch("stock")}
+                    minWholesaleQuantity={form.watch("minWholesaleQuantity")}
+                    minCustomerQuantity={form.watch("minCustomerQuantity")}
+                  />
 
                   <FormField
                     control={form.control}

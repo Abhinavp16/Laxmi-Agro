@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { apiFetch, getUser } from "@/lib/api"
 import { isMemberRole } from "@/lib/role-labels"
 import { useNegotiationSocket } from "@/lib/hooks/useNegotiationSocket"
+import { quantityWithPacks } from "@/lib/pack-size"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
@@ -69,7 +70,7 @@ interface ApprovedBy {
 interface NegotiationList {
     id: string
     negotiationNumber: string
-    product: { name: string; price: number }
+    product: { name: string; price: number; priceUnit?: string; packing?: string }
     wholesaler: { name: string }
     requestedQuantity: number
     requestedPricePerUnit: number
@@ -81,7 +82,7 @@ interface NegotiationList {
 interface NegotiationDetail {
     _id: string
     negotiationNumber: string
-    productSnapshot: { name: string; sku: string; price: number; image?: string }
+    productSnapshot: { name: string; sku: string; price: number; image?: string; priceUnit?: string; packing?: string }
     wholesalerId: { _id: string; name: string; email?: string; phone?: string; address?: string; businessInfo?: { businessName?: string; businessAddress?: string } }
     requestedQuantity: number
     requestedPricePerUnit: number
@@ -344,7 +345,7 @@ export default function NegotiationsPage() {
                                         <TableCell className="text-white font-medium">{negotiation.negotiationNumber}</TableCell>
                                         <TableCell className="text-white">{negotiation.wholesaler?.name || 'Unknown'}</TableCell>
                                         <TableCell className="text-gray-400">{negotiation.product?.name || 'Unknown'}</TableCell>
-                                        <TableCell className="text-white text-right">{negotiation.requestedQuantity}</TableCell>
+                                        <TableCell className="text-white text-right">{quantityWithPacks(negotiation.product, negotiation.requestedQuantity)}</TableCell>
                                         <TableCell className="text-white text-right">₹{negotiation.requestedPricePerUnit.toLocaleString()}</TableCell>
                                         <TableCell className="text-center">
                                             {getStatusBadge(negotiation.status)}
@@ -692,7 +693,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 </SheetDescription>
                 <SheetDescription className="text-slate-500">
                     {detail.wholesalerId?.businessInfo?.businessName || detail.wholesalerId?.name || 'Wholesaler'}
-                    {detail.wholesalerId?.phone ? ` · ${detail.wholesalerId.phone}` : ''} · Qty {detail.requestedQuantity}
+                    {detail.wholesalerId?.phone ? ` · ${detail.wholesalerId.phone}` : ''} · Qty {quantityWithPacks(detail.productSnapshot, detail.requestedQuantity)}
                 </SheetDescription>
                 <div className="flex items-center gap-2 pt-2 text-xs">
                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-medium capitalize ${statusColor(detail.status)}`}>
@@ -720,7 +721,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                         </div>
                         <div className="text-right">
                             <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested Qty</span>
-                            <p className="font-mono text-lg text-slate-900">{detail.requestedQuantity}</p>
+                            <p className="font-mono text-lg text-slate-900">{quantityWithPacks(detail.productSnapshot, detail.requestedQuantity)}</p>
                         </div>
                         <div>
                             <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested Price</span>
@@ -924,7 +925,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     <DialogHeader>
                         <DialogTitle>{canCreateMissingOrder ? 'Create Missing Order' : 'Accept Deal & Create Order'}</DialogTitle>
                         <DialogDescription className="text-slate-500">
-                            {detail.requestedQuantity} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
+                            {quantityWithPacks(detail.productSnapshot, detail.requestedQuantity)} × ₹{(detail.currentPricePerUnit ?? 0).toLocaleString()} = ₹{orderTotal.toLocaleString()}.
                             This will create a pending-payment order using the terms shown. The dealer cannot accept or create the order.
                         </DialogDescription>
                     </DialogHeader>
