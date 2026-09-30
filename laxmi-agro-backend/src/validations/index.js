@@ -206,6 +206,10 @@ const negotiationValidation = {
     pricePerUnit: Joi.number().min(0).required(),
     message: Joi.string().max(500).allow('', null),
   }),
+
+  fromCart: Joi.object({
+    message: Joi.string().max(500).allow('', null),
+  }),
 };
 
 const orderValidation = {
@@ -278,6 +282,7 @@ const adminValidation = {
     retailPrice: Joi.number().min(0).required(),
     wholesalePrice: Joi.number().min(0).required(),
     minWholesaleQuantity: Joi.number().integer().min(1).default(10),
+    minCustomerQuantity: Joi.number().integer().min(1).default(1),
     negotiationEnabled: Joi.boolean().default(true),
     sku: Joi.string().required(),
     stock: Joi.number().integer().min(0).default(0),
@@ -322,6 +327,7 @@ const adminValidation = {
     retailPrice: Joi.number().min(0),
     wholesalePrice: Joi.number().min(0),
     minWholesaleQuantity: Joi.number().integer().min(1),
+    minCustomerQuantity: Joi.number().integer().min(1),
     negotiationEnabled: Joi.boolean(),
     stock: Joi.number().integer().min(0),
     lowStockThreshold: Joi.number().integer().min(0),

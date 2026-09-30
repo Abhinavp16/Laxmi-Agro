@@ -7,6 +7,15 @@ const {
   getVariantDisplayName,
 } = require('../utils/productVariants');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
+const {
+  describePack,
+  getPackSize,
+  getMinimumWholesalePacks,
+  getMinimumWholesaleQuantity,
+  getMinimumCustomerQuantity,
+  isWholePacks,
+  roundUpToWholesaleQuantity,
+} = require('../utils/packSize');
 
 const buildCartItemKey = (productId, variantId) => `${productId}:${variantId || 'default'}`;
 
@@ -24,19 +33,30 @@ const buildProductMap = (products = []) => products.reduce((acc, product) => {
   return acc;
 }, {});
 
-const getMinimumWholesaleQuantity = (product) => {
-  const value = Number(product?.minWholesaleQuantity);
-  return Number.isInteger(value) && value > 0 ? value : 1;
-};
-
 const isWholesaler = (userRole) => userRole === 'wholesaler';
 
 const assertMinimumWholesaleQuantity = (product, userRole, quantity) => {
+  if (!isWholesaler(userRole)) {
+    const customerMinimum = getMinimumCustomerQuantity(product);
+    if (quantity < customerMinimum) {
+      throw new BadRequestError(
+        `Minimum order quantity for ${product.name} is ${customerMinimum}`,
+        'MIN_CUSTOMER_QUANTITY_NOT_MET'
+      );
+    }
+    return;
+  }
   const minimumQuantity = getMinimumWholesaleQuantity(product);
-  if (isWholesaler(userRole) && quantity < minimumQuantity) {
+  if (quantity < minimumQuantity) {
     throw new BadRequestError(
       `Minimum wholesale quantity for ${product.name} is ${minimumQuantity}`,
       'MIN_WHOLESALE_QUANTITY_NOT_MET'
+    );
+  }
+  if (!isWholePacks(product, quantity)) {
+    throw new BadRequestError(
+      `${product.name} is sold in full ${describePack(product)}`,
+      'PACK_QUANTITY_REQUIRED'
     );
   }
 };
@@ -69,7 +89,10 @@ const formatCartItem = (item, product, userRole, discounts = null) => {
       discountSource: pricing.discountSource,
       discountSourceName: pricing.discountSourceName,
       stock: product.stock,
-      minWholesaleQuantity: getMinimumWholesaleQuantity(product),
+      // In packets for packet products (see packSize).
+      minWholesaleQuantity: getMinimumWholesalePacks(product),
+      packSize: getPackSize(product),
+      minCustomerQuantity: getMinimumCustomerQuantity(product),
       image: product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url,
       priceUnit: product.priceUnit || '',
       packing: product.packing || '',
@@ -86,7 +109,7 @@ const formatCartItem = (item, product, userRole, discounts = null) => {
 const populateCartItems = async (cart, userRole = 'guest') => {
   const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
   const products = await Product.find({ _id: { $in: productIds } })
-    .select('name nameHindi brand category categoryRef company slug mrp retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity')
+    .select('name nameHindi brand category categoryRef company slug mrp retailPrice wholesalePrice stock priceUnit packing images negotiationEnabled minWholesaleQuantity minCustomerQuantity')
     .populate('company', 'name')
     .populate('categoryRef', 'name nameHindi slug')
     .lean();
@@ -99,13 +122,12 @@ const populateCartItems = async (cart, userRole = 'guest') => {
     const product = productMap[item.productId.toString()];
     if (!product) return null;
 
-    const minimumQuantity = getMinimumWholesaleQuantity(product);
-    if (
-      isWholesaler(userRole) &&
-      item.quantity < minimumQuantity &&
-      product.stock >= minimumQuantity
-    ) {
-      item.quantity = minimumQuantity;
+    // Raise to the minimum / whole packs when stock allows.
+    const validQuantity = isWholesaler(userRole)
+      ? roundUpToWholesaleQuantity(product, item.quantity)
+      : Math.max(item.quantity, getMinimumCustomerQuantity(product));
+    if (validQuantity !== item.quantity && product.stock >= validQuantity) {
+      item.quantity = validQuantity;
       cartUpdated = true;
     }
 
@@ -268,7 +290,7 @@ exports.validateCart = async (req, res, next) => {
     const userRole = req.user?.role || 'guest';
     const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
     const products = await Product.find({ _id: { $in: productIds } })
-      .select('name stock retailPrice status minWholesaleQuantity')
+      .select('name stock retailPrice status minWholesaleQuantity minCustomerQuantity priceUnit packing')
       .lean();
 
     const productMap = buildProductMap(products);
@@ -322,7 +344,10 @@ exports.validateCart = async (req, res, next) => {
 
       const variantName = getVariantDisplayName(product, resolved.variant);
       const minimumQuantity = getMinimumWholesaleQuantity(product);
-      if (isWholesaler(userRole) && item.quantity < minimumQuantity) {
+      if (
+        isWholesaler(userRole) &&
+        (item.quantity < minimumQuantity || !isWholePacks(product, item.quantity))
+      ) {
         issues.push({
           productId: item.productId.toString(),
           variantId: itemVariantId,
@@ -333,6 +358,22 @@ exports.validateCart = async (req, res, next) => {
           availableStock: resolved.variant.stock,
           requestedQty: item.quantity,
           minimumWholesaleQuantity: minimumQuantity,
+        });
+        continue;
+      }
+
+      const customerMinimum = getMinimumCustomerQuantity(product);
+      if (!isWholesaler(userRole) && item.quantity < customerMinimum) {
+        issues.push({
+          productId: item.productId.toString(),
+          variantId: itemVariantId,
+          cartItemKey: buildCartItemKey(item.productId.toString(), itemVariantId),
+          name: variantName,
+          type: 'minimum_customer_quantity',
+          message: `Minimum order quantity for ${variantName} is ${customerMinimum}`,
+          availableStock: resolved.variant.stock,
+          requestedQty: item.quantity,
+          minimumCustomerQuantity: customerMinimum,
         });
         continue;
       }

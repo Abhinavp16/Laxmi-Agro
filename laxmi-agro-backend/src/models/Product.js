@@ -208,6 +208,12 @@ const productSchema = new mongoose.Schema({
     default: 10,
     min: [1, 'Minimum wholesale quantity must be at least 1'],
   },
+  // Customers' smallest order in pieces / meters (cut lengths); see packSize.
+  minCustomerQuantity: {
+    type: Number,
+    default: 1,
+    min: [1, 'Minimum customer quantity must be at least 1'],
+  },
   negotiationEnabled: {
     type: Boolean,
     default: true,

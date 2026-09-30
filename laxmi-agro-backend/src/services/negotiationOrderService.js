@@ -5,9 +5,9 @@ const { getVariantById, buildVariantSnapshot } = require('../utils/productVarian
 const { recordAudit } = require('./auditService');
 const notificationService = require('./notificationService');
 
-const getMinimumWholesaleQuantity = (product) => Number(
-  product?.minWholesaleQuantity ?? 10,
-);
+const { getMinimumWholesaleQuantity: minimumInPieces } = require('../utils/packSize');
+
+const getMinimumWholesaleQuantity = (product) => minimumInPieces(product, 10);
 
 const REQUIRED_ADDRESS_FIELDS = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'pincode'];
 

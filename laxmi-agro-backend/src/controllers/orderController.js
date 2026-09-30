@@ -1,4 +1,5 @@
 const { Order, Cart, Product, Negotiation, Settings, AffiliateCode, Offer } = require('../models');
+const { getMinimumWholesaleQuantity, getMinimumCustomerQuantity, isWholePacks } = require('../utils/packSize');
 const { NotFoundError, BadRequestError, UnauthorizedError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { ORDER_STATUS, ORDER_TYPES, NEGOTIATION_STATUS, USER_ROLES } = require('../utils/constants');
@@ -385,10 +386,6 @@ const buildProductMap = (products = []) => products.reduce((acc, product) => {
   return acc;
 }, {});
 
-const getMinimumWholesaleQuantity = (product) => {
-  const value = Number(product?.minWholesaleQuantity);
-  return Number.isInteger(value) && value > 0 ? value : 1;
-};
 
 // productMap products must include company/categoryRef/category;
 // discountMap comes from buildDiscountMap (brand/category % off MRP).
@@ -426,7 +423,7 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole, discountMap =
     const minimumQuantity = getMinimumWholesaleQuantity(product);
     if (
       userRole === USER_ROLES.WHOLESALER &&
-      item.quantity < minimumQuantity
+      (item.quantity < minimumQuantity || !isWholePacks(product, item.quantity))
     ) {
       const itemName = getVariantDisplayName(product, resolved.variant);
       stockIssues.push({
@@ -439,6 +436,23 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole, discountMap =
         availableStock: resolved.variant.stock,
         requestedQty: item.quantity,
         message: `Minimum wholesale quantity for ${itemName} is ${minimumQuantity}`,
+      });
+      continue;
+    }
+
+    const customerMinimum = getMinimumCustomerQuantity(product);
+    if (userRole !== USER_ROLES.WHOLESALER && item.quantity < customerMinimum) {
+      const itemName = getVariantDisplayName(product, resolved.variant);
+      stockIssues.push({
+        productId: item.productId.toString(),
+        variantId: resolved.variantId,
+        cartItemKey: cartItemKey(item.productId.toString(), resolved.variantId),
+        name: itemName,
+        type: 'minimum_customer_quantity',
+        minimumCustomerQuantity: customerMinimum,
+        availableStock: resolved.variant.stock,
+        requestedQty: item.quantity,
+        message: `Minimum order quantity for ${itemName} is ${customerMinimum}`,
       });
       continue;
     }
@@ -665,11 +679,10 @@ exports.createOrderFromCart = async (req, res, next) => {
 
     if (stockIssues.length > 0) {
       const msg = stockIssues.map((issue) => issue.message).join('; ');
-      const code = stockIssues.some(
-        (issue) => issue.type === 'minimum_wholesale_quantity'
-      )
-        ? 'MIN_WHOLESALE_QUANTITY_NOT_MET'
-        : 'INSUFFICIENT_STOCK';
+      const hasIssue = (type) => stockIssues.some((issue) => issue.type === type);
+      let code = 'INSUFFICIENT_STOCK';
+      if (hasIssue('minimum_wholesale_quantity')) code = 'MIN_WHOLESALE_QUANTITY_NOT_MET';
+      else if (hasIssue('minimum_customer_quantity')) code = 'MIN_CUSTOMER_QUANTITY_NOT_MET';
       return res.status(400).json({
         success: false,
         message: msg,
