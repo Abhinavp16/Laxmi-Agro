@@ -8,7 +8,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:dio/dio.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -34,6 +33,7 @@ import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/services/storage_service.dart';
 import '../cart/cart_parts.dart';
 import '../categories/categories_screen.dart';
+import '../negotiations/deal_desk_widgets.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
@@ -43,7 +43,6 @@ import '../../core/providers/wishlist_provider.dart';
 import '../../core/providers/order_count_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/utils/number_formatter.dart';
-import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/product_search.dart';
 import '../../core/utils/recent_searches.dart';
 import '../../core/theme/app_fonts.dart';
@@ -4057,597 +4056,139 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         .toList();
   }
 
-  Map<String, dynamic> _getNegStatusDisplay(
-    String status,
-    Map<String, dynamic> negotiation,
-  ) {
-    final l10n = context.l10n;
-    final orderStatusLabel = DealDeskPresentation.orderStatusLabel(
-      negotiation,
-      l10n: l10n,
-    );
-    switch (status) {
-      case 'pending':
-        return {
-          'label': orderStatusLabel == null
-              ? l10n.homeDealStatusPending
-              : orderStatusLabel.toUpperCase(),
-          'color': AppColors.textTertiary,
-          'bg': AppColors.gray100,
-        };
-      case 'countered':
-        return {
-          'label': orderStatusLabel == null
-              ? l10n.homeDealStatusCountered
-              : orderStatusLabel.toUpperCase(),
-          'color': AppColors.warning,
-          'bg': AppColors.warningSoft,
-        };
-      case 'accepted':
-        return {
-          'label': (orderStatusLabel ?? l10n.statusDealAcceptedOrderPending)
-              .toUpperCase(),
-          'color': AppColors.success,
-          'bg': AppColors.successSoft,
-        };
-      case 'rejected':
-        return {
-          'label': orderStatusLabel == null
-              ? l10n.homeDealStatusRejected
-              : orderStatusLabel.toUpperCase(),
-          'color': AppColors.error,
-          'bg': AppColors.errorSoft,
-        };
-      case 'expired':
-        return {
-          'label': orderStatusLabel == null
-              ? l10n.homeDealStatusExpired
-              : orderStatusLabel.toUpperCase(),
-          'color': AppColors.gray400,
-          'bg': AppColors.gray100,
-        };
-      case 'converted':
-        return {
-          'label': (orderStatusLabel ?? l10n.statusDealOrderCreated)
-              .toUpperCase(),
-          'color': AppColors.secondary,
-          'bg': AppColors.secondarySoft,
-        };
-      default:
-        return {
-          'label': orderStatusLabel == null
-              ? status.toUpperCase()
-              : orderStatusLabel.toUpperCase(),
-          'color': AppColors.textTertiary,
-          'bg': AppColors.gray100,
-        };
-    }
+  Future<void> _openDealDetail(String negotiationId) async {
+    if (negotiationId.isEmpty) return;
+    final result = await context.push('/negotiation-detail/$negotiationId');
+    if (result == true) _fetchNegotiations();
   }
 
   Widget _buildNegotiationsContent() {
     final l10n = context.l10n;
-    return Column(
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          color: AppColors.backgroundLight,
-          child: Text(
-            l10n.homeDealDeskTitle,
-            style: AppFonts.jakarta(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-        // Tabs
-        Container(
-          color: AppColors.backgroundLight,
-          child: Container(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-            ),
-            child: Row(
-              children: [
-                _buildNegotiationTab(l10n.homeDealTabActive, 0),
-                _buildNegotiationTab(l10n.homeDealTabCompleted, 1),
-              ],
-            ),
-          ),
-        ),
-        // Content
-        Expanded(
-          child: _isNegotiationsLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                )
-              : _filteredNegotiations.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.handshake_outlined,
-                        size: 48,
-                        color: AppColors.textTertiary.withOpacity(0.5),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _negotiationTab == 0
-                            ? l10n.homeDealEmptyActive
-                            : l10n.homeDealEmptyCompleted,
-                        style: AppFonts.jakarta(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.homeDealEmptyHint,
-                        style: AppFonts.jakarta(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchNegotiations,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: _filteredNegotiations.length,
-                    itemBuilder: (context, index) =>
-                        _buildNegotiationCard(_filteredNegotiations[index]),
-                  ),
-                ),
-        ),
-      ],
+    final deals = DealDeskPresentation.sortNeedsReplyFirst(
+      _filteredNegotiations,
     );
-  }
+    final activeCount = _negotiations
+        .where(DealDeskPresentation.isActive)
+        .length;
+    const completedStatuses = {'accepted', 'rejected', 'expired', 'converted'};
+    final completedCount = _negotiations
+        .where((n) => completedStatuses.contains(n['status']))
+        .length;
+    final needReply = _dealsAwaitingReply;
 
-  Widget _buildNegotiationTab(String label, int index) {
-    final isSelected = _negotiationTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _negotiationTab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? AppColors.primary : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: AppFonts.jakarta(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNegotiationCard(Map<String, dynamic> negotiation) {
-    final l10n = context.l10n;
-    final languageCode = Localizations.localeOf(context).languageCode;
-    final status = negotiation['status'] as String? ?? 'pending';
-    final statusDisplay = _getNegStatusDisplay(status, negotiation);
-    final product = negotiation['product'] as Map<String, dynamic>? ?? {};
-    final productName = localizedName(
-      context,
-      product,
-      fallback: l10n.homeUnknownProduct,
-    );
-    final imageUrl = product['image'] as String? ?? '';
-    final quantity = negotiation['requestedQuantity'] ?? 0;
-    final requestedPrice = negotiation['requestedPricePerUnit'] ?? 0;
-    final currentPrice = negotiation['currentPricePerUnit'] ?? 0;
-    final currentTotal = negotiation['currentTotalPrice'] ?? 0;
-    final currentOfferBy = negotiation['currentOfferBy'] as String? ?? '';
-    final negotiationNumber = negotiation['negotiationNumber'] as String? ?? '';
-    final negotiationId = (negotiation['id'] ?? negotiation['_id'] ?? '')
-        .toString();
-    final canPay = negotiation['canPay'] == true;
-    final createdAt = negotiation['createdAt'] as String? ?? '';
-
-    String formattedDate = '';
-    String formattedTime = '';
-    if (createdAt.isNotEmpty) {
-      try {
-        final dateTime = DateTime.parse(createdAt);
-        formattedDate = DateFormat(
-          'MMM d, yyyy',
-          languageCode,
-        ).format(dateTime);
-        formattedTime = DateFormat('h:mm a', languageCode).format(dateTime);
-      } catch (_) {}
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: GestureDetector(
-        onTap: () async {
-          final result = await context.push(
-            '/negotiation-detail/$negotiationId',
-          );
-          if (result == true) _fetchNegotiations();
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gray100),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left: Product Image (100x100)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 100,
-                        height: 100,
-                        child: imageUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) =>
-                                    Container(color: AppColors.gray100),
-                                errorWidget: (_, __, ___) => Container(
-                                  color: AppColors.gray100,
-                                  child: Center(
-                                    child: HugeIcon(
-                                      icon: HugeIcons.strokeRoundedImage01,
-                                      color: AppColors.textTertiary,
-                                      size: 32,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                color: AppColors.gray100,
-                                child: Center(
-                                  child: HugeIcon(
-                                    icon: HugeIcons.strokeRoundedImage01,
-                                    color: AppColors.textTertiary,
-                                    size: 32,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Right: Product Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top Row: Date, Time, Status
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      formattedDate.isNotEmpty
-                                          ? formattedDate
-                                          : l10n.homeNoDate,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppFonts.jakarta(
-                                        fontSize: 11,
-                                        color: AppColors.textTertiary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    if (formattedTime.isNotEmpty)
-                                      Text(
-                                        formattedTime,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppFonts.jakarta(
-                                          fontSize: 10,
-                                          color: AppColors.textTertiary,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusDisplay['bg'] as Color,
-                                    borderRadius: BorderRadius.circular(100),
-                                  ),
-                                  child: Text(
-                                    statusDisplay['label'] as String,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppFonts.jakarta(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      color: statusDisplay['color'] as Color,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          // SKU / Negotiation Number
-                          Text(
-                            negotiationNumber.isNotEmpty
-                                ? negotiationNumber
-                                : l10n.homeNegotiationFallback,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Product Name
-                          Text(
-                            productName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Quantity
-                          Text(
-                            l10n.homeQtyUnits('$quantity'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Price Info (Compact)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(6),
-                    border: status == 'accepted'
-                        ? const Border(
-                            left: BorderSide(
-                              color: AppColors.success,
-                              width: 3,
-                            ),
-                          )
-                        : null,
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            l10n.homeYourPriceLabel,
-                            style: AppFonts.jakarta(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '₹$requestedPrice',
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            status == 'countered' && currentOfferBy == 'admin'
-                                ? l10n.homeCounterLabel
-                                : l10n.homeCurrentLabel,
-                            style: AppFonts.jakarta(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '₹$currentPrice',
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: status == 'accepted'
-                                  ? AppColors.success
-                                  : AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            l10n.homeTotalLabel,
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            '₹$currentTotal',
-                            style: AppFonts.jakarta(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: status == 'accepted'
-                                  ? AppColors.success
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Action Button
-                _buildNegActionButton(
-                  status,
-                  currentOfferBy,
-                  canPay,
-                  negotiationId,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNegActionButton(
-    String status,
-    String currentOfferBy,
-    bool canPay,
-    String negotiationId,
-  ) {
-    final l10n = context.l10n;
-    String label;
-    String style;
-    IconData? icon;
-    VoidCallback? onTap;
-    if (status == 'countered' && currentOfferBy == 'admin') {
-      label = l10n.homeRespondToCounter;
-      style = 'primary';
-      icon = Icons.reply_rounded;
-      onTap = () async {
-        final r = await context.push('/negotiation-detail/$negotiationId');
-        if (r == true) _fetchNegotiations();
-      };
-    } else if (status == 'accepted' && canPay) {
-      label = l10n.homeProceedToOrder;
-      style = 'primary';
-      icon = Icons.account_balance_wallet_rounded;
-      onTap = () => _proceedToNegotiationOrder(negotiationId);
-    } else if (status == 'pending') {
-      label = l10n.homeUnderReview;
-      style = 'disabled';
-    } else if (status == 'rejected') {
-      label = l10n.homeRejected;
-      style = 'disabled';
-    } else if (status == 'expired') {
-      label = l10n.homeExpired;
-      style = 'disabled';
-    } else {
-      label = l10n.commonViewDetails;
-      style = 'outline';
-      onTap = () async {
-        final r = await context.push('/negotiation-detail/$negotiationId');
-        if (r == true) _fetchNegotiations();
-      };
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 44,
-        decoration: BoxDecoration(
-          color: style == 'primary'
-              ? AppColors.primary
-              : style == 'disabled'
-              ? AppColors.gray100
-              : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(10),
-          border: style == 'outline' ? Border.all(color: AppColors.gray100) : null,
-          boxShadow: style == 'primary' && icon != null
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    Widget body;
+    if (_isNegotiationsLoading && _negotiations.isEmpty) {
+      body = ListView.separated(
+        key: const ValueKey('deals-loading'),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, _) => const DealInboxSkeleton(),
+      );
+    } else if (deals.isEmpty) {
+      body = RefreshIndicator(
+        key: const ValueKey('deals-empty'),
+        onRefresh: _fetchNegotiations,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: Colors.white),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: AppFonts.jakarta(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: style == 'primary'
-                    ? Colors.white
-                    : style == 'disabled'
-                    ? AppColors.gray400
-                    : AppColors.textPrimary,
-              ),
+            const SizedBox(height: 40),
+            EmptyState(
+              icon: HugeIcons.strokeRoundedAgreement02,
+              title: _negotiationTab == 0
+                  ? l10n.homeDealEmptyActive
+                  : l10n.homeDealEmptyCompleted,
+              message: l10n.homeDealEmptyHint,
             ),
           ],
         ),
-      ),
+      );
+    } else {
+      body = RefreshIndicator(
+        key: ValueKey('deals-$_negotiationTab'),
+        onRefresh: _fetchNegotiations,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+          itemCount: deals.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final deal = deals[index];
+            final id = (deal['id'] ?? deal['_id'] ?? '').toString();
+            return DealInboxTile(
+              negotiation: deal,
+              onTap: () => _openDealDetail(id),
+              onAction: (action) {
+                if (action == DealTileAction.proceedToOrder) {
+                  _proceedToNegotiationOrder(id);
+                } else {
+                  _openDealDetail(id);
+                }
+              },
+            );
+          },
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Text(
+            l10n.homeDealDeskTitle,
+            style: AppFonts.jakarta(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.4,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DealSegmentedControl(
+            labels: [l10n.homeDealTabActive, l10n.homeDealTabCompleted],
+            selectedIndex: _negotiationTab,
+            counts: [activeCount, completedCount],
+            onChanged: (index) {
+              HapticFeedback.selectionClick();
+              setState(() => _negotiationTab = index);
+            },
+          ),
+        ),
+        AnimatedSize(
+          duration: AppMotion.of(context, AppMotion.base),
+          curve: AppMotion.standard,
+          alignment: Alignment.topLeft,
+          child: _negotiationTab == 0 && needReply > 0
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 16, 0),
+                  child: Row(
+                    children: [
+                      const DealNeedsReplyDot(size: 8),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.dealNeedsReplyCount(needReply),
+                        style: AppFonts.jakarta(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: AppMotion.of(context, AppMotion.base),
+            child: body,
+          ),
+        ),
+      ],
     );
   }
 
