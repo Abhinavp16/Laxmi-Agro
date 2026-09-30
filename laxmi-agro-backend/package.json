@@ -48,6 +48,7 @@
     "test:hindi-names": "node tests/hindiNames.test.js",
     "test:notification-templates": "node tests/notificationTemplates.test.js",
     "test:search-query": "node tests/searchQuery.test.js",
+    "test:cart-requirement": "node tests/cartRequirement.test.js",
     "test:pack-size": "node tests/packSize.test.js",
     "test:meter-pack-migration": "node tests/meterPackMigration.test.js",
     "catalog:meter-packs": "node src/scripts/convertMeterPacks.js",

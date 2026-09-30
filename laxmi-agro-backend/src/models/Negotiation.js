@@ -69,6 +69,9 @@ const negotiationSchema = new mongoose.Schema({
     image: String,
     sku: String,
     variantSku: String,
+    // Unit and pack at request time, e.g. Bundle / "500 m" (see packSize).
+    priceUnit: { type: String, default: '' },
+    packing: { type: String, default: '' },
   },
 
   requestedQuantity: {

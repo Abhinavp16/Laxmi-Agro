@@ -103,6 +103,8 @@ exports.getNegotiations = async (req, res, next) => {
         name: n.productSnapshot.name,
         price: n.productSnapshot.price,
         image: n.productSnapshot.image,
+        priceUnit: n.productSnapshot.priceUnit || '',
+        packing: n.productSnapshot.packing || '',
       },
       requestedQuantity: n.requestedQuantity,
       requestedPricePerUnit: n.requestedPricePerUnit,
