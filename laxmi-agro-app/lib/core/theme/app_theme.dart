@@ -60,6 +60,9 @@ class AppColors {
   static const Color gray800 = Color(0xFF22322A);
   static const Color gray900 = Color(0xFF14261A);
 
+  // Rating stars.
+  static const Color star = Color(0xFFE8A317);
+
   // Third-party brand colors used on buttons that name them.
   static const Color whatsapp = Color(0xFF1FA855);
 }

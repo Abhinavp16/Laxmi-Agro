@@ -256,7 +256,7 @@ class _RatingLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFE8A317)),
+        const Icon(Icons.star_rounded, size: 14, color: AppColors.star),
         const SizedBox(width: 2),
         Text(
           rating.toStringAsFixed(1),
