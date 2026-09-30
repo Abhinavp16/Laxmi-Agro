@@ -349,7 +349,14 @@ class _FeaturedProductsScreenState
             );
       },
       onTap: () =>
-          context.push('/product/$productId', extra: {'heroTag': heroTag}),
+          context.push(
+            '/product/$productId',
+            extra: {
+              'heroTag': heroTag,
+              'heroImage': product['image']?.toString(),
+              'heroBlurHash': product['blurHash']?.toString(),
+            },
+          ),
       action: ProductCartStepper(
         productId: productId,
         product: product,

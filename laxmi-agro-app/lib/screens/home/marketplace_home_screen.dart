@@ -3464,7 +3464,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return Pressable(
       onTap: () => context.push(
         '/product/${product['id']}',
-        extra: {'heroTag': heroTag},
+        extra: {
+          'heroTag': heroTag,
+          'heroImage': product['image']?.toString(),
+          'heroBlurHash': product['blurHash']?.toString(),
+        },
       ),
       color: AppColors.surfaceLight,
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -5262,6 +5266,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         products[index],
                         // Only the Hot Deals rail shows the HOT badge.
                         showHotBadge: !isFeatured,
+                        heroScope: isFeatured ? 'popular' : 'hot',
                       ),
                     ),
                   ),
@@ -5346,10 +5351,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   Widget _buildProductCard(
     Map<String, dynamic> product, {
     bool showHotBadge = true,
+    // Keeps photo tags unique when a product sits in both rails.
+    String heroScope = 'home',
   }) {
     final l10n = context.l10n;
     final productId = product['id'].toString();
-    final heroTag = 'product-image-$productId';
+    final heroTag = '$heroScope-product-image-$productId';
     final price = (product['price'] as num?) ?? 0;
     final originalPrice = product['originalPrice'];
     final mrp = originalPrice is num && originalPrice > 0 ? originalPrice : null;
@@ -5436,8 +5443,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               ),
             );
       },
-      onTap: () =>
-          context.push('/product/$productId', extra: {'heroTag': heroTag}),
+      onTap: () => context.push(
+        '/product/$productId',
+        extra: {
+          'heroTag': heroTag,
+          'heroImage': product['image']?.toString(),
+          'heroBlurHash': product['blurHash']?.toString(),
+        },
+      ),
       action: QuantityStepper(
         quantity: quantity,
         compact: true,

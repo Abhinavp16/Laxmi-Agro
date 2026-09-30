@@ -96,6 +96,8 @@ final appRouter = GoRouter(
         return ProductDetailScreen(
           productId: state.pathParameters['id'] ?? '',
           heroTag: extra?['heroTag']?.toString(),
+          heroImageUrl: extra?['heroImage']?.toString(),
+          heroBlurHash: extra?['heroBlurHash']?.toString(),
         );
       },
     ),

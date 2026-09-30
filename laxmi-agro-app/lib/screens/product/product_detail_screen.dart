@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,7 +36,19 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
   final String? heroTag;
 
-  const ProductDetailScreen({super.key, required this.productId, this.heroTag});
+  /// Photo the tapped card showed. The loading layout shows it where the
+  /// gallery will be, so the shared-photo flight has somewhere to land
+  /// before the product has loaded.
+  final String? heroImageUrl;
+  final String? heroBlurHash;
+
+  const ProductDetailScreen({
+    super.key,
+    required this.productId,
+    this.heroTag,
+    this.heroImageUrl,
+    this.heroBlurHash,
+  });
 
   @override
   ConsumerState<ProductDetailScreen> createState() =>
@@ -292,6 +305,55 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     );
   }
 
+  /// Waits until this page's push transition has finished, so the shared
+  /// photo lands on the loading layout before the real gallery replaces it.
+  Future<void> _untilRouteSettled() async {
+    if (!mounted || _heroLoadingPhoto == null) return;
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.isCompleted || animation.isDismissed) {
+      return;
+    }
+    final settled = Completer<void>();
+    void onStatus(AnimationStatus status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        if (!settled.isCompleted) settled.complete();
+      }
+    }
+
+    animation.addStatusListener(onStatus);
+    await settled.future;
+    animation.removeStatusListener(onStatus);
+  }
+
+  /// The card's photo for the loading layout, when a flight is expected.
+  String? get _heroLoadingPhoto {
+    final url = widget.heroImageUrl?.trim() ?? '';
+    return widget.heroTag != null && url.isNotEmpty ? url : null;
+  }
+
+  /// A gallery page: the photo on white with a little breathing room. The
+  /// loading layout uses the same widget so nothing moves when the product
+  /// arrives.
+  Widget _galleryPhoto({
+    required String url,
+    String? blurHash,
+    String category = '',
+    String name = '',
+  }) {
+    return Container(
+      color: AppColors.surfaceLight,
+      padding: const EdgeInsets.all(12),
+      child: AppImage(
+        imageUrl: url,
+        blurHash: blurHash,
+        category: category,
+        name: name,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
   Future<void> _fetchProduct() async {
     try {
       final r = await _dio.get('/products/${widget.productId}');
@@ -305,6 +367,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             productData['labelIds'] as List<dynamic>,
           );
         }
+        await _untilRouteSettled();
+        if (!mounted) return;
         setState(() {
           _product = productData;
           _selectedVariantId = _resolveInitialVariantId(productData);
@@ -755,7 +819,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final Widget page;
     if (_isLoading) {
       pageKey = 'loading';
-      page = _buildLoadingPage(l10n);
+      page = _buildLoadingPage(l10n, tp);
     } else if (_error != null || _product == null) {
       pageKey = 'error';
       page = _buildErrorPage(l10n);
@@ -767,61 +831,134 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       duration: AppMotion.of(context, AppMotion.base),
       switchInCurve: AppMotion.standard,
       switchOutCurve: AppMotion.exit,
+      // While the loading layout fades out it still holds the shared photo,
+      // so only the incoming page may join a hero flight. This builder is a
+      // new closure every build, which makes the switcher re-run it for the
+      // outgoing page too.
+      transitionBuilder: (child, animation) => HeroMode(
+        enabled: child.key == ValueKey(pageKey),
+        child: FadeTransition(opacity: animation, child: child),
+      ),
       child: KeyedSubtree(key: ValueKey(pageKey), child: page),
     );
   }
 
-  Widget _buildLoadingPage(AppLocalizations l10n) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppHeader(title: '', onBack: () => context.pop()),
-      body: Semantics(
-        label: l10n.productLoading,
-        child: ListView(
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          children: [
-            const AspectRatio(
+  Widget _buildLoadingPage(AppLocalizations l10n, double tp) {
+    final photo = _heroLoadingPhoto;
+    // Same frame and position as the gallery in [_imageCarousel].
+    final gallery = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: photo == null
+          ? const AspectRatio(
               aspectRatio: 4 / 3,
               child: SkeletonShimmer(
                 child: Skeleton(height: double.infinity, radius: AppRadius.lg),
               ),
-            ),
-            const SizedBox(height: 12),
-            const AppCard(
-              child: SkeletonShimmer(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Skeleton(width: 110, height: 12),
-                    SizedBox(height: 14),
-                    Skeleton(height: 20),
-                    SizedBox(height: 8),
-                    Skeleton(width: 180, height: 20),
-                    SizedBox(height: 22),
-                    Skeleton(width: 140, height: 28),
-                    SizedBox(height: 10),
-                    Skeleton(width: 200, height: 12),
-                  ],
+            )
+          : Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Hero(
+                  tag: widget.heroTag!,
+                  transitionOnUserGestures: true,
+                  child: _galleryPhoto(
+                    url: photo,
+                    blurHash: widget.heroBlurHash,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            AppCard(
-              child: SkeletonShimmer(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 6),
-                        child: Skeleton(height: 14),
+    );
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      body: Stack(
+        children: [
+          Semantics(
+            label: l10n.productLoading,
+            child: ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.only(top: tp + 60, bottom: 16),
+              children: [
+                gallery,
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: AppCard(
+                    child: SkeletonShimmer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Skeleton(width: 110, height: 12),
+                          SizedBox(height: 14),
+                          Skeleton(height: 20),
+                          SizedBox(height: 8),
+                          Skeleton(width: 180, height: 20),
+                          SizedBox(height: 22),
+                          Skeleton(width: 140, height: 28),
+                          SizedBox(height: 10),
+                          Skeleton(width: 200, height: 12),
+                        ],
                       ),
-                  ],
+                    ),
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: AppCard(
+                    child: SkeletonShimmer(
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < 4; i++)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 6),
+                              child: Skeleton(height: 14),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Same bar as the product page, with the title still loading.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(10, tp + 6, 10, 8),
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceLight,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  AppBackButton(onPressed: () => context.pop()),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: SkeletonShimmer(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Skeleton(width: 170, height: 14),
+                          SizedBox(height: 6),
+                          Skeleton(width: 70, height: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1124,20 +1261,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     onPageChanged: (i) => setState(() => _imgIndex = i),
                     itemBuilder: (_, i) {
                       final data = images[i];
-                      final img = AppImage(
-                        imageUrl: data['url']!,
+                      Widget page = _galleryPhoto(
+                        url: data['url']!,
                         blurHash: data['blurHash'],
                         category: _product?['category']?.toString() ?? '',
                         name: name,
-                        fit: BoxFit.contain,
-                      );
-                      Widget page = Container(
-                        color: AppColors.surfaceLight,
-                        padding: const EdgeInsets.all(12),
-                        child: img,
                       );
                       if (i == 0 && widget.heroTag != null) {
-                        page = Hero(tag: widget.heroTag!, child: page);
+                        page = Hero(
+                          tag: widget.heroTag!,
+                          transitionOnUserGestures: true,
+                          child: page,
+                        );
                       }
                       return Semantics(
                         button: true,
