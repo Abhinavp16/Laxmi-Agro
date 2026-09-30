@@ -212,7 +212,51 @@ async function deleteDirectory(publicIdPrefix) {
   }
 }
 
+// Files under a folder, e.g. listFiles('banners'):
+// [{ publicId: 'banners/x.mp4', updatedAt: Date }].
+async function listFiles(publicIdPrefix) {
+  const relativePath = sanitizeSegment(publicIdPrefix);
+  if (!relativePath) return [];
+
+  if (getStorageDriver() === FIREBASE_STORAGE_DRIVER) {
+    const bucket = getStorage();
+    if (!bucket) return [];
+    const [files] = await bucket.getFiles({ prefix: `${relativePath}/` });
+    return files.map((file) => ({
+      publicId: file.name,
+      updatedAt: new Date(file.metadata?.updated || file.metadata?.timeCreated || 0),
+    }));
+  }
+
+  const root = path.join(getUploadsRoot(), relativePath);
+  const results = [];
+  const walk = async (directory) => {
+    let entries;
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === 'ENOENT') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolute);
+      } else {
+        const stat = await fs.stat(absolute);
+        results.push({
+          publicId: path.relative(getUploadsRoot(), absolute).split(path.sep).join('/'),
+          updatedAt: stat.mtime,
+        });
+      }
+    }
+  };
+  await walk(root);
+  return results;
+}
+
 module.exports = {
+  listFiles,
   saveBuffer,
   getSignedReadUrl,
   deleteFile,

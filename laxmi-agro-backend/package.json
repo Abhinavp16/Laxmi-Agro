@@ -51,6 +51,8 @@
     "test:cart-requirement": "node tests/cartRequirement.test.js",
     "test:pack-size": "node tests/packSize.test.js",
     "test:meter-pack-migration": "node tests/meterPackMigration.test.js",
+    "test:banner-media": "node tests/bannerMedia.test.js",
+    "media:banner-cleanup": "node src/scripts/cleanupBannerMedia.js",
     "catalog:meter-packs": "node src/scripts/convertMeterPacks.js",
     "leads:backfill": "CONFIRM_PRODUCT_INTEREST_BACKFILL=yes CONFIRM_ANALYTICS_TTL_FIX=yes node src/scripts/backfillProductInterest.js"
   },
