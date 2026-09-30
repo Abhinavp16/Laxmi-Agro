@@ -11,6 +11,13 @@ const getMinimumWholesaleQuantity = (product) => minimumInPieces(product, 10);
 
 const REQUIRED_ADDRESS_FIELDS = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'pincode'];
 
+const round2 = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+// Delivery charge the admin enters when accepting (₹, never negative).
+const toDeliveryFee = (value) => round2(Math.max(0, Number(value) || 0));
+
+const formatRupees = (value) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
 /**
  * Resolve the shipping address for an admin/staff-created negotiation order.
  * Priority: explicit address in request body -> wholesaler's most recent
@@ -77,6 +84,7 @@ async function acceptNegotiationAndCreateOrder({
   message,
   shippingAddress: bodyAddress,
   customerNote,
+  deliveryCharge = 0,
   io,
 }) {
   let negotiation = await Negotiation.findById(negotiationId);
@@ -210,6 +218,8 @@ async function acceptNegotiationAndCreateOrder({
   }];
 
   const actorLabel = actor.role === 'staff' ? `Member ${actor.name}` : `Admin ${actor.name}`;
+  const deliveryFee = toDeliveryFee(deliveryCharge);
+  const deliveryNote = deliveryFee > 0 ? ` · delivery ₹${formatRupees(deliveryFee)} added` : '';
   let order;
   let createdOrder = false;
   try {
@@ -223,16 +233,18 @@ async function acceptNegotiationAndCreateOrder({
       },
       orderType: ORDER_TYPES.WHOLESALE,
       negotiationId: negotiation._id,
+      negotiationIds: [negotiation._id],
       items: orderItems,
       subtotal,
+      deliveryFee,
       discount: 0,
-      total: subtotal,
+      total: round2(subtotal + deliveryFee),
       shippingAddress,
       customerNote,
-      adminNote: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed from negotiation chat.`,
+      adminNote: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed from negotiation chat.${deliveryNote}`,
       statusHistory: [{
         status: ORDER_STATUS.PENDING_PAYMENT,
-        note: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed`,
+        note: `Negotiation ${negotiation.negotiationNumber} accepted by ${actorLabel} — order confirmed${deliveryNote}`,
         updatedBy: actor.id,
       }],
     });
@@ -376,8 +388,213 @@ async function finalizeNegotiation({ negotiation, order, actor, message, recover
   );
 }
 
+const OPEN_FOR_ACCEPT = [NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED, NEGOTIATION_STATUS.ACCEPTED];
+
+// Puts a negotiation back the way it was before finalizeNegotiation (used when
+// a combined order has to be undone).
+async function revertFinalizedNegotiation(original, orderId) {
+  const pushedAcceptance = !(original.status === NEGOTIATION_STATUS.ACCEPTED ||
+    (original.history || []).some((entry) => entry.action === NEGOTIATION_ACTIONS.ACCEPTED));
+  const update = {
+    $set: {
+      status: original.status,
+      orderId: null,
+      finalPricePerUnit: original.finalPricePerUnit ?? null,
+      finalTotalPrice: original.finalTotalPrice ?? null,
+    },
+  };
+  if (pushedAcceptance) update.$pop = { history: 1 };
+  await Negotiation.updateOne({ _id: original._id, orderId }, update);
+}
+
+/**
+ * Accept several requirements the wholesaler sent together (one requirement
+ * group) into ONE order with one delivery charge. All or nothing: every
+ * selected requirement is checked first; if one changes while the order is
+ * being made, the order is removed and the others are put back.
+ */
+async function acceptRequirementGroupAndCreateOrder({
+  groupId,
+  negotiationIds,
+  actor,
+  message,
+  shippingAddress: bodyAddress,
+  customerNote,
+  deliveryCharge = 0,
+  io,
+}) {
+  const ids = [...new Set((negotiationIds || []).map(String))];
+  const negotiations = await Negotiation.find({ _id: { $in: ids } });
+  if (ids.length === 0 || negotiations.length !== ids.length) {
+    throw new NotFoundError('Some requirements were not found', 'NEGOTIATION_NOT_FOUND');
+  }
+  negotiations.sort((a, b) => ids.indexOf(String(a._id)) - ids.indexOf(String(b._id)));
+
+  const wholesalerIds = new Set(negotiations.map((n) => String(n.wholesalerId)));
+  if (negotiations.some((n) => n.requestGroup?.id !== groupId) || wholesalerIds.size !== 1) {
+    throw new BadRequestError('These requirements are not part of the same requirement', 'REQUIREMENT_GROUP_MISMATCH');
+  }
+
+  const products = await Product.find({ _id: { $in: negotiations.map((n) => n.productId) } });
+  const productById = new Map(products.map((product) => [String(product._id), product]));
+  const now = new Date();
+  const problems = [];
+  const lines = [];
+  for (const negotiation of negotiations) {
+    const name = negotiation.productSnapshot?.name || negotiation.negotiationNumber;
+    if (negotiation.orderId) {
+      problems.push({ id: String(negotiation._id), name, code: 'ALREADY_ORDERED' });
+      continue;
+    }
+    if (!OPEN_FOR_ACCEPT.includes(negotiation.status)) {
+      problems.push({ id: String(negotiation._id), name, code: 'INVALID_NEGOTIATION_STATUS' });
+      continue;
+    }
+    if (negotiation.status !== NEGOTIATION_STATUS.ACCEPTED && negotiation.expiresAt <= now) {
+      problems.push({ id: String(negotiation._id), name, code: 'NEGOTIATION_EXPIRED' });
+      continue;
+    }
+    const product = productById.get(String(negotiation.productId));
+    const resolved = product ? getVariantById(product, null) : null;
+    if (!resolved) {
+      problems.push({ id: String(negotiation._id), name, code: 'PRODUCT_NOT_FOUND' });
+      continue;
+    }
+    if (resolved.variant.stock < negotiation.requestedQuantity) {
+      problems.push({ id: String(negotiation._id), name, code: 'INSUFFICIENT_STOCK' });
+      continue;
+    }
+    if (negotiation.requestedQuantity < getMinimumWholesaleQuantity(product)) {
+      problems.push({ id: String(negotiation._id), name, code: 'MIN_WHOLESALE_QUANTITY_NOT_MET' });
+      continue;
+    }
+    lines.push({ negotiation, product, resolved });
+  }
+  if (problems.length > 0) {
+    const error = new BadRequestError(
+      `These products can't be accepted: ${problems.map((problem) => problem.name).join(', ')}`,
+      problems[0].code,
+    );
+    error.details = { items: problems };
+    throw error;
+  }
+
+  const wholesaler = await User.findById(negotiations[0].wholesalerId);
+  if (!wholesaler) {
+    throw new NotFoundError('Wholesaler not found', 'USER_NOT_FOUND');
+  }
+  const { shippingAddress } = await resolveAcceptAddress({ bodyAddress, wholesaler });
+
+  const orderItems = lines.map(({ negotiation, product, resolved }) => ({
+    productId: product._id,
+    variantId: null,
+    productSnapshot: {
+      name: product.name,
+      nameHindi: product.nameHindi || negotiation.productSnapshot?.nameHindi || '',
+      sku: product.sku,
+      image: product.primaryImage,
+    },
+    variantSnapshot: buildVariantSnapshot(product, resolved.variant),
+    quantity: negotiation.requestedQuantity,
+    pricePerUnit: negotiation.finalPricePerUnit ?? negotiation.currentPricePerUnit,
+    totalPrice: negotiation.finalTotalPrice ?? negotiation.currentTotalPrice,
+  }));
+  const subtotal = round2(orderItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0));
+  const deliveryFee = toDeliveryFee(deliveryCharge);
+  const total = round2(subtotal + deliveryFee);
+  const requestNumber = negotiations[0].requestGroup.number || '';
+  const actorLabel = actor.role === 'staff' ? `Member ${actor.name}` : `Admin ${actor.name}`;
+  const summary = `Requirement ${requestNumber} (${lines.length} products) accepted by ${actorLabel}` +
+    (deliveryFee > 0 ? ` · delivery ₹${formatRupees(deliveryFee)} added` : '');
+
+  const order = await Order.create({
+    userId: wholesaler._id,
+    customerSnapshot: {
+      name: wholesaler.name,
+      email: wholesaler.email,
+      phone: wholesaler.phone,
+      businessName: wholesaler.businessInfo?.businessName,
+    },
+    orderType: ORDER_TYPES.WHOLESALE,
+    negotiationId: negotiations[0]._id,
+    negotiationIds: negotiations.map((n) => n._id),
+    items: orderItems,
+    subtotal,
+    deliveryFee,
+    discount: 0,
+    total,
+    shippingAddress,
+    customerNote,
+    adminNote: `${summary} — one order.`,
+    statusHistory: [{
+      status: ORDER_STATUS.PENDING_PAYMENT,
+      note: `${summary} — order confirmed`,
+      updatedBy: actor.id,
+    }],
+  });
+
+  const finalized = [];
+  for (const { negotiation } of lines) {
+    const updated = await finalizeNegotiation({ negotiation, order, actor, message });
+    if (!updated) {
+      for (const done of finalized) {
+        await revertFinalizedNegotiation(done.original, order._id);
+      }
+      await Order.deleteOne({ _id: order._id });
+      const error = new ConflictError(
+        `${negotiation.productSnapshot?.name || 'A product'} changed while the order was being made. Review it and try again.`,
+        'NEGOTIATION_CHANGED',
+      );
+      error.details = { items: [{ id: String(negotiation._id), name: negotiation.productSnapshot?.name, code: 'NEGOTIATION_CHANGED' }] };
+      throw error;
+    }
+    finalized.push({ original: negotiation, updated });
+  }
+
+  for (const { updated } of finalized) {
+    await Product.findByIdAndUpdate(updated.productId, { $inc: { orderCount: 1 } });
+    await recordAudit({
+      actorId: actor.id,
+      action: 'negotiation.accepted_with_order',
+      entityType: 'negotiation',
+      entityId: updated._id,
+      metadata: {
+        pricePerUnit: updated.finalPricePerUnit,
+        orderId: String(order._id),
+        orderNumber: order.orderNumber,
+        requestNumber,
+      },
+    });
+    emitToNegotiationRoom(io, updated._id.toString(), 'negotiation-accepted', {
+      negotiationId: updated._id.toString(),
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      finalPricePerUnit: updated.finalPricePerUnit,
+      finalTotalPrice: updated.finalTotalPrice,
+      acceptedBy: actorLabel,
+      timestamp: new Date(),
+    });
+  }
+
+  // One notification for the whole requirement.
+  await notifyWholesaler(wholesaler._id, 'requirementGroupAccepted', {
+    requestNumber,
+    count: lines.length,
+    orderNumber: order.orderNumber,
+    total: formatRupees(total),
+  }, {
+    type: 'negotiation_accepted',
+    negotiationId: finalized[0].updated._id.toString(),
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+  });
+
+  return { order, negotiations: finalized.map(({ updated }) => updated) };
+}
+
 module.exports = {
   acceptNegotiationAndCreateOrder,
+  acceptRequirementGroupAndCreateOrder,
   resolveAcceptAddress,
   emitToNegotiationRoom,
   notifyWholesaler,

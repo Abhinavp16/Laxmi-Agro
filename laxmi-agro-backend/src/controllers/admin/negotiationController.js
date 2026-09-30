@@ -6,6 +6,7 @@ const notificationService = require('../../services/notificationService');
 const { recordAudit } = require('../../services/auditService');
 const {
   acceptNegotiationAndCreateOrder,
+  acceptRequirementGroupAndCreateOrder,
   emitToNegotiationRoom,
   notifyWholesaler,
 } = require('../../services/negotiationOrderService');
@@ -106,6 +107,7 @@ exports.getNegotiations = async (req, res, next) => {
         priceUnit: n.productSnapshot.priceUnit || '',
         packing: n.productSnapshot.packing || '',
       },
+      requestGroup: n.requestGroup?.id ? n.requestGroup : null,
       requestedQuantity: n.requestedQuantity,
       requestedPricePerUnit: n.requestedPricePerUnit,
       requestedTotalPrice: n.requestedTotalPrice,
@@ -225,7 +227,7 @@ exports.sendMessage = async (req, res, next) => {
 
 exports.acceptNegotiation = async (req, res, next) => {
   try {
-    const { message, shippingAddress, customerNote } = req.body;
+    const { message, shippingAddress, customerNote, deliveryCharge } = req.body;
 
     const actorName = req.user.name || req.user.email || 'Admin';
     const { negotiation, order, alreadyConverted, addressSource } =
@@ -235,6 +237,7 @@ exports.acceptNegotiation = async (req, res, next) => {
         message,
         shippingAddress,
         customerNote,
+        deliveryCharge,
         io: req.app.locals.io,
       });
     if (!order) {
@@ -252,7 +255,105 @@ exports.acceptNegotiation = async (req, res, next) => {
         finalTotalPrice: negotiation.finalTotalPrice,
         orderId: String(order._id),
         orderNumber: order.orderNumber,
+        deliveryFee: order.deliveryFee || 0,
+        total: order.total,
         addressSource,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// All products of one requirement (sent together from the cart), for the
+// combined accept form.
+exports.getRequirementGroup = async (req, res, next) => {
+  try {
+    const negotiations = await Negotiation.find({ 'requestGroup.id': req.params.groupId })
+      .populate('wholesalerId', 'name email phone address businessInfo')
+      .populate('orderId', 'orderNumber status total')
+      .sort({ createdAt: 1 })
+      .lean();
+    if (negotiations.length === 0) {
+      throw new NotFoundError('Requirement not found', 'NEGOTIATION_NOT_FOUND');
+    }
+    const wholesaler = negotiations[0].wholesalerId;
+    const { Order } = require('../../models');
+    const lastOrder = await Order.findOne({ userId: wholesaler._id })
+      .sort({ createdAt: -1 })
+      .select('shippingAddress')
+      .lean();
+    const now = new Date();
+    res.json({
+      success: true,
+      data: {
+        requestGroup: negotiations[0].requestGroup,
+        wholesaler: {
+          id: wholesaler._id,
+          name: wholesaler.name,
+          email: wholesaler.email,
+          phone: wholesaler.phone,
+          address: wholesaler.address,
+          businessInfo: wholesaler.businessInfo,
+        },
+        lastOrderAddress: lastOrder?.shippingAddress || null,
+        items: negotiations.map((n) => {
+          const pricePerUnit = n.finalPricePerUnit ?? n.currentPricePerUnit;
+          const totalPrice = n.finalTotalPrice ?? n.currentTotalPrice;
+          const isExpired = n.status !== NEGOTIATION_STATUS.ACCEPTED && n.expiresAt <= now;
+          return {
+            id: n._id,
+            negotiationNumber: n.negotiationNumber,
+            product: {
+              id: n.productId,
+              name: n.productSnapshot.name,
+              image: n.productSnapshot.image,
+              priceUnit: n.productSnapshot.priceUnit || '',
+              packing: n.productSnapshot.packing || '',
+            },
+            requestedQuantity: n.requestedQuantity,
+            pricePerUnit,
+            totalPrice,
+            status: n.status,
+            isExpired,
+            order: n.orderId ? { id: n.orderId._id, orderNumber: n.orderId.orderNumber } : null,
+            canAccept: !n.orderId &&
+              [NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED, NEGOTIATION_STATUS.ACCEPTED].includes(n.status) &&
+              !isExpired,
+          };
+        }),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Accept the selected products of a requirement into ONE order.
+exports.acceptRequirementGroup = async (req, res, next) => {
+  try {
+    const { negotiationIds, message, shippingAddress, customerNote, deliveryCharge } = req.body;
+    const actorName = req.user.name || req.user.email || 'Admin';
+    const { order, negotiations } = await acceptRequirementGroupAndCreateOrder({
+      groupId: req.params.groupId,
+      negotiationIds,
+      actor: { id: req.user._id, role: 'admin', name: actorName },
+      message,
+      shippingAddress,
+      customerNote,
+      deliveryCharge,
+      io: req.app.locals.io,
+    });
+    res.json({
+      success: true,
+      message: `Requirement accepted — ${negotiations.length} products in one order`,
+      data: {
+        orderId: String(order._id),
+        orderNumber: order.orderNumber,
+        subtotal: order.subtotal,
+        deliveryFee: order.deliveryFee,
+        total: order.total,
+        negotiationIds: negotiations.map((n) => String(n._id)),
       },
     });
   } catch (error) {

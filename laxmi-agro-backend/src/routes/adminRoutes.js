@@ -70,6 +70,8 @@ router.post('/hindi-name/suggest', adminProductController.suggestHindiName);
 
 // Negotiations
 router.get('/negotiations', adminNegotiationController.getNegotiations);
+router.get('/negotiations/groups/:groupId', adminNegotiationController.getRequirementGroup);
+router.put('/negotiations/groups/:groupId/accept', validate(adminValidation.acceptRequirementGroup), adminNegotiationController.acceptRequirementGroup);
 router.get('/negotiations/:id', adminNegotiationController.getNegotiationById);
 router.post('/negotiations/:id/message', validate(adminValidation.negotiationMessage), adminNegotiationController.sendMessage);
 router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), adminNegotiationController.acceptNegotiation);

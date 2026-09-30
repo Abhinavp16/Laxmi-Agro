@@ -39,6 +39,8 @@ import { apiFetch, getUser } from "@/lib/api"
 import { isMemberRole } from "@/lib/role-labels"
 import { useNegotiationSocket } from "@/lib/hooks/useNegotiationSocket"
 import { quantityWithPacks } from "@/lib/pack-size"
+import { RequirementGroupAcceptDialog } from "@/components/requirement-group-accept-dialog"
+import { DeliveryChargeInput, parseDeliveryCharge } from "@/components/accept-order-fields"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
@@ -74,10 +76,16 @@ interface NegotiationList {
     wholesaler: { name: string }
     requestedQuantity: number
     requestedPricePerUnit: number
+    currentTotalPrice?: number
+    requestedTotalPrice?: number
     status: string
     orderId?: string | null
     approvedBy?: ApprovedBy | null
+    // Products sent together from the cart (accepted into one order).
+    requestGroup?: { id: string; number: string } | null
 }
+
+const OPEN_STATUSES = ['pending', 'countered', 'accepted']
 
 interface NegotiationDetail {
     _id: string
@@ -182,6 +190,8 @@ function actorDisplayName(entry: HistoryEntry, dealerFallback = 'Dealer'): strin
 
 export default function NegotiationsPage() {
     const [negotiations, setNegotiations] = useState<NegotiationList[]>([])
+    const [groupToAccept, setGroupToAccept] = useState<string | null>(null)
+    const closeGroupAccept = useCallback(() => setGroupToAccept(null), [])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -340,38 +350,87 @@ export default function NegotiationsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {negotiations.map((negotiation) => (
-                                    <TableRow key={negotiation.id} className="border-[#333] hover:bg-[#1A1A1A]">
-                                        <TableCell className="text-white font-medium">{negotiation.negotiationNumber}</TableCell>
-                                        <TableCell className="text-white">{negotiation.wholesaler?.name || 'Unknown'}</TableCell>
-                                        <TableCell className="text-gray-400">{negotiation.product?.name || 'Unknown'}</TableCell>
-                                        <TableCell className="text-white text-right">{quantityWithPacks(negotiation.product, negotiation.requestedQuantity)}</TableCell>
-                                        <TableCell className="text-white text-right">₹{negotiation.requestedPricePerUnit.toLocaleString()}</TableCell>
-                                        <TableCell className="text-center">
-                                            {getStatusBadge(negotiation.status)}
-                                        </TableCell>
-                                        <TableCell className="text-gray-300 text-sm">
-                                            {negotiation.approvedBy
-                                                ? `${isMemberRole(negotiation.approvedBy.role) ? 'Member' : 'Admin'} · ${negotiation.approvedBy.name}`
-                                                : <span className="text-gray-600">—</span>}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0 text-white hover:bg-[#333]"
-                                                onClick={() => openDetails(negotiation.id)}
-                                            >
-                                                <MessageSquare className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {(() => {
+                                    // Products sent together from the cart get one header row with
+                                    // "Accept & Create Order" for the whole requirement.
+                                    const groups = new Map<string, NegotiationList[]>()
+                                    for (const n of negotiations) {
+                                        if (!n.requestGroup?.id) continue
+                                        groups.set(n.requestGroup.id, [...(groups.get(n.requestGroup.id) || []), n])
+                                    }
+                                    const shown = new Set<string>()
+                                    return negotiations.flatMap((negotiation) => {
+                                        const rows = []
+                                        const groupId = negotiation.requestGroup?.id
+                                        if (groupId && !shown.has(groupId)) {
+                                            shown.add(groupId)
+                                            const members = groups.get(groupId) || []
+                                            const open = members.filter((m) => OPEN_STATUSES.includes(m.status) && !m.orderId)
+                                            const value = members.reduce((sum, m) => sum + Number(m.currentTotalPrice ?? m.requestedTotalPrice ?? 0), 0)
+                                            rows.push(
+                                                <TableRow key={`group-${groupId}`} className="border-[#333] bg-sky-500/[0.06] hover:bg-sky-500/[0.08]" data-testid="requirement-group-row">
+                                                    <TableCell colSpan={7} className="text-sm text-white">
+                                                        <span className="font-semibold text-sky-300">{negotiation.requestGroup?.number}</span>
+                                                        {' · '}{negotiation.wholesaler?.name || 'Unknown'}
+                                                        {' · '}{members.length} products · ₹{value.toLocaleString('en-IN')}
+                                                        {open.length < members.length && <span className="text-gray-400"> · {open.length} open</span>}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {open.length > 0 && (
+                                                            <Button size="sm" className="h-8 bg-blue-600 text-white hover:bg-blue-700" onClick={() => setGroupToAccept(groupId)}>
+                                                                Accept & Create Order
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>,
+                                            )
+                                        }
+                                        rows.push(
+                                        <TableRow key={negotiation.id} className={`border-[#333] hover:bg-[#1A1A1A] ${negotiation.requestGroup ? "bg-sky-500/[0.03]" : ""}`}>
+                                            <TableCell className="text-white font-medium">{negotiation.negotiationNumber}</TableCell>
+                                            <TableCell className="text-white">{negotiation.wholesaler?.name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-gray-400">
+                                                {negotiation.product?.name || 'Unknown'}
+                                                {negotiation.requestGroup && (
+                                                    <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-300">{negotiation.requestGroup.number}</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-white text-right">{quantityWithPacks(negotiation.product, negotiation.requestedQuantity)}</TableCell>
+                                            <TableCell className="text-white text-right">₹{negotiation.requestedPricePerUnit.toLocaleString()}</TableCell>
+                                            <TableCell className="text-center">
+                                                {getStatusBadge(negotiation.status)}
+                                            </TableCell>
+                                            <TableCell className="text-gray-300 text-sm">
+                                                {negotiation.approvedBy
+                                                    ? `${isMemberRole(negotiation.approvedBy.role) ? 'Member' : 'Admin'} · ${negotiation.approvedBy.name}`
+                                                    : <span className="text-gray-600">—</span>}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-white hover:bg-[#333]"
+                                                    onClick={() => openDetails(negotiation.id)}
+                                                >
+                                                    <MessageSquare className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                        )
+                                        return rows
+                                    })
+                                })()}
                             </TableBody>
                         </Table>
                     )}
                 </CardContent>
             </Card>
+
+            <RequirementGroupAcceptDialog
+                groupId={groupToAccept}
+                onClose={closeGroupAccept}
+                onAccepted={() => fetchNegotiations(1, true)}
+            />
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="bg-white text-slate-900 w-[500px] sm:w-[560px] sm:max-w-[560px] max-w-[95vw] flex flex-col overflow-y-auto border-l border-slate-200">
@@ -431,6 +490,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS)
     const [customerNote, setCustomerNote] = useState("")
     const [addressTouched, setAddressTouched] = useState(false)
+    const [deliveryCharge, setDeliveryCharge] = useState("")
 
     const bottomRef = useRef<HTMLDivElement | null>(null)
     const detailRequestSequence = useRef(0)
@@ -615,6 +675,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                     message: `Accepted by ${currentUser?.name || 'Laxmi Agro'}`,
                     shippingAddress: address,
                     customerNote: customerNote || undefined,
+                    deliveryCharge: parseDeliveryCharge(deliveryCharge) ?? 0,
                 }),
             })
             const data = await res.json().catch(() => ({}))
@@ -623,7 +684,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                 await fetchDetail()
                 onChanged()
             } else if (res.ok) {
-                toast.success(`Deal accepted. Order ${data.data.orderNumber} was created and the dealer was notified.`)
+                toast.success(`Deal accepted. Order ${data.data.orderNumber} (₹${Number(data.data.total ?? 0).toLocaleString('en-IN')}) was created and the dealer was notified.`)
                 setIsAcceptOpen(false)
                 await fetchDetail()
                 onChanged()
@@ -963,10 +1024,13 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             <Input className="border-slate-200 bg-white h-9 mt-1 text-slate-900" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
                         </div>
                     </div>
+                    {!canCreateMissingOrder && (
+                        <DeliveryChargeInput value={deliveryCharge} onChange={setDeliveryCharge} subtotal={orderTotal} />
+                    )}
                     <DialogFooter>
                         <Button variant="ghost" className="text-slate-600" onClick={() => setIsAcceptOpen(false)}>Cancel</Button>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting || !isAddressComplete(address)} onClick={confirmAccept}>
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : canCreateMissingOrder ? 'Create Order' : `Accept · ₹${orderTotal.toLocaleString()}`}
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting || !isAddressComplete(address) || parseDeliveryCharge(deliveryCharge) === null} onClick={confirmAccept}>
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : canCreateMissingOrder ? 'Create Order' : `Accept · ₹${(orderTotal + (parseDeliveryCharge(deliveryCharge) ?? 0)).toLocaleString('en-IN')}`}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

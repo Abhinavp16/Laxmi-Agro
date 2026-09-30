@@ -267,6 +267,16 @@ const orderValidation = {
   }),
 };
 
+const acceptShippingAddress = Joi.object({
+  fullName: Joi.string().required().max(100),
+  phone: Joi.string().required(),
+  addressLine1: Joi.string().required().max(200),
+  addressLine2: Joi.string().allow('', null).max(200),
+  city: Joi.string().required().max(100),
+  state: Joi.string().required().max(100),
+  pincode: Joi.string().required().max(10),
+}).allow(null);
+
 const adminValidation = {
   createProduct: Joi.object({
     name: Joi.string().required().max(200),
@@ -409,15 +419,17 @@ const adminValidation = {
   acceptNegotiation: Joi.object({
     message: Joi.string().max(500).allow('', null),
     customerNote: Joi.string().max(500).allow('', null),
-    shippingAddress: Joi.object({
-      fullName: Joi.string().required().max(100),
-      phone: Joi.string().required(),
-      addressLine1: Joi.string().required().max(200),
-      addressLine2: Joi.string().allow('', null).max(200),
-      city: Joi.string().required().max(100),
-      state: Joi.string().required().max(100),
-      pincode: Joi.string().required().max(10),
-    }).allow(null),
+    shippingAddress: acceptShippingAddress,
+    // Delivery charge added to the order total by the admin (₹).
+    deliveryCharge: Joi.number().min(0).max(10000000).default(0),
+  }),
+
+  acceptRequirementGroup: Joi.object({
+    negotiationIds: Joi.array().items(Joi.string().hex().length(24)).min(1).max(200).unique().required(),
+    message: Joi.string().max(500).allow('', null),
+    customerNote: Joi.string().max(500).allow('', null),
+    shippingAddress: acceptShippingAddress,
+    deliveryCharge: Joi.number().min(0).max(10000000).default(0),
   }),
 
   updateOrderStatus: Joi.object({

@@ -1,6 +1,7 @@
 const { Negotiation, Product, Settings, Cart } = require('../models');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
-const { paginate, formatPaginationResponse } = require('../utils/helpers');
+const { paginate, formatPaginationResponse, generateRequestNumber } = require('../utils/helpers');
+const crypto = require('crypto');
 const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../utils/constants');
 const {
   getVariantById,
@@ -13,7 +14,7 @@ const { describePack, getPackInfo, isWholePacks } = require('../utils/packSize')
 
 // Fields for a new wholesaler request (shared by the single-product and the
 // whole-cart requests).
-function buildNegotiationData({ product, user, quantity, pricePerUnit, message, discounts, expiresAt }) {
+function buildNegotiationData({ product, user, quantity, pricePerUnit, message, discounts, expiresAt, requestGroup = null }) {
   const resolved = getVariantById(product, null);
   if (!resolved) {
     throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
@@ -40,6 +41,7 @@ function buildNegotiationData({ product, user, quantity, pricePerUnit, message, 
       priceUnit: product.priceUnit || '',
       packing: product.packing || '',
     },
+    requestGroup: requestGroup || { id: null, number: null },
     requestedQuantity: quantity,
     requestedPricePerUnit: unitPrice,
     requestedTotalPrice: totalPrice,
@@ -95,7 +97,10 @@ exports.getMyNegotiations = async (req, res, next) => {
           nameHindi: negotiation.productSnapshot.nameHindi || '',
           image: negotiation.productSnapshot.image,
           currentPrice: negotiation.productSnapshot.price,
+          priceUnit: negotiation.productSnapshot.priceUnit || '',
+          packing: negotiation.productSnapshot.packing || '',
         },
+        requestGroup: negotiation.requestGroup?.id ? negotiation.requestGroup : null,
         requestedQuantity: negotiation.requestedQuantity,
         requestedPricePerUnit: negotiation.requestedPricePerUnit,
         requestedTotalPrice: negotiation.requestedTotalPrice,
@@ -206,6 +211,10 @@ exports.createFromCart = async (req, res, next) => {
 
     const discountMap = await buildDiscountMap(lines.map((line) => line.product));
     const expiresAt = await negotiationExpiryDate();
+    // One requirement number for everything sent together (accepted into one order).
+    const requestGroup = lines.length > 1
+      ? { id: crypto.randomUUID(), number: generateRequestNumber() }
+      : null;
     for (const { product, quantity } of lines) {
       const negotiation = await Negotiation.create(buildNegotiationData({
         product,
@@ -214,6 +223,7 @@ exports.createFromCart = async (req, res, next) => {
         message,
         discounts: discountsFor(discountMap, product),
         expiresAt,
+        requestGroup,
       }));
       created.push({ negotiation, product, quantity });
     }
@@ -246,6 +256,7 @@ exports.createFromCart = async (req, res, next) => {
       success: true,
       message: 'Requirement sent',
       data: {
+        requestGroup,
         negotiations: created.map(({ negotiation, product, quantity }) => ({
           id: negotiation._id,
           negotiationNumber: negotiation.negotiationNumber,

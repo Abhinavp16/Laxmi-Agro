@@ -38,6 +38,9 @@ interface Order {
         pricePerUnit: number
     }[]
     customerSnapshot: { name: string; email: string; phone: string }
+    subtotal?: number
+    deliveryFee?: number
+    discount?: number
     total: number
     status: string
     orderType?: string
@@ -777,7 +780,19 @@ export default function OrdersPage() {
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-4 flex items-center justify-between border-t border-[#222] pt-3 text-sm">
+                                <div className="mt-4 space-y-1 border-t border-[#222] pt-3 text-sm" data-testid="order-price-breakdown">
+                                    {typeof selectedOrder.subtotal === "number" && (
+                                        <div className="flex justify-between text-gray-400"><span>Subtotal</span><span>Rs {selectedOrder.subtotal.toLocaleString("en-IN")}</span></div>
+                                    )}
+                                    <div className="flex justify-between text-gray-400">
+                                        <span>Delivery</span>
+                                        <span>{selectedOrder.deliveryFee ? `Rs ${selectedOrder.deliveryFee.toLocaleString("en-IN")}` : "Free"}</span>
+                                    </div>
+                                    {Boolean(selectedOrder.discount) && (
+                                        <div className="flex justify-between text-gray-400"><span>Discount</span><span>- Rs {Number(selectedOrder.discount).toLocaleString("en-IN")}</span></div>
+                                    )}
+                                </div>
+                                <div className="mt-2 flex items-center justify-between text-sm">
                                     <span className="text-gray-400">Grand Total</span>
                                     <span className="text-lg font-bold text-white">Rs {selectedOrder.total.toLocaleString("en-IN")}</span>
                                 </div>
