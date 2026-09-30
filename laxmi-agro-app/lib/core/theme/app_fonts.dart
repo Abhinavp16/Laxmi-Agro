@@ -17,9 +17,9 @@ class AppFonts {
     return letterSpacing < 0 ? 0 : letterSpacing;
   }
 
-  /// Font size actually used (at least 10 for Hindi).
+  /// Font size actually used: never below 10, so no label becomes unreadable.
   static double? sizeFor(double? fontSize) {
-    if (!hindi || fontSize == null) return fontSize;
+    if (fontSize == null) return fontSize;
     return fontSize < 10 ? 10 : fontSize;
   }
 
@@ -53,7 +53,8 @@ class AppFonts {
     ).copyWith(fontFamilyFallback: _fallback);
   }
 
-  // Montserrat - Primary headings and titles
+  // Headings used to be Montserrat. The app now uses one family, so this
+  // renders Plus Jakarta Sans; the name is kept for existing call sites.
   static TextStyle montserrat({
     double fontSize = 16,
     FontWeight fontWeight = FontWeight.w400,
@@ -62,17 +63,17 @@ class AppFonts {
     double? letterSpacing,
     TextDecoration? decoration,
   }) {
-    return GoogleFonts.montserrat(
+    return jakarta(
       decoration: decoration,
-      fontSize: sizeFor(fontSize),
+      fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       height: height,
-      letterSpacing: spacingFor(letterSpacing),
-    ).copyWith(fontFamilyFallback: _fallback);
+      letterSpacing: letterSpacing,
+    );
   }
 
-  // Outfit - Body text and subtitles
+  // Body text used to be Outfit; now Plus Jakarta Sans (see [montserrat]).
   static TextStyle outfit({
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.w400,
@@ -81,14 +82,14 @@ class AppFonts {
     double? letterSpacing,
     TextDecoration? decoration,
   }) {
-    return GoogleFonts.outfit(
+    return jakarta(
       decoration: decoration,
-      fontSize: sizeFor(fontSize),
+      fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       height: height,
-      letterSpacing: spacingFor(letterSpacing),
-    ).copyWith(fontFamilyFallback: _fallback);
+      letterSpacing: letterSpacing,
+    );
   }
 
   // Heading Styles

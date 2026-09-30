@@ -3410,4 +3410,27 @@ class AppLocalizationsHi extends AppLocalizations {
   String productPacketContains(String contents) {
     return '1 पैकेट में: $contents';
   }
+
+  @override
+  String get uiDecreaseQuantity => 'मात्रा घटाएं';
+
+  @override
+  String get uiIncreaseQuantity => 'मात्रा बढ़ाएं';
+
+  @override
+  String get uiUndo => 'वापस लें';
+
+  @override
+  String uiItemRemoved(String name) {
+    return '$name हटाया गया';
+  }
+
+  @override
+  String get uiAddToWishlist => 'विशलिस्ट में जोड़ें';
+
+  @override
+  String get uiRemoveFromWishlist => 'विशलिस्ट से हटाएं';
+
+  @override
+  String get uiOpenCart => 'कार्ट खोलें';
 }

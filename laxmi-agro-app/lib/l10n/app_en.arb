@@ -1753,5 +1753,13 @@
         "type": "String"
       }
     }
-  }
+  },
+  "uiDecreaseQuantity": "Decrease quantity",
+  "uiIncreaseQuantity": "Increase quantity",
+  "uiUndo": "Undo",
+  "uiItemRemoved": "{name} removed",
+  "@uiItemRemoved": {"placeholders": {"name": {"type": "String"}}},
+  "uiAddToWishlist": "Add to wishlist",
+  "uiRemoveFromWishlist": "Remove from wishlist",
+  "uiOpenCart": "Open cart"
 }

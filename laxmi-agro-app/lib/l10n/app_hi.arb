@@ -983,5 +983,12 @@
   "productUnitBundle": "बंडल",
   "productMinOrderQuantity": "न्यूनतम ऑर्डर: {quantity}",
   "productPacketContainsPieces": "1 पैकेट में {count, plural, =1{1 पीस} other{{count} पीस}}",
-  "productPacketContains": "1 पैकेट में: {contents}"
+  "productPacketContains": "1 पैकेट में: {contents}",
+  "uiDecreaseQuantity": "मात्रा घटाएं",
+  "uiIncreaseQuantity": "मात्रा बढ़ाएं",
+  "uiUndo": "वापस लें",
+  "uiItemRemoved": "{name} हटाया गया",
+  "uiAddToWishlist": "विशलिस्ट में जोड़ें",
+  "uiRemoveFromWishlist": "विशलिस्ट से हटाएं",
+  "uiOpenCart": "कार्ट खोलें"
 }

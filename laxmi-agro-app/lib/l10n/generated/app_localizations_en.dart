@@ -3437,4 +3437,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String productPacketContains(String contents) {
     return '1 Packet contains $contents';
   }
+
+  @override
+  String get uiDecreaseQuantity => 'Decrease quantity';
+
+  @override
+  String get uiIncreaseQuantity => 'Increase quantity';
+
+  @override
+  String get uiUndo => 'Undo';
+
+  @override
+  String uiItemRemoved(String name) {
+    return '$name removed';
+  }
+
+  @override
+  String get uiAddToWishlist => 'Add to wishlist';
+
+  @override
+  String get uiRemoveFromWishlist => 'Remove from wishlist';
+
+  @override
+  String get uiOpenCart => 'Open cart';
 }

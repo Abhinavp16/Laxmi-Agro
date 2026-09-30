@@ -6001,6 +6001,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'1 Packet contains {contents}'**
   String productPacketContains(String contents);
+
+  /// No description provided for @uiDecreaseQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease quantity'**
+  String get uiDecreaseQuantity;
+
+  /// No description provided for @uiIncreaseQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase quantity'**
+  String get uiIncreaseQuantity;
+
+  /// No description provided for @uiUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get uiUndo;
+
+  /// No description provided for @uiItemRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed'**
+  String uiItemRemoved(String name);
+
+  /// No description provided for @uiAddToWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to wishlist'**
+  String get uiAddToWishlist;
+
+  /// No description provided for @uiRemoveFromWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from wishlist'**
+  String get uiRemoveFromWishlist;
+
+  /// No description provided for @uiOpenCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Open cart'**
+  String get uiOpenCart;
 }
 
 class _AppLocalizationsDelegate
