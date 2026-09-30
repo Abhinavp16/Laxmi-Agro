@@ -3749,4 +3749,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeLogoutConfirmMessage =>
       'You\'ll need to log in again to see your orders and place new ones.';
+
+  @override
+  String get profileStatOrders => 'Orders';
+
+  @override
+  String get profileStatDeals => 'Active deals';
+
+  @override
+  String profileMemberSince(String date) {
+    return 'Member since $date';
+  }
+
+  @override
+  String get profileYourOrder => 'Your order';
+
+  @override
+  String profileMoreOrdersInProgress(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count more in progress',
+      one: '+1 more in progress',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileUpgradeCta => 'Apply now';
+
+  @override
+  String profileAddressesSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count saved addresses',
+      one: '1 saved address',
+      zero: 'No saved address yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileNotificationsSubtitle => 'Updates about your orders';
+
+  @override
+  String get profileAccountPrivacySubtitle => 'Your data and account deletion';
+
+  @override
+  String get profileLegalSubtitle => 'Privacy, terms, shipping and refunds';
+
+  @override
+  String profileUnreadCount(int count) {
+    return '$count unread';
+  }
+
+  @override
+  String get profileUpgradeContinue => 'Continue';
 }

@@ -35,6 +35,8 @@ import '../cart/cart_parts.dart';
 import '../categories/categories_screen.dart';
 import '../negotiations/deal_desk_widgets.dart';
 import '../profile/legal_policy_screen.dart';
+import '../profile/profile_parts.dart';
+import '../../core/utils/customer_order_presentation.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/notification_countdown_label.dart';
@@ -3843,6 +3845,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   void _selectNavIndex(int index) {
     if (_selectedNavIndex != index) {
       setState(() => _selectedNavIndex = index);
+      // Profile shows the latest order; fetch it fresh on each visit.
+      if (index == 4) ref.invalidate(recentOrdersProvider);
     }
 
     if (_isWholesaler && index == 3) {
@@ -4258,361 +4262,315 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final isTablet = screenWidth >= 700;
     final profileMaxWidth = isTablet ? 720.0 : double.infinity;
     final wishlistCount = ref.watch(wishlistProvider).items.length;
-    final orderCount = ref.watch(orderCountProvider).value ?? 0;
+    final ordersSnapshot =
+        ref.watch(recentOrdersProvider).value ?? OrdersSnapshot.empty;
+    final activeOrders = profileActiveOrders(ordersSnapshot.orders);
     final (statusLabel, statusTone, statusIcon) = _accountStatus(user);
-    final name = user?.name ?? l10n.homeGuestUser;
+    final name = user?.name.trim().isNotEmpty == true
+        ? user!.name.trim()
+        : l10n.homeGuestUser;
+    final isVerifiedWholesaler =
+        user?.isWholesaler == true && user?.businessInfo?.verified == true;
 
-    Widget avatar() {
-      final hasAvatar = user?.avatar != null && user!.avatar!.isNotEmpty;
-      final initial = name.trim().isEmpty
-          ? '?'
-          : name.trim().substring(0, 1).toUpperCase();
-      return Container(
-        width: 60,
-        height: 60,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.primarySoft,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: hasAvatar
-            ? CachedNetworkImage(
-                imageUrl: user.avatar!,
-                fit: BoxFit.cover,
-                fadeInDuration: AppMotion.base,
-                placeholder: (_, _) => const SizedBox.shrink(),
-                errorWidget: (_, _, _) => Center(
-                  child: Text(
-                    initial,
-                    style: AppFonts.jakarta(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDeep,
-                    ),
-                  ),
-                ),
-              )
-            : Center(
-                child: isGuest
-                    ? const HugeIcon(
-                        icon: HugeIcons.strokeRoundedUser,
-                        size: 28,
-                        color: AppColors.primaryDeep,
-                      )
-                    : Text(
-                        initial,
-                        style: AppFonts.jakarta(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primaryDeep,
-                        ),
-                      ),
+    void openOrders() => context.push('/previous-orders');
+
+    final stats = isGuest
+        ? const <ProfileStat>[]
+        : [
+            ProfileStat(
+              value: ordersSnapshot.total,
+              label: l10n.profileStatOrders,
+              onTap: openOrders,
+            ),
+            if (_isWholesaler)
+              ProfileStat(
+                value: _negotiations.where(DealDeskPresentation.isActive).length,
+                label: l10n.profileStatDeals,
+                onTap: () => _selectNavIndex(3),
               ),
+            ProfileStat(
+              value: wishlistCount,
+              label: _isWholesaler
+                  ? l10n.homeWishlistDealer
+                  : l10n.homeWishlistCustomer,
+              onTap: () => context.push('/wishlist'),
+            ),
+            if (!_isWholesaler)
+              ProfileStat(
+                value: _savedShippingAddresses.length,
+                label: l10n.homeProfileAddresses,
+                onTap: _openProfileAddresses,
+              ),
+          ];
+
+    // Latest order still on its way; Track / View status follows the same
+    // rules as the orders screen.
+    Widget? activeOrderCard;
+    if (activeOrders.isNotEmpty) {
+      final order = activeOrders.first;
+      final stage = CustomerOrderPresentation.stage(order);
+      final orderId = order['id']?.toString() ?? '';
+      final trackingNumber = order['trackingNumber']?.toString() ?? '';
+      final hasAcceptance = CustomerOrderPresentation.acceptanceStatus(
+        order,
+      ).isNotEmpty;
+      String? trackLabel;
+      if (orderId.isNotEmpty) {
+        if (trackingNumber.isNotEmpty) {
+          trackLabel = l10n.ordersTrackOrder;
+        } else if (hasAcceptance ||
+            stage == 'payment_verified' ||
+            stage == 'processing') {
+          trackLabel = l10n.ordersViewStatus;
+        }
+      }
+      activeOrderCard = ProfileActiveOrderCard(
+        order: order,
+        moreInProgress: activeOrders.length - 1,
+        onOpen: openOrders,
+        trackLabel: trackLabel,
+        onTrack: trackLabel == null
+            ? null
+            : () => context.push('/tracking/$orderId'),
       );
     }
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: profileMaxWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 12, 4),
-                child: Row(
-                  children: [
-                    AppBackButton(
-                      onPressed: () {
-                        if (_selectedNavIndex != 0) _selectNavIndex(0);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.homeProfileTitle,
-                        style: AppFonts.jakarta(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ),
-                    HeaderIconButton(
-                      icon: HugeIcons.strokeRoundedSettings01,
-                      tooltip: l10n.homeEditProfile,
-                      onPressed: () =>
-                          context.push(isGuest ? '/login' : '/edit-profile'),
-                    ),
-                  ],
-                ),
+    // Wholesaler pitch for everyone who isn't a verified wholesaler yet.
+    Widget? upgradeCard;
+    if (!isVerifiedWholesaler) {
+      final status = user?.businessInfo?.status;
+      final (title, subtitle, cta) = status == 'pending'
+          ? (
+              l10n.profileWholesalerApplication,
+              l10n.profileViewApplicationStatus,
+              l10n.ordersViewStatus,
+            )
+          : user?.isWholesaler == true
+          ? (
+              l10n.profileCompleteWholesalerVerification,
+              l10n.profileSubmitBusinessProof,
+              l10n.profileUpgradeContinue,
+            )
+          : (
+              l10n.homeProfileApplyWholesaler,
+              status == 'rejected'
+                  ? l10n.conversionRejectedNote
+                  : l10n.homeProfileApplyWholesalerSubtitle,
+              l10n.profileUpgradeCta,
+            );
+      upgradeCard = ProfileUpgradeCard(
+        title: title,
+        subtitle: subtitle,
+        ctaLabel: cta,
+        onTap: () => context.push('/convert-to-wholesaler'),
+      );
+    }
+
+    final sections = <Widget>[
+      ProfileIdentityCard(
+        name: name,
+        isGuest: isGuest,
+        avatarUrl: user?.avatar,
+        contactLine: isGuest
+            ? l10n.homeSignInToSync
+            : (user.phone?.trim().isNotEmpty == true
+                  ? user.phone!.trim()
+                  : user.email),
+        businessName: _isWholesaler ? user?.businessInfo?.businessName : null,
+        statusLabel: isGuest ? null : statusLabel,
+        statusTone: statusTone,
+        statusIcon: statusIcon,
+        memberSince: profileMemberSinceText(context, user?.createdAt),
+        onEdit: isGuest ? null : () => context.push('/edit-profile'),
+        onLogin: () => context.push('/login'),
+        stats: stats,
+      ),
+      if (activeOrderCard != null)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                l10n.profileYourOrder.toUpperCase(),
+                style: AppText.eyebrow(),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: AppCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            activeOrderCard,
+          ],
+        ),
+      ?upgradeCard,
+      SettingsGroup(
+        title: l10n.profileSectionAccount,
+        children: [
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedLanguageSkill,
+            title: context.isHindi
+                ? l10n.languageTitle
+                : '${l10n.languageTitle} / भाषा',
+            trailing: Text(
+              context.isHindi ? l10n.languageHindi : l10n.languageEnglish,
+              style: AppFonts.jakarta(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            onTap: () => showLanguagePicker(context, ref),
+          ),
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedLocation01,
+            title: l10n.homeProfileAddresses,
+            subtitle: l10n.profileAddressesSaved(
+              _savedShippingAddresses.length,
+            ),
+            onTap: _openProfileAddresses,
+          ),
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedNotification02,
+            title: l10n.homeNotificationsTitle,
+            subtitle: l10n.profileNotificationsSubtitle,
+            trailing: _unreadCount > 0
+                ? ProfileCountPill(
+                    count: _unreadCount,
+                    semantic: l10n.profileUnreadCount(_unreadCount),
+                  )
+                : null,
+            onTap: () =>
+                context.push('/notifications', extra: {'bottomTab': 4}),
+          ),
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedShield01,
+            title: l10n.homeProfileAccountPrivacy,
+            subtitle: l10n.profileAccountPrivacySubtitle,
+            onTap: () =>
+                context.push(isGuest ? '/login' : '/account-privacy'),
+          ),
+          if (!kHideOfferCouponUi)
+            SettingsTile(
+              icon: HugeIcons.strokeRoundedTicket01,
+              title: l10n.homeProfileMyCoupons,
+              onTap: () => context.push('/my-coupons'),
+            ),
+        ],
+      ),
+      if (user?.isWholesaler == true)
+        SettingsGroup(
+          title: l10n.profileSectionWholesale,
+          children: [
+            SettingsTile(
+              icon: HugeIcons.strokeRoundedView,
+              title: l10n.homeProfileViewCustomerApp,
+              subtitle: l10n.homeProfileViewCustomerAppSubtitle,
+              onTap: () async {
+                ref.read(guestModeProvider.notifier).enableGuestMode();
+                try {
+                  await context.push('/guest-app-preview');
+                } finally {
+                  await Future<void>.delayed(Duration.zero);
+                  ref.read(guestModeProvider.notifier).disableGuestMode();
+                }
+              },
+            ),
+          ],
+        ),
+      SettingsGroup(
+        title: l10n.profileSectionSupportLegal,
+        children: [
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedHelpCircle,
+            title: l10n.homeProfileHelpSupport,
+            subtitle: l10n.profileHelpSupportSubtitle,
+            onTap: () => context.push('/help'),
+          ),
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedFile01,
+            title: l10n.homeProfileLegalPolicies,
+            subtitle: l10n.profileLegalSubtitle,
+            onTap: _showLegalPoliciesSheet,
+          ),
+          SettingsTile(
+            icon: HugeIcons.strokeRoundedInformationCircle,
+            title: l10n.homeProfileAbout,
+            onTap: () => context.push('/about'),
+          ),
+        ],
+      ),
+      // Logout only for signed-in users, and only after confirming.
+      if (!isGuest)
+        SettingsGroup(
+          children: [
+            SettingsTile(
+              icon: HugeIcons.strokeRoundedLogout02,
+              title: l10n.commonLogout,
+              destructive: true,
+              showChevron: false,
+              onTap: _confirmLogout,
+            ),
+          ],
+        ),
+    ];
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () => Future.wait([
+        ref.refresh(recentOrdersProvider.future),
+        _loadSavedShippingAddresses(),
+      ]),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.only(bottom: 28),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: profileMaxWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 16, 4),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          avatar(),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppFonts.jakarta(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  isGuest
-                                      ? l10n.homeSignInToSync
-                                      : (user.phone?.isNotEmpty == true
-                                            ? user.phone!
-                                            : user.email),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppFonts.jakarta(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                if (!isGuest) ...[
-                                  const SizedBox(height: 8),
-                                  StatusChip(
-                                    label: statusLabel,
-                                    tone: statusTone,
-                                    icon: statusIcon,
-                                    dense: true,
-                                  ),
-                                ],
-                              ],
-                            ),
+                      AppBackButton(
+                        onPressed: () {
+                          if (_selectedNavIndex != 0) _selectNavIndex(0);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.homeProfileTitle,
+                          style: AppFonts.jakarta(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
                           ),
-                        ],
-                      ),
-                      if (!isGuest &&
-                          user.address != null &&
-                          user.address!.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const HugeIcon(
-                              icon: HugeIcons.strokeRoundedLocation01,
-                              size: 16,
-                              color: AppColors.textTertiary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                user.address!,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppFonts.jakarta(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
-                      ],
-                      if (isGuest) ...[
-                        const SizedBox(height: 14),
-                        AppButton(
-                          label: l10n.commonLogin,
-                          icon: HugeIcons.strokeRoundedLogin01,
-                          size: AppButtonSize.medium,
-                          onPressed: () => context.push('/login'),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: QuickActionTile(
-                        icon: HugeIcons.strokeRoundedPackage,
-                        label: l10n.homeMyOrders,
-                        count: orderCount,
-                        onTap: () => context.push('/previous-orders'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: QuickActionTile(
-                        icon: HugeIcons.strokeRoundedFavourite,
-                        label: _isWholesaler
-                            ? l10n.homeWishlistDealer
-                            : l10n.homeWishlistCustomer,
-                        count: wishlistCount,
-                        onTap: () => context.push('/wishlist'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: QuickActionTile(
-                        icon: HugeIcons.strokeRoundedUserEdit01,
-                        label: l10n.homeEditProfile,
-                        onTap: () =>
-                            context.push(isGuest ? '/login' : '/edit-profile'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-                child: SettingsGroup(
-                  title: l10n.profileSectionAccount,
-                  children: [
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedLanguageSkill,
-                      title: context.isHindi
-                          ? l10n.languageTitle
-                          : '${l10n.languageTitle} / भाषा',
-                      trailing: Text(
-                        context.isHindi
-                            ? l10n.languageHindi
-                            : l10n.languageEnglish,
-                        style: AppFonts.jakarta(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      onTap: () => showLanguagePicker(context, ref),
-                    ),
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedLocation01,
-                      title: l10n.homeProfileAddresses,
-                      onTap: () => context
-                          .push('/addresses')
-                          .then((_) => _loadSavedShippingAddresses()),
-                    ),
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedNotification02,
-                      title: l10n.homeNotificationsTitle,
-                      onTap: () => context.push(
-                        '/notifications',
-                        extra: {'bottomTab': 4},
-                      ),
-                    ),
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedShield01,
-                      title: l10n.homeProfileAccountPrivacy,
-                      onTap: () => context.push(
-                        isGuest ? '/login' : '/account-privacy',
-                      ),
-                    ),
-                    if (!kHideOfferCouponUi)
-                      SettingsTile(
-                        icon: HugeIcons.strokeRoundedTicket01,
-                        title: l10n.homeProfileMyCoupons,
-                        onTap: () => context.push('/my-coupons'),
-                      ),
-                  ],
-                ),
-              ),
-              if (user?.isWholesaler == true || user?.role != 'wholesaler')
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: SettingsGroup(
-                    title: l10n.profileSectionWholesale,
-                    children: [
-                      if (user?.isWholesaler == true)
-                        SettingsTile(
-                          icon: HugeIcons.strokeRoundedView,
-                          title: l10n.homeProfileViewCustomerApp,
-                          subtitle: l10n.homeProfileViewCustomerAppSubtitle,
-                          onTap: () async {
-                            ref
-                                .read(guestModeProvider.notifier)
-                                .enableGuestMode();
-                            try {
-                              await context.push('/guest-app-preview');
-                            } finally {
-                              await Future<void>.delayed(Duration.zero);
-                              ref
-                                  .read(guestModeProvider.notifier)
-                                  .disableGuestMode();
-                            }
-                          },
-                        ),
-                      if (user?.role != 'wholesaler')
-                        SettingsTile(
-                          icon: HugeIcons.strokeRoundedStore02,
-                          title: l10n.homeProfileApplyWholesaler,
-                          subtitle: l10n.homeProfileApplyWholesalerSubtitle,
-                          onTap: () => context.push('/convert-to-wholesaler'),
-                        ),
-                    ],
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                child: SettingsGroup(
-                  title: l10n.profileSectionSupportLegal,
-                  children: [
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedHelpCircle,
-                      title: l10n.homeProfileHelpSupport,
-                      onTap: () => context.push('/help'),
-                    ),
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedFile01,
-                      title: l10n.homeProfileLegalPolicies,
-                      onTap: _showLegalPoliciesSheet,
-                    ),
-                    SettingsTile(
-                      icon: HugeIcons.strokeRoundedInformationCircle,
-                      title: l10n.homeProfileAbout,
-                      onTap: () => context.push('/about'),
-                    ),
-                  ],
-                ),
-              ),
-              // Logout only for signed-in users, and only after confirming.
-              if (!isGuest)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: SettingsGroup(
-                    children: [
-                      SettingsTile(
-                        icon: HugeIcons.strokeRoundedLogout02,
-                        title: l10n.commonLogout,
-                        destructive: true,
-                        showChevron: false,
-                        onTap: _confirmLogout,
                       ),
                     ],
                   ),
                 ),
-            ],
+                for (var i = 0; i < sections.length; i++)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16, i == 0 ? 10 : 20, 16, 0),
+                    child: ProfileReveal(index: i, child: sections[i]),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 28),
+                  child: ProfileFooter(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _openProfileAddresses() {
+    context.push('/addresses').then((_) => _loadSavedShippingAddresses());
   }
 
   Widget _buildCustomerPreviewProfile() {

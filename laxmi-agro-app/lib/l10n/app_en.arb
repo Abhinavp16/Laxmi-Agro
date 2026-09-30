@@ -1856,5 +1856,21 @@
   "@pdpImageOf": {"placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},
   "searchRemoveFilter": "Remove filter",
   "homeLogoutConfirmTitle": "Log out?",
-  "homeLogoutConfirmMessage": "You'll need to log in again to see your orders and place new ones."
+  "homeLogoutConfirmMessage": "You'll need to log in again to see your orders and place new ones.",
+  "profileStatOrders": "Orders",
+  "profileStatDeals": "Active deals",
+  "profileMemberSince": "Member since {date}",
+  "@profileMemberSince": {"placeholders": {"date": {"type": "String"}}},
+  "profileYourOrder": "Your order",
+  "profileMoreOrdersInProgress": "{count, plural, =1{+1 more in progress} other{+{count} more in progress}}",
+  "@profileMoreOrdersInProgress": {"placeholders": {"count": {"type": "int"}}},
+  "profileUpgradeCta": "Apply now",
+  "profileAddressesSaved": "{count, plural, =0{No saved address yet} =1{1 saved address} other{{count} saved addresses}}",
+  "@profileAddressesSaved": {"placeholders": {"count": {"type": "int"}}},
+  "profileNotificationsSubtitle": "Updates about your orders",
+  "profileAccountPrivacySubtitle": "Your data and account deletion",
+  "profileLegalSubtitle": "Privacy, terms, shipping and refunds",
+  "profileUnreadCount": "{count} unread",
+  "@profileUnreadCount": {"placeholders": {"count": {"type": "int"}}},
+  "profileUpgradeContinue": "Continue"
 }

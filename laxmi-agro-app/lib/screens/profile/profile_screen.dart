@@ -7,11 +7,13 @@ import '../../core/models/user_model.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/providers/order_count_provider.dart';
+import '../../core/providers/wishlist_provider.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/app_fonts.dart';
 import '../../l10n/l10n.dart';
 import '../../widgets/language_picker_sheet.dart';
 import '../../widgets/ui/ui.dart';
+import 'profile_parts.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -29,67 +31,44 @@ class ProfileScreen extends ConsumerWidget {
     final contactLine = user?.phone?.trim().isNotEmpty == true
         ? user!.phone!.trim()
         : user?.email.trim() ?? '';
+    final orderCount = ref.watch(orderCountProvider).value ?? 0;
+    final wishlistCount = ref.watch(wishlistProvider).items.length;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      appBar: AppHeader(
-        title: l10n.profileTitle,
-        actions: [
-          HeaderIconButton(
-            icon: HugeIcons.strokeRoundedPencilEdit01,
-            tooltip: l10n.profileEditProfile,
-            onPressed: () => context.push('/edit-profile'),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+      appBar: AppHeader(title: l10n.profileTitle),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
-          // Header card
-          AppCard(
-            child: Row(
-              children: [
-                _Avatar(user: user, name: profileName),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profileName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppFonts.jakarta(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
+          ProfileReveal(
+            child: ProfileIdentityCard(
+              name: profileName,
+              avatarUrl: user?.avatar,
+              contactLine: contactLine,
+              businessName: user?.isWholesaler == true
+                  ? user?.businessInfo?.businessName
+                  : null,
+              statusLabel: status.label,
+              statusTone: status.tone,
+              statusIcon: status.icon,
+              memberSince: profileMemberSinceText(context, user?.createdAt),
+              onEdit: () => context.push('/edit-profile'),
+              stats: user == null
+                  ? const []
+                  : [
+                      ProfileStat(
+                        value: orderCount,
+                        label: l10n.profileStatOrders,
+                        onTap: () => context.push('/previous-orders'),
                       ),
-                      if (contactLine.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          contactLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.price(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                      StatusChip(
-                        label: status.label,
-                        tone: status.tone,
-                        icon: status.icon,
+                      ProfileStat(
+                        value: wishlistCount,
+                        label: user.isWholesaler
+                            ? l10n.homeWishlistDealer
+                            : l10n.homeWishlistCustomer,
+                        onTap: () => context.push('/wishlist'),
                       ),
                     ],
-                  ),
-                ),
-              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -303,59 +282,6 @@ class ProfileScreen extends ConsumerWidget {
     return user?.isWholesaler == true
         ? l10n.profileSubmitBusinessProof
         : l10n.profileSubmitBusinessDetails;
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.user, required this.name});
-
-  final UserModel? user;
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final avatarUrl = user?.avatar?.trim() ?? '';
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primarySoft,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: avatarUrl.isNotEmpty
-          ? Image.network(
-              avatarUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _Initials(name: name),
-            )
-          : _Initials(name: name),
-    );
-  }
-}
-
-class _Initials extends StatelessWidget {
-  const _Initials({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty);
-    final initials = parts.take(2).map((part) => part[0]).join().toUpperCase();
-    return Center(
-      child: Text(
-        initials.isEmpty ? 'A' : initials,
-        style: AppFonts.jakarta(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
-          color: AppColors.primaryDeep,
-        ),
-      ),
-    );
   }
 }
 

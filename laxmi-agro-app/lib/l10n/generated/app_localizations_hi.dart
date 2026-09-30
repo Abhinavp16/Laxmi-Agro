@@ -3715,4 +3715,60 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get homeLogoutConfirmMessage =>
       'अपने ऑर्डर देखने और नया ऑर्डर देने के लिए आपको फिर से लॉग इन करना होगा।';
+
+  @override
+  String get profileStatOrders => 'ऑर्डर';
+
+  @override
+  String get profileStatDeals => 'चालू डील';
+
+  @override
+  String profileMemberSince(String date) {
+    return '$date से सदस्य';
+  }
+
+  @override
+  String get profileYourOrder => 'आपका ऑर्डर';
+
+  @override
+  String profileMoreOrdersInProgress(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count और चालू',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileUpgradeCta => 'अभी आवेदन करें';
+
+  @override
+  String profileAddressesSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count पते सेव हैं',
+      one: '1 पता सेव है',
+      zero: 'अभी कोई पता सेव नहीं',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileNotificationsSubtitle => 'आपके ऑर्डर की अपडेट';
+
+  @override
+  String get profileAccountPrivacySubtitle => 'आपका डेटा और अकाउंट हटाना';
+
+  @override
+  String get profileLegalSubtitle => 'प्राइवेसी, शर्तें, शिपिंग और रिफंड';
+
+  @override
+  String profileUnreadCount(int count) {
+    return '$count अपठित';
+  }
+
+  @override
+  String get profileUpgradeContinue => 'आगे बढ़ें';
 }

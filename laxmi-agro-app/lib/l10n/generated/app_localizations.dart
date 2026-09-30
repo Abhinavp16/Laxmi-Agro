@@ -6565,6 +6565,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You\'ll need to log in again to see your orders and place new ones.'**
   String get homeLogoutConfirmMessage;
+
+  /// No description provided for @profileStatOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get profileStatOrders;
+
+  /// No description provided for @profileStatDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Active deals'**
+  String get profileStatDeals;
+
+  /// No description provided for @profileMemberSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Member since {date}'**
+  String profileMemberSince(String date);
+
+  /// No description provided for @profileYourOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order'**
+  String get profileYourOrder;
+
+  /// No description provided for @profileMoreOrdersInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+1 more in progress} other{+{count} more in progress}}'**
+  String profileMoreOrdersInProgress(int count);
+
+  /// No description provided for @profileUpgradeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply now'**
+  String get profileUpgradeCta;
+
+  /// No description provided for @profileAddressesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No saved address yet} =1{1 saved address} other{{count} saved addresses}}'**
+  String profileAddressesSaved(int count);
+
+  /// No description provided for @profileNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates about your orders'**
+  String get profileNotificationsSubtitle;
+
+  /// No description provided for @profileAccountPrivacySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data and account deletion'**
+  String get profileAccountPrivacySubtitle;
+
+  /// No description provided for @profileLegalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy, terms, shipping and refunds'**
+  String get profileLegalSubtitle;
+
+  /// No description provided for @profileUnreadCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unread'**
+  String profileUnreadCount(int count);
+
+  /// No description provided for @profileUpgradeContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get profileUpgradeContinue;
 }
 
 class _AppLocalizationsDelegate
