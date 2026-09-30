@@ -10,6 +10,7 @@ import '../../core/providers/wishlist_provider.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/ui/product_cart_stepper.dart';
+import '../../widgets/ui/catalog_price_text.dart';
 import '../../widgets/ui/ui.dart';
 import '../../l10n/l10n.dart';
 
@@ -310,6 +311,8 @@ class _FeaturedProductsScreenState
     return ProductCard(
       name: displayName,
       price: price,
+      unit: catalogUnitSuffix(l10n, product),
+      packNote: catalogPackNote(l10n, product, price),
       mrp: hasDiscount ? originalPrice : null,
       imageUrl: product['image']?.toString() ?? '',
       category: product['category']?.toString() ?? '',
