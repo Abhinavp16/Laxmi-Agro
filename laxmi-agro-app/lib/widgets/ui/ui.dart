@@ -6,4 +6,5 @@ export 'floating_cart_bar.dart';
 export 'pressable.dart';
 export 'product_card.dart';
 export 'quantity_stepper.dart';
+export 'settings_list.dart';
 export 'ui_basics.dart';
