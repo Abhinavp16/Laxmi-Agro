@@ -127,6 +127,8 @@ class AppButton extends StatelessWidget {
                   horizontal: size == AppButtonSize.small ? 12 : 20,
                 ),
                 child: Center(
+                  // Hug the label when the button isn't stretched.
+                  widthFactor: expand ? null : 1,
                   child: AnimatedSwitcher(
                     duration: AppMotion.of(context, AppMotion.fast),
                     child: loading
