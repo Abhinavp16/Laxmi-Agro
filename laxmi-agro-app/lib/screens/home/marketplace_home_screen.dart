@@ -32,6 +32,7 @@ import '../../core/services/redeemed_coupon_service.dart';
 import '../../core/services/shipping_address_service.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/services/storage_service.dart';
+import '../cart/cart_parts.dart';
 import '../categories/categories_screen.dart';
 import '../profile/legal_policy_screen.dart';
 import '../../widgets/product_image_placeholder.dart';
@@ -3604,6 +3605,44 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
+  Future<void> _confirmClearCart() async {
+    final l10n = context.l10n;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: l10n.cartClearTitle,
+      message: l10n.cartClearMessage,
+      confirmLabel: l10n.cartClearConfirm,
+      cancelLabel: l10n.commonCancel,
+      destructive: true,
+      icon: HugeIcons.strokeRoundedDelete02,
+    );
+    if (!confirmed || !mounted) return;
+    await ref.read(cartProvider.notifier).clearCart();
+    await _autoReapplyCouponIfNeeded();
+  }
+
+  /// Removes a cart line and offers Undo, which puts the same line back.
+  Future<void> _removeCartLineWithUndo(CartItem item) async {
+    final l10n = context.l10n;
+    final notifier = ref.read(cartProvider.notifier);
+    await _removeCartItemAndRefreshCoupon(item.productId);
+    if (!mounted) return;
+    showAppSnack(
+      context,
+      l10n.uiItemRemoved(pickLocalizedName(context, item.name, item.nameHindi)),
+      actionLabel: l10n.uiUndo,
+      onAction: () async {
+        final error = await restoreCartItem(notifier, item);
+        if (!mounted) return;
+        if (error != null) {
+          showAppSnack(context, apiErrorText(context, error), tone: SnackTone.error);
+        } else {
+          await _autoReapplyCouponIfNeeded();
+        }
+      },
+    );
+  }
+
   Widget _buildCartContent() {
     if (ref.watch(guestModeProvider)) {
       return _buildCustomerPreviewCart();
@@ -3618,920 +3657,182 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final payableTotal = math
         .max(cart.grandTotal - couponDiscount, 0)
         .toDouble();
+    final hasAddress = _addr1Ctrl.text.trim().isNotEmpty;
+    final addressText = [
+      _addr1Ctrl.text.trim(),
+      _cityCtrl.text.trim(),
+    ].where((part) => part.isNotEmpty).join(', ');
+
     return Column(
       children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          color: AppColors.backgroundLight,
-          child: Column(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 10, 8),
+          child: Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.homeMyCart,
-                    style: AppFonts.jakarta(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      if (cart.itemCount > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            l10n.commonItemsCount(
-                              cart.displayItemCount(_isWholesaler),
-                            ),
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      if (cart.items.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () =>
-                              ref.read(cartProvider.notifier).clearCart(),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceLight,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.gray100),
-                            ),
-                            child: Center(
-                              child: HugeIcon(
-                                icon: HugeIcons.strokeRoundedDelete02,
-                                color: AppColors.textTertiary,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              if (cart.items.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: () => _openCartAddressBottomSheet(),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.gray100),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _addr1Ctrl.text.trim().isEmpty
-                                ? l10n.homeAddShippingDetails
-                                : '${_nameCtrl.text.trim()}, ${_addr1Ctrl.text.trim()}, ${_cityCtrl.text.trim()}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          _addr1Ctrl.text.trim().isEmpty
-                              ? l10n.homeAdd
-                              : l10n.commonEdit,
-                          style: AppFonts.jakarta(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              Text(
+                l10n.homeMyCart,
+                style: AppFonts.jakarta(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.4,
                 ),
-              ],
+              ),
+              const SizedBox(width: 10),
+              AnimatedSwitcher(
+                duration: AppMotion.of(context, AppMotion.base),
+                child: cart.items.isEmpty
+                    ? const SizedBox.shrink()
+                    : StatusChip(
+                        key: ValueKey(cart.displayItemCount(_isWholesaler)),
+                        label: l10n.commonItemsCount(
+                          cart.displayItemCount(_isWholesaler),
+                        ),
+                        tone: ChipTone.brand,
+                        dense: true,
+                      ),
+              ),
+              const Spacer(),
+              if (cart.items.isNotEmpty)
+                HeaderIconButton(
+                  icon: HugeIcons.strokeRoundedDelete02,
+                  tooltip: l10n.cartClearTitle,
+                  color: AppColors.textSecondary,
+                  onPressed: _confirmClearCart,
+                ),
             ],
           ),
         ),
         Expanded(
-          child: cart.items.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          child: AnimatedSwitcher(
+            duration: AppMotion.of(context, AppMotion.base),
+            child: cart.items.isEmpty
+                ? EmptyState(
+                    key: const ValueKey('cart-empty'),
+                    icon: HugeIcons.strokeRoundedShoppingCart01,
+                    title: l10n.homeCartEmptyTitle,
+                    message: l10n.homeCartEmptySubtitle,
+                    actionLabel: l10n.homeBrowseProducts,
+                    onAction: () => _selectNavIndex(0),
+                  )
+                : ListView(
+                    key: const ValueKey('cart-lines'),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                     children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.06),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedShoppingCart01,
-                            color: AppColors.primary.withOpacity(0.4),
-                            size: 48,
-                          ),
-                        ),
+                      CartAddressCard(
+                        onTap: _openCartAddressBottomSheet,
+                        name: _nameCtrl.text,
+                        phone: _phoneCtrl.text,
+                        address: hasAddress ? addressText : null,
+                        emptyLabel: l10n.homeAddShippingDetails,
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        l10n.homeCartEmptyTitle,
-                        style: AppFonts.jakarta(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.homeCartEmptySubtitle,
-                        style: AppFonts.jakarta(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedNavIndex = 0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.25),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            l10n.homeBrowseProducts,
-                            style: AppFonts.jakarta(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  itemCount: cart.items.length,
-                  itemBuilder: (context, index) {
-                    final item = cart.items[index];
-                    // Quantities are in pieces; wholesalers step by whole
-                    // packets for packet products.
-                    final minimumQuantity = item.minimumQuantity(_isWholesaler);
-                    final quantityStep = item.quantityStep(_isWholesaler);
-                    final isAtMinimum = item.quantity <= minimumQuantity;
-                    return Dismissible(
-                      key: Key(item.cartItemKey),
-                      direction: DismissDirection.endToStart,
-                      onDismissed: (_) =>
-                          _removeCartItemAndRefreshCoupon(item.productId),
-                      background: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.errorSoft,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 24),
-                        child: const Icon(
-                          Icons.delete_outline_rounded,
-                          color: AppColors.error,
-                          size: 24,
-                        ),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.gray100.withOpacity(0.5),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Product Image
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child:
-                                  item.image != null && item.image!.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: item.image!,
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, __) => Container(
-                                        width: 80,
-                                        height: 80,
-                                        color: AppColors.gray100,
-                                      ),
-                                      errorWidget: (_, __, ___) => Container(
-                                        width: 80,
-                                        height: 80,
-                                        color: AppColors.gray100,
-                                        child: Center(
-                                          child: HugeIcon(
-                                            icon:
-                                                HugeIcons.strokeRoundedImage01,
-                                            color: AppColors.textTertiary,
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Container(
-                                      width: 80,
-                                      height: 80,
-                                      color: AppColors.gray100,
-                                      child: Center(
-                                        child: HugeIcon(
-                                          icon: HugeIcons.strokeRoundedImage01,
-                                          color: AppColors.textTertiary,
-                                          size: 24,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(width: 12),
-                            // Product Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          pickLocalizedName(
-                                            context,
-                                            item.name,
-                                            item.nameHindi,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: AppFonts.jakarta(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
-                                            height: 1.2,
-                                          ),
-                                        ),
-                                      ),
-                                      // Remove just this product.
-                                      Semantics(
-                                        button: true,
-                                        label: l10n.commonRemove,
-                                        child: GestureDetector(
-                                          onTap: () =>
-                                              _removeCartItemAndRefreshCoupon(
-                                                item.productId,
-                                              ),
-                                          behavior: HitTestBehavior.opaque,
-                                          child: const Padding(
-                                            padding: EdgeInsets.only(
-                                              left: 8,
-                                              bottom: 4,
-                                            ),
-                                            child: Icon(
-                                              Icons.delete_outline_rounded,
-                                              size: 20,
-                                              color: AppColors.error,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if ((item.brand?.trim().isNotEmpty ??
-                                          false) ||
-                                      (item.category?.trim().isNotEmpty ??
-                                          false)) ...[
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 2,
-                                      children: [
-                                        if (item.brand?.trim().isNotEmpty ??
-                                            false)
-                                          Text(
-                                            l10n.homeBrandValue(
-                                              item.brand!.trim(),
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppFonts.jakarta(
-                                              fontSize: 11,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        if (item.category?.trim().isNotEmpty ??
-                                            false)
-                                          Text(
-                                            l10n.homeCategoryValue(
-                                              item.category!.trim(),
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppFonts.jakarta(
-                                              fontSize: 11,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (_isWholesaler) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      l10n.homeMinWholesaleQtyValue(
-                                        item.pack.isPack
-                                            ? packQuantityText(
-                                                l10n,
-                                                item.pack,
-                                                minimumQuantity,
-                                              )
-                                            : '${item.minWholesaleQuantity}',
-                                      ),
-                                      style: AppFonts.jakarta(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                  if (!_isWholesaler &&
-                                      item.minCustomerQuantity > 1) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      l10n.productMinOrderQuantity(
-                                        item.isMeter
-                                            ? contentsText(
-                                                l10n,
-                                                ContentUnit.meter,
-                                                item.minCustomerQuantity,
-                                              )
-                                            : '${item.minCustomerQuantity}',
-                                      ),
-                                      style: AppFonts.jakarta(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        item.pack.isPack || item.isMeter
-                                            ? l10n.productPriceWithUnit(
-                                                _formatPrice(item.price),
-                                                item.pack.isPack
-                                                    ? contentUnitLabel(
-                                                        l10n,
-                                                        item.pack.contentUnit!,
-                                                      )
-                                                    : l10n.productUnitMeter,
-                                              )
-                                            : '₹${_formatPrice(item.price)}',
-                                        style: AppFonts.jakarta(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                      if (item.mrp != null &&
-                                          item.mrp! > item.price) ...[
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          '₹${_formatPrice(item.mrp!)}',
-                                          style: AppFonts.jakarta(
-                                            fontSize: 12,
-                                            color: AppColors.error,
-                                            decoration:
-                                                TextDecoration.lineThrough,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  if (item.pack.isPack) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      packPriceText(
-                                        l10n,
-                                        item.pack,
-                                        item.price,
-                                      ),
-                                      style: AppFonts.jakarta(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  // Quantity Controls
-                                  Container(
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.gray100,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: isAtMinimum
-                                              ? null
-                                              : () =>
-                                                    _updateCartQtyAndRefreshCoupon(
-                                                      item.productId,
-                                                      item.quantity -
-                                                          quantityStep,
-                                                    ),
-                                          child: Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.surfaceLight,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: AppColors.gray100,
-                                              ),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Icon(
-                                              Icons.remove,
-                                              size: 16,
-                                              color: isAtMinimum
-                                                  ? AppColors.textTertiary
-                                                  : AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 36,
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '${item.displayQuantity(_isWholesaler)}',
-                                            style: AppFonts.jakarta(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () =>
-                                              _updateCartQtyAndRefreshCoupon(
-                                                item.productId,
-                                                item.quantity < minimumQuantity
-                                                    ? minimumQuantity
-                                                    : item.quantity +
-                                                          quantityStep,
-                                              ),
-                                          child: Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: const Icon(
-                                              Icons.add,
-                                              size: 16,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        // Price Summary & Checkout
-        if (cart.items.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Order Summary
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.gray50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              l10n.commonSubtotal,
-                              style: AppFonts.jakarta(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              '₹${_formatPrice(cart.subtotal)}',
-                              style: AppFonts.jakarta(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              l10n.homeDelivery,
-                              style: AppFonts.jakarta(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              '₹${_formatPrice(cart.deliveryFee)}',
-                              style: AppFonts.jakarta(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (hasActiveCoupon) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                l10n.homeCouponWithCode(
-                                  _appliedCouponCode ?? '',
-                                ),
-                                style: AppFonts.jakarta(
-                                  fontSize: 14,
-                                  color: AppColors.success,
-                                  fontWeight: FontWeight.w700,
+                      const SizedBox(height: 12),
+                      for (final item in cart.items)
+                        Padding(
+                          key: ValueKey(item.cartItemKey),
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Dismissible(
+                            key: Key('dismiss-${item.cartItemKey}'),
+                            direction: DismissDirection.endToStart,
+                            onDismissed: (_) => _removeCartLineWithUndo(item),
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.errorSoft,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
                                 ),
                               ),
-                              Text(
-                                '-\u20B9${_formatPrice(couponDiscount)}',
-                                style: AppFonts.jakarta(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        Container(height: 1, color: AppColors.gray100),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              hasActiveCoupon
-                                  ? l10n.homePayableTotal
-                                  : l10n.commonTotal,
-                              style: AppFonts.jakarta(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 24),
+                              child: const HugeIcon(
+                                icon: HugeIcons.strokeRoundedDelete02,
+                                color: AppColors.error,
+                                size: 22,
                               ),
                             ),
-                            Text(
-                              '₹${_formatPrice(payableTotal)}',
-                              style: AppFonts.jakarta(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!kHideOfferCouponUi) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _couponCtrl,
-                            enabled: !isCouponLocked && !_isApplyingCoupon,
-                            textCapitalization: TextCapitalization.characters,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[a-zA-Z0-9_-]'),
-                              ),
-                            ],
-                            onChanged: (_) {
-                              if (_appliedCouponCode != null &&
-                                  _normalizedCouponInput !=
-                                      _appliedCouponCode) {
-                                setState(() => _clearAppliedCouponPreview());
-                              }
-                            },
-                            style: AppFonts.jakarta(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            decoration: InputDecoration(
-                              labelText: l10n.homeCouponFieldLabel,
-                              hintText: l10n.homeCouponFieldHint,
-                              labelStyle: AppFonts.jakarta(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
-                              hintStyle: AppFonts.jakarta(
-                                fontSize: 13,
-                                color: AppColors.textTertiary,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.gray50,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(color: AppColors.gray100),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(color: AppColors.gray100),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(
-                                  color: AppColors.primary,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          height: 44,
-                          child: ElevatedButton(
-                            onPressed: _isApplyingCoupon || isCouponLocked
-                                ? null
-                                : _applyCouponPreview,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                              ),
-                            ),
-                            child: _isApplyingCoupon
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    isCouponLocked
-                                        ? l10n.homeCouponAppliedButton
-                                        : l10n.commonApply,
-                                    style: AppFonts.jakarta(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            child: CartLineCard(
+                              item: item,
+                              isWholesaler: _isWholesaler,
+                              onQuantityChanged: (quantity) =>
+                                  _updateCartQtyAndRefreshCoupon(
+                                    item.productId,
+                                    quantity,
                                   ),
+                              onRemove: () => _removeCartLineWithUndo(item),
+                              onLimitReached: (message) => showAppSnack(
+                                context,
+                                message,
+                                tone: SnackTone.error,
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    if (isCouponLocked) ...[
-                      const SizedBox(height: 6),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () => setState(
+                      if (!kHideOfferCouponUi) ...[
+                        const SizedBox(height: 2),
+                        CartCouponField(
+                          controller: _couponCtrl,
+                          locked: isCouponLocked,
+                          applying: _isApplyingCoupon,
+                          labelText: l10n.homeCouponFieldLabel,
+                          hintText: l10n.homeCouponFieldHint,
+                          onApply: _isApplyingCoupon || isCouponLocked
+                              ? null
+                              : _applyCouponPreview,
+                          onChanged: (_) {
+                            if (_appliedCouponCode != null &&
+                                _normalizedCouponInput != _appliedCouponCode) {
+                              setState(() => _clearAppliedCouponPreview());
+                            }
+                          },
+                          onChangeCode: () => setState(
                             () => _clearAppliedCouponPreview(clearInput: true),
                           ),
-                          child: Text(
-                            l10n.homeChangeCode,
-                            style: AppFonts.jakarta(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
                         ),
+                        const SizedBox(height: 10),
+                      ],
+                      CartBillCard(
+                        itemTotal: cart.subtotal,
+                        deliveryFee: cart.deliveryFee,
+                        total: payableTotal,
+                        discount: couponDiscount,
+                        couponCode: hasActiveCoupon ? _appliedCouponCode : null,
+                        savings: cartMrpSavings(cart.items) + couponDiscount,
+                        itemCount: cart.displayItemCount(_isWholesaler),
+                        totalLabel: hasActiveCoupon ? l10n.homePayableTotal : null,
                       ),
                     ],
-                  ],
-                  const SizedBox(height: 12),
-                  // Checkout Button (wholesalers send the cart as a requirement)
-                  GestureDetector(
-                    onTap: _isCheckingOut
-                        ? null
-                        : (_isWholesaler
-                              ? _sendCartAsRequirement
-                              : _proceedToCheckout),
-                    child: Container(
-                      width: double.infinity,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: _isCheckingOut
-                            ? AppColors.primary.withOpacity(0.6)
-                            : AppColors.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (_isCheckingOut) ...[
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          if (_isWholesaler && !_isCheckingOut) ...[
-                            const Icon(
-                              Icons.send_rounded,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
-                            _isWholesaler
-                                ? (_isCheckingOut
-                                      ? l10n.cartSendingRequirement
-                                      : l10n.productSendRequirement)
-                                : (_isCheckingOut
-                                      ? l10n.homeCreatingOrder
-                                      : l10n.homeProceedToCheckout),
-                            style: AppFonts.jakarta(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (!_isCheckingOut && !_isWholesaler) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                   ),
-                ],
-              ),
-            ),
+          ),
+        ),
+        if (cart.items.isNotEmpty)
+          CartCheckoutBar(
+            total: payableTotal,
+            totalLabel: hasActiveCoupon ? l10n.homePayableTotal : null,
+            loading: _isCheckingOut,
+            label: _isWholesaler
+                ? (_isCheckingOut
+                      ? l10n.cartSendingRequirement
+                      : l10n.productSendRequirement)
+                : (_isCheckingOut
+                      ? l10n.homeCreatingOrder
+                      : l10n.homeProceedToCheckout),
+            icon: _isWholesaler ? HugeIcons.strokeRoundedSent : null,
+            trailingIcon: _isWholesaler
+                ? null
+                : HugeIcons.strokeRoundedArrowRight01,
+            onPressed: _isCheckingOut
+                ? null
+                : (_isWholesaler ? _sendCartAsRequirement : _proceedToCheckout),
           ),
       ],
     );
   }
 
   Widget _buildCustomerPreviewCart() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: HugeIcon(
-                  icon: HugeIcons.strokeRoundedShoppingCart01,
-                  color: AppColors.primary,
-                  size: 38,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              context.l10n.homePreviewCartTitle,
-              textAlign: TextAlign.center,
-              style: AppFonts.jakarta(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.homePreviewCartMessage,
-              textAlign: TextAlign.center,
-              style: AppFonts.jakarta(
-                fontSize: 14,
-                height: 1.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: HugeIcons.strokeRoundedShoppingCart01,
+      title: context.l10n.homePreviewCartTitle,
+      message: context.l10n.homePreviewCartMessage,
     );
   }
 
@@ -7279,7 +6580,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     String productId,
     int quantity,
   ) async {
-    await ref.read(cartProvider.notifier).updateQuantity(productId, quantity);
+    final error = await ref
+        .read(cartProvider.notifier)
+        .updateQuantity(productId, quantity);
+    if (error != null && mounted) {
+      // Say why "+" didn't work (usually the stock limit).
+      final item = ref
+          .read(cartProvider)
+          .items
+          .where((i) => i.productId == productId)
+          .firstOrNull;
+      showAppSnack(
+        context,
+        item != null
+            ? cartStockLimitText(context.l10n, item, _isWholesaler)
+            : error,
+        tone: SnackTone.error,
+      );
+      return;
+    }
     await _autoReapplyCouponIfNeeded();
   }
 
@@ -7322,7 +6641,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _pinCtrl.text = address['pincode'] ?? '';
   }
 
-  Future<bool> _openCartAddressBottomSheet() async {
+  /// Edits the delivery address. With [forCheckout] the sheet's button
+  /// places the order right after saving, so it says so.
+  Future<bool> _openCartAddressBottomSheet({bool forCheckout = false}) async {
     final auth = ref.read(authProvider);
     final l10n = context.l10n;
     final fk = GlobalKey<FormState>();
@@ -7360,13 +6681,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         builder: (ctx, setSheetState) => Container(
           margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
           decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               20,
-              16,
+              4,
               20,
               MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
@@ -7377,22 +6700,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.gray100,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                      ),
-                    ),
+                    const SheetHandle(),
+                    const SizedBox(height: 8),
                     Text(
                       l10n.homeShippingAddress,
                       style: AppFonts.jakarta(
                         fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -7406,12 +6720,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: ChoiceChip(
+                                showCheckmark: false,
                                 label: Text(
                                   '${a.fullName} • ${a.shortAddress}',
                                   style: AppFonts.jakarta(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: active ? Colors.white : AppColors.textPrimary,
+                                    color: active
+                                        ? AppColors.primaryDeep
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                                 selected: active,
@@ -7424,8 +6741,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                                   stateC.text = a.state;
                                   pinC.text = a.pincode;
                                 },
-                                selectedColor: AppColors.primary,
-                                backgroundColor: AppColors.gray100,
+                                selectedColor: AppColors.primarySoft,
+                                backgroundColor: AppColors.surfaceLight,
+                                side: BorderSide(
+                                  color: active
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                ),
                               ),
                             );
                           }).toList(),
@@ -7449,37 +6771,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       pincodeController: pinC,
                     ),
                     const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (!fk.currentState!.validate()) return;
-                          Navigator.of(ctx).pop({
-                            'id': selectedId ?? ShippingAddress.generateId(),
-                            'fullName': nameC.text.trim(),
-                            'phone': phoneC.text.trim(),
-                            'addressLine1': addr1C.text.trim(),
-                            'city': cityC.text.trim(),
-                            'state': stateC.text.trim(),
-                            'pincode': pinC.text.trim(),
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          l10n.homeSaveAddress,
-                          style: AppFonts.jakarta(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                    AppButton(
+                      label: forCheckout
+                          ? l10n.cartPlaceOrderRequest
+                          : l10n.homeSaveAddress,
+                      icon: forCheckout ? HugeIcons.strokeRoundedSent : null,
+                      onPressed: () {
+                        if (!fk.currentState!.validate()) return;
+                        Navigator.of(ctx).pop({
+                          'id': selectedId ?? ShippingAddress.generateId(),
+                          'fullName': nameC.text.trim(),
+                          'phone': phoneC.text.trim(),
+                          'addressLine1': addr1C.text.trim(),
+                          'city': cityC.text.trim(),
+                          'state': stateC.text.trim(),
+                          'pincode': pinC.text.trim(),
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -7571,7 +6879,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       return;
     }
 
-    final saved = await _openCartAddressBottomSheet();
+    final saved = await _openCartAddressBottomSheet(forCheckout: true);
     if (!saved || !mounted) return;
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
