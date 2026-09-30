@@ -13,6 +13,7 @@
     "seed:harit-subs": "node scripts/seedHaritSprinklerSubs.js",
     "seed:all-subs": "node scripts/seedAllSubcategories.js",
     "seed:gi-full": "node scripts/seedGiFullList.js",
+    "seed:iskcon-gi": "node scripts/seedIskconGiPipes.js --apply",
     "catalog:pdf": "node src/scripts/importPdfCatalog.js",
     "catalog:cpvc": "node src/scripts/importCpvcCatalog.js",
     "products:remove-variants": "node src/scripts/removeProductVariants.js",
