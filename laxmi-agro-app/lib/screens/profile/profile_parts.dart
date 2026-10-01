@@ -860,7 +860,8 @@ class ProfileCountPill extends StatelessWidget {
   }
 }
 
-/// Quiet sign-off under the settings: logo, "Since 1993" and the app version.
+/// Quiet sign-off under the settings: "Laxmi Agro · Since 1993 · Version",
+/// then the Buildory credit.
 class ProfileFooter extends StatefulWidget {
   const ProfileFooter({super.key});
 
@@ -881,25 +882,13 @@ class _ProfileFooterState extends State<ProfileFooter> {
     );
     return Column(
       children: [
-        Opacity(
-          opacity: 0.9,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: Image.asset(
-              'assets/images/laxmi-agro-logo.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
         FutureBuilder<PackageInfo>(
           future: _info,
           builder: (context, snapshot) {
             final version = snapshot.data?.version;
             return Text(
               [
+                l10n.aboutBrand,
                 l10n.homeTrustSince1993,
                 if (version != null && version.isNotEmpty)
                   l10n.helpVersion(version),
@@ -927,7 +916,7 @@ class _BuildoryCredit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 17.0;
+    const size = 21.0;
     return Pressable(
       onTap: () => launchUrl(_site, mode: LaunchMode.externalApplication),
       semanticLabel: 'Made by Buildory',
@@ -940,19 +929,19 @@ class _BuildoryCredit extends StatelessWidget {
             Text(
               context.l10n.profileMadeBy,
               style: AppFonts.jakarta(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textTertiary,
               ),
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 8),
             Image.asset(
               'assets/images/buildory_mark.png',
-              width: 11,
-              height: 20,
+              width: 14,
+              height: 25,
               excludeFromSemantics: true,
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 8),
             Text.rich(
               TextSpan(
                 text: 'build',
