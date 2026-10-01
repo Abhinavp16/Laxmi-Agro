@@ -1,8 +1,8 @@
-import 'dart:async';
-import 'dart:ui' as ui show Gradient;
+import 'dart:ui' as ui show FragmentProgram, FragmentShader;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -91,7 +91,7 @@ class ProfileIdentityCard extends StatelessWidget {
         borderRadius: radius,
         child: Stack(
           children: [
-            const Positioned.fill(child: _CardSheen()),
+            const Positioned.fill(child: _CardLiquid()),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
               child: Column(
@@ -322,121 +322,91 @@ class _GlassIconButton extends StatelessWidget {
   }
 }
 
-/// Soft glows on the identity card, and every few seconds a glossy band of
-/// light glides across it, like light catching a membership card. The sweep
-/// stays off when the OS asks for reduced motion.
-class _CardSheen extends StatefulWidget {
-  const _CardSheen();
+/// Liquid light on the identity card: soft pools of pale green that melt and
+/// shift like light on water. Holds still when the OS asks for reduced motion,
+/// and pauses with the tab (TickerMode). Without shader support the green
+/// stays plain.
+class _CardLiquid extends StatefulWidget {
+  const _CardLiquid();
 
   @override
-  State<_CardSheen> createState() => _CardSheenState();
+  State<_CardLiquid> createState() => _CardLiquidState();
 }
 
-class _CardSheenState extends State<_CardSheen>
+class _CardLiquidState extends State<_CardLiquid>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _sweep = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
+  static final Future<ui.FragmentProgram> _program =
+      ui.FragmentProgram.fromAsset('shaders/card_liquid.frag');
+
+  /// Where the still frame sits when motion is reduced.
+  static const double _stillTime = 8;
+
+  final ValueNotifier<double> _time = ValueNotifier(_stillTime);
+  late final Ticker _ticker = createTicker(
+    (elapsed) => _time.value = _stillTime + elapsed.inMicroseconds / 1e6,
   );
-  Timer? _first;
-  Timer? _every;
+  ui.FragmentShader? _shader;
+
+  @override
+  void initState() {
+    super.initState();
+    _program.then((program) {
+      if (mounted) setState(() => _shader = program.fragmentShader());
+    }, onError: (Object _) {});
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _first?.cancel();
-    _every?.cancel();
     if (AppMotion.reduced(context)) {
-      _sweep.stop();
-      return;
+      _ticker.stop();
+      _time.value = _stillTime;
+    } else if (!_ticker.isActive) {
+      _ticker.start();
     }
-    void run() {
-      if (mounted) _sweep.forward(from: 0);
-    }
-
-    _first = Timer(const Duration(milliseconds: 900), run);
-    _every = Timer.periodic(const Duration(seconds: 5), (_) => run());
   }
 
   @override
   void dispose() {
-    _first?.cancel();
-    _every?.cancel();
-    _sweep.dispose();
+    _ticker.dispose();
+    _time.dispose();
+    _shader?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(child: CustomPaint(painter: _SheenPainter(_sweep)));
+    final shader = _shader;
+    if (shader == null) return const SizedBox.shrink();
+    return RepaintBoundary(
+      child: CustomPaint(painter: _LiquidPainter(shader, _time)),
+    );
   }
 }
 
-class _SheenPainter extends CustomPainter {
-  _SheenPainter(this.sweep) : super(repaint: sweep);
+class _LiquidPainter extends CustomPainter {
+  _LiquidPainter(this.shader, this.time) : super(repaint: time);
 
-  final AnimationController sweep;
-
-  static const Color _lift = Color(0xFF3DB45F);
-
-  /// Direction the band travels in: mostly sideways, a little downwards.
-  static final Offset _direction = () {
-    const d = Offset(1, 0.45);
-    return d / d.distance;
-  }();
-  static const double _halfBand = 70;
+  final ui.FragmentShader shader;
+  final ValueNotifier<double> time;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Light in the top-right corner, a brighter green from the bottom-left.
-    final light = Offset(size.width * 0.9, 0);
-    canvas.drawCircle(
-      light,
-      200,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.13),
-            Colors.white.withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: light, radius: 200)),
-    );
-    final rise = Offset(0, size.height);
-    canvas.drawCircle(
-      rise,
-      190,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [_lift.withValues(alpha: 0.30), _lift.withValues(alpha: 0)],
-        ).createShader(Rect.fromCircle(center: rise, radius: 190)),
-    );
-
-    if (!sweep.isAnimating) return;
-    // The band's centre runs from just before the top-left corner to just
-    // past the bottom-right one, measured along [_direction].
-    final far = size.width * _direction.dx + size.height * _direction.dy;
-    final t = Curves.easeInOutCubic.transform(sweep.value);
-    final along = -_halfBand + (far + 2 * _halfBand) * t;
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        // Runs along [_direction] between the band's two edges; clear
-        // beyond them.
-        ..shader = ui.Gradient.linear(
-          _direction * (along - _halfBand),
-          _direction * (along + _halfBand),
-          [
-            Colors.white.withValues(alpha: 0),
-            Colors.white.withValues(alpha: 0.16),
-            Colors.white.withValues(alpha: 0),
-          ],
-          const [0, 0.5, 1],
-        ),
-    );
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time.value)
+      // Pale leaf green, at most 42% opaque on the crests.
+      ..setFloat(3, 0xAA / 255)
+      ..setFloat(4, 0xEB / 255)
+      ..setFloat(5, 0xBE / 255)
+      ..setFloat(6, 0.42);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
-  bool shouldRepaint(_SheenPainter oldDelegate) => oldDelegate.sweep != sweep;
+  bool shouldRepaint(_LiquidPainter oldDelegate) =>
+      oldDelegate.shader != shader || oldDelegate.time != time;
 }
 
 /// Round avatar: the photo, else initials, else a person icon for guests.

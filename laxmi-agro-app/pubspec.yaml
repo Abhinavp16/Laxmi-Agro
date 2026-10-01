@@ -55,6 +55,7 @@ flutter:
     - assets/legal/
   shaders:
     - shaders/header_dither.frag
+    - shaders/card_liquid.frag
 
 flutter_launcher_icons:
   android: true
