@@ -5068,7 +5068,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             Skeleton(
                               width: size,
                               height: size,
-                              radius: AppRadius.pill,
+                              radius: AppRadius.xl,
                             ),
                             const SizedBox(height: 8),
                             const Skeleton(width: 48, height: 10),

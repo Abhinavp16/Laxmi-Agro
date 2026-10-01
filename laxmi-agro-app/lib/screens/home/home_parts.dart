@@ -355,7 +355,8 @@ class HomeCategoryTile extends StatelessWidget {
   }
 }
 
-/// Round brand logo with the name underneath, for the Top Brands row.
+/// Brand logo on a squircle tile with the name underneath, for the Top
+/// Brands row.
 class HomeBrandAvatar extends StatelessWidget {
   const HomeBrandAvatar({
     super.key,
@@ -369,6 +370,9 @@ class HomeBrandAvatar extends StatelessWidget {
   final VoidCallback onTap;
   final String? logoUrl;
   final double size;
+
+  static const double _radius = AppRadius.xl;
+  static const double _rim = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -397,13 +401,15 @@ class HomeBrandAvatar extends StatelessWidget {
               width: size,
               height: size,
               // A thin white rim around the logo.
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(_rim),
+              decoration: ShapeDecoration(
                 color: AppColors.surfaceLight,
-                shape: BoxShape.circle,
-                boxShadow: AppShadows.card,
+                shape: AppShapes.squircle(_radius),
+                shadows: AppShadows.card,
               ),
-              child: ClipOval(
+              // Concentric with the tile: its radius minus the rim.
+              child: ClipRSuperellipse(
+                borderRadius: BorderRadius.circular(_radius - _rim),
                 child: logo.isEmpty
                     ? ColoredBox(color: AppColors.primarySoft, child: initial)
                     : CachedNetworkImage(
