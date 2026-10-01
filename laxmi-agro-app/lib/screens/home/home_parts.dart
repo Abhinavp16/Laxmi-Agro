@@ -49,8 +49,13 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   // search + 16 bottom.
   static const double _expandedBody = 240;
 
+  /// Height of the header once folded down to just the search bar, which
+  /// stays pinned over the top of the page.
+  static double collapsedHeight(double topInset) =>
+      topInset + _collapsedPadding * 2 + searchHeight;
+
   @override
-  double get minExtent => topInset + _collapsedPadding * 2 + searchHeight;
+  double get minExtent => collapsedHeight(topInset);
 
   @override
   double get maxExtent => topInset + _expandedBody;

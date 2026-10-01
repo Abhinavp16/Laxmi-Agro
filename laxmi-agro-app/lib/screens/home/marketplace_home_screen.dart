@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui show ImageFilter;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
@@ -85,6 +86,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
 
   // The search bar gliding from Home into the Search tab's field.
   final GlobalKey _homeSearchBarKey = GlobalKey();
+  final GlobalKey _heroCarouselKey = GlobalKey();
+  final GlobalKey _promoCarouselKey = GlobalKey();
   final GlobalKey _searchFieldKey = GlobalKey();
   late final AnimationController _searchFlight = AnimationController(
     vsync: this,
@@ -969,17 +972,34 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     }
   }
 
+  /// Whether [key]'s widget is on Home and on screen: the Home tab is showing,
+  /// no other page covers it, and some of it is below the pinned search bar.
+  bool _isShowingOnHome(GlobalKey key) {
+    if (!mounted || _selectedNavIndex != 0) return false;
+    // Off while another page is pushed over this one.
+    if (!TickerMode.getNotifier(context).value) return false;
+    final rect = _globalRectOf(key);
+    if (rect == null) return false;
+    final top = HomeHeroHeaderDelegate.collapsedHeight(
+      MediaQuery.paddingOf(context).top,
+    );
+    return rect.bottom > top && rect.top < MediaQuery.sizeOf(context).height;
+  }
+
+  // Each tick is skipped while its carousel can't be seen, so a hidden
+  // carousel doesn't keep sliding and rebuilding the page.
   void _startAutoRotate() {
     _heroAutoRotateTimer?.cancel();
     _promoAutoRotateTimer?.cancel();
     if (_heroBanners.length > 1) {
       _heroAutoRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        _goToNextHeroSlide();
+        if (_isShowingOnHome(_heroCarouselKey)) _goToNextHeroSlide();
       });
     }
     if (_promoBanners.length > 1) {
       _promoAutoRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (_promoBannerController.hasClients) {
+        if (_promoBannerController.hasClients &&
+            _isShowingOnHome(_promoCarouselKey)) {
           final next = (_currentPromoBannerIndex + 1) % _promoBanners.length;
           _promoBannerController.animateToPage(
             next,
@@ -1915,8 +1935,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                   index: _selectedNavIndex,
                   children: [
                     // Home draws its own header under the status bar.
+                    // Hidden tabs get TickerMode off, which pauses their
+                    // animations and the Home hero's videos.
                     for (var i = 0; i < pages.length; i++)
-                      SafeArea(top: i != 0, bottom: false, child: pages[i]),
+                      TickerMode(
+                        enabled: i == _selectedNavIndex,
+                        child: SafeArea(
+                          top: i != 0,
+                          bottom: false,
+                          child: pages[i],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -4855,6 +4884,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     return Column(
       children: [
         SizedBox(
+          key: _heroCarouselKey,
           height: bannerHeight,
           child: PageView.builder(
             controller: _carouselController,
@@ -6833,6 +6863,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     return Column(
       children: [
         SizedBox(
+          key: _promoCarouselKey,
           height: bannerHeight,
           child: PageView.builder(
             controller: _promoBannerController,
@@ -7683,6 +7714,8 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
+      // Hold still while its tab or page is hidden.
+      if (!TickerMode.getNotifier(context).value) return;
       _goTo(_index + 1);
     });
   }
@@ -7976,8 +8009,70 @@ class _ScheduledStripCarouselState extends State<_ScheduledStripCarousel> {
   }
 }
 
+/// For the Home hero's video slides: tracks whether the slide can actually
+/// be seen. That means its tab and page are showing (TickerMode) and at least
+/// half of it is on screen below the pinned search bar. Calls
+/// [onSlideVisibilityChanged] when that flips.
+mixin _HeroSlideVisibility<T extends StatefulWidget> on State<T> {
+  ValueListenable<bool>? _tickerMode;
+  ScrollPosition? _pageScroll;
+  bool slideVisible = false;
+
+  void onSlideVisibilityChanged();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ticker = TickerMode.getNotifier(context);
+    if (!identical(ticker, _tickerMode)) {
+      _tickerMode?.removeListener(_checkSlideVisibility);
+      _tickerMode = ticker..addListener(_checkSlideVisibility);
+    }
+    final scroll = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+    if (!identical(scroll, _pageScroll)) {
+      _pageScroll?.removeListener(_checkSlideVisibility);
+      _pageScroll = scroll?..addListener(_checkSlideVisibility);
+    }
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _checkSlideVisibility(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tickerMode?.removeListener(_checkSlideVisibility);
+    _pageScroll?.removeListener(_checkSlideVisibility);
+    super.dispose();
+  }
+
+  void _checkSlideVisibility() {
+    if (!mounted) return;
+    final visible = (_tickerMode?.value ?? true) && _halfOnScreen();
+    if (visible == slideVisible) return;
+    slideVisible = visible;
+    onSlideVisibilityChanged();
+  }
+
+  bool _halfOnScreen() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return false;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    final top = HomeHeroHeaderDelegate.collapsedHeight(
+      MediaQuery.paddingOf(context).top,
+    );
+    final bottom = MediaQuery.sizeOf(context).height;
+    final shown = math.min(rect.bottom, bottom) - math.max(rect.top, top);
+    return shown >= rect.height * 0.5;
+  }
+}
+
 /// Inline muted-autoplay video slide for hero video_upload banners.
 /// Button + link only: the whole slide opens the link, mute toggle is separate.
+///
+/// It plays only while it's the active slide and can be seen; scrolled away,
+/// on another tab or under another page, it pauses, and picks up where it
+/// left off when it's back. The video isn't loaded until the slide is first
+/// played; until then the poster shows.
 class _HeroVideoSlide extends StatefulWidget {
   final String videoUrl;
   final String posterUrl;
@@ -7998,32 +8093,55 @@ class _HeroVideoSlide extends StatefulWidget {
   State<_HeroVideoSlide> createState() => _HeroVideoSlideState();
 }
 
-class _HeroVideoSlideState extends State<_HeroVideoSlide> {
+class _HeroVideoSlideState extends State<_HeroVideoSlide>
+    with _HeroSlideVisibility {
   VideoPlayerController? _controller;
   bool _initialized = false;
   bool _hasError = false;
   bool _muted = true;
   bool _notifiedComplete = false;
 
-  @override
-  void initState() {
-    super.initState();
+  bool get _shouldPlay => widget.isActive && slideVisible;
+
+  /// Loads the video the first time the slide should play.
+  void _ensureController() {
+    if (_controller != null) return;
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..setLooping(false)
-      ..setVolume(0)
+      ..setVolume(_muted ? 0 : 1)
       ..addListener(_onTick)
       ..initialize().then(
         (_) {
           if (!mounted) return;
           setState(() => _initialized = true);
-          _playIfActive();
+          _syncPlayback();
         },
         onError: (_) {
           if (!mounted) return;
           setState(() => _hasError = true);
         },
       );
+    // Shows the loading spinner over the poster.
+    setState(() {});
   }
+
+  /// Plays while active and visible, pauses otherwise. A video that has
+  /// finished stays finished until the slide becomes active again.
+  void _syncPlayback() {
+    if (!mounted || _hasError) return;
+    if (_shouldPlay) {
+      _ensureController();
+      final controller = _controller!;
+      if (_initialized && !_notifiedComplete && !controller.value.isPlaying) {
+        controller.play();
+      }
+    } else if (_initialized && _controller!.value.isPlaying) {
+      _controller!.pause();
+    }
+  }
+
+  @override
+  void onSlideVisibilityChanged() => _syncPlayback();
 
   void _onTick() {
     final controller = _controller;
@@ -8037,30 +8155,15 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
     }
   }
 
-  void _playIfActive() {
-    if (!mounted || !_initialized || _hasError) return;
-    if (widget.isActive) {
-      _controller?.play();
-    }
-  }
-
-  void _replay() {
-    _notifiedComplete = false;
-    _controller?.seekTo(Duration.zero);
-    _controller?.play();
-  }
-
   @override
   void didUpdateWidget(_HeroVideoSlide oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_initialized) return;
+    // Swiped back to: start again from the beginning.
     if (widget.isActive && !oldWidget.isActive) {
-      _replay();
-    } else if (widget.isActive) {
-      _controller?.play();
-    } else {
-      _controller?.pause();
+      _notifiedComplete = false;
+      if (_initialized) _controller?.seekTo(Duration.zero);
     }
+    _syncPlayback();
   }
 
   @override
@@ -8104,7 +8207,7 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide> {
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => Container(color: Colors.black),
               ),
-            if (!_initialized && !_hasError)
+            if (_controller != null && !_initialized && !_hasError)
               const Center(
                 child: SizedBox(
                   width: 28,
@@ -8186,9 +8289,22 @@ class _HeroYoutubeSlide extends StatefulWidget {
   State<_HeroYoutubeSlide> createState() => _HeroYoutubeSlideState();
 }
 
-class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
+class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide>
+    with _HeroSlideVisibility {
   YoutubePlayerController? _controller;
   bool _playing = false;
+
+  // Started by a tap; pauses while the slide can't be seen and resumes when
+  // it can again.
+  @override
+  void onSlideVisibilityChanged() {
+    if (!_playing) return;
+    if (slideVisible && widget.isActive) {
+      _controller?.play();
+    } else {
+      _controller?.pause();
+    }
+  }
 
   String get _videoId => _heroYoutubeId(widget.videoUrl);
 
