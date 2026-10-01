@@ -793,56 +793,24 @@ class ProfileUpgradeCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withValues(
-                                    alpha: 0.14,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.md,
-                                  ),
-                                ),
-                                child: const Center(
-                                  child: HugeIcon(
-                                    icon: HugeIcons.strokeRoundedStore02,
-                                    size: 22,
-                                    color: AppColors.accent,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: AppFonts.jakarta(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
-                                        height: 1.25,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      subtitle,
-                                      style: AppFonts.jakarta(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
-                                        height: 1.35,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          Text(
+                            title,
+                            style: AppFonts.jakarta(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              height: 1.25,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            style: AppFonts.jakarta(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                              height: 1.35,
+                            ),
                           ),
                           const SizedBox(height: 14),
                           Container(
