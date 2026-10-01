@@ -362,7 +362,7 @@ class HomeBrandAvatar extends StatelessWidget {
     required this.name,
     required this.onTap,
     this.logoUrl,
-    this.size = 64,
+    this.size = 96,
   });
 
   final String name;
@@ -396,7 +396,6 @@ class HomeBrandAvatar extends StatelessWidget {
             Container(
               width: size,
               height: size,
-              padding: EdgeInsets.all(size * 0.16),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 shape: BoxShape.circle,

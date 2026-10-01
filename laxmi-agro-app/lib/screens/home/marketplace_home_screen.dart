@@ -5036,7 +5036,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildBrandsSection() {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final size = screenWidth >= 600 ? 72.0 : 64.0;
+    final size = screenWidth >= 600 ? 108.0 : 96.0;
     final rowHeight = size + 7 + 30;
 
     return Column(
