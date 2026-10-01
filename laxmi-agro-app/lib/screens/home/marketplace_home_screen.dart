@@ -3469,20 +3469,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 color: AppColors.gray50,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              child: (product['image']?.toString() ?? '').isNotEmpty
-                  ? AppImage(
-                      imageUrl: product['image'].toString(),
-                      blurHash: product['blurHash']?.toString(),
-                      category: product['category']?.toString() ?? '',
-                      name: product['name']?.toString() ?? '',
-                      width: 84,
-                      height: 84,
-                      fit: BoxFit.contain,
-                    )
-                  : ProductImagePlaceholder(
-                      category: product['category']?.toString() ?? '',
-                      name: product['name']?.toString() ?? '',
-                    ),
+              // Rounded corners on the photo itself, inside the grey tile.
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: (product['image']?.toString() ?? '').isNotEmpty
+                    ? AppImage(
+                        imageUrl: product['image'].toString(),
+                        blurHash: product['blurHash']?.toString(),
+                        category: product['category']?.toString() ?? '',
+                        name: product['name']?.toString() ?? '',
+                        width: 84,
+                        height: 84,
+                        fit: BoxFit.contain,
+                      )
+                    : ProductImagePlaceholder(
+                        category: product['category']?.toString() ?? '',
+                        name: product['name']?.toString() ?? '',
+                      ),
+              ),
             ),
           ),
           const SizedBox(width: 14),

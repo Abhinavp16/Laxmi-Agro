@@ -13,8 +13,9 @@ class StaggeredReveal extends StatefulWidget {
 
   /// Items past this index aren't staggered (they start off screen).
   static const int maxStaggered = 8;
-  static const int _stepMs = 50;
-  static const int _itemMs = 320;
+  // Long enough apart that items visibly arrive one by one.
+  static const int _stepMs = 120;
+  static const int _itemMs = 420;
   static const int _totalMs = _itemMs + _stepMs * (maxStaggered - 1);
 
   @override
