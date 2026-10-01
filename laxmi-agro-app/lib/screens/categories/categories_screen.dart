@@ -1655,11 +1655,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 clipBehavior: Clip.antiAlias,
-                padding: const EdgeInsets.all(8),
+                // The photo fills the tile edge to edge; the grey only shows
+                // behind the icon while it loads or when there's no photo.
                 child: imageUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: ApiConfig.normalizeMediaUrl(imageUrl),
-                        fit: BoxFit.contain,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
                         placeholder: (_, _) => _tileIcon(icon),
                         errorWidget: (_, _, _) => _tileIcon(icon),
                       )
