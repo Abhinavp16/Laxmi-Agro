@@ -396,6 +396,8 @@ class HomeBrandAvatar extends StatelessWidget {
             Container(
               width: size,
               height: size,
+              // A thin white rim around the logo.
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 shape: BoxShape.circle,
