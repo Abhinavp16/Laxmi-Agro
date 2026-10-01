@@ -6637,6 +6637,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue'**
   String get profileUpgradeContinue;
+
+  /// No description provided for @homeGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Namaste 🙏'**
+  String get homeGreeting;
+
+  /// No description provided for @homeGreetingName.
+  ///
+  /// In en, this message translates to:
+  /// **'Namaste, {name} 🙏'**
+  String homeGreetingName(String name);
+
+  /// No description provided for @homeHeadlineCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'What does your farm need today?'**
+  String get homeHeadlineCustomer;
+
+  /// No description provided for @homeHeadlineDealer.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to restock today?'**
+  String get homeHeadlineDealer;
+
+  /// No description provided for @homeShopByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop by category'**
+  String get homeShopByCategory;
+
+  /// No description provided for @homeAllCategoriesTile.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get homeAllCategoriesTile;
 }
 
 class _AppLocalizationsDelegate

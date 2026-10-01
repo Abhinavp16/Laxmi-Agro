@@ -138,12 +138,16 @@ class HeaderIconButton extends StatelessWidget {
     required this.tooltip,
     this.color = AppColors.textPrimary,
     this.badge,
+    this.onDark = false,
   });
 
   final IconData icon;
   final VoidCallback? onPressed;
   final String tooltip;
   final Color color;
+
+  /// Translucent white style for dark or coloured headers.
+  final bool onDark;
 
   /// Small count bubble; hidden when null or 0.
   final int? badge;
@@ -157,11 +161,21 @@ class HeaderIconButton extends StatelessWidget {
           tooltip: tooltip,
           onPressed: onPressed,
           style: IconButton.styleFrom(
-            backgroundColor: AppColors.surfaceLight,
-            side: const BorderSide(color: AppColors.border),
+            backgroundColor: onDark
+                ? Colors.white.withValues(alpha: 0.14)
+                : AppColors.surfaceLight,
+            side: BorderSide(
+              color: onDark
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : AppColors.border,
+            ),
             fixedSize: const Size(44, 44),
           ),
-          icon: HugeIcon(icon: icon, size: 21, color: color),
+          icon: HugeIcon(
+            icon: icon,
+            size: 21,
+            color: onDark ? Colors.white : color,
+          ),
         ),
         if ((badge ?? 0) > 0)
           Positioned(

@@ -3771,4 +3771,24 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get profileUpgradeContinue => 'आगे बढ़ें';
+
+  @override
+  String get homeGreeting => 'नमस्ते 🙏';
+
+  @override
+  String homeGreetingName(String name) {
+    return 'नमस्ते, $name 🙏';
+  }
+
+  @override
+  String get homeHeadlineCustomer => 'आज आपके खेत को क्या चाहिए?';
+
+  @override
+  String get homeHeadlineDealer => 'आज कौन-सा माल मंगाना है?';
+
+  @override
+  String get homeShopByCategory => 'श्रेणी से खरीदें';
+
+  @override
+  String get homeAllCategoriesTile => 'सभी';
 }

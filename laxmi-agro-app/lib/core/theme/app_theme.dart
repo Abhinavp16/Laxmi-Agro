@@ -13,6 +13,7 @@ class AppColors {
   static const Color primaryDeep = Color(0xFF0E4A1F); // text on soft green
   static const Color primarySoft = Color(0xFFE5F2E7); // tinted fills
   static const Color primaryTint = Color(0xFFF2F8F3); // faint washes
+  static const Color primaryGlow = Color(0xFF9EE3B0); // light green on dark green
   static const Color secondary = Color(0xFF1560A8); // water: links, info
   static const Color secondarySoft = Color(0xFFE6EEF8);
   static const Color accent = Color(0xFFD9730D); // marigold: savings, offers

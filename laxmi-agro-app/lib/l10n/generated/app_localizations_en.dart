@@ -3806,4 +3806,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileUpgradeContinue => 'Continue';
+
+  @override
+  String get homeGreeting => 'Namaste 🙏';
+
+  @override
+  String homeGreetingName(String name) {
+    return 'Namaste, $name 🙏';
+  }
+
+  @override
+  String get homeHeadlineCustomer => 'What does your farm need today?';
+
+  @override
+  String get homeHeadlineDealer => 'What would you like to restock today?';
+
+  @override
+  String get homeShopByCategory => 'Shop by category';
+
+  @override
+  String get homeAllCategoriesTile => 'All';
 }

@@ -35,6 +35,7 @@ import '../cart/cart_parts.dart';
 import '../categories/categories_screen.dart';
 import '../negotiations/deal_desk_widgets.dart';
 import '../profile/legal_policy_screen.dart';
+import 'home_parts.dart';
 import '../profile/profile_parts.dart';
 import '../../core/utils/customer_order_presentation.dart';
 import '../../widgets/product_image_placeholder.dart';
@@ -1867,35 +1868,43 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         SystemNavigator.pop();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
+        // Home's green header runs up behind the status bar: light icons.
         value: SystemUiOverlayStyle.dark.copyWith(
           statusBarColor: Colors.transparent,
+          statusBarIconBrightness: _selectedNavIndex == 0
+              ? Brightness.light
+              : Brightness.dark,
+          statusBarBrightness: _selectedNavIndex == 0
+              ? Brightness.dark
+              : Brightness.light,
         ),
         child: Scaffold(
           backgroundColor: AppColors.backgroundLight,
-          body: SafeArea(
-            bottom: false,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: IndexedStack(
-                    index: _selectedNavIndex,
-                    children: pages,
-                  ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: IndexedStack(
+                  index: _selectedNavIndex,
+                  children: [
+                    // Home draws its own header under the status bar.
+                    for (var i = 0; i < pages.length; i++)
+                      SafeArea(top: i != 0, bottom: false, child: pages[i]),
+                  ],
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: FloatingCartBar(
-                    visible:
-                        _selectedNavIndex <= 2 &&
-                        !isCustomerPreview &&
-                        MediaQuery.viewInsetsOf(context).bottom == 0,
-                    onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
-                  ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: FloatingCartBar(
+                  visible:
+                      _selectedNavIndex <= 2 &&
+                      !isCustomerPreview &&
+                      MediaQuery.viewInsetsOf(context).bottom == 0,
+                  onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           bottomNavigationBar: _buildBottomNav(),
         ),
@@ -1904,139 +1913,119 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    return Column(
-      children: [
-        _buildAppBar(),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _handleRefresh,
-            color: AppColors.primary,
-            backgroundColor: Colors.white,
-            edgeOffset: 64,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _PinnedSearchDelegate(
-                    height: 64,
-                    child: _buildHomeSearchBar(),
-                  ),
+    final l10n = context.l10n;
+    final user = ref.watch(authProvider).user;
+    final firstName = (user?.name ?? '').trim().split(RegExp(r'\s+')).first;
+    final header = HomeHeroHeaderDelegate(
+      topInset: MediaQuery.paddingOf(context).top,
+      topRow: _buildHomeTopRow(),
+      greeting: firstName.isEmpty
+          ? l10n.homeGreeting
+          : l10n.homeGreetingName(firstName),
+      headline: _isWholesaler
+          ? l10n.homeHeadlineDealer
+          : l10n.homeHeadlineCustomer,
+      search: _buildHomeSearchBar(),
+    );
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      edgeOffset: header.minExtent,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverPersistentHeader(pinned: true, delegate: header),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 22),
+                _buildCategorySection(),
+                const SizedBox(height: 26),
+                _buildCarousel(),
+                if (_isWholesaler) ...[
+                  const SizedBox(height: 20),
+                  _buildScheduledChanges(),
+                  _buildContinueDeals(),
+                  _buildTrackHomeOrders(),
+                  _buildRepeatHomeOrders(),
+                ],
+                if (!kHideOfferCouponUi && !_isWholesaler) ...[
+                  const SizedBox(height: 20),
+                  _buildOfferSection(),
+                ],
+                const SizedBox(height: 28),
+                _buildProductsSection(
+                  _isWholesaler
+                      ? l10n.homePopularProductsDealer
+                      : l10n.homePopularProductsCustomer,
+                  true,
+                  grid: true,
                 ),
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      _buildCategorySection(),
-                      const SizedBox(height: 20),
-                      _buildCarousel(),
-                      if (_isWholesaler) ...[
-                        const SizedBox(height: 20),
-                        _buildScheduledChanges(),
-                        _buildContinueDeals(),
-                        _buildTrackHomeOrders(),
-                        _buildRepeatHomeOrders(),
-                      ],
-                      if (!kHideOfferCouponUi && !_isWholesaler) ...[
-                        const SizedBox(height: 20),
-                        _buildOfferSection(),
-                      ],
-                      const SizedBox(height: 24),
-                      _buildBrandsSection(),
-                      const SizedBox(height: 28),
-                      _buildProductsSection(
-                        _isWholesaler
-                            ? context.l10n.homePopularProductsDealer
-                            : context.l10n.homePopularProductsCustomer,
-                        true,
-                      ),
-                      const SizedBox(height: 28),
-                      _buildProductsSection(
-                        _isWholesaler
-                            ? context.l10n.homeHotDealsDealer
-                            : context.l10n.homeHotDealsCustomer,
-                        false,
-                      ),
-                      if (_promoBanners.isNotEmpty && !_isWholesaler) ...[
-                        const SizedBox(height: 28),
-                        _buildPromoBannerCarousel(),
-                      ],
-                      const SizedBox(height: 28),
-                      _buildTrustRow(),
-                      if (!_isWholesaler) ...[
-                        const SizedBox(height: 28),
-                        _buildReviewSection(),
-                      ],
-                      // Room for the floating cart bar.
-                      const SizedBox(height: 96),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 28),
+                _buildBrandsSection(),
+                const SizedBox(height: 28),
+                _buildHotDealsBand(),
+                if (_promoBanners.isNotEmpty && !_isWholesaler) ...[
+                  const SizedBox(height: 12),
+                  _buildPromoBannerCarousel(),
+                ],
+                const SizedBox(height: 28),
+                _buildTrustRow(),
+                if (!_isWholesaler) ...[
+                  const SizedBox(height: 28),
+                  _buildReviewSection(),
+                ],
+                // Room for the floating cart bar.
+                const SizedBox(height: 96),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  /// Quiet row of facts about the shop (replaces the scrolling marquee).
+  /// Hot deals on a warm band, so the page changes pace halfway down.
+  Widget _buildHotDealsBand() {
+    final l10n = context.l10n;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.accentSoft, AppColors.backgroundLight],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 20, bottom: 8),
+        child: _buildProductsSection(
+          _isWholesaler ? l10n.homeHotDealsDealer : l10n.homeHotDealsCustomer,
+          false,
+        ),
+      ),
+    );
+  }
+
+  /// A few plain facts about the shop (replaces the scrolling marquee).
   Widget _buildTrustRow() {
     final l10n = context.l10n;
-    final facts = <(IconData, String)>[
-      (HugeIcons.strokeRoundedCalendar03, l10n.homeTrustSince1993),
-      (HugeIcons.strokeRoundedInvoice01, l10n.homeTrustGstInvoice),
-      (HugeIcons.strokeRoundedCheckmarkBadge01, l10n.homeTrustAuthorisedDealer),
-      (HugeIcons.strokeRoundedCall, l10n.homeTrustCallWhatsapp),
-    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
-        color: AppColors.primaryTint,
-        borderColor: AppColors.primarySoft,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final (icon, label) in facts)
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: HugeIcon(
-                          icon: icon,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: AppFonts.jakarta(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryDeep,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+      child: HomeTrustCard(
+        title: l10n.homeWhyBuyTitle,
+        facts: [
+          (HugeIcons.strokeRoundedCalendar03, l10n.homeTrustSince1993),
+          (HugeIcons.strokeRoundedInvoice01, l10n.homeTrustGstInvoice),
+          (
+            HugeIcons.strokeRoundedCheckmarkBadge01,
+            l10n.homeTrustAuthorisedDealer,
+          ),
+          (HugeIcons.strokeRoundedCall, l10n.homeTrustCallWhatsapp),
+        ],
       ),
     );
   }
@@ -2049,71 +2038,79 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       });
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Pressable(
-                onTap: openSearch,
-                scale: 0.99,
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(AppRadius.md),
-                ),
-                semanticLabel: context.l10n.homeSearchHint,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(
-                    children: [
-                      const HugeIcon(
-                        icon: HugeIcons.strokeRoundedSearch01,
-                        color: AppColors.textTertiary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          context.l10n.homeSearchHint,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFonts.jakarta(
-                            color: AppColors.textTertiary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppRadius.md + 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDeep.withValues(alpha: 0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Pressable(
+              onTap: openSearch,
+              scale: 0.99,
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(AppRadius.md + 2),
+              ),
+              semanticLabel: context.l10n.homeSearchHint,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedSearch01,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        context.l10n.homeSearchHint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.jakarta(
+                          color: AppColors.textTertiary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Container(width: 1, height: 24, color: AppColors.border),
-            _buildSearchScopeMenu(
+          ),
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: _buildSearchScopeMenu(
               openSearch: true,
-              child: SizedBox(
-                width: 48,
-                height: 48,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: ShapeDecoration(
+                  color: AppColors.primarySoft,
+                  shape: AppShapes.squircle(AppRadius.sm + 2),
+                ),
                 child: Center(
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedFilterHorizontal,
                     size: 20,
                     color: _searchScope == _SearchScope.product
-                        ? AppColors.textSecondary
+                        ? AppColors.primaryDeep
                         : AppColors.primary,
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2573,141 +2570,108 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   // Skeleton loader for categories
-  Widget _buildCategorySkeleton() {
-    return SizedBox(
-      height: 116,
-      child: SkeletonShimmer(
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 5,
-          separatorBuilder: (_, _) => const SizedBox(width: 12),
-          itemBuilder: (_, _) => const SizedBox(
-            width: 76,
-            child: Column(
-              children: [
-                Skeleton(width: 76, height: 76, radius: AppRadius.lg),
-                SizedBox(height: 8),
-                Skeleton(width: 60, height: 10),
-                SizedBox(height: 4),
-                Skeleton(width: 40, height: 10),
-              ],
+  Widget _buildCategorySkeleton(int columns, double rowExtent) {
+    return SkeletonShimmer(
+      key: const ValueKey('categories-loading'),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: columns * 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: rowExtent,
+        ),
+        itemBuilder: (_, _) => const Column(
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: Skeleton(height: double.infinity, radius: AppRadius.lg),
             ),
-          ),
+            SizedBox(height: 8),
+            Skeleton(width: 52, height: 10),
+          ],
         ),
       ),
     );
   }
 
+  /// Category shortcuts as a grid: the first categories plus an "All" tile.
   Widget _buildCategorySection() {
+    final l10n = context.l10n;
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isTablet = screenWidth >= 700;
-    final tileSize = isTablet ? 92.0 : 76.0;
+    final columns = screenWidth >= 600 ? 6 : 4;
+    final tileWidth = (screenWidth - 32 - 12 * (columns - 1)) / columns;
+    final rowExtent = tileWidth + 36;
 
     final categories = _categoryData.isNotEmpty ? _categoryData : [];
     if (categories.isEmpty && !_isLoadingCategories) {
       return const SizedBox.shrink();
     }
+    final shown = categories.take(columns * 2 - 1).toList();
+
+    void openAll() => setState(() {
+      _categoryNavigationRequest++;
+      _requestedCategoryId = null;
+      _requestedCategoryName = null;
+      _requestedCategoryBrandId = null;
+      _selectedNavIndex = 2;
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         SectionHeader(
-          title: context.l10n.homeCategoriesTitle,
-          actionLabel: context.l10n.commonSeeAll,
-          onAction: () => setState(() {
-            _categoryNavigationRequest++;
-            _requestedCategoryId = null;
-            _requestedCategoryName = null;
-            _requestedCategoryBrandId = null;
-            _selectedNavIndex = 2;
-          }),
+          title: l10n.homeShopByCategory,
+          actionLabel: l10n.commonSeeAll,
+          onAction: openAll,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         AnimatedSwitcher(
           duration: AppMotion.of(context, AppMotion.base),
           child: _isLoadingCategories
-              ? _buildCategorySkeleton()
-              : SizedBox(
+              ? _buildCategorySkeleton(columns, rowExtent)
+              : GridView.builder(
                   key: const ValueKey('categories'),
-                  height: tileSize + 46,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: categories.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final cat = categories[index] as Map<String, dynamic>;
-                      final image = cat['image']?.toString() ?? '';
-                      final label = _getDisplayCategoryName(cat);
-                      return SizedBox(
-                        width: tileSize,
-                        child: Pressable(
-                          onTap: () {
-                            final name = cat['name']?.toString() ?? '';
-                            setState(() {
-                              _categoryNavigationRequest++;
-                              _requestedCategoryId = cat['id']?.toString() ?? '';
-                              _requestedCategoryName = name;
-                              _requestedCategoryBrandId =
-                                  cat['brandId']?.toString() ?? '';
-                              _selectedNavIndex = 2;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          semanticLabel: label,
-                          child: Column(
-                            children: [
-                              Container(
-                                width: tileSize,
-                                height: tileSize,
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.lg,
-                                  ),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: image.isNotEmpty
-                                    ? AppImage(
-                                        imageUrl: image,
-                                        blurHash: cat['blurHash']?.toString(),
-                                        category: cat['name']?.toString() ?? '',
-                                        name: cat['name']?.toString() ?? '',
-                                        fit: BoxFit.contain,
-                                      )
-                                    : const Center(
-                                        child: HugeIcon(
-                                          icon: HugeIcons
-                                              .strokeRoundedDashboardSquare01,
-                                          size: 26,
-                                          color: AppColors.textTertiary,
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 7),
-                              Text(
-                                label,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppFonts.jakarta(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: shown.length + 1,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    mainAxisExtent: rowExtent,
                   ),
+                  itemBuilder: (context, index) {
+                    if (index == shown.length) {
+                      return HomeCategoryTile(
+                        label: l10n.homeAllCategoriesTile,
+                        isAll: true,
+                        onTap: openAll,
+                      );
+                    }
+                    final cat = shown[index] as Map<String, dynamic>;
+                    return HomeCategoryTile(
+                      label: _getDisplayCategoryName(cat),
+                      imageUrl: cat['image']?.toString(),
+                      blurHash: cat['blurHash']?.toString(),
+                      onTap: () {
+                        final name = cat['name']?.toString() ?? '';
+                        setState(() {
+                          _categoryNavigationRequest++;
+                          _requestedCategoryId = cat['id']?.toString() ?? '';
+                          _requestedCategoryName = name;
+                          _requestedCategoryBrandId =
+                              cat['brandId']?.toString() ?? '';
+                          _selectedNavIndex = 2;
+                        });
+                      },
+                    );
+                  },
                 ),
         ),
       ],
@@ -4638,134 +4602,123 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
-  Widget _buildAppBar() {
+  /// Logo, name and the header actions, white on the green header.
+  Widget _buildHomeTopRow() {
     final l10n = context.l10n;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 6),
-      color: AppColors.backgroundLight,
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: Image.asset(
-                'assets/images/laxmi-agro-logo.png',
-                fit: BoxFit.cover,
-              ),
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Image.asset(
+              'assets/images/laxmi-agro-logo.png',
+              fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: AppFonts.jakarta(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                      letterSpacing: -0.4,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: '${l10n.homeBrandFirstWord} ',
-                        style: const TextStyle(color: AppColors.textPrimary),
-                      ),
-                      TextSpan(
-                        text: l10n.homeBrandSecondWord,
-                        style: const TextStyle(color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.homeBrandTagline,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
                   style: AppFonts.jakarta(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textTertiary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    letterSpacing: -0.4,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          PopupMenuButton<Locale>(
-            offset: const Offset(0, 48),
-            tooltip: l10n.languageTitle,
-            onSelected: (Locale value) {
-              HapticFeedback.selectionClick();
-              ref.read(localeProvider.notifier).setLocale(value);
-            },
-            itemBuilder: (_) => [
-              _buildLanguageItem(LocaleNotifier.english, l10n.languageEnglish),
-              _buildLanguageItem(LocaleNotifier.hindi, l10n.languageHindi),
-            ],
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const HugeIcon(
-                    icon: HugeIcons.strokeRoundedGlobe02,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 5),
-                  AnimatedSwitcher(
-                    duration: AppMotion.of(context, AppMotion.base),
-                    child: Text(
-                      context.isHindi ? 'हि' : 'EN',
-                      key: ValueKey(context.isHindi),
-                      style: AppFonts.jakarta(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
+                  children: [
+                    TextSpan(
+                      text: '${l10n.homeBrandFirstWord} ',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ),
-                ],
+                    TextSpan(
+                      text: l10n.homeBrandSecondWord,
+                      style: const TextStyle(color: AppColors.primaryGlow),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                l10n.homeBrandTagline,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppFonts.jakarta(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<Locale>(
+          offset: const Offset(0, 48),
+          tooltip: l10n.languageTitle,
+          onSelected: (Locale value) {
+            HapticFeedback.selectionClick();
+            ref.read(localeProvider.notifier).setLocale(value);
+          },
+          itemBuilder: (_) => [
+            _buildLanguageItem(LocaleNotifier.english, l10n.languageEnglish),
+            _buildLanguageItem(LocaleNotifier.hindi, l10n.languageHindi),
+          ],
+          // Round language switch, sized like the bell next to it.
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+            ),
+            child: AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.base),
+              child: Text(
+                context.isHindi ? 'हि' : 'EN',
+                key: ValueKey(context.isHindi),
+                style: AppFonts.jakarta(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
+        ),
+        const SizedBox(width: 6),
+        HeaderIconButton(
+          icon: HugeIcons.strokeRoundedNotification02,
+          tooltip: l10n.notificationsTitle,
+          badge: _unreadCount,
+          onDark: true,
+          onPressed: _showNotificationPopup,
+        ),
+        if (_isWholesaler) ...[
           const SizedBox(width: 6),
           HeaderIconButton(
-            icon: HugeIcons.strokeRoundedNotification02,
-            tooltip: l10n.notificationsTitle,
-            badge: _unreadCount,
-            onPressed: _showNotificationPopup,
+            icon: HugeIcons.strokeRoundedUser,
+            tooltip: l10n.homeNavProfile,
+            onDark: true,
+            onPressed: () => _selectNavIndex(4),
           ),
-          if (_isWholesaler) ...[
-            const SizedBox(width: 6),
-            HeaderIconButton(
-              icon: HugeIcons.strokeRoundedUser,
-              tooltip: l10n.homeNavProfile,
-              onPressed: () => _selectNavIndex(4),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
@@ -5063,10 +5016,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
 
   Widget _buildBrandsSection() {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isTablet = screenWidth >= 600;
-    const cardGap = 10.0;
-    final cardWidth = isTablet ? 108.0 : 86.0;
-    final cardHeight = isTablet ? 116.0 : 100.0;
+    final size = screenWidth >= 600 ? 72.0 : 64.0;
+    final rowHeight = size + 7 + 30;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -5076,9 +5027,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           actionLabel: context.l10n.commonSeeAll,
           onAction: () => _selectNavIndex(2),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         SizedBox(
-          height: cardHeight,
+          height: rowHeight,
           child: AnimatedSwitcher(
             duration: AppMotion.of(context, AppMotion.base),
             child: _isLoadingBrands
@@ -5088,12 +5039,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 5,
-                      separatorBuilder: (_, _) => const SizedBox(width: cardGap),
-                      itemBuilder: (_, _) => Skeleton(
-                        width: cardWidth,
-                        height: cardHeight,
-                        radius: AppRadius.lg,
+                      itemCount: 6,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, _) => SizedBox(
+                        width: size + 12,
+                        child: Column(
+                          children: [
+                            Skeleton(
+                              width: size,
+                              height: size,
+                              radius: AppRadius.pill,
+                            ),
+                            const SizedBox(height: 8),
+                            const Skeleton(width: 48, height: 10),
+                          ],
+                        ),
                       ),
                     ),
                   )
@@ -5114,12 +5074,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     physics: const BouncingScrollPhysics(),
                     itemCount: _brands.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: cardGap),
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final brand = _brands[index];
                       final brandName = brand['name']?.toString() ?? '';
-                      final logo = brand['logo']?.toString() ?? '';
-                      return Pressable(
+                      return HomeBrandAvatar(
+                        name: brandName,
+                        logoUrl: brand['logo']?.toString(),
+                        size: size,
                         onTap: () {
                           final id = brand['id']?.toString() ?? '';
                           if (id.isEmpty) return;
@@ -5127,51 +5089,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             '/brand/${Uri.encodeComponent(id)}?name=${Uri.encodeQueryComponent(brandName)}',
                           );
                         },
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        semanticLabel: brandName,
-                        child: Container(
-                          width: cardWidth,
-                          padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: Center(
-                                  child: logo.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: ApiConfig.normalizeMediaUrl(
-                                            logo,
-                                          ),
-                                          fit: BoxFit.contain,
-                                          fadeInDuration: AppMotion.base,
-                                          placeholder: (_, _) =>
-                                              const SizedBox.shrink(),
-                                          errorWidget: (_, _, _) =>
-                                              _buildBrandInitial(brandName),
-                                        )
-                                      : _buildBrandInitial(brandName),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                brandName,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppFonts.jakarta(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       );
                     },
                   ),
@@ -5203,7 +5120,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
-  Widget _buildProductsSection(String title, bool isFeatured) {
+  Widget _buildProductsSection(
+    String title,
+    bool isFeatured, {
+    bool grid = false,
+  }) {
     final sectionProducts = isFeatured ? _featuredProducts : _hotProducts;
     final products = sectionProducts.take(12).toList();
     final l10n = context.l10n;
@@ -5217,17 +5138,75 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = screenWidth >= 600 ? 184.0 : 158.0;
     final railHeight = cardWidth + 176;
+    final header = SectionHeader(
+      title: title,
+      subtitle: subtitle,
+      actionLabel: l10n.commonSeeAll,
+      onAction: () =>
+          context.push(isFeatured ? '/popular-products' : '/hot-deals'),
+    );
+
+    if (grid) {
+      final columns = screenWidth >= 600 ? 3 : 2;
+      final gridCardWidth = (screenWidth - 32 - 12 * (columns - 1)) / columns;
+      final gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        mainAxisExtent: gridCardWidth + 176,
+      );
+      // Whole rows only, so the grid never ends on a gap; See All has the
+      // rest.
+      final fit = products.length < columns
+          ? products.length
+          : (products.length ~/ columns) * columns;
+      final gridProducts = products.take(math.min(fit, columns * 2)).toList();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header,
+          const SizedBox(height: 12),
+          AnimatedSwitcher(
+            duration: AppMotion.of(context, AppMotion.base),
+            child: _isLoadingProducts
+                ? GridView.builder(
+                    key: const ValueKey('grid-loading'),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: columns,
+                    gridDelegate: gridDelegate,
+                    itemBuilder: (_, _) => const SkeletonProductCard(),
+                  )
+                : gridProducts.isEmpty
+                ? EmptyState(
+                    key: const ValueKey('grid-empty'),
+                    icon: HugeIcons.strokeRoundedPackage,
+                    title: l10n.homeNoProductsAvailable,
+                    compact: true,
+                  )
+                : GridView.builder(
+                    key: ValueKey('grid-${gridProducts.length}'),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: gridProducts.length,
+                    gridDelegate: gridDelegate,
+                    itemBuilder: (context, index) => _buildProductCard(
+                      gridProducts[index],
+                      showHotBadge: !isFeatured,
+                      heroScope: isFeatured ? 'popular' : 'hot',
+                    ),
+                  ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: title,
-          subtitle: subtitle,
-          actionLabel: l10n.commonSeeAll,
-          onAction: () =>
-              context.push(isFeatured ? '/popular-products' : '/hot-deals'),
-        ),
+        header,
         const SizedBox(height: 12),
         SizedBox(
           height: railHeight,
@@ -8263,35 +8242,3 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
 
 /// Keeps the Home search bar pinned under the header while the page scrolls,
 /// adding a hairline once content slides beneath it.
-class _PinnedSearchDelegate extends SliverPersistentHeaderDelegate {
-  _PinnedSearchDelegate({required this.height, required this.child});
-
-  final double height;
-  final Widget child;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return AnimatedContainer(
-      duration: AppMotion.of(context, AppMotion.fast),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
-        border: Border(
-          bottom: BorderSide(
-            color: overlapsContent ? AppColors.border : Colors.transparent,
-          ),
-        ),
-      ),
-      child: child,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_PinnedSearchDelegate oldDelegate) =>
-      oldDelegate.child != child || oldDelegate.height != height;
-}

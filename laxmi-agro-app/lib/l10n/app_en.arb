@@ -1872,5 +1872,12 @@
   "profileLegalSubtitle": "Privacy, terms, shipping and refunds",
   "profileUnreadCount": "{count} unread",
   "@profileUnreadCount": {"placeholders": {"count": {"type": "int"}}},
-  "profileUpgradeContinue": "Continue"
+  "profileUpgradeContinue": "Continue",
+  "homeGreeting": "Namaste 🙏",
+  "homeGreetingName": "Namaste, {name} 🙏",
+  "@homeGreetingName": {"placeholders": {"name": {"type": "String"}}},
+  "homeHeadlineCustomer": "What does your farm need today?",
+  "homeHeadlineDealer": "What would you like to restock today?",
+  "homeShopByCategory": "Shop by category",
+  "homeAllCategoriesTile": "All"
 }

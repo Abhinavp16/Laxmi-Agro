@@ -144,6 +144,14 @@ class _NotificationBootstrapState extends ConsumerState<_NotificationBootstrap>
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: appRouter,
+      // Dark status-bar icons unless a screen asks otherwise (Home's green
+      // header asks for light ones).
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: Colors.transparent,
+        ),
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

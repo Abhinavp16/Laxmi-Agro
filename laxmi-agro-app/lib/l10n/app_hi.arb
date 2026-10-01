@@ -1089,5 +1089,11 @@
   "profileAccountPrivacySubtitle": "आपका डेटा और अकाउंट हटाना",
   "profileLegalSubtitle": "प्राइवेसी, शर्तें, शिपिंग और रिफंड",
   "profileUnreadCount": "{count} अपठित",
-  "profileUpgradeContinue": "आगे बढ़ें"
+  "profileUpgradeContinue": "आगे बढ़ें",
+  "homeGreeting": "नमस्ते 🙏",
+  "homeGreetingName": "नमस्ते, {name} 🙏",
+  "homeHeadlineCustomer": "आज आपके खेत को क्या चाहिए?",
+  "homeHeadlineDealer": "आज कौन-सा माल मंगाना है?",
+  "homeShopByCategory": "श्रेणी से खरीदें",
+  "homeAllCategoriesTile": "सभी"
 }
