@@ -35,8 +35,16 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   static const double searchHeight = 52;
   static const double _collapsedPadding = 10;
 
-  // 10 top + 44 brand row + 18 + 17 greeting + 4 + 58 headline + 17 + 52
-  // search + 20 bottom.
+  /// Space between the search bar and the header's sides and bottom.
+  static const double gutter = 16;
+
+  /// The search bar's corner radius. The header's bottom corners are this
+  /// plus [gutter], so the two curves stay parallel (concentric).
+  static const double searchRadius = 16;
+  static const double _cornerRadius = searchRadius + gutter;
+
+  // 10 top + 44 brand row + 18 + 17 greeting + 4 + 58 headline + 21 + 52
+  // search + 16 bottom.
   static const double _expandedBody = 240;
 
   @override
@@ -53,9 +61,9 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final range = maxExtent - minExtent;
     final t = range <= 0 ? 1.0 : (shrinkOffset / range).clamp(0.0, 1.0);
-    final corner = Radius.circular(lerpDouble(AppRadius.xl + 4, 0, t)!);
+    final corner = Radius.circular(lerpDouble(_cornerRadius, 0, t)!);
     final introOpacity = (1 - t * 1.7).clamp(0.0, 1.0);
-    final bottomPadding = lerpDouble(20, _collapsedPadding, t)!;
+    final bottomPadding = lerpDouble(gutter, _collapsedPadding, t)!;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.1,
@@ -82,10 +90,10 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const CustomPaint(painter: _FieldRingsPainter()),
+              const CustomPaint(painter: _LeafGlowPainter()),
               Positioned(
-                left: 16,
-                right: 16,
+                left: gutter,
+                right: gutter,
                 top: topInset + 10 - shrinkOffset,
                 child: IgnorePointer(
                   ignoring: introOpacity < 0.1,
@@ -126,8 +134,8 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
               ),
               Positioned(
-                left: 16,
-                right: 16,
+                left: gutter,
+                right: gutter,
                 bottom: bottomPadding,
                 height: searchHeight,
                 child: search,
@@ -143,32 +151,90 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(HomeHeroHeaderDelegate oldDelegate) => true;
 }
 
-/// Soft rings in the header's corner, like ripples across a field.
-class _FieldRingsPainter extends CustomPainter {
-  const _FieldRingsPainter();
+/// Soft light and two faint leaves behind the header text.
+class _LeafGlowPainter extends CustomPainter {
+  const _LeafGlowPainter();
+
+  static const Color _lift = Color(0xFF3DB45F);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final centre = Offset(size.width - 24, 24);
-    final glow = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.10),
-          Colors.white.withValues(alpha: 0),
-        ],
-      ).createShader(Rect.fromCircle(center: centre, radius: 170));
-    canvas.drawCircle(centre, 170, glow);
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = Colors.white.withValues(alpha: 0.07);
-    for (var r = 52.0; r <= 232; r += 36) {
-      canvas.drawCircle(centre, r, ring);
-    }
+    // Light pooling in the top-right corner...
+    final light = Offset(size.width * 0.92, 0);
+    canvas.drawCircle(
+      light,
+      230,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.14),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(Rect.fromCircle(center: light, radius: 230)),
+    );
+    // ...and a brighter green rising from the bottom-left.
+    final rise = Offset(0, size.height);
+    canvas.drawCircle(
+      rise,
+      210,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            _lift.withValues(alpha: 0.32),
+            _lift.withValues(alpha: 0),
+          ],
+        ).createShader(Rect.fromCircle(center: rise, radius: 210)),
+    );
+
+    _leaf(
+      canvas,
+      base: Offset(size.width + 6, -18),
+      length: 210,
+      width: 78,
+      angle: 2.25,
+      color: Colors.white.withValues(alpha: 0.07),
+    );
+    _leaf(
+      canvas,
+      base: Offset(size.width - 6, 92),
+      length: 150,
+      width: 56,
+      angle: 2.85,
+      color: Colors.white.withValues(alpha: 0.05),
+    );
+  }
+
+  /// A plain leaf pointing along [angle] from [base].
+  void _leaf(
+    Canvas canvas, {
+    required Offset base,
+    required double length,
+    required double width,
+    required double angle,
+    required Color color,
+  }) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..cubicTo(
+        length * 0.28,
+        -width * 0.62,
+        length * 0.72,
+        -width * 0.5,
+        length,
+        0,
+      )
+      ..cubicTo(length * 0.72, width * 0.5, length * 0.28, width * 0.62, 0, 0)
+      ..close();
+    canvas
+      ..save()
+      ..translate(base.dx, base.dy)
+      ..rotate(angle)
+      ..drawPath(path, Paint()..color = color)
+      ..restore();
   }
 
   @override
-  bool shouldRepaint(_FieldRingsPainter oldDelegate) => false;
+  bool shouldRepaint(_LeafGlowPainter oldDelegate) => false;
 }
 
 /// One square category shortcut in the Home grid: photo on white, name below.

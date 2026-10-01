@@ -2041,7 +2041,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppRadius.md + 2),
+        // Concentric with the header's bottom corners.
+        borderRadius: BorderRadius.circular(
+          HomeHeroHeaderDelegate.searchRadius,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryDeep.withValues(alpha: 0.18),
@@ -2057,7 +2060,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               onTap: openSearch,
               scale: 0.99,
               borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(AppRadius.md + 2),
+                left: Radius.circular(HomeHeroHeaderDelegate.searchRadius),
               ),
               semanticLabel: context.l10n.homeSearchHint,
               child: Padding(
@@ -2094,9 +2097,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               child: Container(
                 width: 40,
                 height: 40,
+                // Inset 6 from the bar's edge, so its radius is 6 less.
                 decoration: ShapeDecoration(
                   color: AppColors.primarySoft,
-                  shape: AppShapes.squircle(AppRadius.sm + 2),
+                  shape: AppShapes.squircle(
+                    HomeHeroHeaderDelegate.searchRadius - 6,
+                  ),
                 ),
                 child: Center(
                   child: HugeIcon(
