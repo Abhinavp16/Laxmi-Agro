@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/guest_mode_provider.dart';
 import '../../core/services/shipping_address_service.dart';
+import '../../widgets/delivery_note.dart';
 import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/theme/app_fonts.dart';
@@ -545,9 +546,10 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
             const Color(0xFF64748b),
           ),
           const SizedBox(height: 8),
+          // Laxmi Agro adds delivery when confirming the order.
           _buildPriceRow(
             l10n.cartDeliveryFee,
-            _rupees(50),
+            l10n.dealDeliveryOnConfirmation,
             const Color(0xFF64748b),
           ),
           Container(
@@ -559,7 +561,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                l10n.commonTotal,
+                l10n.dealEstimatedTotal,
                 style: AppFonts.jakarta(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -567,7 +569,7 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                 ),
               ),
               Text(
-                _rupees((widget.price * widget.quantity) + 50),
+                _rupees(widget.price * widget.quantity),
                 style: AppFonts.jakarta(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -576,6 +578,8 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          const DeliveryNote(),
         ],
       ),
     );

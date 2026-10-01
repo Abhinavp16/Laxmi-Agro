@@ -759,9 +759,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         const SizedBox(height: 8),
                         _buildPriceRow(
                           l10n.cartDeliveryFee,
-                          isWholesaler
-                              ? l10n.dealDeliveryOnConfirmation
-                              : _rupees(cart.deliveryFee),
+                          // Laxmi Agro adds delivery when confirming the order.
+                          l10n.dealDeliveryOnConfirmation,
                         ),
                         if (_discount > 0) ...[
                           const SizedBox(height: 8),
@@ -778,9 +777,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              isWholesaler
-                                  ? l10n.dealEstimatedTotal
-                                  : l10n.cartGrandTotal,
+                              l10n.dealEstimatedTotal,
                               style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -788,12 +785,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ),
                             Text(
-                              _rupees(
-                                (isWholesaler
-                                        ? cart.subtotal
-                                        : cart.grandTotal) -
-                                    _discount,
-                              ),
+                              _rupees(cart.subtotal - _discount),
                               style: AppFonts.jakarta(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -802,10 +794,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             ),
                           ],
                         ),
-                        if (isWholesaler) ...[
-                          const SizedBox(height: 8),
-                          const DeliveryNote(),
-                        ],
+                        const SizedBox(height: 8),
+                        const DeliveryNote(),
                         if (!kHideOfferCouponUi) ...[
                           const SizedBox(height: 16),
 

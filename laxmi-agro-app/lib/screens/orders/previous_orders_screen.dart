@@ -474,6 +474,9 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
     final delivery = order['deliveryFee'] as num? ?? 0;
     final discount = order['discount'] as num? ?? 0;
     final l10n = context.l10n;
+    // Delivery is added by Laxmi Agro when it accepts the order.
+    final awaitingAcceptance =
+        order['acceptanceStatus']?.toString().toLowerCase() == 'pending';
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -483,7 +486,11 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
           const SizedBox(height: 6),
           _detailRow(
             l10n.ordersDelivery,
-            delivery == 0 ? l10n.ordersFree : _rupees(delivery),
+            awaitingAcceptance && delivery == 0
+                ? l10n.dealDeliveryOnConfirmation
+                : delivery == 0
+                ? l10n.ordersFree
+                : _rupees(delivery),
           ),
           if (discount > 0) ...[
             const SizedBox(height: 6),
@@ -498,7 +505,7 @@ class _PreviousOrdersScreenState extends ConsumerState<PreviousOrdersScreen> {
             child: Divider(height: 1, color: AppColors.border),
           ),
           _detailRow(
-            l10n.cartGrandTotal,
+            awaitingAcceptance ? l10n.dealEstimatedTotal : l10n.cartGrandTotal,
             _rupees(order['total'] as num?),
             bold: true,
           ),

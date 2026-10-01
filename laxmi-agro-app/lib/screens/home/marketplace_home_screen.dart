@@ -3909,13 +3909,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         _appliedCouponCode != null &&
         _normalizedCouponInput == _appliedCouponCode;
     final couponDiscount = hasActiveCoupon ? _appliedCouponDiscount : 0.0;
-    // Wholesalers: delivery is set by Laxmi Agro when the order is confirmed.
-    final payableTotal = math
-        .max(
-          (_isWholesaler ? cart.subtotal : cart.grandTotal) - couponDiscount,
-          0,
-        )
-        .toDouble();
+    // Delivery is set by Laxmi Agro when the order is confirmed.
+    final payableTotal = math.max(cart.subtotal - couponDiscount, 0).toDouble();
     return Column(
       children: [
         // Header
@@ -4522,9 +4517,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                               ),
                             ),
                             Text(
-                              _isWholesaler
-                                  ? l10n.dealDeliveryOnConfirmation
-                                  : '₹${_formatPrice(cart.deliveryFee)}',
+                              l10n.dealDeliveryOnConfirmation,
                               style: AppFonts.jakarta(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -4566,11 +4559,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _isWholesaler
-                                  ? l10n.dealEstimatedTotal
-                                  : hasActiveCoupon
-                                  ? l10n.homePayableTotal
-                                  : l10n.commonTotal,
+                              l10n.dealEstimatedTotal,
                               style: AppFonts.jakarta(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -4587,10 +4576,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                             ),
                           ],
                         ),
-                        if (_isWholesaler) ...[
-                          const SizedBox(height: 8),
-                          const DeliveryNote(),
-                        ],
+                        const SizedBox(height: 8),
+                        const DeliveryNote(),
                       ],
                     ),
                   ),
