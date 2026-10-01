@@ -2579,47 +2579,49 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   // Skeleton loader for categories
-  Widget _buildCategorySkeleton(int columns, double rowExtent) {
+  Widget _buildCategorySkeleton(double tileWidth, double railHeight) {
     return SkeletonShimmer(
       key: const ValueKey('categories-loading'),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: columns * 2,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: rowExtent,
-        ),
-        itemBuilder: (_, _) => const Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: Skeleton(height: double.infinity, radius: AppRadius.lg),
+      child: SizedBox(
+        height: railHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: 6,
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (_, _) => SizedBox(
+            width: tileWidth,
+            child: const Column(
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Skeleton(height: double.infinity, radius: AppRadius.lg),
+                ),
+                SizedBox(height: 8),
+                Skeleton(width: 52, height: 10),
+              ],
             ),
-            SizedBox(height: 8),
-            Skeleton(width: 52, height: 10),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Category shortcuts as a grid: the first categories plus an "All" tile.
+  /// Category shortcuts as a sideways rail: the first categories, then an
+  /// "All" tile at the end.
   Widget _buildCategorySection() {
     final l10n = context.l10n;
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final columns = screenWidth >= 600 ? 6 : 4;
-    final tileWidth = (screenWidth - 32 - 12 * (columns - 1)) / columns;
-    final rowExtent = tileWidth + 36;
+    final tileWidth = screenWidth >= 600 ? 100.0 : 84.0;
+    // Square art plus up to two lines of name.
+    final railHeight = tileWidth + 36;
 
     final categories = _categoryData.isNotEmpty ? _categoryData : [];
     if (categories.isEmpty && !_isLoadingCategories) {
       return const SizedBox.shrink();
     }
-    final shown = categories.take(columns * 2 - 1).toList();
+    final shown = categories.take(15).toList();
 
     void openAll() => setState(() {
       _categoryNavigationRequest++;
@@ -2642,45 +2644,47 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         AnimatedSwitcher(
           duration: AppMotion.of(context, AppMotion.base),
           child: _isLoadingCategories
-              ? _buildCategorySkeleton(columns, rowExtent)
-              : GridView.builder(
+              ? _buildCategorySkeleton(tileWidth, railHeight)
+              : SizedBox(
                   key: const ValueKey('categories'),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: shown.length + 1,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: rowExtent,
+                  height: railHeight,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: shown.length + 1,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final Widget tile;
+                      if (index == shown.length) {
+                        tile = HomeCategoryTile(
+                          label: l10n.homeAllCategoriesTile,
+                          isAll: true,
+                          onTap: openAll,
+                        );
+                      } else {
+                        final cat = shown[index] as Map<String, dynamic>;
+                        tile = HomeCategoryTile(
+                          label: _getDisplayCategoryName(cat),
+                          imageUrl: cat['image']?.toString(),
+                          blurHash: cat['blurHash']?.toString(),
+                          onTap: () {
+                            final name = cat['name']?.toString() ?? '';
+                            setState(() {
+                              _categoryNavigationRequest++;
+                              _requestedCategoryId =
+                                  cat['id']?.toString() ?? '';
+                              _requestedCategoryName = name;
+                              _requestedCategoryBrandId =
+                                  cat['brandId']?.toString() ?? '';
+                              _selectedNavIndex = 2;
+                            });
+                          },
+                        );
+                      }
+                      return SizedBox(width: tileWidth, child: tile);
+                    },
                   ),
-                  itemBuilder: (context, index) {
-                    if (index == shown.length) {
-                      return HomeCategoryTile(
-                        label: l10n.homeAllCategoriesTile,
-                        isAll: true,
-                        onTap: openAll,
-                      );
-                    }
-                    final cat = shown[index] as Map<String, dynamic>;
-                    return HomeCategoryTile(
-                      label: _getDisplayCategoryName(cat),
-                      imageUrl: cat['image']?.toString(),
-                      blurHash: cat['blurHash']?.toString(),
-                      onTap: () {
-                        final name = cat['name']?.toString() ?? '';
-                        setState(() {
-                          _categoryNavigationRequest++;
-                          _requestedCategoryId = cat['id']?.toString() ?? '';
-                          _requestedCategoryName = name;
-                          _requestedCategoryBrandId =
-                              cat['brandId']?.toString() ?? '';
-                          _selectedNavIndex = 2;
-                        });
-                      },
-                    );
-                  },
                 ),
         ),
       ],
