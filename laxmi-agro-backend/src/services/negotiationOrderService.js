@@ -6,6 +6,7 @@ const { recordAudit } = require('./auditService');
 const notificationService = require('./notificationService');
 
 const { getMinimumWholesaleQuantity: minimumInPieces } = require('../utils/packSize');
+const { assertPurchasable, purchaseBlockCode } = require('../utils/productAvailability');
 
 const getMinimumWholesaleQuantity = (product) => minimumInPieces(product, 10);
 
@@ -173,6 +174,7 @@ async function acceptNegotiationAndCreateOrder({
   if (!product) {
     throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
   }
+  assertPurchasable(product);
 
   const resolved = getVariantById(product, null);
   if (!resolved) {
@@ -458,6 +460,11 @@ async function acceptRequirementGroupAndCreateOrder({
     const resolved = product ? getVariantById(product, null) : null;
     if (!resolved) {
       problems.push({ id: String(negotiation._id), name, code: 'PRODUCT_NOT_FOUND' });
+      continue;
+    }
+    const blocked = purchaseBlockCode(product);
+    if (blocked) {
+      problems.push({ id: String(negotiation._id), name, code: blocked });
       continue;
     }
     if (resolved.variant.stock < negotiation.requestedQuantity) {

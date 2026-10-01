@@ -172,6 +172,7 @@ const productValidation = {
     inStock: Joi.boolean(),
     featured: Joi.boolean(),
     hot: Joi.boolean(),
+    comingSoon: Joi.boolean(),
     sort: Joi.string().valid('price', '-price', 'name', '-name', 'createdAt', '-createdAt'),
   }),
 
@@ -313,6 +314,12 @@ const adminValidation = {
     status: Joi.string().valid('active', 'draft', 'archived').default('draft'),
     isFeatured: Joi.boolean().default(false),
     isHot: Joi.boolean().default(false),
+    comingSoon: Joi.object({
+      enabled: Joi.boolean(),
+      showPrice: Joi.boolean(),
+      expectedDate: Joi.date().allow(null, ''),
+      autoLaunch: Joi.boolean(),
+    }),
     labelIds: Joi.array().items(Joi.string()),
     rating: Joi.number().min(0).max(5).default(4.5),
     purchaseCountMin: Joi.number().integer().min(0).default(0),
@@ -357,6 +364,12 @@ const adminValidation = {
     status: Joi.string().valid('active', 'draft', 'archived'),
     isFeatured: Joi.boolean(),
     isHot: Joi.boolean(),
+    comingSoon: Joi.object({
+      enabled: Joi.boolean(),
+      showPrice: Joi.boolean(),
+      expectedDate: Joi.date().allow(null, ''),
+      autoLaunch: Joi.boolean(),
+    }),
     labelIds: Joi.array().items(Joi.string()),
     rating: Joi.number().min(0).max(5),
     purchaseCountMin: Joi.number().integer().min(0),

@@ -64,6 +64,10 @@ const TEMPLATES = {
     en: { title: 'Order Created! ✅', body: 'Laxmi Agro accepted your requirement for {productName} at ₹{price}/unit. Order {orderNumber} is ready to view.' },
     hi: { title: 'ऑर्डर बन गया! ✅', body: 'लक्ष्मी एग्रो ने {productName} की आपकी रिक्वायरमेंट ₹{price}/यूनिट पर स्वीकार कर ली है। ऑर्डर {orderNumber} देखें।' },
   },
+  productLaunched: {
+    en: { title: 'Now available! 🎉', body: '{productName} is now available. Order it in the app.' },
+    hi: { title: 'अब उपलब्ध! 🎉', body: '{productName} अब उपलब्ध है। ऐप में ऑर्डर करें।' },
+  },
   requirementGroupAccepted: {
     en: { title: 'Order Created! ✅', body: 'Laxmi Agro accepted your requirement {requestNumber} for {count} products. Order {orderNumber} · total ₹{total}.' },
     hi: { title: 'ऑर्डर बन गया! ✅', body: 'लक्ष्मी एग्रो ने आपकी रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) स्वीकार कर ली है। ऑर्डर {orderNumber} · कुल ₹{total}।' },

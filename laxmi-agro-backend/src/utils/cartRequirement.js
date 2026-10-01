@@ -3,6 +3,7 @@
 // sent or none is.
 
 const { getMinimumWholesaleQuantity, isWholePacks } = require('./packSize');
+const { purchaseBlockCode } = require('./productAvailability');
 
 // cartItems: [{ productId, quantity }]; productMap: { [id]: product }.
 // Returns { lines: [{ product, quantity }], problems: [{ productId, name, code }] }.
@@ -15,6 +16,11 @@ function planCartRequirement(cartItems = [], productMap = {}) {
     const quantity = Number(item.quantity);
     if (!product) {
       problems.push({ productId, name: '', code: 'PRODUCT_NOT_FOUND' });
+      continue;
+    }
+    const blocked = purchaseBlockCode(product);
+    if (blocked) {
+      problems.push({ productId, name: product.name, code: blocked });
       continue;
     }
     if (!product.negotiationEnabled) {

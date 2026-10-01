@@ -586,9 +586,20 @@ const tests = [
   ['14. Delivered order stock stays deducted', test_14_delivered_order_stock_stays_deducted],
 ];
 
+// These tests write users, products and orders, so they only run against a
+// database on this machine (never the live database in .env).
+const testDatabaseUri = process.env.INVENTORY_TEST_MONGODB_URI;
+const isLocalDatabase = /^mongodb:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//i.test(String(testDatabaseUri || ''));
+
 (async () => {
   let passed = 0;
   let failed = 0;
+
+  if (!isLocalDatabase) {
+    console.log('Inventory tests skipped: set INVENTORY_TEST_MONGODB_URI to a local test database to run them.');
+    process.exit(0);
+  }
+  process.env.MONGODB_URI = testDatabaseUri;
 
   try {
     await setup();

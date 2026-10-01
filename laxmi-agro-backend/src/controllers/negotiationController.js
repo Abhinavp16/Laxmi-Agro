@@ -11,6 +11,7 @@ const { buildDiscountMap, discountsFor } = require('../services/productDiscountS
 const { notifyAdmins } = require('../services/adminNotificationService');
 const { planCartRequirement, describeCartRequirement } = require('../utils/cartRequirement');
 const { describePack, getPackInfo, isWholePacks } = require('../utils/packSize');
+const { assertPurchasable } = require('../utils/productAvailability');
 
 // Fields for a new wholesaler request (shared by the single-product and the
 // whole-cart requests).
@@ -134,6 +135,8 @@ exports.createNegotiation = async (req, res, next) => {
     if (!product) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
+
+    assertPurchasable(product);
 
     if (!product.negotiationEnabled) {
       throw new BadRequestError('Negotiation is not enabled for this product', 'NEGOTIATION_DISABLED');

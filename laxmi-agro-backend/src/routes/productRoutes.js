@@ -12,6 +12,8 @@ router.get('/search', optionalAuth, validate(productValidation.search, 'query'),
 router.get('/scheduled-changes', protect, productController.getScheduledPriceChanges);
 router.get('/:id/related', optionalAuth, productController.getRelatedProducts);
 router.get('/:slug', optionalAuth, productController.getProductBySlug);
+router.post('/:id/notify-me', protect, productController.subscribeNotifyMe);
+router.delete('/:id/notify-me', protect, productController.unsubscribeNotifyMe);
 router.post('/:id/view', optionalAuth, productController.trackProductView);
 router.post('/:id/event', optionalAuth, productController.trackProductEvent);
 router.post('/:id/watch-time', optionalAuth, productController.trackProductWatchTime);
