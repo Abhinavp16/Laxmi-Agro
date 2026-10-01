@@ -47,13 +47,14 @@ class FloatingCartBar extends ConsumerWidget {
               haptic: true,
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(AppRadius.lg),
+              shape: AppShapes.squircle(AppRadius.lg),
               semanticLabel: '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
               child: Container(
                 height: 58,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  boxShadow: [
+                decoration: ShapeDecoration(
+                  shape: AppShapes.squircle(AppRadius.lg),
+                  shadows: [
                     BoxShadow(
                       color: AppColors.primaryDeep.withValues(alpha: 0.28),
                       blurRadius: 18,

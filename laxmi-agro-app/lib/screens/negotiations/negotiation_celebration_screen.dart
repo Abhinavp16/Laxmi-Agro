@@ -282,7 +282,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                         foregroundColor: backgroundDark,
                         elevation: 8,
                         shadowColor: primary.withOpacity(0.3),
-                        shape: RoundedRectangleBorder(
+                        shape: RoundedSuperellipseBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -311,7 +311,7 @@ class NegotiationCelebrationScreen extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: textDark,
                         side: BorderSide(color: primary.withOpacity(0.3), width: 2),
-                        shape: RoundedRectangleBorder(
+                        shape: RoundedSuperellipseBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),

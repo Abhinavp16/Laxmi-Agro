@@ -287,7 +287,7 @@ class HelpCenterScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
                 elevation: 8,
                 shadowColor: whatsappGreen.withOpacity(0.2),
-                shape: RoundedRectangleBorder(
+                shape: RoundedSuperellipseBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),

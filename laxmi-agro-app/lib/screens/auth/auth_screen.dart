@@ -329,10 +329,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     return Container(
       height: 52,
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        shape: AppShapes.squircle(
+          AppRadius.md,
+          side: const BorderSide(color: AppColors.border),
+        ),
       ),
       child: Row(
         children: [
@@ -356,7 +358,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         selected: isSelected,
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          shape: AppShapes.squircle(AppRadius.sm),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => _toggleRole(isWholesaler),
@@ -364,9 +366,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               duration: AppMotion.of(context, AppMotion.base),
               curve: AppMotion.standard,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: isSelected ? AppColors.primarySoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
+                shape: AppShapes.squircle(AppRadius.sm),
               ),
               child: Text(
                 label,

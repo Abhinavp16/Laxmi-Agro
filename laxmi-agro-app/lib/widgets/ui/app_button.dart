@@ -106,7 +106,7 @@ class AppButton extends StatelessWidget {
         opacity: onPressed == null ? 0.5 : 1,
         child: Material(
           color: bg,
-          shape: RoundedRectangleBorder(
+          shape: RoundedSuperellipseBorder(
             borderRadius: radius,
             side: side ?? BorderSide.none,
           ),

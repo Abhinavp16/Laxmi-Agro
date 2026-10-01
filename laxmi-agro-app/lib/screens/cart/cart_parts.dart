@@ -599,15 +599,18 @@ class _IssueAction extends StatelessWidget {
       onTap: onTap,
       haptic: true,
       borderRadius: BorderRadius.circular(AppRadius.sm),
+      shape: AppShapes.squircle(AppRadius.sm),
       color: AppColors.surfaceLight,
       semanticLabel: label,
       child: Container(
         constraints: const BoxConstraints(minHeight: 32),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
+        decoration: ShapeDecoration(
+          shape: AppShapes.squircle(
+            AppRadius.sm,
+            side: BorderSide(color: AppColors.warning.withValues(alpha: 0.5)),
+          ),
         ),
         child: Text(
           label,

@@ -2437,9 +2437,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           child: Container(
                             height: isTablet ? 30 : 27,
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(
+                            decoration: ShapeDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
+                              shape: AppShapes.squircle(4),
                             ),
                             child: Text(
                               l10n.homeApplyCoupon,
@@ -6664,7 +6664,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
+                        shape: RoundedSuperellipseBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -8239,9 +8239,9 @@ class _HeroYoutubeSlideState extends State<_HeroYoutubeSlide> {
                     horizontal: 20,
                     vertical: 10,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    shape: AppShapes.squircle(14),
                   ),
                   child: Text(
                     context.l10n.homeBannerShopNow,

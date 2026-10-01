@@ -398,7 +398,7 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                               foregroundColor: backgroundDark,
                               elevation: 8,
                               shadowColor: primary.withOpacity(0.2),
-                              shape: RoundedRectangleBorder(
+                              shape: RoundedSuperellipseBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
@@ -421,7 +421,7 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                               backgroundColor: gray200,
                               foregroundColor: Color(0xFF1f2937),
                               elevation: 0,
-                              shape: RoundedRectangleBorder(
+                              shape: RoundedSuperellipseBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),

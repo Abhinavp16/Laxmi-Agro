@@ -61,6 +61,7 @@ class Pressable extends StatelessWidget {
     this.semanticLabel,
     this.color = Colors.transparent,
     this.splashColor,
+    this.shape,
   });
 
   final Widget child;
@@ -72,6 +73,10 @@ class Pressable extends StatelessWidget {
   final String? semanticLabel;
   final Color color;
   final Color? splashColor;
+
+  /// Outline for the ripple and clip instead of [borderRadius]; buttons pass
+  /// [AppShapes.squircle].
+  final ShapeBorder? shape;
 
   @override
   Widget build(BuildContext context) {
@@ -86,10 +91,12 @@ class Pressable extends StatelessWidget {
         enabled: enabled,
         child: Material(
           color: color,
-          borderRadius: radius,
+          shape: shape,
+          borderRadius: shape == null ? radius : null,
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            borderRadius: radius,
+            borderRadius: shape == null ? radius : null,
+            customBorder: shape,
             splashColor: splashColor ?? AppColors.primary.withValues(alpha: 0.08),
             highlightColor: AppColors.primary.withValues(alpha: 0.04),
             onTap: onTap == null

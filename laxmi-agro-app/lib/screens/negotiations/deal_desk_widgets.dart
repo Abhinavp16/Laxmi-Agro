@@ -741,10 +741,12 @@ class DealSegmentedControl extends StatelessWidget {
     return Container(
       height: 48,
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        shape: AppShapes.squircle(
+          AppRadius.md,
+          side: const BorderSide(color: AppColors.border),
+        ),
       ),
       child: Row(
         children: [
@@ -756,7 +758,7 @@ class DealSegmentedControl extends StatelessWidget {
                   button: true,
                   child: Material(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    shape: AppShapes.squircle(AppRadius.sm),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: i == selectedIndex ? null : () => onChanged(i),
@@ -764,11 +766,11 @@ class DealSegmentedControl extends StatelessWidget {
                         duration: duration,
                         curve: AppMotion.standard,
                         alignment: Alignment.center,
-                        decoration: BoxDecoration(
+                        decoration: ShapeDecoration(
                           color: i == selectedIndex
                               ? AppColors.primarySoft
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          shape: AppShapes.squircle(AppRadius.sm),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,

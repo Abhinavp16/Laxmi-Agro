@@ -3015,10 +3015,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       label: l10n.productSelectQuantity,
       child: Container(
         constraints: const BoxConstraints(minHeight: 48),
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.borderStrong),
+          shape: AppShapes.squircle(
+            AppRadius.md,
+            side: const BorderSide(color: AppColors.borderStrong),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -3508,15 +3510,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       onTap: onTap,
       haptic: true,
       borderRadius: BorderRadius.circular(AppRadius.md),
+      shape: AppShapes.squircle(AppRadius.md),
       color: selected ? AppColors.primary : AppColors.surfaceLight,
       child: AnimatedContainer(
         duration: AppMotion.of(context, AppMotion.fast),
         height: inPacks ? 58 : 48,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.borderStrong,
+        decoration: ShapeDecoration(
+          shape: AppShapes.squircle(
+            AppRadius.md,
+            side: BorderSide(
+              color: selected ? AppColors.primary : AppColors.borderStrong,
+            ),
           ),
         ),
         child: Column(
@@ -3975,7 +3980,7 @@ class _BarButton extends StatelessWidget {
           height: 48,
           child: Material(
             color: background,
-            shape: RoundedRectangleBorder(borderRadius: radius, side: side),
+            shape: RoundedSuperellipseBorder(borderRadius: radius, side: side),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onPressed == null
@@ -4013,7 +4018,7 @@ class _WhatsAppPill extends StatelessWidget {
       child: PressScale(
         child: Material(
           color: AppColors.whatsapp,
-          borderRadius: radius,
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () {

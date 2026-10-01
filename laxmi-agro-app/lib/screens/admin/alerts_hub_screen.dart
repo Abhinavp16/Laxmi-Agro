@@ -370,7 +370,7 @@ class _AlertsHubScreenState extends State<AlertsHubScreen> {
                                           ? (action.textColor ?? textDark)
                                           : textDark,
                                       elevation: 0,
-                                      shape: RoundedRectangleBorder(
+                                      shape: RoundedSuperellipseBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),

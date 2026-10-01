@@ -96,6 +96,18 @@ class AppSpace {
   static const double gutter = 16;
 }
 
+/// Squircle (continuous-corner) shapes for buttons and button-like controls.
+/// Cards, fields, sheets and dialogs keep plain rounded corners.
+class AppShapes {
+  static RoundedSuperellipseBorder squircle(
+    double radius, {
+    BorderSide side = BorderSide.none,
+  }) => RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.circular(radius),
+    side: side,
+  );
+}
+
 /// Soft, low shadows. Cards mostly rely on a hairline border instead.
 class AppShadows {
   static List<BoxShadow> get card => [
@@ -246,9 +258,7 @@ class AppTheme {
       surfaceTint: Colors.transparent,
     );
 
-    final buttonShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-    );
+    final buttonShape = AppShapes.squircle(AppRadius.md);
     final buttonText = AppFonts.jakarta(
       fontSize: 16,
       fontWeight: FontWeight.w700,
