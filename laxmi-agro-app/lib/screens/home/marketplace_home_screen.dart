@@ -3241,8 +3241,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             : l10n.homeTryDifferentSearch,
       );
     }
-    return NotificationListener<ScrollNotification>(
-      key: const ValueKey('search-results'),
+    final results = NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification.metrics.extentAfter < 320) {
           _loadMoreSearchResults();
@@ -3253,7 +3252,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
         itemCount: _searchResults.length + (_isLoadingMoreSearch ? 1 : 0),
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index == _searchResults.length) {
             return const Padding(
@@ -3267,9 +3266,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               ),
             );
           }
-          return _buildSuggestionCard(_searchResults[index]);
+          return StaggeredRevealItem(
+            index: index,
+            child: _buildSuggestionCard(_searchResults[index]),
+          );
         },
       ),
+    );
+    // Same padding and gaps as the skeleton, so each row lands where its
+    // skeleton row was, fading in one after another.
+    return StaggeredReveal(
+      key: const ValueKey('search-results'),
+      child: results,
     );
   }
 
@@ -3371,7 +3379,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             children: [
               for (final product in suggestionProducts.take(5)) ...[
                 _buildSuggestionCard(product),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
               ],
             ],
           ),
@@ -3447,142 +3455,132 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           'heroBlurHash': product['blurHash']?.toString(),
         },
       ),
-      color: AppColors.surfaceLight,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       semanticLabel: _getDisplayName(product),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Hero(
-              tag: heroTag,
-              child: Container(
-                width: 84,
-                height: 84,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.gray50,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: (product['image']?.toString() ?? '').isNotEmpty
-                    ? AppImage(
-                        imageUrl: product['image'].toString(),
-                        blurHash: product['blurHash']?.toString(),
-                        category: product['category']?.toString() ?? '',
-                        name: product['name']?.toString() ?? '',
-                        width: 84,
-                        height: 84,
-                        fit: BoxFit.contain,
-                      )
-                    : ProductImagePlaceholder(
-                        category: product['category']?.toString() ?? '',
-                        name: product['name']?.toString() ?? '',
-                      ),
+      child: Row(
+        children: [
+          Hero(
+            tag: heroTag,
+            child: Container(
+              width: 84,
+              height: 84,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.gray50,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
+              child: (product['image']?.toString() ?? '').isNotEmpty
+                  ? AppImage(
+                      imageUrl: product['image'].toString(),
+                      blurHash: product['blurHash']?.toString(),
+                      category: product['category']?.toString() ?? '',
+                      name: product['name']?.toString() ?? '',
+                      width: 84,
+                      height: 84,
+                      fit: BoxFit.contain,
+                    )
+                  : ProductImagePlaceholder(
+                      category: product['category']?.toString() ?? '',
+                      name: product['name']?.toString() ?? '',
+                    ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (brand.isNotEmpty)
-                    Text(
-                      brand.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppFonts.jakarta(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  Text(
-                    _getDisplayName(product),
-                    style: AppFonts.jakarta(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getDisplayName(product),
+                  style: AppFonts.jakarta(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    height: 1.3,
                   ),
-                  if (soldCount > 0 || rating != null) ...[
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        if (rating != null) ...[
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: AppColors.star,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                // One detail line: brand, rating and the sold-today count.
+                Row(
+                  children: [
+                    if (brand.isNotEmpty) ...[
+                      Flexible(
+                        child: Text(
+                          brand.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppFonts.jakarta(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textTertiary,
+                            letterSpacing: 0.4,
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '$rating',
-                            style: AppFonts.jakarta(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (rating != null || soldCount > 0)
+                        const SizedBox(width: 8),
+                    ],
+                    if (rating != null) ...[
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: AppColors.star,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '$rating',
+                        style: AppFonts.jakarta(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (soldCount > 0) const SizedBox(width: 8),
+                    ],
+                    if (soldCount > 0)
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedFire,
+                              size: 13,
+                              color: AppColors.error,
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        if (soldCount > 0)
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const HugeIcon(
-                                  icon: HugeIcons.strokeRoundedFire,
-                                  size: 13,
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                l10n.homeSoldIn24Hrs('$soldCount'),
+                                style: AppFonts.jakarta(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
                                   color: AppColors.error,
                                 ),
-                                const SizedBox(width: 3),
-                                Flexible(
-                                  child: Text(
-                                    l10n.homeSoldIn24Hrs('$soldCount'),
-                                    style: AppFonts.jakarta(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.error,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
                   ],
-                  const SizedBox(height: 6),
-                  PriceView(
-                    price: price,
-                    mrp: mrp,
-                    size: 15,
-                    unit: pack.isPack || isMeter
-                        ? (isMeter ? l10n.uiPerMeter : l10n.uiPerPiece)
-                        : null,
-                    offLabel: (percent) => l10n.commonPercentOff('$percent'),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                PriceView(
+                  price: price,
+                  mrp: mrp,
+                  size: 15,
+                  unit: pack.isPack || isMeter
+                      ? (isMeter ? l10n.uiPerMeter : l10n.uiPerPiece)
+                      : null,
+                  offLabel: (percent) => l10n.commonPercentOff('$percent'),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            const HugeIcon(
-              icon: HugeIcons.strokeRoundedArrowRight01,
-              size: 18,
-              color: AppColors.textTertiary,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
