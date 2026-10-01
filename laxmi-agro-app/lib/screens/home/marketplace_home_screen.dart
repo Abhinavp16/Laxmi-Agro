@@ -1195,7 +1195,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return PopupMenuButton<_SearchScope>(
       tooltip: l10n.homeSearchFilterTooltip,
       position: PopupMenuPosition.under,
-      offset: const Offset(-132, 6),
+      // The button sits at the right edge, so Flutter right-aligns the menu
+      // with it; no sideways nudge, just a small drop below the bar.
+      offset: const Offset(0, 10),
       constraints: const BoxConstraints.tightFor(width: 184),
       color: AppColors.surfaceLight,
       elevation: 12,
