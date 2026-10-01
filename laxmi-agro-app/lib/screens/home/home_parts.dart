@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:ui' show lerpDouble;
+import 'dart:ui' as ui show FragmentProgram, FragmentShader;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -90,7 +92,7 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const CustomPaint(painter: _LeafGlowPainter()),
+              const _HeaderDither(),
               Positioned(
                 left: gutter,
                 right: gutter,
@@ -151,90 +153,102 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(HomeHeroHeaderDelegate oldDelegate) => true;
 }
 
-/// Soft light and two faint leaves behind the header text.
-class _LeafGlowPainter extends CustomPainter {
-  const _LeafGlowPainter();
+/// Light on the header drawn as small dots (an ordered dither), with a band
+/// of dots sweeping across every few seconds. The sweep stays off when the
+/// OS asks for reduced motion; without shader support the green stays plain.
+class _HeaderDither extends StatefulWidget {
+  const _HeaderDither();
 
-  static const Color _lift = Color(0xFF3DB45F);
+  @override
+  State<_HeaderDither> createState() => _HeaderDitherState();
+}
+
+class _HeaderDitherState extends State<_HeaderDither>
+    with SingleTickerProviderStateMixin {
+  static final Future<ui.FragmentProgram> _program =
+      ui.FragmentProgram.fromAsset('shaders/header_dither.frag');
+
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+  ui.FragmentShader? _shader;
+  Timer? _first;
+  Timer? _every;
+
+  @override
+  void initState() {
+    super.initState();
+    _program.then((program) {
+      if (mounted) setState(() => _shader = program.fragmentShader());
+    }, onError: (Object _) {});
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _first?.cancel();
+    _every?.cancel();
+    if (AppMotion.reduced(context)) {
+      _sweep.stop();
+      return;
+    }
+    void run() {
+      if (mounted) _sweep.forward(from: 0);
+    }
+
+    _first = Timer(const Duration(milliseconds: 900), run);
+    _every = Timer.periodic(const Duration(seconds: 5), (_) => run());
+  }
+
+  @override
+  void dispose() {
+    _first?.cancel();
+    _every?.cancel();
+    _sweep.dispose();
+    _shader?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shader = _shader;
+    if (shader == null) return const SizedBox.shrink();
+    return RepaintBoundary(
+      child: CustomPaint(painter: _DitherPainter(shader, _sweep)),
+    );
+  }
+}
+
+class _DitherPainter extends CustomPainter {
+  _DitherPainter(this.shader, this.sweep) : super(repaint: sweep);
+
+  final ui.FragmentShader shader;
+  final AnimationController sweep;
+
+  static const double _cell = 3;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Light pooling in the top-right corner...
-    final light = Offset(size.width * 0.92, 0);
-    canvas.drawCircle(
-      light,
-      230,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.14),
-            Colors.white.withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: light, radius: 230)),
-    );
-    // ...and a brighter green rising from the bottom-left.
-    final rise = Offset(0, size.height);
-    canvas.drawCircle(
-      rise,
-      210,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            _lift.withValues(alpha: 0.32),
-            _lift.withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: rise, radius: 210)),
-    );
-
-    _leaf(
-      canvas,
-      base: Offset(size.width + 6, -18),
-      length: 210,
-      width: 78,
-      angle: 2.25,
-      color: Colors.white.withValues(alpha: 0.07),
-    );
-    _leaf(
-      canvas,
-      base: Offset(size.width - 6, 92),
-      length: 150,
-      width: 56,
-      angle: 2.85,
-      color: Colors.white.withValues(alpha: 0.05),
-    );
-  }
-
-  /// A plain leaf pointing along [angle] from [base].
-  void _leaf(
-    Canvas canvas, {
-    required Offset base,
-    required double length,
-    required double width,
-    required double angle,
-    required Color color,
-  }) {
-    final path = Path()
-      ..moveTo(0, 0)
-      ..cubicTo(
-        length * 0.28,
-        -width * 0.62,
-        length * 0.72,
-        -width * 0.5,
-        length,
-        0,
-      )
-      ..cubicTo(length * 0.72, width * 0.5, length * 0.28, width * 0.62, 0, 0)
-      ..close();
-    canvas
-      ..save()
-      ..translate(base.dx, base.dy)
-      ..rotate(angle)
-      ..drawPath(path, Paint()..color = color)
-      ..restore();
+    final position = sweep.isAnimating
+        ? Curves.easeInOutCubic.transform(sweep.value)
+        : -1.0;
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, position)
+      ..setFloat(3, _cell)
+      // White dots at 12% opacity.
+      ..setFloat(4, 1)
+      ..setFloat(5, 1)
+      ..setFloat(6, 1)
+      ..setFloat(7, 0.12);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
-  bool shouldRepaint(_LeafGlowPainter oldDelegate) => false;
+  bool shouldRepaint(_DitherPainter oldDelegate) =>
+      oldDelegate.shader != shader || oldDelegate.sweep != sweep;
 }
 
 /// One square category shortcut in the Home grid: photo on white, name below.
