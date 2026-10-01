@@ -400,7 +400,6 @@ class HomeBrandAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
                 boxShadow: AppShadows.card,
               ),
               child: ClipOval(
