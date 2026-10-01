@@ -177,11 +177,23 @@ exports.updateOrderStatus = async (req, res, next) => {
 
 exports.acceptOrder = async (req, res, next) => {
   try {
-    const { order, alreadyAccepted } = await acceptOrder({ orderId: req.params.id, actorId: req.user._id });
+    const { order, alreadyAccepted } = await acceptOrder({
+      orderId: req.params.id,
+      actorId: req.user._id,
+      deliveryCharge: req.body?.deliveryCharge,
+    });
     res.json({
       success: true,
       message: alreadyAccepted ? 'Order was already accepted' : 'Order accepted',
-      data: { orderNumber: order.orderNumber, acceptanceStatus: order.acceptanceStatus, status: order.status },
+      data: {
+        orderNumber: order.orderNumber,
+        acceptanceStatus: order.acceptanceStatus,
+        status: order.status,
+        subtotal: order.subtotal,
+        deliveryFee: order.deliveryFee,
+        discount: order.discount,
+        total: order.total,
+      },
     });
   } catch (error) {
     next(error);

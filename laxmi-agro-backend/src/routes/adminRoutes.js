@@ -82,7 +82,7 @@ router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiat
 router.get('/orders', adminOrderController.getOrders);
 router.get('/orders/:id', adminOrderController.getOrderById);
 router.delete('/orders/:id', adminOrderController.deleteOrder);
-router.put('/orders/:id/accept', adminOrderController.acceptOrder);
+router.put('/orders/:id/accept', validate(adminValidation.acceptOrder), adminOrderController.acceptOrder);
 router.put('/orders/:id/reject', validate(adminValidation.rejectOrder), adminOrderController.rejectOrder);
 router.put('/orders/:id/mark-payment-complete', adminOrderController.markPaymentCompleted);
 router.put('/orders/:id/status', validate(adminValidation.updateOrderStatus), adminOrderController.updateOrderStatus);

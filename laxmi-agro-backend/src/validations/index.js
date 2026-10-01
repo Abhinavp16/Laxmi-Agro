@@ -429,6 +429,11 @@ const adminValidation = {
     messageId: Joi.string().trim().pattern(/^[A-Za-z0-9:_-]+$/).max(100),
   }),
 
+  // Customer order: delivery charge typed by the admin.
+  acceptOrder: Joi.object({
+    deliveryCharge: Joi.number().min(0).max(10000000),
+  }),
+
   acceptNegotiation: Joi.object({
     message: Joi.string().max(500).allow('', null),
     customerNote: Joi.string().max(500).allow('', null),

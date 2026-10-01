@@ -25,8 +25,8 @@ const TEMPLATES = {
     hi: { title: 'ऑर्डर अपडेट', body: 'आपके ऑर्डर की स्थिति अपडेट की गई है।' },
   },
   orderAccepted: {
-    en: { title: 'Order Accepted', body: 'Your order {orderNumber} has been accepted. You can now complete payment.' },
-    hi: { title: 'ऑर्डर स्वीकार किया गया', body: 'आपका ऑर्डर {orderNumber} स्वीकार कर लिया गया है। अब आप भुगतान कर सकते हैं।' },
+    en: { title: 'Order Accepted', body: 'Your order {orderNumber} has been accepted. Total to pay: ₹{total} (incl. delivery). You can now complete payment.' },
+    hi: { title: 'ऑर्डर स्वीकार किया गया', body: 'आपका ऑर्डर {orderNumber} स्वीकार कर लिया गया है। कुल भुगतान: ₹{total} (डिलीवरी सहित)। अब आप भुगतान कर सकते हैं।' },
   },
   orderRejected: {
     en: { title: 'Order Rejected', body: 'Your order {orderNumber} was rejected: {reason}' },

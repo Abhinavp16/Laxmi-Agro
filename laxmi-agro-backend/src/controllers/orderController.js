@@ -553,7 +553,8 @@ exports.previewCouponForCart = async (req, res, next) => {
       userRole,
     });
 
-    const deliveryFee = subtotal > 0 ? 50 : 0;
+    // Delivery is added by the admin when accepting the order.
+    const deliveryFee = 0;
     const totalBeforeDiscount = subtotal + deliveryFee;
     const payableTotal = Math.max(totalBeforeDiscount - discount, 0);
 
@@ -724,7 +725,8 @@ exports.createOrderFromCart = async (req, res, next) => {
       subtotal,
       userRole,
     });
-    const deliveryFee = subtotal > 0 ? 50 : 0;
+    // Delivery is added by the admin when accepting the order.
+    const deliveryFee = 0;
     const total = round2(Math.max(subtotal + deliveryFee - discount, 0));
 
     let order = null;
