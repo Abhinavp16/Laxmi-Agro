@@ -295,12 +295,10 @@ class _FeaturedProductsScreenState
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
     final displayName = localizedName(context, product);
 
+    // No HOT tag on the Hot Deals page: the page title already says it.
     String? badgeLabel;
     var badgeTone = ChipTone.brand;
-    if (widget.isHotDeals) {
-      badgeLabel = l10n.productBadgeHot;
-      badgeTone = ChipTone.error;
-    } else if (discount > 0) {
+    if (discount > 0) {
       badgeLabel = l10n.productBadgeSale;
       badgeTone = ChipTone.accent;
     } else if (product['isNew'] == true) {

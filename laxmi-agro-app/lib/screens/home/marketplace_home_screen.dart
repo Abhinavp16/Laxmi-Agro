@@ -5194,7 +5194,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
               ),
               itemBuilder: (context, index) => _buildProductCard(
                 gridProducts[index],
-                showHotBadge: !isFeatured,
+                showHotBadge: false,
                 heroScope: isFeatured ? 'popular' : 'hot',
               ),
             ),
@@ -5243,8 +5243,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       width: cardWidth,
                       child: _buildProductCard(
                         products[index],
-                        // Only the Hot Deals rail shows the HOT badge.
-                        showHotBadge: !isFeatured,
+                        // No HOT tag: the section title already says it.
+                        showHotBadge: false,
                         heroScope: isFeatured ? 'popular' : 'hot',
                       ),
                     ),

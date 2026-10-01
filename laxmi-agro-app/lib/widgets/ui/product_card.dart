@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
@@ -282,7 +281,9 @@ class _RatingLine extends StatelessWidget {
   }
 }
 
-/// Heart toggle with a small pop when it becomes active.
+/// Heart toggle with a small pop when it becomes active. No background:
+/// off, it's a white heart with a grey outline (readable on any photo); on,
+/// it fills red.
 class WishlistButton extends StatelessWidget {
   const WishlistButton({
     super.key,
@@ -290,17 +291,16 @@ class WishlistButton extends StatelessWidget {
     required this.onTap,
     this.label,
     this.size = 36,
-    this.filledBackground = true,
   });
 
   final bool active;
   final VoidCallback onTap;
   final String? label;
   final double size;
-  final bool filledBackground;
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = size * 0.62;
     return Semantics(
       button: true,
       toggled: active,
@@ -315,41 +315,43 @@ class WishlistButton extends StatelessWidget {
           width: size + 8,
           height: size + 8,
           child: Center(
-            child: Container(
-              width: size,
-              height: size,
-              decoration: filledBackground
-                  ? BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.94),
-                      shape: BoxShape.circle,
-                      boxShadow: AppShadows.card,
-                    )
-                  : null,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: AppMotion.of(context, AppMotion.base),
-                  transitionBuilder: (child, animation) => ScaleTransition(
-                    scale: TweenSequence<double>([
-                      TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.18), weight: 60),
-                      TweenSequenceItem(tween: Tween(begin: 1.18, end: 1), weight: 40),
-                    ]).animate(animation),
-                    child: child,
+            child: AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.base),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: TweenSequence<double>([
+                  TweenSequenceItem(
+                    tween: Tween(begin: 0.6, end: 1.18),
+                    weight: 60,
                   ),
-                  child: active
-                      ? Icon(
+                  TweenSequenceItem(tween: Tween(begin: 1.18, end: 1), weight: 40),
+                ]).animate(animation),
+                child: child,
+              ),
+              child: active
+                  ? Icon(
+                      Icons.favorite_rounded,
+                      key: const ValueKey('on'),
+                      size: iconSize,
+                      color: AppColors.error,
+                    )
+                  // The solid and outline hearts share one shape, so the
+                  // white fill sits exactly inside the outline.
+                  : Stack(
+                      key: const ValueKey('off'),
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
                           Icons.favorite_rounded,
-                          key: const ValueKey('on'),
-                          size: size * 0.5,
-                          color: AppColors.error,
-                        )
-                      : HugeIcon(
-                          key: const ValueKey('off'),
-                          icon: HugeIcons.strokeRoundedFavourite,
-                          size: size * 0.5,
+                          size: iconSize,
+                          color: Colors.white,
+                        ),
+                        Icon(
+                          Icons.favorite_border_rounded,
+                          size: iconSize,
                           color: AppColors.textSecondary,
                         ),
-                ),
-              ),
+                      ],
+                    ),
             ),
           ),
         ),
