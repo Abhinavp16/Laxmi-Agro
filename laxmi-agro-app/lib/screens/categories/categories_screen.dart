@@ -1073,13 +1073,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
       ),
+      // White behind the header and the brand rail; the main panel is the
+      // grey area with a rounded top-left corner.
       child: Scaffold(
-        backgroundColor: AppColors.backgroundLight,
+        backgroundColor: AppColors.surfaceLight,
         body: SafeArea(
           child: Column(
             children: [
               _isRoute ? _buildBrandHeader() : _buildTabHeader(),
-              const Divider(height: 1, thickness: 1, color: AppColors.border),
               Expanded(child: _switcher(bodyKey, body)),
             ],
           ),
@@ -1179,7 +1180,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildRailSkeleton(),
-        Expanded(child: _buildCategorySkeleton()),
+        Expanded(child: _mainPanel(_buildCategorySkeleton())),
       ],
     );
   }
@@ -1243,22 +1244,32 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         _buildBrandRail(),
         // The right panel drills through category, sub-category, products.
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _handleRefresh,
-            color: AppColors.primary,
-            child: _buildRightPanel(),
+          child: _mainPanel(
+            RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: AppColors.primary,
+              child: _buildRightPanel(),
+            ),
           ),
         ),
       ],
     );
   }
 
+  /// The grey area right of the brand rail, rounded where it meets the
+  /// header and the rail.
+  Widget _mainPanel(Widget child) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(AppRadius.xl),
+      ),
+      child: ColoredBox(color: AppColors.backgroundLight, child: child),
+    );
+  }
+
   // ---- Brand rail ----
 
-  static const _railDecoration = BoxDecoration(
-    color: AppColors.surfaceLight,
-    border: Border(right: BorderSide(color: AppColors.border)),
-  );
+  static const _railDecoration = BoxDecoration(color: AppColors.surfaceLight);
 
   Widget _buildBrandRail() {
     return Container(
