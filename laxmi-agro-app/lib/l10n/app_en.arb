@@ -1879,5 +1879,6 @@
   "homeHeadlineCustomer": "What does your farm need today?",
   "homeHeadlineDealer": "What would you like to restock today?",
   "homeShopByCategory": "Shop by category",
-  "homeAllCategoriesTile": "All"
+  "homeAllCategoriesTile": "All",
+  "profileMadeBy": "Made by"
 }

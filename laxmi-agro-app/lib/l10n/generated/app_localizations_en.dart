@@ -3826,4 +3826,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeAllCategoriesTile => 'All';
+
+  @override
+  String get profileMadeBy => 'Made by';
 }

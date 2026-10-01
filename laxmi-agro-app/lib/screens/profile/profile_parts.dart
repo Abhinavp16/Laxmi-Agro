@@ -3,9 +3,11 @@ import 'dart:ui' as ui show FragmentProgram, FragmentShader;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
@@ -907,7 +909,75 @@ class _ProfileFooterState extends State<ProfileFooter> {
             );
           },
         ),
+        const SizedBox(height: 16),
+        const _BuildoryCredit(),
       ],
+    );
+  }
+}
+
+/// "Made by [B] buildory", the agency credit, set like buildory.dev's own
+/// navbar logo: "build" in Inter Tight, "ory" in italic Instrument Serif.
+/// Tapping it opens the site.
+class _BuildoryCredit extends StatelessWidget {
+  const _BuildoryCredit();
+
+  static final Uri _site = Uri.parse('https://buildory.dev');
+  static const Color _ink = Color(0xFF151D30);
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 17.0;
+    return Pressable(
+      onTap: () => launchUrl(_site, mode: LaunchMode.externalApplication),
+      semanticLabel: 'Made by Buildory',
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.profileMadeBy,
+              style: AppFonts.jakarta(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(width: 7),
+            Image.asset(
+              'assets/images/buildory_mark.png',
+              width: 11,
+              height: 20,
+              excludeFromSemantics: true,
+            ),
+            const SizedBox(width: 7),
+            Text.rich(
+              TextSpan(
+                text: 'build',
+                children: [
+                  TextSpan(
+                    text: 'ory',
+                    style: GoogleFonts.instrumentSerif(
+                      fontSize: size,
+                      fontStyle: FontStyle.italic,
+                      color: _ink,
+                    ),
+                  ),
+                ],
+              ),
+              style: GoogleFonts.interTight(
+                fontSize: size,
+                fontWeight: FontWeight.w400,
+                letterSpacing: -0.025 * size,
+                height: 1,
+                color: _ink,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

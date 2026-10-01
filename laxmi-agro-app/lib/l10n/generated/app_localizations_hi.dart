@@ -3791,4 +3791,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get homeAllCategoriesTile => 'सभी';
+
+  @override
+  String get profileMadeBy => 'निर्माता';
 }

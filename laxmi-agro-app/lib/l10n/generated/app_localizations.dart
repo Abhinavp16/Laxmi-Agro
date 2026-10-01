@@ -6673,6 +6673,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All'**
   String get homeAllCategoriesTile;
+
+  /// No description provided for @profileMadeBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Made by'**
+  String get profileMadeBy;
 }
 
 class _AppLocalizationsDelegate
