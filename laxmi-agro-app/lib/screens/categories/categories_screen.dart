@@ -1663,7 +1663,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
-                        placeholder: (_, _) => _tileIcon(icon),
+                        // Plain grey while the photo loads, no icon.
+                        placeholder: (_, _) => const SizedBox.shrink(),
                         errorWidget: (_, _, _) => _tileIcon(icon),
                       )
                     : _tileIcon(icon),
@@ -1921,7 +1922,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         ? CachedNetworkImage(
                             imageUrl: ApiConfig.normalizeMediaUrl(imageUrl),
                             fit: BoxFit.contain,
-                            placeholder: (_, _) => _tileIcon(icon, size: 18),
+                            placeholder: (_, _) => const SizedBox.shrink(),
                             errorWidget: (_, _, _) =>
                                 _tileIcon(icon, size: 18),
                           )
