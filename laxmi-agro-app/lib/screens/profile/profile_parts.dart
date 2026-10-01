@@ -1,4 +1,5 @@
-import 'dart:math' as math;
+import 'dart:async';
+import 'dart:ui' as ui show Gradient;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -88,121 +89,123 @@ class ProfileIdentityCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: radius,
-        child: CustomPaint(
-          painter: const _LeafRingsPainter(),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ProfileAvatar(
-                      name: name,
-                      url: avatarUrl,
-                      isGuest: isGuest,
-                      size: 64,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 2),
-                          Text(
-                            name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -0.3,
-                              height: 1.2,
-                            ),
-                          ),
-                          if (businessName?.isNotEmpty == true) ...[
+        child: Stack(
+          children: [
+            const Positioned.fill(child: _CardSheen()),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ProfileAvatar(
+                        name: name,
+                        url: avatarUrl,
+                        isGuest: isGuest,
+                        size: 64,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             const SizedBox(height: 2),
                             Text(
-                              businessName!,
-                              maxLines: 1,
+                              name,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: AppFonts.jakarta(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                                height: 1.2,
                               ),
                             ),
-                          ],
-                          if (contactLine?.isNotEmpty == true) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              contactLine!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.price(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w500,
-                                color: subtle,
+                            if (businessName?.isNotEmpty == true) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                businessName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFonts.jakarta(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
                               ),
-                            ),
+                            ],
+                            if (contactLine?.isNotEmpty == true) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                contactLine!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.price(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: subtle,
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
-                      ),
-                    ),
-                    if (onEdit != null) ...[
-                      const SizedBox(width: 8),
-                      _GlassIconButton(
-                        icon: HugeIcons.strokeRoundedPencilEdit02,
-                        tooltip: l10n.homeEditProfile,
-                        onTap: onEdit!,
-                      ),
-                    ],
-                  ],
-                ),
-                if (statusLabel != null || memberSince != null) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (statusLabel != null)
-                        StatusChip(
-                          label: statusLabel!,
-                          tone: statusTone,
-                          icon: statusIcon,
-                          dense: true,
                         ),
-                      if (memberSince != null)
-                        Text(
-                          memberSince!,
-                          style: AppFonts.jakarta(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: subtle,
+                      ),
+                      if (onEdit != null) ...[
+                        const SizedBox(width: 8),
+                        _GlassIconButton(
+                          icon: HugeIcons.strokeRoundedPencilEdit02,
+                          tooltip: l10n.homeEditProfile,
+                          onTap: onEdit!,
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (statusLabel != null || memberSince != null) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (statusLabel != null)
+                          StatusChip(
+                            label: statusLabel!,
+                            tone: statusTone,
+                            icon: statusIcon,
+                            dense: true,
                           ),
-                        ),
-                    ],
-                  ),
+                        if (memberSince != null)
+                          Text(
+                            memberSince!,
+                            style: AppFonts.jakarta(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: subtle,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (isGuest && onLogin != null) ...[
+                    const SizedBox(height: 16),
+                    AppButton(
+                      label: l10n.commonLogin,
+                      icon: HugeIcons.strokeRoundedLogin01,
+                      variant: AppButtonVariant.secondary,
+                      size: AppButtonSize.medium,
+                      onPressed: onLogin,
+                    ),
+                  ] else if (stats.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _StatsStrip(stats: stats),
+                  ],
                 ],
-                if (isGuest && onLogin != null) ...[
-                  const SizedBox(height: 16),
-                  AppButton(
-                    label: l10n.commonLogin,
-                    icon: HugeIcons.strokeRoundedLogin01,
-                    variant: AppButtonVariant.secondary,
-                    size: AppButtonSize.medium,
-                    onPressed: onLogin,
-                  ),
-                ] else if (stats.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _StatsStrip(stats: stats),
-                ],
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -319,32 +322,121 @@ class _GlassIconButton extends StatelessWidget {
   }
 }
 
-/// Soft rings in the identity card's corner, like ripples on a field.
-class _LeafRingsPainter extends CustomPainter {
-  const _LeafRingsPainter();
+/// Soft glows on the identity card, and every few seconds a glossy band of
+/// light glides across it, like light catching a membership card. The sweep
+/// stays off when the OS asks for reduced motion.
+class _CardSheen extends StatefulWidget {
+  const _CardSheen();
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = Colors.white.withValues(alpha: 0.08);
-    final centre = Offset(size.width - 18, 8);
-    for (var r = 44.0; r <= 164; r += 30) {
-      canvas.drawCircle(centre, r, ring);
+  State<_CardSheen> createState() => _CardSheenState();
+}
+
+class _CardSheenState extends State<_CardSheen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+  Timer? _first;
+  Timer? _every;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _first?.cancel();
+    _every?.cancel();
+    if (AppMotion.reduced(context)) {
+      _sweep.stop();
+      return;
     }
-    final glow = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.12),
-          Colors.white.withValues(alpha: 0),
-        ],
-      ).createShader(Rect.fromCircle(center: centre, radius: 120));
-    canvas.drawCircle(centre, 120, glow);
+    void run() {
+      if (mounted) _sweep.forward(from: 0);
+    }
+
+    _first = Timer(const Duration(milliseconds: 900), run);
+    _every = Timer.periodic(const Duration(seconds: 5), (_) => run());
   }
 
   @override
-  bool shouldRepaint(_LeafRingsPainter oldDelegate) => false;
+  void dispose() {
+    _first?.cancel();
+    _every?.cancel();
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(child: CustomPaint(painter: _SheenPainter(_sweep)));
+  }
+}
+
+class _SheenPainter extends CustomPainter {
+  _SheenPainter(this.sweep) : super(repaint: sweep);
+
+  final AnimationController sweep;
+
+  static const Color _lift = Color(0xFF3DB45F);
+
+  /// Direction the band travels in: mostly sideways, a little downwards.
+  static final Offset _direction = () {
+    const d = Offset(1, 0.45);
+    return d / d.distance;
+  }();
+  static const double _halfBand = 70;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Light in the top-right corner, a brighter green from the bottom-left.
+    final light = Offset(size.width * 0.9, 0);
+    canvas.drawCircle(
+      light,
+      200,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.13),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(Rect.fromCircle(center: light, radius: 200)),
+    );
+    final rise = Offset(0, size.height);
+    canvas.drawCircle(
+      rise,
+      190,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [_lift.withValues(alpha: 0.30), _lift.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: rise, radius: 190)),
+    );
+
+    if (!sweep.isAnimating) return;
+    // The band's centre runs from just before the top-left corner to just
+    // past the bottom-right one, measured along [_direction].
+    final far = size.width * _direction.dx + size.height * _direction.dy;
+    final t = Curves.easeInOutCubic.transform(sweep.value);
+    final along = -_halfBand + (far + 2 * _halfBand) * t;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        // Runs along [_direction] between the band's two edges; clear
+        // beyond them.
+        ..shader = ui.Gradient.linear(
+          _direction * (along - _halfBand),
+          _direction * (along + _halfBand),
+          [
+            Colors.white.withValues(alpha: 0),
+            Colors.white.withValues(alpha: 0.16),
+            Colors.white.withValues(alpha: 0),
+          ],
+          const [0, 0.5, 1],
+        ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SheenPainter oldDelegate) => oldDelegate.sweep != sweep;
 }
 
 /// Round avatar: the photo, else initials, else a person icon for guests.
@@ -511,7 +603,9 @@ class ProfileActiveOrderCard extends StatelessWidget {
                     children: [
                       Text(
                         CustomerOrderPresentation.label(l10n, stage),
-                        maxLines: 1,
+                        // Some stages are long ("Submitted · Awaiting
+                        // Acceptance"); let them wrap.
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppFonts.jakarta(
                           fontSize: 15,
@@ -548,7 +642,10 @@ class ProfileActiveOrderCard extends StatelessWidget {
             const SizedBox(height: 12),
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: progress),
-              duration: AppMotion.of(context, const Duration(milliseconds: 700)),
+              duration: AppMotion.of(
+                context,
+                const Duration(milliseconds: 700),
+              ),
               curve: AppMotion.emphasized,
               builder: (_, value, _) =>
                   OrderProgressBar(value: value, color: tone),
@@ -606,9 +703,9 @@ class ProfileActiveOrderCard extends StatelessWidget {
   }
 }
 
-/// Warm card that pitches (or tracks) the wholesaler application. Marigold
-/// is the palette's savings colour, and it keeps this card apart from the
-/// green identity card above it.
+/// Warm card that pitches (or tracks) the wholesaler application, with a
+/// shop-worker illustration on the right. Marigold is the palette's savings
+/// colour, and it keeps this card apart from the green identity card above.
 class ProfileUpgradeCard extends StatelessWidget {
   const ProfileUpgradeCard({
     super.key,
@@ -622,6 +719,9 @@ class ProfileUpgradeCard extends StatelessWidget {
   final String subtitle;
   final String ctaLabel;
   final VoidCallback onTap;
+
+  /// Width / height of assets/images/wholesale_worker.webp.
+  static const double _artAspect = 1200 / 518;
 
   @override
   Widget build(BuildContext context) {
@@ -643,103 +743,144 @@ class ProfileUpgradeCard extends StatelessWidget {
             colors: [AppColors.accentSoft, AppColors.surfaceLight],
           ),
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -12,
-              bottom: -20,
-              child: Transform.rotate(
-                angle: -math.pi / 14,
-                child: HugeIcon(
-                  icon: HugeIcons.strokeRoundedStore02,
-                  size: 108,
-                  color: AppColors.accent.withValues(alpha: 0.09),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final textWidth = constraints.maxWidth * 0.66;
+            return Stack(
+              children: [
+                // The illustration fills the card's height from the
+                // bottom-right; its left side fades out behind the text.
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final artHeight = box.maxHeight;
+                      final artWidth = artHeight * _artAspect;
+                      return Stack(
+                        children: [
+                          Positioned(
+                            right: -artWidth * 0.26,
+                            bottom: 0,
+                            width: artWidth,
+                            height: artHeight,
+                            child: ShaderMask(
+                              blendMode: BlendMode.dstIn,
+                              shaderCallback: (rect) => const LinearGradient(
+                                colors: [
+                                  Color(0x00000000),
+                                  Color(0x33000000),
+                                  Color(0xFF000000),
+                                ],
+                                stops: [0.14, 0.34, 0.5],
+                              ).createShader(rect),
+                              child: Image.asset(
+                                'assets/images/wholesale_worker.webp',
+                                fit: BoxFit.fill,
+                                excludeFromSemantics: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        child: const Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedStore02,
-                            size: 22,
-                            color: AppColors.accent,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: textWidth + 32),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withValues(
+                                    alpha: 0.14,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedStore02,
+                                    size: 22,
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: AppFonts.jakarta(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      subtitle,
+                                      style: AppFonts.jakarta(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textSecondary,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: AppFonts.jakarta(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                height: 1.25,
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              subtitle,
-                              style: AppFonts.jakarta(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary,
-                                height: 1.35,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  ctaLabel,
+                                  style: AppFonts.jakarta(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const HugeIcon(
+                                  icon: HugeIcons.strokeRoundedArrowRight02,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          ctaLabel,
-                          style: AppFonts.jakarta(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const HugeIcon(
-                          icon: HugeIcons.strokeRoundedArrowRight02,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
