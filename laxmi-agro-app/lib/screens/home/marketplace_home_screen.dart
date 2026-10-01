@@ -69,7 +69,8 @@ class MarketplaceHomeScreen extends ConsumerStatefulWidget {
       _MarketplaceHomeScreenState();
 }
 
-class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
+class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
+    with SingleTickerProviderStateMixin {
   static const String _internalGeneralProductsBrand = 'GENERAL PRODUCTS';
   static const Duration _guestInitialFreeUseDuration = Duration(minutes: 3);
   static const Duration _guestPromptRepeatDuration = Duration(hours: 24);
@@ -81,6 +82,28 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     viewportFraction: 0.94,
   );
   final TextEditingController _searchController = TextEditingController();
+
+  // The search bar gliding from Home into the Search tab's field.
+  final GlobalKey _homeSearchBarKey = GlobalKey();
+  final GlobalKey _searchFieldKey = GlobalKey();
+  late final AnimationController _searchFlight = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 480),
+    // At rest the Search page is fully shown.
+    value: 1,
+  );
+  // Even ease in and out, so the glide reads as movement, not a jump.
+  late final Animation<double> _searchFlightCurve = CurvedAnimation(
+    parent: _searchFlight,
+    curve: Curves.easeInOutCubic,
+  );
+  // The rest of the Search page fades in once the bar is on its way.
+  late final Animation<double> _searchPageFade = CurvedAnimation(
+    parent: _searchFlight,
+    curve: const Interval(0.3, 1, curve: Curves.easeOut),
+  );
+  OverlayEntry? _searchFlightEntry;
+  bool _searchBarFlying = false;
   final FocusNode _searchFocusNode = FocusNode();
   // Use ApiConfig.baseUrl - update the IP in lib/core/config/api_config.dart
   late final Dio _dio =
@@ -1750,6 +1773,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _promoAutoRotateTimer?.cancel();
     _guestAuthPromptTimer?.cancel();
     _carouselController.dispose();
+    _searchFlightEntry?.remove();
+    _searchFlight.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _searchDebounce?.cancel();
@@ -2033,34 +2058,114 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
-  Widget _buildHomeSearchBar() {
-    void openSearch() {
-      setState(() => _selectedNavIndex = 1);
+  /// The search bar's look, shared by Home and the Search tab.
+  BoxDecoration get _searchBarDecoration => BoxDecoration(
+    color: AppColors.surfaceLight,
+    // Concentric with the Home header's bottom corners.
+    borderRadius: BorderRadius.circular(HomeHeroHeaderDelegate.searchRadius),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.primaryDeep.withValues(alpha: 0.18),
+        blurRadius: 14,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
+
+  /// The filter button at the end of the search bar.
+  Widget _searchFilterButton() {
+    return Container(
+      width: 40,
+      height: 40,
+      // Inset 6 from the bar's edge, so its radius is 6 less.
+      decoration: ShapeDecoration(
+        color: AppColors.primarySoft,
+        shape: AppShapes.squircle(HomeHeroHeaderDelegate.searchRadius - 6),
+      ),
+      child: Center(
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedFilterHorizontal,
+          size: 20,
+          color: _searchScope == _SearchScope.product
+              ? AppColors.primaryDeep
+              : AppColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Rect? _globalRectOf(GlobalKey key) {
+    final box = key.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// Opens the Search tab from Home's search bar: the bar glides into the
+  /// Search tab's field while the rest of that page fades in, then the
+  /// keyboard opens.
+  void _openSearchFromHome() {
+    void focusSearch() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _searchFocusNode.requestFocus();
       });
     }
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        // Concentric with the header's bottom corners.
-        borderRadius: BorderRadius.circular(
-          HomeHeroHeaderDelegate.searchRadius,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDeep.withValues(alpha: 0.18),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+    if (_searchBarFlying) return;
+    final from = _globalRectOf(_homeSearchBarKey);
+    // The Search tab is laid out even while hidden, so its field has a place.
+    final to = _globalRectOf(_searchFieldKey);
+    final overlay = Overlay.maybeOf(context);
+    if (from == null ||
+        to == null ||
+        overlay == null ||
+        AppMotion.reduced(context)) {
+      setState(() => _selectedNavIndex = 1);
+      focusSearch();
+      return;
+    }
+
+    final rect = RectTween(begin: from, end: to);
+    final entry = OverlayEntry(
+      builder: (_) => AnimatedBuilder(
+        animation: _searchFlightCurve,
+        // The overlay sits outside the page's Material, which the bar's
+        // ink buttons need.
+        child: IgnorePointer(
+          child: Material(
+            type: MaterialType.transparency,
+            child: _buildHomeSearchBar(keyed: false),
           ),
-        ],
+        ),
+        builder: (_, child) => Positioned.fromRect(
+          rect: rect.evaluate(_searchFlightCurve)!,
+          child: child!,
+        ),
       ),
+    );
+    _searchFlightEntry = entry;
+    setState(() {
+      _selectedNavIndex = 1;
+      _searchBarFlying = true;
+    });
+    overlay.insert(entry);
+    _searchFlight.forward(from: 0).whenCompleteOrCancel(() {
+      entry.remove();
+      if (_searchFlightEntry == entry) _searchFlightEntry = null;
+      if (!mounted) return;
+      setState(() => _searchBarFlying = false);
+      focusSearch();
+    });
+  }
+
+  Widget _buildHomeSearchBar({bool keyed = true}) {
+    return DecoratedBox(
+      key: keyed ? _homeSearchBarKey : null,
+      decoration: _searchBarDecoration,
       child: Row(
         children: [
           Expanded(
             child: Pressable(
-              onTap: openSearch,
+              onTap: _openSearchFromHome,
               scale: 0.99,
               borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(HomeHeroHeaderDelegate.searchRadius),
@@ -2097,26 +2202,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             padding: const EdgeInsets.all(6),
             child: _buildSearchScopeMenu(
               openSearch: true,
-              child: Container(
-                width: 40,
-                height: 40,
-                // Inset 6 from the bar's edge, so its radius is 6 less.
-                decoration: ShapeDecoration(
-                  color: AppColors.primarySoft,
-                  shape: AppShapes.squircle(
-                    HomeHeroHeaderDelegate.searchRadius - 6,
-                  ),
-                ),
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedFilterHorizontal,
-                    size: 20,
-                    color: _searchScope == _SearchScope.product
-                        ? AppColors.primaryDeep
-                        : AppColors.primary,
-                  ),
-                ),
-              ),
+              child: _searchFilterButton(),
             ),
           ),
         ],
@@ -3021,110 +3107,81 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     if (_searchQuery.trim().isNotEmpty) _searchProducts(_searchQuery);
   }
 
+  /// The same bar as on Home, with the real text field inside. Hidden while
+  /// Home's bar glides into its place.
   Widget _buildSearchField() {
     final l10n = context.l10n;
-    final scoped = _searchScope != _SearchScope.product;
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: _searchFocusNode.hasFocus
-              ? AppColors.primary
-              : AppColors.border,
-          width: _searchFocusNode.hasFocus ? 1.6 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 14),
-          const HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            color: AppColors.textTertiary,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              onChanged: _handleSearchTextChanged,
-              onSubmitted: _submitSearch,
-              onTap: () => setState(() {}),
-              onTapOutside: (_) => setState(() {}),
-              textInputAction: TextInputAction.search,
-              style: AppFonts.jakarta(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: l10n.homeSearchHint,
-                hintStyle: AppFonts.jakarta(
-                  fontSize: 14,
+    return Opacity(
+      opacity: _searchBarFlying ? 0 : 1,
+      child: Container(
+        key: _searchFieldKey,
+        height: HomeHeroHeaderDelegate.searchHeight,
+        decoration: _searchBarDecoration,
+        child: Row(
+          children: [
+            const SizedBox(width: 14),
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedSearch01,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                onChanged: _handleSearchTextChanged,
+                onSubmitted: _submitSearch,
+                onTap: () => setState(() {}),
+                onTapOutside: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                style: AppFonts.jakarta(
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textTertiary,
+                  color: AppColors.textPrimary,
                 ),
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          AnimatedSwitcher(
-            duration: AppMotion.of(context, AppMotion.fast),
-            transitionBuilder: (child, animation) =>
-                ScaleTransition(scale: animation, child: child),
-            child: _searchController.text.isNotEmpty
-                ? IconButton(
-                    key: const ValueKey('clear'),
-                    tooltip: l10n.commonClear,
-                    onPressed: _clearSearch,
-                    icon: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedCancelCircle,
-                      size: 20,
-                      color: AppColors.textTertiary,
-                    ),
-                  )
-                : const SizedBox(key: ValueKey('none'), width: 4),
-          ),
-          Container(width: 1, height: 26, color: AppColors.border),
-          _buildSearchScopeMenu(
-            child: SizedBox(
-              width: 50,
-              height: 50,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  HugeIcon(
-                    icon: HugeIcons.strokeRoundedFilterHorizontal,
-                    color: scoped ? AppColors.primary : AppColors.textSecondary,
-                    size: 20,
+                decoration: InputDecoration(
+                  hintText: l10n.homeSearchHint,
+                  hintStyle: AppFonts.jakarta(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textTertiary,
                   ),
-                  if (scoped)
-                    const Positioned(
-                      top: 12,
-                      right: 12,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: SizedBox(width: 8, height: 8),
-                      ),
-                    ),
-                ],
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
-          ),
-        ],
+            AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.fast),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      key: const ValueKey('clear'),
+                      tooltip: l10n.commonClear,
+                      onPressed: _clearSearch,
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedCancelCircle,
+                        size: 20,
+                        color: AppColors.textTertiary,
+                      ),
+                    )
+                  : const SizedBox(key: ValueKey('none'), width: 4),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: _buildSearchScopeMenu(child: _searchFilterButton()),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3393,15 +3450,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-          child: Text(
-            l10n.homeExploreTitle,
-            style: AppFonts.jakarta(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.4,
+        FadeTransition(
+          opacity: _searchPageFade,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Text(
+              l10n.homeExploreTitle,
+              style: AppFonts.jakarta(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.4,
+              ),
             ),
           ),
         ),
@@ -3409,12 +3469,18 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildSearchField(),
         ),
-        _buildActiveSearchChips(),
+        FadeTransition(
+          opacity: _searchPageFade,
+          child: _buildActiveSearchChips(),
+        ),
         Expanded(
-          child: AnimatedSwitcher(
-            duration: AppMotion.of(context, AppMotion.base),
-            switchInCurve: AppMotion.standard,
-            child: _buildSearchResultsBody(),
+          child: FadeTransition(
+            opacity: _searchPageFade,
+            child: AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.base),
+              switchInCurve: AppMotion.standard,
+              child: _buildSearchResultsBody(),
+            ),
           ),
         ),
       ],
