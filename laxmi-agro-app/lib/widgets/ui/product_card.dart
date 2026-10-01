@@ -139,7 +139,11 @@ class ProductCard extends StatelessWidget {
                     Positioned(
                       left: 6,
                       top: 6,
-                      child: StatusChip(label: badge!, tone: badgeTone, dense: true),
+                      child: StatusChip(
+                        label: badge!,
+                        tone: badgeTone,
+                        dense: true,
+                      ),
                     ),
                   if (onWishlist != null)
                     Positioned(
@@ -217,7 +221,7 @@ class ProductCard extends StatelessWidget {
                       ),
                     if (action != null) ...[
                       const SizedBox(height: 8),
-                      action!,
+                      PressScaleExclude(child: action!),
                     ],
                   ],
                 ),
@@ -314,49 +318,58 @@ class WishlistButton extends StatelessWidget {
       button: true,
       toggled: active,
       label: label,
-      child: InkResponse(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        radius: size * 0.7,
-        child: SizedBox(
-          width: hitSize,
-          height: hitSize,
-          child: Center(
-            child: Container(
-              width: size,
-              height: size,
-              decoration: filledBackground
-                  ? BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.94),
-                      shape: BoxShape.circle,
-                      boxShadow: AppShadows.card,
-                    )
-                  : null,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: AppMotion.of(context, AppMotion.base),
-                  transitionBuilder: (child, animation) => ScaleTransition(
-                    scale: TweenSequence<double>([
-                      TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.18), weight: 60),
-                      TweenSequenceItem(tween: Tween(begin: 1.18, end: 1), weight: 40),
-                    ]).animate(animation),
-                    child: child,
-                  ),
-                  child: active
-                      ? Icon(
-                          Icons.favorite_rounded,
-                          key: const ValueKey('on'),
-                          size: iconSize,
-                          color: AppColors.error,
-                        )
-                      : HugeIcon(
-                          key: const ValueKey('off'),
-                          icon: HugeIcons.strokeRoundedFavourite,
-                          size: iconSize,
-                          color: AppColors.textSecondary,
+      // Tapping the heart shouldn't shrink the card it sits on.
+      child: PressScaleExclude(
+        child: InkResponse(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          radius: size * 0.7,
+          child: SizedBox(
+            width: hitSize,
+            height: hitSize,
+            child: Center(
+              child: Container(
+                width: size,
+                height: size,
+                decoration: filledBackground
+                    ? BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.94),
+                        shape: BoxShape.circle,
+                        boxShadow: AppShadows.card,
+                      )
+                    : null,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.of(context, AppMotion.base),
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: TweenSequence<double>([
+                        TweenSequenceItem(
+                          tween: Tween(begin: 0.6, end: 1.18),
+                          weight: 60,
                         ),
+                        TweenSequenceItem(
+                          tween: Tween(begin: 1.18, end: 1),
+                          weight: 40,
+                        ),
+                      ]).animate(animation),
+                      child: child,
+                    ),
+                    child: active
+                        ? Icon(
+                            Icons.favorite_rounded,
+                            key: const ValueKey('on'),
+                            size: iconSize,
+                            color: AppColors.error,
+                          )
+                        : HugeIcon(
+                            key: const ValueKey('off'),
+                            icon: HugeIcons.strokeRoundedFavourite,
+                            size: iconSize,
+                            color: AppColors.textSecondary,
+                          ),
+                  ),
                 ),
               ),
             ),

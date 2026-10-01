@@ -33,7 +33,11 @@ class _PressScaleState extends State<PressScale> {
   Widget build(BuildContext context) {
     final reduced = AppMotion.reduced(context);
     return Listener(
-      onPointerDown: (_) => _set(true),
+      onPointerDown: (event) {
+        // A control inside (a card's heart or Add button) took this touch.
+        if (PressScaleExclude.claims(event.pointer)) return;
+        _set(true);
+      },
       onPointerUp: (_) => _set(false),
       onPointerCancel: (_) => _set(false),
       child: AnimatedScale(
@@ -42,6 +46,32 @@ class _PressScaleState extends State<PressScale> {
         curve: _down ? Curves.easeOut : Curves.easeOutBack,
         child: widget.child,
       ),
+    );
+  }
+}
+
+/// Wrap a control that sits inside a [PressScale] (a card's heart or Add
+/// button) so pressing it doesn't shrink the surrounding card. The control's
+/// own press effects still play.
+///
+/// Pointer-down reaches the innermost listener first, so this marks the
+/// touch before the outer [PressScale] sees it.
+class PressScaleExclude extends StatelessWidget {
+  const PressScaleExclude({super.key, required this.child});
+
+  final Widget child;
+
+  static final Set<int> _claimed = {};
+
+  static bool claims(int pointer) => _claimed.contains(pointer);
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (event) => _claimed.add(event.pointer),
+      onPointerUp: (event) => _claimed.remove(event.pointer),
+      onPointerCancel: (event) => _claimed.remove(event.pointer),
+      child: child,
     );
   }
 }
@@ -97,7 +127,8 @@ class Pressable extends StatelessWidget {
           child: InkWell(
             borderRadius: shape == null ? radius : null,
             customBorder: shape,
-            splashColor: splashColor ?? AppColors.primary.withValues(alpha: 0.08),
+            splashColor:
+                splashColor ?? AppColors.primary.withValues(alpha: 0.08),
             highlightColor: AppColors.primary.withValues(alpha: 0.04),
             onTap: onTap == null
                 ? null
