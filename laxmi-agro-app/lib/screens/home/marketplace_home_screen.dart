@@ -5162,58 +5162,38 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           context.push(isFeatured ? '/popular-products' : '/hot-deals'),
     );
 
-    if (grid) {
-      final columns = screenWidth >= 600 ? 3 : 2;
-      final gridCardWidth = (screenWidth - 32 - 12 * (columns - 1)) / columns;
-      final gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        mainAxisExtent: gridCardWidth + 176,
-      );
-      // Whole rows only, so the grid never ends on a gap; See All has the
-      // rest.
-      final fit = products.length < columns
-          ? products.length
-          : (products.length ~/ columns) * columns;
-      final gridProducts = products.take(math.min(fit, columns * 2)).toList();
+    // With enough products the grid becomes two rows that scroll sideways;
+    // otherwise (and while loading) it's a single rail. Either way the cards
+    // keep the rail's size, so they match the Hot Deals cards.
+    if (grid && !_isLoadingProducts && products.length >= 6) {
+      // Full columns only, so the last one never ends on a gap.
+      final gridProducts = products.length.isOdd
+          ? products.take(products.length - 1).toList()
+          : products;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           header,
           const SizedBox(height: 12),
-          AnimatedSwitcher(
-            duration: AppMotion.of(context, AppMotion.base),
-            child: _isLoadingProducts
-                ? GridView.builder(
-                    key: const ValueKey('grid-loading'),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: columns,
-                    gridDelegate: gridDelegate,
-                    itemBuilder: (_, _) => const SkeletonProductCard(),
-                  )
-                : gridProducts.isEmpty
-                ? EmptyState(
-                    key: const ValueKey('grid-empty'),
-                    icon: HugeIcons.strokeRoundedPackage,
-                    title: l10n.homeNoProductsAvailable,
-                    compact: true,
-                  )
-                : GridView.builder(
-                    key: ValueKey('grid-${gridProducts.length}'),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: gridProducts.length,
-                    gridDelegate: gridDelegate,
-                    itemBuilder: (context, index) => _buildProductCard(
-                      gridProducts[index],
-                      showHotBadge: !isFeatured,
-                      heroScope: isFeatured ? 'popular' : 'hot',
-                    ),
-                  ),
+          SizedBox(
+            height: railHeight * 2 + 12,
+            child: GridView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: gridProducts.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                mainAxisExtent: cardWidth,
+              ),
+              itemBuilder: (context, index) => _buildProductCard(
+                gridProducts[index],
+                showHotBadge: !isFeatured,
+                heroScope: isFeatured ? 'popular' : 'hot',
+              ),
+            ),
           ),
         ],
       );
