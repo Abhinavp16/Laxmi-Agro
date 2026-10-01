@@ -14,15 +14,20 @@ import '../../core/utils/number_formatter.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/coming_soon.dart';
+import '../../widgets/coming_soon_badge.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
   final bool isHotDeals;
   final String? brandName;
+  // Products marked Coming Soon by the admin.
+  final bool comingSoon;
 
   const FeaturedProductsScreen({
     super.key,
     this.isHotDeals = false,
     this.brandName,
+    this.comingSoon = false,
   });
 
   @override
@@ -87,9 +92,13 @@ class _FeaturedProductsScreenState
         final response = await _dio.get(
           '/products',
           queryParameters: {
-            if (widget.brandName != null) 'brand': widget.brandName,
-            if (widget.brandName == null && widget.isHotDeals) 'hot': true,
-            if (widget.brandName == null && !widget.isHotDeals)
+            if (widget.comingSoon)
+              'comingSoon': true
+            else if (widget.brandName != null)
+              'brand': widget.brandName
+            else if (widget.isHotDeals)
+              'hot': true
+            else
               'featured': true,
             'page': page,
             'limit': 50,
@@ -139,6 +148,9 @@ class _FeaturedProductsScreenState
           'reviewCount':
               item['reviewCount'] ?? item['review'] ?? item['reviews'] ?? '',
           'inStock': item['inStock'] != false,
+          'comingSoon': item['comingSoon'] == true,
+          'priceHidden': item['priceHidden'] == true,
+          'expectedDate': item['expectedDate'],
           'minWholesaleQuantity': item['minWholesaleQuantity'],
           'priceUnit': item['priceUnit'],
           'packing': item['packing'],
@@ -194,7 +206,9 @@ class _FeaturedProductsScreenState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDealer = ref.watch(effectiveIsWholesalerProvider);
-    final title = widget.brandName != null
+    final title = widget.comingSoon
+        ? l10n.homeComingSoonSection
+        : widget.brandName != null
         ? widget.brandName!
         : widget.isHotDeals
         ? (isDealer
@@ -245,7 +259,9 @@ class _FeaturedProductsScreenState
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    widget.isHotDeals
+                    widget.comingSoon
+                        ? Icons.schedule
+                        : widget.isHotDeals
                         ? Icons.local_fire_department_outlined
                         : Icons.star_outline,
                     size: 64,
@@ -303,6 +319,8 @@ class _FeaturedProductsScreenState
     final reviewCount =
         product['reviewCount'] ?? product['review'] ?? product['reviews'] ?? '';
     final inStock = product['inStock'] != false;
+    final comingSoon = isComingSoonProduct(product);
+    final canAdd = inStock && !comingSoon;
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
     final displayName = localizedName(context, product);
 
@@ -376,7 +394,7 @@ class _FeaturedProductsScreenState
                               ),
                       ),
                     ),
-                    if (!inStock)
+                    if (!inStock && !comingSoon)
                       Container(
                         color: Colors.white.withOpacity(0.65),
                         alignment: Alignment.center,
@@ -399,7 +417,13 @@ class _FeaturedProductsScreenState
                           ),
                         ),
                       ),
-                    if (badgeLabel != null)
+                    if (comingSoon)
+                      const Positioned(
+                        top: 6,
+                        left: 6,
+                        child: ComingSoonBadge(compact: true),
+                      ),
+                    if (badgeLabel != null && !comingSoon)
                       Positioned(
                         top: 6,
                         left: 6,
@@ -540,127 +564,138 @@ class _FeaturedProductsScreenState
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '₹${_formatPrice(price)}',
-                                style: AppFonts.jakarta(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ),
-                            if (hasDiscount)
-                              Text(
-                                '₹${_formatPrice(originalPrice)}',
-                                style: AppFonts.jakarta(
-                                  fontSize: 7.5,
-                                  color: textMuted,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      GestureDetector(
-                        onTap: inStock
-                            ? () {
-                                if (ref.read(guestModeProvider)) {
-                                  _showMessage(
-                                    l10n.productAddToCartDisabledPreview,
-                                    backgroundColor: textSecondary,
-                                  );
-                                  return;
-                                }
-                                final configuredMinimum =
-                                    product['minWholesaleQuantity'];
-                                final minimumWholesaleQuantity =
-                                    configuredMinimum is num
-                                    ? configuredMinimum.toInt()
-                                    : int.tryParse(
-                                            configuredMinimum?.toString() ?? '',
-                                          ) ??
-                                          1;
-                                // Pieces; whole packets for packet products.
-                                final wholesaleQuantity = wholesaleMinimumOf(
-                                  product,
-                                );
-                                final quantity =
-                                    ref.read(effectiveIsWholesalerProvider)
-                                    ? wholesaleQuantity
-                                    : customerMinimumOf(product);
-                                ref
-                                    .read(cartProvider.notifier)
-                                    .addItem(
-                                      productId: productId,
-                                      name: product['name']?.toString() ?? '',
-                                      nameHindi: product['nameHindi']
-                                          ?.toString(),
-                                      brand: product['brand']?.toString(),
-                                      category: product['category']?.toString(),
-                                      minWholesaleQuantity:
-                                          minimumWholesaleQuantity,
-                                      minCustomerQuantity: customerMinimumOf(
-                                        product,
-                                      ),
-                                      priceUnit: product['priceUnit']
-                                          ?.toString(),
-                                      packing: product['packing']?.toString(),
-                                      price: price.toDouble(),
-                                      mrp: hasDiscount
-                                          ? originalPrice.toDouble()
-                                          : null,
-                                      image: product['image']?.toString(),
-                                      quantity: quantity,
-                                    );
-                                _showMessage(l10n.productAddedToCart);
-                              }
-                            : null,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: inStock
-                                ? primaryBlue
-                                : const Color(0xFFCBD5E1),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                  ConstrainedBox(
+                    // Same height as the Add button, so cards line up.
+                    constraints: const BoxConstraints(minHeight: 28),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.white,
-                                size: 11,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                l10n.productAddShort,
-                                style: AppFonts.jakarta(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  isPriceHidden(product)
+                                      ? l10n.comingSoonPrice
+                                      : '₹${_formatPrice(price)}',
+                                  style: AppFonts.jakarta(
+                                    fontSize: isPriceHidden(product) ? 10 : 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: isPriceHidden(product)
+                                        ? comingSoonColor
+                                        : textPrimary,
+                                  ),
                                 ),
                               ),
+                              if (hasDiscount)
+                                Text(
+                                  '₹${_formatPrice(originalPrice)}',
+                                  style: AppFonts.jakarta(
+                                    fontSize: 7.5,
+                                    color: textMuted,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                        if (!comingSoon) const SizedBox(width: 3),
+                        if (!comingSoon)
+                          GestureDetector(
+                            onTap: canAdd
+                                ? () {
+                                    if (ref.read(guestModeProvider)) {
+                                      _showMessage(
+                                        l10n.productAddToCartDisabledPreview,
+                                        backgroundColor: textSecondary,
+                                      );
+                                      return;
+                                    }
+                                    final configuredMinimum =
+                                        product['minWholesaleQuantity'];
+                                    final minimumWholesaleQuantity =
+                                        configuredMinimum is num
+                                        ? configuredMinimum.toInt()
+                                        : int.tryParse(
+                                                configuredMinimum?.toString() ??
+                                                    '',
+                                              ) ??
+                                              1;
+                                    // Pieces; whole packets for packet products.
+                                    final wholesaleQuantity =
+                                        wholesaleMinimumOf(product);
+                                    final quantity =
+                                        ref.read(effectiveIsWholesalerProvider)
+                                        ? wholesaleQuantity
+                                        : customerMinimumOf(product);
+                                    ref
+                                        .read(cartProvider.notifier)
+                                        .addItem(
+                                          productId: productId,
+                                          name:
+                                              product['name']?.toString() ?? '',
+                                          nameHindi: product['nameHindi']
+                                              ?.toString(),
+                                          brand: product['brand']?.toString(),
+                                          category: product['category']
+                                              ?.toString(),
+                                          minWholesaleQuantity:
+                                              minimumWholesaleQuantity,
+                                          minCustomerQuantity:
+                                              customerMinimumOf(product),
+                                          priceUnit: product['priceUnit']
+                                              ?.toString(),
+                                          packing: product['packing']
+                                              ?.toString(),
+                                          price: price.toDouble(),
+                                          mrp: hasDiscount
+                                              ? originalPrice.toDouble()
+                                              : null,
+                                          image: product['image']?.toString(),
+                                          quantity: quantity,
+                                        );
+                                    _showMessage(l10n.productAddedToCart);
+                                  }
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: canAdd
+                                    ? primaryBlue
+                                    : const Color(0xFFCBD5E1),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.shopping_cart_outlined,
+                                    color: Colors.white,
+                                    size: 11,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    l10n.productAddShort,
+                                    style: AppFonts.jakarta(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -235,6 +235,13 @@ class AppLocalizationsHi extends AppLocalizations {
       'कृपया कम से कम न्यूनतम मात्रा का ऑर्डर करें।';
 
   @override
+  String get apiErrorProductComingSoon =>
+      'यह प्रोडक्ट जल्द आ रहा है, अभी ऑर्डर नहीं हो सकता।';
+
+  @override
+  String get apiErrorProductUnavailable => 'यह प्रोडक्ट अभी उपलब्ध नहीं है।';
+
+  @override
   String get apiErrorMinWholesaleQuantity =>
       'कृपया कम से कम न्यूनतम थोक मात्रा का ऑर्डर करें।';
 
@@ -807,6 +814,40 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get commonDate => 'तारीख';
+
+  @override
+  String get comingSoonBadge => 'जल्द आ रहा है';
+
+  @override
+  String comingSoonExpected(String date) {
+    return 'अनुमानित $date';
+  }
+
+  @override
+  String get comingSoonPrice => 'कीमत जल्द';
+
+  @override
+  String get comingSoonNotifyMe => 'उपलब्ध होने पर सूचित करें';
+
+  @override
+  String get comingSoonNotifying => 'हम आपको सूचित करेंगे';
+
+  @override
+  String get comingSoonNotifyOn => 'उपलब्ध होते ही हम आपको बता देंगे।';
+
+  @override
+  String get comingSoonNotifyOff => 'इस प्रोडक्ट के लिए सूचना नहीं मिलेगी।';
+
+  @override
+  String get comingSoonLoginToNotify =>
+      'उपलब्ध होने पर सूचना पाने के लिए लॉगिन करें।';
+
+  @override
+  String get homeComingSoonSection => 'जल्द आ रहे हैं';
+
+  @override
+  String get homeComingSoonSubtitle =>
+      'जल्द लॉन्च होंगे। सबसे पहले जानने के लिए सूचित करें दबाएं।';
 
   @override
   String get commonDelete => 'हटाएं';

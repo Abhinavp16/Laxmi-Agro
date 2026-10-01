@@ -12,6 +12,8 @@ import '../../widgets/pending_price_change_notice.dart';
 import '../../widgets/product_image_placeholder.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/coming_soon.dart';
+import '../../widgets/coming_soon_badge.dart';
 
 enum _CatalogStage { categories, subcategories, products }
 
@@ -659,6 +661,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               item['primaryImage']?.toString() ?? '',
             ),
             'inStock': item['inStock'] != false,
+            'comingSoon': item['comingSoon'] == true,
+            'priceHidden': item['priceHidden'] == true,
+            'expectedDate': item['expectedDate'],
             'shortDescription': item['shortDescription']?.toString() ?? '',
             'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
             'reviewCount':
@@ -770,6 +775,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               item['primaryImage']?.toString() ?? '',
             ),
             'inStock': item['inStock'] != false,
+            'comingSoon': item['comingSoon'] == true,
+            'priceHidden': item['priceHidden'] == true,
+            'expectedDate': item['expectedDate'],
             'shortDescription': item['shortDescription']?.toString() ?? '',
             'rating': item['averageRating'] ?? item['rating'] ?? 4.5,
             'reviewCount':
@@ -1925,7 +1933,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             category: product['category']?.toString() ?? '',
                             name: product['name']?.toString() ?? '',
                           ),
-                    if (discount > 0)
+                    if (isComingSoonProduct(product))
+                      const Positioned(
+                        top: 6,
+                        left: 6,
+                        child: ComingSoonBadge(compact: true),
+                      ),
+                    if (discount > 0 && !isComingSoonProduct(product))
                       Positioned(
                         top: 6,
                         left: 6,
@@ -1949,7 +1963,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           ),
                         ),
                       ),
-                    if (product['inStock'] == false)
+                    if (product['inStock'] == false &&
+                        !isComingSoonProduct(product))
                       Positioned.fill(
                         child: Container(
                           color: Colors.white.withOpacity(0.7),
@@ -2065,11 +2080,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         children: [
                           Flexible(
                             child: Text(
-                              '₹${_formatPrice(product['price'])}',
+                              isPriceHidden(product)
+                                  ? context.l10n.comingSoonPrice
+                                  : '₹${_formatPrice(product['price'])}',
                               style: AppFonts.outfit(
-                                fontSize: 15,
+                                fontSize: isPriceHidden(product) ? 12 : 15,
                                 fontWeight: FontWeight.w800,
-                                color: textPrimary,
+                                color: isPriceHidden(product)
+                                    ? comingSoonColor
+                                    : textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

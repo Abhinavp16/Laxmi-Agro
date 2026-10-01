@@ -87,6 +87,8 @@ class _NotificationsCenterScreenState
         return Icons.handshake;
       case 'promotion':
         return Icons.campaign;
+      case 'product_launched':
+        return Icons.new_releases;
       case 'price_change_campaign_started':
       case 'price_change_campaign_12h':
       case 'price_change_campaign_6h':
@@ -115,6 +117,8 @@ class _NotificationsCenterScreenState
         return const Color(0xFF7C3AED);
       case 'promotion':
         return statusOrange;
+      case 'product_launched':
+        return const Color(0xFF0284C7);
       case 'price_change_campaign_started':
       case 'price_change_campaign_12h':
       case 'price_change_campaign_6h':

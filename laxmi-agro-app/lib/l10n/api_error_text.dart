@@ -80,6 +80,10 @@ String? apiErrorCodeText(
       return l10n.apiErrorMinWholesaleQuantity;
     case 'PACK_QUANTITY_REQUIRED':
       return l10n.apiErrorPackQuantity;
+    case 'PRODUCT_COMING_SOON':
+      return l10n.apiErrorProductComingSoon;
+    case 'PRODUCT_UNAVAILABLE':
+      return l10n.apiErrorProductUnavailable;
     case 'MIN_CUSTOMER_QUANTITY_NOT_MET':
       return l10n.apiErrorMinCustomerQuantity;
     case 'CART_EMPTY':

@@ -236,6 +236,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please order at least the minimum quantity.';
 
   @override
+  String get apiErrorProductComingSoon =>
+      'This product is coming soon and can\'t be ordered yet.';
+
+  @override
+  String get apiErrorProductUnavailable =>
+      'This product isn\'t available right now.';
+
+  @override
   String get apiErrorMinWholesaleQuantity =>
       'Please order at least the minimum wholesale quantity.';
 
@@ -804,6 +812,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonDate => 'Date';
+
+  @override
+  String get comingSoonBadge => 'Coming Soon';
+
+  @override
+  String comingSoonExpected(String date) {
+    return 'Expected $date';
+  }
+
+  @override
+  String get comingSoonPrice => 'Price coming soon';
+
+  @override
+  String get comingSoonNotifyMe => 'Notify me when available';
+
+  @override
+  String get comingSoonNotifying => 'We\'ll notify you';
+
+  @override
+  String get comingSoonNotifyOn =>
+      'We\'ll let you know as soon as it\'s available.';
+
+  @override
+  String get comingSoonNotifyOff => 'You won\'t be notified for this product.';
+
+  @override
+  String get comingSoonLoginToNotify =>
+      'Log in to get notified when it\'s available.';
+
+  @override
+  String get homeComingSoonSection => 'Coming Soon';
+
+  @override
+  String get homeComingSoonSubtitle =>
+      'Launching soon. Tap Notify me to hear first.';
 
   @override
   String get commonDelete => 'Delete';

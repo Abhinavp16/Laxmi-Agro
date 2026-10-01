@@ -64,6 +64,16 @@ class NotificationNavigationService {
     final orderId =
         (data['orderId'] ?? data['order_id'])?.toString().trim() ?? '';
 
+    final productId =
+        (data['productId'] ?? data['product_id'])?.toString().trim() ?? '';
+    if ((type == 'product_launched' || type == 'new_product') &&
+        productId.isNotEmpty) {
+      return NotificationDestination(
+        route: '/product/${Uri.encodeComponent(productId)}',
+        requiresAuthentication: false,
+      );
+    }
+
     if (_negotiationNotificationTypes.contains(type) &&
         negotiationId.isNotEmpty) {
       return NotificationDestination(

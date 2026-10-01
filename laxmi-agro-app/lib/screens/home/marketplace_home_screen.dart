@@ -14,12 +14,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+import '../../core/utils/coming_soon.dart';
 import '../../core/utils/packing.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import '../../widgets/cart_requirement.dart';
+import '../../widgets/coming_soon_badge.dart';
 import '../../widgets/deal_desk_groups.dart';
 import '../../widgets/delivery_note.dart';
 import '../../widgets/language_picker_sheet.dart';
@@ -113,6 +115,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _featuredProducts = [];
   List<Map<String, dynamic>> _hotProducts = [];
+  List<Map<String, dynamic>> _comingSoonProducts = [];
   bool _isLoadingBrands = true;
   bool _isLoadingProducts = true;
 
@@ -186,6 +189,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     _loadRecentSearches();
     _fetchBrands();
     _fetchProducts();
+    _fetchComingSoonProducts();
     _fetchCategories();
     _fetchPromoBanners();
     _fetchOffers();
@@ -493,6 +497,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         'isHot': item['isHot'] == true,
         'isNew': item['isNew'] == true,
         'inStock': item['inStock'] != false,
+        'comingSoon': item['comingSoon'] == true,
+        'priceHidden': item['priceHidden'] == true,
+        'expectedDate': item['expectedDate'],
         'discount': 0,
         'rating': item['rating'] ?? 4.5,
         'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
@@ -506,6 +513,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
       };
     }
     return productsById.values.toList();
+  }
+
+  // Home "Coming Soon" row; hidden when there are none.
+  Future<void> _fetchComingSoonProducts() async {
+    try {
+      final response = await _dio.get(
+        '/products',
+        queryParameters: {'comingSoon': true, 'limit': 6},
+      );
+      if (!mounted) return;
+      final List<dynamic> items = response.data['data'] ?? const [];
+      setState(() {
+        _comingSoonProducts = _mapProductItems(
+          items,
+        ).where(isComingSoonProduct).toList();
+      });
+    } catch (e) {
+      debugPrint('Coming soon products not loaded: $e');
+    }
   }
 
   Future<void> _fetchProducts() async {
@@ -975,6 +1001,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     await Future.wait([
       _fetchBrands(),
       _fetchProducts(),
+      _fetchComingSoonProducts(),
       _fetchCategories(),
       _fetchPromoBanners(),
       _fetchOffers(),
@@ -1022,6 +1049,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
           item['blurHash']?.toString() ??
           '',
       'inStock': item['inStock'] == true,
+      'comingSoon': item['comingSoon'] == true,
+      'priceHidden': item['priceHidden'] == true,
+      'expectedDate': item['expectedDate'],
       'shortDescription': item['shortDescription']?.toString() ?? '',
       'rating': item['rating'],
       'purchaseCountMin': item['purchaseCountMin'] ?? 0,
@@ -1938,6 +1968,16 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                     const SizedBox(height: 8),
                     _buildTrackHomeOrders(),
                     _buildRepeatHomeOrders(),
+                    const SizedBox(height: 8),
+                  ],
+                  if (_comingSoonProducts.isNotEmpty) ...[
+                    _buildProductsSection(
+                      context.l10n.homeComingSoonSection,
+                      false,
+                      products: _comingSoonProducts,
+                      subtitle: context.l10n.homeComingSoonSubtitle,
+                      onSeeAll: () => context.push('/coming-soon'),
+                    ),
                     const SizedBox(height: 8),
                   ],
                   _buildProductsSection(
@@ -3793,6 +3833,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                         color: textMuted,
                       ),
                     ),
+                  if (isComingSoonProduct(product)) ...[
+                    const SizedBox(height: 6),
+                    const ComingSoonBadge(),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3800,11 +3844,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       Row(
                         children: [
                           Text(
-                            '₹${_formatPrice(product['price'] ?? 0)}',
+                            isPriceHidden(product)
+                                ? context.l10n.comingSoonPrice
+                                : '₹${_formatPrice(product['price'] ?? 0)}',
                             style: AppFonts.montserrat(
-                              fontSize: 16,
+                              fontSize: isPriceHidden(product) ? 13 : 16,
                               fontWeight: FontWeight.w700,
-                              color: textPrimary,
+                              color: isPriceHidden(product)
+                                  ? comingSoonColor
+                                  : textPrimary,
                             ),
                           ),
                           if (hasOriginalPrice) ...[
@@ -7262,8 +7310,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
   }
 
-  Widget _buildProductsSection(String title, bool isFeatured) {
-    final sectionProducts = isFeatured ? _featuredProducts : _hotProducts;
+  Widget _buildProductsSection(
+    String title,
+    bool isFeatured, {
+    List<Map<String, dynamic>>? products,
+    String? subtitle,
+    VoidCallback? onSeeAll,
+  }) {
+    final sectionProducts =
+        products ?? (isFeatured ? _featuredProducts : _hotProducts);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final productGridColumns = screenWidth >= 600
         ? 4
@@ -7277,13 +7332,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     );
 
     final l10n = context.l10n;
-    final subtitle = _isWholesaler
-        ? isFeatured
-              ? l10n.homePopularSubtitleDealer
-              : l10n.homeHotDealsSubtitleDealer
-        : isFeatured
-        ? l10n.homePopularSubtitleCustomer
-        : l10n.homeHotDealsSubtitleCustomer;
+    final sectionSubtitle =
+        subtitle ??
+        (_isWholesaler
+            ? isFeatured
+                  ? l10n.homePopularSubtitleDealer
+                  : l10n.homeHotDealsSubtitleDealer
+            : isFeatured
+            ? l10n.homePopularSubtitleCustomer
+            : l10n.homeHotDealsSubtitleCustomer);
     const productGridSpacing = 7.0;
     const productGridHorizontalPadding = 10.0;
     final productCardHeight = productGridColumns == 2 ? 244.0 : 220.0;
@@ -7322,7 +7379,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        subtitle,
+                        sectionSubtitle,
                         style: AppFonts.jakarta(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
@@ -7337,7 +7394,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                 const SizedBox(width: 6),
                 GestureDetector(
                   onTap: () {
-                    if (isFeatured) {
+                    if (onSeeAll != null) {
+                      onSeeAll();
+                    } else if (isFeatured) {
                       context.push('/popular-products');
                     } else {
                       context.push('/hot-deals');
@@ -7434,7 +7493,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       // Only show HOT badge in Hot Deals section, not in Popular Products
                       return _buildProductCard(
                         product,
-                        showHotBadge: !isFeatured,
+                        showHotBadge: !isFeatured && products == null,
                       );
                     },
                   ),
@@ -7483,6 +7542,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
     final rating = product['rating'];
     final reviewCount = product['reviewCount'] ?? product['reviews'] ?? '';
     final inStock = product['inStock'] != false;
+    // Coming Soon: badge instead of Sold Out, no price if hidden, no quick add.
+    final comingSoon = isComingSoonProduct(product);
+    final canAdd = inStock && !comingSoon;
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
 
     return InkWell(
@@ -7544,7 +7606,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ),
                     ),
                     // Sold out overlay
-                    if (!inStock)
+                    if (!inStock && !comingSoon)
                       Container(
                         color: Colors.white.withOpacity(0.65),
                         alignment: Alignment.center,
@@ -7567,8 +7629,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                           ),
                         ),
                       ),
+                    if (comingSoon)
+                      const Positioned(
+                        top: 6,
+                        left: 6,
+                        child: ComingSoonBadge(compact: true),
+                      ),
                     // Badge (top-left)
-                    if (badgeLabel != null)
+                    if (badgeLabel != null && !comingSoon)
                       Positioned(
                         top: 6,
                         left: 6,
@@ -7715,143 +7783,156 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
                       ],
                     ),
                   const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '₹${_formatPrice(product['price'] ?? 0)}',
-                                style: AppFonts.jakarta(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ),
-                            if (hasOriginalPrice)
-                              Text(
-                                '₹${_formatPrice(product['originalPrice'])}',
-                                style: AppFonts.jakarta(
-                                  fontSize: 7.5,
-                                  color: textMuted,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      GestureDetector(
-                        onTap: inStock
-                            ? () {
-                                if (ref.read(guestModeProvider)) {
-                                  _showGuestModePopup(
-                                    l10n.homePreviewAddToCartDisabled,
-                                  );
-                                  return;
-                                }
-                                final configuredMinimum =
-                                    product['minWholesaleQuantity'];
-                                final minimumWholesaleQuantity =
-                                    configuredMinimum is num
-                                    ? configuredMinimum.toInt()
-                                    : int.tryParse(
-                                            configuredMinimum?.toString() ?? '',
-                                          ) ??
-                                          1;
-                                // Pieces; whole packets for packet products.
-                                final wholesaleQuantity = wholesaleMinimumOf(
-                                  product,
-                                );
-                                final quantity = _isWholesaler
-                                    ? wholesaleQuantity
-                                    : customerMinimumOf(product);
-                                ref
-                                    .read(cartProvider.notifier)
-                                    .addItem(
-                                      productId: productId,
-                                      name: product['name'] ?? '',
-                                      nameHindi: product['nameHindi']
-                                          ?.toString(),
-                                      brand: product['brand']?.toString(),
-                                      category: product['category']?.toString(),
-                                      minWholesaleQuantity:
-                                          minimumWholesaleQuantity,
-                                      minCustomerQuantity: customerMinimumOf(
-                                        product,
-                                      ),
-                                      priceUnit: product['priceUnit']
-                                          ?.toString(),
-                                      packing: product['packing']?.toString(),
-                                      price: (product['price'] as num)
-                                          .toDouble(),
-                                      mrp: hasOriginalPrice
-                                          ? (product['originalPrice'] as num)
-                                                .toDouble()
-                                          : null,
-                                      image: product['image']?.toString(),
-                                      quantity: quantity,
-                                    );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      l10n.homeAddedToCart,
-                                      style: AppFonts.outfit(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    duration: const Duration(seconds: 1),
-                                    backgroundColor: primaryBlue,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    margin: const EdgeInsets.all(16),
-                                  ),
-                                );
-                              }
-                            : null,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: inStock
-                                ? primaryBlue
-                                : const Color(0xFFCBD5E1),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                  ConstrainedBox(
+                    // Same height as the Add button, so cards line up.
+                    constraints: const BoxConstraints(minHeight: 28),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.white,
-                                size: 11,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                l10n.homeAdd,
-                                style: AppFonts.jakarta(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  isPriceHidden(product)
+                                      ? l10n.comingSoonPrice
+                                      : '₹${_formatPrice(product['price'] ?? 0)}',
+                                  style: AppFonts.jakarta(
+                                    fontSize: isPriceHidden(product) ? 10 : 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: isPriceHidden(product)
+                                        ? comingSoonColor
+                                        : textPrimary,
+                                  ),
                                 ),
                               ),
+                              if (hasOriginalPrice)
+                                Text(
+                                  '₹${_formatPrice(product['originalPrice'])}',
+                                  style: AppFonts.jakarta(
+                                    fontSize: 7.5,
+                                    color: textMuted,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                        if (!comingSoon) const SizedBox(width: 3),
+                        if (!comingSoon)
+                          GestureDetector(
+                            onTap: canAdd
+                                ? () {
+                                    if (ref.read(guestModeProvider)) {
+                                      _showGuestModePopup(
+                                        l10n.homePreviewAddToCartDisabled,
+                                      );
+                                      return;
+                                    }
+                                    final configuredMinimum =
+                                        product['minWholesaleQuantity'];
+                                    final minimumWholesaleQuantity =
+                                        configuredMinimum is num
+                                        ? configuredMinimum.toInt()
+                                        : int.tryParse(
+                                                configuredMinimum?.toString() ??
+                                                    '',
+                                              ) ??
+                                              1;
+                                    // Pieces; whole packets for packet products.
+                                    final wholesaleQuantity =
+                                        wholesaleMinimumOf(product);
+                                    final quantity = _isWholesaler
+                                        ? wholesaleQuantity
+                                        : customerMinimumOf(product);
+                                    ref
+                                        .read(cartProvider.notifier)
+                                        .addItem(
+                                          productId: productId,
+                                          name: product['name'] ?? '',
+                                          nameHindi: product['nameHindi']
+                                              ?.toString(),
+                                          brand: product['brand']?.toString(),
+                                          category: product['category']
+                                              ?.toString(),
+                                          minWholesaleQuantity:
+                                              minimumWholesaleQuantity,
+                                          minCustomerQuantity:
+                                              customerMinimumOf(product),
+                                          priceUnit: product['priceUnit']
+                                              ?.toString(),
+                                          packing: product['packing']
+                                              ?.toString(),
+                                          price: (product['price'] as num)
+                                              .toDouble(),
+                                          mrp: hasOriginalPrice
+                                              ? (product['originalPrice']
+                                                        as num)
+                                                    .toDouble()
+                                              : null,
+                                          image: product['image']?.toString(),
+                                          quantity: quantity,
+                                        );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          l10n.homeAddedToCart,
+                                          style: AppFonts.outfit(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                        backgroundColor: primaryBlue,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
+                                      ),
+                                    );
+                                  }
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: canAdd
+                                    ? primaryBlue
+                                    : const Color(0xFFCBD5E1),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.shopping_cart_outlined,
+                                    color: Colors.white,
+                                    size: 11,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    l10n.homeAdd,
+                                    style: AppFonts.jakarta(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
