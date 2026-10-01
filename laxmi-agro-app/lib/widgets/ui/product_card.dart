@@ -85,14 +85,18 @@ class ProductCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       padding: const EdgeInsets.all(10),
-      child: (imageUrl == null || imageUrl!.isEmpty)
-          ? AppImage(imageUrl: '', category: category, name: name)
-          : AppImage(
-              imageUrl: imageUrl!,
-              category: category,
-              name: name,
-              fit: BoxFit.contain,
-            ),
+      // Rounded corners on the photo itself, inside the grey tile.
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: (imageUrl == null || imageUrl!.isEmpty)
+            ? AppImage(imageUrl: '', category: category, name: name)
+            : AppImage(
+                imageUrl: imageUrl!,
+                category: category,
+                name: name,
+                fit: BoxFit.contain,
+              ),
+      ),
     );
     if (heroTag != null) {
       image = Hero(tag: heroTag!, transitionOnUserGestures: true, child: image);
@@ -139,8 +143,8 @@ class ProductCard extends StatelessWidget {
                     ),
                   if (onWishlist != null)
                     Positioned(
-                      right: 2,
-                      top: 2,
+                      right: 0,
+                      top: 0,
                       child: WishlistButton(
                         active: wishlisted ?? false,
                         onTap: onWishlist!,
@@ -289,18 +293,23 @@ class WishlistButton extends StatelessWidget {
     required this.active,
     required this.onTap,
     this.label,
-    this.size = 36,
+    this.size = 30,
     this.filledBackground = true,
   });
 
   final bool active;
   final VoidCallback onTap;
   final String? label;
+
+  /// Diameter of the white circle.
   final double size;
   final bool filledBackground;
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = size * 0.6;
+    // The tap area stays at least 44 px even when the circle is small.
+    final hitSize = size + 8 < 44 ? 44.0 : size + 8;
     return Semantics(
       button: true,
       toggled: active,
@@ -312,8 +321,8 @@ class WishlistButton extends StatelessWidget {
         },
         radius: size * 0.7,
         child: SizedBox(
-          width: size + 8,
-          height: size + 8,
+          width: hitSize,
+          height: hitSize,
           child: Center(
             child: Container(
               width: size,
@@ -339,13 +348,13 @@ class WishlistButton extends StatelessWidget {
                       ? Icon(
                           Icons.favorite_rounded,
                           key: const ValueKey('on'),
-                          size: size * 0.5,
+                          size: iconSize,
                           color: AppColors.error,
                         )
                       : HugeIcon(
                           key: const ValueKey('off'),
                           icon: HugeIcons.strokeRoundedFavourite,
-                          size: size * 0.5,
+                          size: iconSize,
                           color: AppColors.textSecondary,
                         ),
                 ),
