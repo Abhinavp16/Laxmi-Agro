@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
@@ -4683,25 +4684,32 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
             _buildLanguageItem(LocaleNotifier.english, l10n.languageEnglish),
             _buildLanguageItem(LocaleNotifier.hindi, l10n.languageHindi),
           ],
-          // Round language switch, sized like the bell next to it.
-          child: Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-            ),
-            child: AnimatedSwitcher(
-              duration: AppMotion.of(context, AppMotion.base),
-              child: Text(
-                context.isHindi ? 'हि' : 'EN',
-                key: ValueKey(context.isHindi),
-                style: AppFonts.jakarta(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+          // Round frosted language switch, sized like the bell next to it.
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: AnimatedSwitcher(
+                  duration: AppMotion.of(context, AppMotion.base),
+                  child: Text(
+                    context.isHindi ? 'हि' : 'EN',
+                    key: ValueKey(context.isHindi),
+                    style: AppFonts.jakarta(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),

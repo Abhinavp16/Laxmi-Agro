@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -17,7 +19,8 @@ class AppBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: context.l10n.commonBack,
-      onPressed: onPressed ??
+      onPressed:
+          onPressed ??
           () {
             if (context.canPop()) {
               context.pop();
@@ -154,29 +157,39 @@ class HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget button = IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: onDark
+            ? Colors.white.withValues(alpha: 0.14)
+            : AppColors.surfaceLight,
+        side: BorderSide(
+          color: onDark
+              ? Colors.white.withValues(alpha: 0.22)
+              : AppColors.border,
+        ),
+        fixedSize: const Size(44, 44),
+      ),
+      icon: HugeIcon(
+        icon: icon,
+        size: 21,
+        color: onDark ? Colors.white : color,
+      ),
+    );
+    if (onDark) {
+      // Frosted glass: blur whatever sits behind the button.
+      button = ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: button,
+        ),
+      );
+    }
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          style: IconButton.styleFrom(
-            backgroundColor: onDark
-                ? Colors.white.withValues(alpha: 0.14)
-                : AppColors.surfaceLight,
-            side: BorderSide(
-              color: onDark
-                  ? Colors.white.withValues(alpha: 0.22)
-                  : AppColors.border,
-            ),
-            fixedSize: const Size(44, 44),
-          ),
-          icon: HugeIcon(
-            icon: icon,
-            size: 21,
-            color: onDark ? Colors.white : color,
-          ),
-        ),
+        button,
         if ((badge ?? 0) > 0)
           Positioned(
             right: 2,
