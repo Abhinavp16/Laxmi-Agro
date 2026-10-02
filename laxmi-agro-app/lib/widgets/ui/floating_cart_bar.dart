@@ -23,9 +23,18 @@ const Curve _spring = AppMotion.spring;
 /// It's only as wide as its contents, sits at the left (in line with the
 /// page's 16 px gutter), and springs to its new width as things change.
 class FloatingCartBar extends ConsumerWidget {
-  const FloatingCartBar({super.key, required this.onTap, this.visible = true});
+  const FloatingCartBar({
+    super.key,
+    required this.onTap,
+    this.visible = true,
+    this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 10),
+  });
 
   final VoidCallback onTap;
+
+  /// Space around the pill; zero when the host places it exactly (Home pins
+  /// it to the floating nav).
+  final EdgeInsetsGeometry margin;
 
   /// Lets the host hide the bar (e.g. on the cart tab) with the same motion.
   final bool visible;
@@ -39,99 +48,113 @@ class FloatingCartBar extends ConsumerWidget {
     final l10n = context.l10n;
     final duration = AppMotion.of(context, AppMotion.slow);
 
-    return IgnorePointer(
-      ignoring: !show,
-      child: AnimatedSlide(
-        offset: show ? Offset.zero : const Offset(0, 1.6),
-        duration: duration,
-        curve: show ? AppMotion.emphasized : AppMotion.exit,
-        child: AnimatedOpacity(
-          opacity: show ? 1 : 0,
+    // While hidden it also folds its height away, so a host that stacks it
+    // above something (Home puts it over the floating nav) doesn't keep
+    // the empty space. It never clips, so the slide-out still shows.
+    return AnimatedAlign(
+      duration: duration,
+      curve: show ? AppMotion.emphasized : AppMotion.exit,
+      alignment: Alignment.bottomLeft,
+      widthFactor: 1,
+      heightFactor: show ? 1 : 0,
+      child: IgnorePointer(
+        ignoring: !show,
+        child: AnimatedSlide(
+          offset: show ? Offset.zero : const Offset(0, 1.6),
           duration: duration,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              // The shadow sits outside the pill's clip so it isn't cut off.
-              child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  shape: const StadiumBorder(),
-                  shadows: [
-                    BoxShadow(
-                      color: AppColors.primaryDeep.withValues(alpha: 0.26),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Pressable(
-                  onTap: onTap,
-                  haptic: true,
-                  shape: const StadiumBorder(),
-                  semanticLabel:
-                      '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
-                  // Frosted glass: the page behind shows through, blurred.
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Container(
-                      height: _height,
-                      color: AppColors.primary.withValues(alpha: 0.82),
-                      // The round thumbnails sit concentric with the pill's ends.
-                      padding: const EdgeInsets.only(
-                        left: (_height - _Thumbs.size) / 2,
-                        right: 16,
+          curve: show ? AppMotion.emphasized : AppMotion.exit,
+          child: AnimatedOpacity(
+            opacity: show ? 1 : 0,
+            duration: duration,
+            child: Padding(
+              padding: margin,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                // Only as wide as the pill.
+                widthFactor: 1,
+                // The shadow sits outside the pill's clip so it isn't cut off.
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: const StadiumBorder(),
+                    shadows: [
+                      BoxShadow(
+                        color: AppColors.primaryDeep.withValues(alpha: 0.26),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
                       ),
-                      // The thumbnails and the text each spring to their
-                      // new widths, so the text slides along as the pill
-                      // grows instead of jumping.
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _Thumbs(items: cart.items),
-                          const SizedBox(width: 10),
-                          AnimatedSize(
-                            duration: AppMotion.of(context, _springDuration),
-                            curve: _spring,
-                            alignment: Alignment.centerLeft,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                RollingNumber(
-                                  value: count,
-                                  format: (value) =>
-                                      l10n.commonItemsCount(value.toInt()),
-                                  style: AppFonts.jakarta(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Pressable(
+                    onTap: onTap,
+                    haptic: true,
+                    shape: const StadiumBorder(),
+                    semanticLabel:
+                        '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
+                    // Frosted glass: the page behind shows through, blurred.
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        height: _height,
+                        color: AppColors.primary.withValues(alpha: 0.82),
+                        // The round thumbnails sit concentric with the pill's ends.
+                        padding: const EdgeInsets.only(
+                          left: (_height - _Thumbs.size) / 2,
+                          right: 16,
+                        ),
+                        // The thumbnails and the text each spring to their
+                        // new widths, so the text slides along as the pill
+                        // grows instead of jumping.
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _Thumbs(items: cart.items),
+                            const SizedBox(width: 10),
+                            AnimatedSize(
+                              duration: AppMotion.of(context, _springDuration),
+                              curve: _spring,
+                              alignment: Alignment.centerLeft,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  RollingNumber(
+                                    value: count,
+                                    format: (value) =>
+                                        l10n.commonItemsCount(value.toInt()),
+                                    style: AppFonts.jakarta(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                RollingNumber(
-                                  value: cart.subtotal,
-                                  format: (value) =>
-                                      '₹${NumberFormatter.formatPrice(value)}',
-                                  style: AppFonts.jakarta(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
+                                  RollingNumber(
+                                    value: cart.subtotal,
+                                    format: (value) =>
+                                        '₹${NumberFormatter.formatPrice(value)}',
+                                    style: AppFonts.jakarta(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          const HugeIcon(
-                            icon: HugeIcons.strokeRoundedArrowRight01,
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedArrowRight01,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

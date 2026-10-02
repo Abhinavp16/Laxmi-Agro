@@ -1949,19 +1949,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                   ],
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                // Just above the floating nav.
-                bottom: _navOverlap - _navBottomGap,
-                child: FloatingCartBar(
-                  visible:
-                      _selectedNavIndex <= 2 &&
-                      !isCustomerPreview &&
-                      MediaQuery.viewInsetsOf(context).bottom == 0,
-                  onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
-                ),
-              ),
             ],
           ),
           // The floating nav sits over the body, which runs behind it.
@@ -7430,6 +7417,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   static const double _navGap = 4;
   static const double _navBottomGap = 10;
 
+  /// Space between the floating cart pill and the nav below it.
+  static const double _cartNavGap = 12;
+
   /// How much of the bottom of the screen the floating nav covers.
   double get _navOverlap =>
       _navItemSize +
@@ -7495,52 +7485,69 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         padding: const EdgeInsets.fromLTRB(12, 0, 12, _navBottomGap),
         child: Center(
           heightFactor: 1,
-          // The shadow sits outside the pill's clip so it isn't cut off.
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: const StadiumBorder(),
-              shadows: [
-                BoxShadow(
-                  color: AppColors.primaryDeep.withValues(alpha: 0.16),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: ClipPath(
-              clipper: const ShapeBorderClipper(shape: StadiumBorder()),
-              // Frosted glass: the page scrolling behind shows through.
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: AppColors.surfaceLight.withValues(alpha: 0.84),
-                    shape: StadiumBorder(
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
+          // The floating cart pill rides above the nav, left-aligned with
+          // it: the column is as wide as the nav, so they share a left edge
+          // even while the nav's width springs between tabs.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FloatingCartBar(
+                margin: const EdgeInsets.only(bottom: _cartNavGap),
+                visible:
+                    _selectedNavIndex <= 2 &&
+                    !ref.watch(guestModeProvider) &&
+                    MediaQuery.viewInsetsOf(context).bottom == 0,
+                onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
+              ),
+              // The shadow sits outside the pill's clip so it isn't cut off.
+              DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: const StadiumBorder(),
+                  shadows: [
+                    BoxShadow(
+                      color: AppColors.primaryDeep.withValues(alpha: 0.16),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(_navPadding),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (var i = 0; i < items.length; i++) ...[
-                          if (i > 0) const SizedBox(width: _navGap),
-                          items[i],
-                        ],
-                      ],
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: ClipPath(
+                  clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+                  // Frosted glass: the page scrolling behind shows through.
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: AppColors.surfaceLight.withValues(alpha: 0.84),
+                        shape: StadiumBorder(
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(_navPadding),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var i = 0; i < items.length; i++) ...[
+                              if (i > 0) const SizedBox(width: _navGap),
+                              items[i],
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
