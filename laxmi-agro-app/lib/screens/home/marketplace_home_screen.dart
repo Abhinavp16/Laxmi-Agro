@@ -5030,22 +5030,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_negotiationTab == 0) {
-      // Active tab - pending and countered negotiations
-      return _negotiations
-          .where((n) => ['pending', 'countered'].contains(n['status']))
-          .toList();
-    }
-    // Completed tab - accepted, rejected, expired, converted negotiations
+    // Active until the order is paid (or the deal is declined/expired).
+    final completed = _negotiationTab == 1;
     return _negotiations
-        .where(
-          (n) => [
-            'accepted',
-            'rejected',
-            'expired',
-            'converted',
-          ].contains(n['status']),
-        )
+        .where((n) => DealDeskPresentation.isCompleted(n) == completed)
         .toList();
   }
 
@@ -5588,10 +5576,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         if (r == true) _fetchNegotiations();
       };
     } else if (status == 'accepted' && canPay) {
-      label = l10n.homeProceedToOrder;
-      style = 'primary';
-      icon = Icons.account_balance_wallet_rounded;
-      onTap = () => _proceedToNegotiationOrder(negotiationId);
+      // Accepted before orders were created on acceptance: Laxmi Agro
+      // creates the order (with delivery) from the admin panel.
+      label = l10n.dealOrderBeingPrepared;
+      style = 'disabled';
     } else if (status == 'pending') {
       label = l10n.homeUnderReview;
       style = 'disabled';
@@ -9073,187 +9061,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen> {
         );
       },
     );
-  }
-
-  Future<void> _proceedToNegotiationOrder(String negotiationId) async {
-    final auth = ref.read(authProvider);
-    final nameC = TextEditingController(text: auth.user?.name ?? '');
-    final phoneC = TextEditingController(text: auth.user?.phone ?? '');
-    final addr1C = TextEditingController();
-    final cityC = TextEditingController();
-    final stateC = TextEditingController();
-    final pinC = TextEditingController();
-    final fk = GlobalKey<FormState>();
-    final l10n = context.l10n;
-
-    final address = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Form(
-            key: fk,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: borderLight,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    l10n.homeShippingAddress,
-                    style: AppFonts.jakarta(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _addrField(l10n.homeFieldFullName, nameC),
-                  const SizedBox(height: 12),
-                  _addrField(
-                    l10n.homeFieldPhone,
-                    phoneC,
-                    keyboard: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-                  _addrField(l10n.homeFieldAddressLine1, addr1C),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _addrField(l10n.homeFieldCity, cityC)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _addrField(l10n.homeFieldState, stateC)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _addrField(
-                    l10n.homeFieldPincode,
-                    pinC,
-                    keyboard: TextInputType.number,
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (fk.currentState!.validate()) {
-                          Navigator.of(ctx).pop({
-                            'fullName': nameC.text.trim(),
-                            'phone': phoneC.text.trim(),
-                            'addressLine1': addr1C.text.trim(),
-                            'city': cityC.text.trim(),
-                            'state': stateC.text.trim(),
-                            'pincode': pinC.text.trim(),
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF16A34A),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        l10n.homeConfirmAndProceed,
-                        style: AppFonts.jakarta(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    nameC.dispose();
-    phoneC.dispose();
-    addr1C.dispose();
-    cityC.dispose();
-    stateC.dispose();
-    pinC.dispose();
-
-    if (address == null || !mounted) return;
-
-    try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.post(
-        '/orders/from-negotiation',
-        data: {'negotiationId': negotiationId, 'shippingAddress': address},
-      );
-
-      if (!mounted) return;
-      if (response.data['success'] == true) {
-        await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
-          context: context,
-          apiClient: api,
-          responseData: response.data,
-        );
-      }
-    } on DioException catch (e) {
-      if (!mounted) return;
-      final msg =
-          e.response?.data?['message']?.toString() ??
-          l10n.homeCreateOrderFailed;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l10n.homeErrorWithDetails('$e'),
-            style: AppFonts.jakarta(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    }
   }
 
   Widget _addrField(

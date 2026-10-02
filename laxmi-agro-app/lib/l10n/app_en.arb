@@ -822,6 +822,8 @@
   "dealDeliveryNote": "+ Delivery charges, if any, will be added by Laxmi Agro when your order is confirmed.",
   "dealDeliveryOnConfirmation": "Added on confirmation",
   "dealEstimatedTotal": "Estimated total",
+  "dealOrderBeingPrepared": "Laxmi Agro is preparing your order",
+  "dealAwaitingOrderConfirmation": "Accepted. Laxmi Agro will create your order and confirm delivery charges.",
   "dealDeskRequirementGroup": "Requirement {number} · {count, plural, =1{1 product} other{{count} products}} · ₹{total}",
   "@dealDeskRequirementGroup": {"placeholders": {"number": {"type": "String"}, "count": {"type": "int"}, "total": {"type": "String"}}},
   "homeDealDeskTitle": "Deal Desk",

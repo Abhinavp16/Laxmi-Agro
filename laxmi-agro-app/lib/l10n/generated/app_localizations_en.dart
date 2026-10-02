@@ -1747,6 +1747,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dealEstimatedTotal => 'Estimated total';
 
   @override
+  String get dealOrderBeingPrepared => 'Laxmi Agro is preparing your order';
+
+  @override
+  String get dealAwaitingOrderConfirmation =>
+      'Accepted. Laxmi Agro will create your order and confirm delivery charges.';
+
+  @override
   String dealDeskRequirementGroup(String number, int count, String total) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

@@ -3074,6 +3074,18 @@ abstract class AppLocalizations {
   /// **'Estimated total'**
   String get dealEstimatedTotal;
 
+  /// No description provided for @dealOrderBeingPrepared.
+  ///
+  /// In en, this message translates to:
+  /// **'Laxmi Agro is preparing your order'**
+  String get dealOrderBeingPrepared;
+
+  /// No description provided for @dealAwaitingOrderConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted. Laxmi Agro will create your order and confirm delivery charges.'**
+  String get dealAwaitingOrderConfirmation;
+
   /// No description provided for @dealDeskRequirementGroup.
   ///
   /// In en, this message translates to:

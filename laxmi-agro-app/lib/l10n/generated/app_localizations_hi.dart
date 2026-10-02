@@ -1745,6 +1745,14 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dealEstimatedTotal => 'अनुमानित कुल';
 
   @override
+  String get dealOrderBeingPrepared =>
+      'लक्ष्मी एग्रो आपका ऑर्डर तैयार कर रहा है';
+
+  @override
+  String get dealAwaitingOrderConfirmation =>
+      'स्वीकृत। लक्ष्मी एग्रो आपका ऑर्डर बनाकर डिलीवरी शुल्क कन्फर्म करेगा।';
+
+  @override
   String dealDeskRequirementGroup(String number, int count, String total) {
     return 'रिक्वायरमेंट $number · $count प्रोडक्ट · ₹$total';
   }

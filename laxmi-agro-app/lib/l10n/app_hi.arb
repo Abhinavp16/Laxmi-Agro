@@ -496,6 +496,8 @@
   "dealDeliveryNote": "+ डिलीवरी शुल्क (यदि लागू हो) ऑर्डर कन्फर्म होते समय लक्ष्मी एग्रो द्वारा जोड़ा जाएगा।",
   "dealDeliveryOnConfirmation": "कन्फर्म होने पर जुड़ेगा",
   "dealEstimatedTotal": "अनुमानित कुल",
+  "dealOrderBeingPrepared": "लक्ष्मी एग्रो आपका ऑर्डर तैयार कर रहा है",
+  "dealAwaitingOrderConfirmation": "स्वीकृत। लक्ष्मी एग्रो आपका ऑर्डर बनाकर डिलीवरी शुल्क कन्फर्म करेगा।",
   "dealDeskRequirementGroup": "रिक्वायरमेंट {number} · {count} प्रोडक्ट · ₹{total}",
   "homeDealDeskTitle": "डील डेस्क",
   "homeDealEmptyActive": "कोई चालू मोलभाव नहीं है",

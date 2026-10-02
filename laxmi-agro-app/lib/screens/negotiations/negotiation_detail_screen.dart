@@ -15,7 +15,6 @@ import '../../core/services/shipping_address_service.dart';
 import '../../core/services/negotiation_socket_service.dart';
 import '../../core/utils/deal_desk_presentation.dart';
 import '../../core/utils/number_formatter.dart';
-import '../../widgets/order_checkout_actions_sheet.dart';
 import '../../widgets/state_city_pincode_fields.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../l10n/l10n.dart';
@@ -277,58 +276,8 @@ class _NegotiationDetailScreenState
   }
 
   // NOTE: wholesalers negotiate through chat messages only. Accept, counter
-  // and reject are admin/member actions performed from the admin panel, so the
-  // corresponding app actions were removed. _proceedToOrder below is kept as a
-  // legacy fallback for negotiations accepted before order auto-creation.
-  Future<void> _proceedToOrder() async {
-    debugPrint('_proceedToOrder called for ${widget.negotiationId}');
-    try {
-      final checkoutData = await _showAddressDialog();
-      debugPrint('Address dialog returned: $checkoutData');
-      if (checkoutData == null || !mounted) return;
-
-      final address = Map<String, String>.from(checkoutData);
-      final couponCode = (address.remove('couponCode') ?? '').trim();
-      final payload = <String, dynamic>{
-        'negotiationId': widget.negotiationId,
-        'shippingAddress': address,
-      };
-      if (couponCode.isNotEmpty) {
-        payload['couponCode'] = couponCode.toUpperCase();
-      }
-
-      setState(() => _isActioning = true);
-      try {
-        final api = ref.read(apiClientProvider);
-        final response = await api.post(
-          '/orders/from-negotiation',
-          data: payload,
-        );
-
-        if (!mounted) return;
-        if (response.data['success'] == true) {
-          await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
-            context: context,
-            apiClient: api,
-            responseData: response.data,
-          );
-        }
-      } on DioException catch (e) {
-        if (mounted) {
-          _showError(
-            e.response?.data?['message']?.toString() ??
-                context.l10n.dealCreateOrderFailed,
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isActioning = false);
-      }
-    } catch (e) {
-      debugPrint('_proceedToOrder error: $e');
-      if (mounted) _showError(context.l10n.dealErrorWithDetails('$e'));
-    }
-  }
-
+  // and reject are admin/member actions performed from the admin panel, which
+  // also creates the order, so the app has no order action.
   Future<Map<String, String>?> _showAddressDialog() async {
     final savedAddress = await ShippingAddressService.getSelectedAddress();
     if (!mounted) return null;
@@ -1540,23 +1489,29 @@ class _NegotiationDetailScreenState
 
   Widget _buildActionRow(String status, String currentOfferBy, bool canPay) {
     if (status == 'accepted' && canPay) {
-      return SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: ElevatedButton.icon(
-          onPressed: _proceedToOrder,
-          icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
-          label: Text(
-            context.l10n.commonViewDetails,
-            style: AppFonts.jakarta(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: greenAccent,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      // Accepted before orders were created on acceptance: Laxmi Agro
+      // creates the order (with delivery charges) from the admin panel.
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: greenAccent.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.schedule_rounded, color: greenAccent, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                context.l10n.dealAwaitingOrderConfirmation,
+                style: AppFonts.jakarta(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: greenAccent,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       );
     }

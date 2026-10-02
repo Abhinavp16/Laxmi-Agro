@@ -93,21 +93,10 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
   }
 
   List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_selectedTab == 0) {
-      return _negotiations
-          .where((n) => ['pending', 'countered'].contains(n['status']))
-          .toList();
-    }
-    // Completed tab
+    // Active until the order is paid (or the deal is declined/expired).
+    final completed = _selectedTab == 1;
     return _negotiations
-        .where(
-          (n) => [
-            'accepted',
-            'rejected',
-            'expired',
-            'converted',
-          ].contains(n['status']),
-        )
+        .where((n) => DealDeskPresentation.isCompleted(n) == completed)
         .toList();
   }
 
@@ -706,11 +695,10 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       icon = Icons.reply_rounded;
       onTap = openDetail;
     } else if (status == 'accepted' && canPay) {
-      // Legacy rows accepted before order auto-creation.
-      label = l10n.commonViewDetails;
-      style = 'primary';
-      icon = Icons.account_balance_wallet_rounded;
-      onTap = openDetail;
+      // Accepted before orders were created on acceptance: Laxmi Agro
+      // creates the order (with delivery) from the admin panel.
+      label = l10n.dealOrderBeingPrepared;
+      style = 'disabled';
     } else if (status == 'pending') {
       label = l10n.dealStatusRequirementSent;
       style = 'disabled';
