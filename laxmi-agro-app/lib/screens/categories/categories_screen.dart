@@ -997,7 +997,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool get _isRoute => widget.controller == null;
 
   /// Space under scrolling content: the tab bar floats over the tab version.
-  double get _bottomInset => _isRoute ? 24 : 100;
+  // Inside the Home tabs the floating nav covers the bottom; the tab's
+  // MediaQuery bottom padding includes it.
+  double get _bottomInset =>
+      (_isRoute ? 24 : 100) + MediaQuery.paddingOf(context).bottom;
 
   double get _textScale =>
       (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);

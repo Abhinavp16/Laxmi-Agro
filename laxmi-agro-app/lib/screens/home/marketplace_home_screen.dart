@@ -1952,7 +1952,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                // Just above the floating nav.
+                bottom: _navOverlap - _navBottomGap,
                 child: FloatingCartBar(
                   visible:
                       _selectedNavIndex <= 2 &&
@@ -1963,6 +1964,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
               ),
             ],
           ),
+          // The floating nav sits over the body, which runs behind it.
+          extendBody: true,
           bottomNavigationBar: _buildBottomNav(),
         ),
       ),
@@ -2036,8 +2039,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                   const SizedBox(height: 28),
                   _buildReviewSection(),
                 ],
-                // Room for the floating cart bar.
-                const SizedBox(height: 96),
+                // Room for the floating cart bar and nav.
+                SizedBox(height: 96 + _navOverlap),
               ],
             ),
           ),
@@ -2920,7 +2923,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
       itemCount: brands.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
@@ -3008,7 +3011,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
       itemCount: categories.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
@@ -3336,7 +3339,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       },
       child: ListView.separated(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
         itemCount: _searchResults.length + (_isLoadingMoreSearch ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -3382,7 +3385,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
 
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.only(top: 16, bottom: 110),
+      padding: EdgeInsets.only(top: 16, bottom: 110 + _navOverlap),
       children: [
         if (_recentSearches.isNotEmpty) ...[
           SectionHeader(
@@ -3903,6 +3906,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 ? null
                 : (_isWholesaler ? _sendCartAsRequirement : _proceedToCheckout),
           ),
+        // Keeps the checkout bar (or the list's end) clear of the nav.
+        SizedBox(height: _navOverlap),
       ],
     );
   }
@@ -4191,7 +4196,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         key: ValueKey('deals-$_negotiationTab'),
         onRefresh: _fetchNegotiations,
         child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
           itemCount: deals.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
@@ -4599,7 +4604,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        padding: const EdgeInsets.only(bottom: 28),
+        padding: EdgeInsets.only(bottom: 28 + _navOverlap),
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: profileMaxWidth),
@@ -7416,6 +7421,21 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     return status == 'countered' && offerBy == 'admin';
   }).length;
 
+  // Floating bottom nav: a frosted pill a little above the bottom edge,
+  // holding round tabs; the active tab widens into a green pill with its
+  // label. Pages scroll behind it, so they leave [_navOverlap] at the end.
+  static const double _navItemSize = 48;
+  static const double _navPadding = 5;
+  static const double _navGap = 4;
+  static const double _navBottomGap = 10;
+
+  /// How much of the bottom of the screen the floating nav covers.
+  double get _navOverlap =>
+      _navItemSize +
+      _navPadding * 2 +
+      _navBottomGap +
+      MediaQuery.paddingOf(context).bottom;
+
   Widget _buildBottomNav() {
     final l10n = context.l10n;
     final cart = ref.watch(cartProvider);
@@ -7425,7 +7445,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     final items = _isWholesaler
         ? [
             _buildNavItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
-            _buildNavItem(HugeIcons.strokeRoundedSearch01, l10n.homeNavSearch, 1),
+            _buildNavItem(
+              HugeIcons.strokeRoundedSearch01,
+              l10n.homeNavSearch,
+              1,
+            ),
             _buildNavItem(
               HugeIcons.strokeRoundedDashboardSquare01,
               l10n.homeNavCategories,
@@ -7446,7 +7470,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           ]
         : [
             _buildNavItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
-            _buildNavItem(HugeIcons.strokeRoundedSearch01, l10n.homeNavSearch, 1),
+            _buildNavItem(
+              HugeIcons.strokeRoundedSearch01,
+              l10n.homeNavSearch,
+              1,
+            ),
             _buildNavItem(
               HugeIcons.strokeRoundedDashboardSquare01,
               l10n.homeNavCategories,
@@ -7460,179 +7488,178 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             ),
             _buildNavItem(HugeIcons.strokeRoundedUser, l10n.homeNavProfile, 4),
           ];
-    // The tab index behind each item above, in the same order.
-    final navIndexes = _isWholesaler
-        ? const [0, 1, 2, 5, 3]
-        : const [0, 1, 2, 3, 4];
-    final slot = navIndexes.indexOf(_selectedNavIndex);
-    final duration = AppMotion.of(context, _navMotion);
-    const barHeight = 66.0;
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceLight,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: barHeight,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final slotWidth = constraints.maxWidth / items.length;
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  // One green pill that slides under whichever tab is
-                  // active (hidden when the open tab isn't in the bar).
-                  AnimatedPositioned(
-                    duration: AppMotion.of(context, AppMotion.springDuration),
-                    curve: AppMotion.spring,
-                    left:
-                        (slot < 0 ? 0 : slot) * slotWidth +
-                        (slotWidth - _navPillWidth) / 2,
-                    top: (barHeight - _navPillHeight) / 2,
-                    width: _navPillWidth,
-                    height: _navPillHeight,
-                    child: AnimatedOpacity(
-                      duration: duration,
-                      opacity: slot < 0 ? 0 : 1,
-                      child: const DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(AppRadius.pill),
-                          ),
-                        ),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, _navBottomGap),
+        child: Center(
+          heightFactor: 1,
+          // The shadow sits outside the pill's clip so it isn't cut off.
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: const StadiumBorder(),
+              shadows: [
+                BoxShadow(
+                  color: AppColors.primaryDeep.withValues(alpha: 0.16),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: ClipPath(
+              clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+              // Frosted glass: the page scrolling behind shows through.
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    color: AppColors.surfaceLight.withValues(alpha: 0.84),
+                    shape: StadiumBorder(
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ),
-                  Row(children: items),
-                ],
-              );
-            },
+                  child: Padding(
+                    padding: const EdgeInsets.all(_navPadding),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0) const SizedBox(width: _navGap),
+                          items[i],
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// Bottom-nav motion: the pill sliding, icons growing, labels folding.
-  static const Duration _navMotion = Duration(milliseconds: 450);
-  static const double _navPillWidth = 60;
-  static const double _navPillHeight = 40;
-
-  /// One bottom-nav tab. The active one sits on the sliding green pill with a
-  /// bigger white icon and no label; the others keep a grey icon and label.
-  Widget _buildNavItem(IconData icon, String label, int index, {int badge = 0}) {
+  /// One tab of the floating nav: a grey circle with its icon, or, while
+  /// active, a green pill with a white icon and its label. Switching tabs
+  /// springs one pill open and the other closed.
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index, {
+    int badge = 0,
+  }) {
     final isSelected = _selectedNavIndex == index;
-    final duration = AppMotion.of(context, _navMotion);
-    const color = AppColors.textTertiary;
+    final duration = AppMotion.of(context, AppMotion.springDuration);
+    const curve = AppMotion.spring;
+    const idleColor = AppColors.textSecondary;
+    // The icon's sides in a circle: (48 - 22) / 2.
+    const circleInset = (_navItemSize - 22) / 2;
 
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: isSelected,
-        label: badge > 0 ? '$label, $badge' : label,
-        excludeSemantics: true,
-        child: InkResponse(
-          onTap: () {
-            if (!isSelected) HapticFeedback.selectionClick();
-            _selectNavIndex(index);
-          },
-          radius: 36,
-          highlightShape: BoxShape.rectangle,
-          containedInkWell: false,
-          splashColor: AppColors.primary.withValues(alpha: 0.08),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  // Room for the pill (drawn by the bar, so it can slide).
-                  AnimatedContainer(
-                    duration: duration,
-                    curve: AppMotion.emphasized,
-                    width: isSelected ? _navPillWidth : 40,
-                    height: isSelected ? _navPillHeight : 30,
-                  ),
-                  // Grows and turns white when its tab is active.
-                  TweenAnimationBuilder<Color?>(
-                    tween: ColorTween(end: isSelected ? Colors.white : color),
-                    duration: duration,
-                    builder: (context, iconColor, _) => AnimatedScale(
-                      scale: isSelected ? 26 / 22 : 1,
-                      duration: duration,
-                      curve: AppMotion.emphasized,
-                      child: HugeIcon(
-                        icon: icon,
-                        color: iconColor ?? color,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                  if (badge > 0)
-                    Positioned(
-                      right: isSelected ? 8 : 0,
-                      top: isSelected ? -2 : -4,
-                      child: AnimatedScale(
-                        scale: 1,
-                        duration: duration,
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 18),
-                          height: 18,
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                          alignment: Alignment.center,
-                          child: RollingNumber(
-                            value: badge,
-                            format: (value) =>
-                                value > 99 ? '99+' : '${value.toInt()}',
-                            style: AppFonts.jakarta(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              // The active tab's label fades and folds away; the pill
-              // says it.
-              ClipRect(
-                child: AnimatedAlign(
-                  duration: duration,
-                  curve: AppMotion.emphasized,
-                  alignment: Alignment.topCenter,
-                  heightFactor: isSelected ? 0 : 1,
-                  child: AnimatedOpacity(
-                    duration: duration,
-                    opacity: isSelected ? 0 : 1,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppFonts.jakarta(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: color,
-                        ),
+    final tab = AnimatedContainer(
+      duration: duration,
+      curve: curve,
+      height: _navItemSize,
+      padding: EdgeInsets.symmetric(
+        horizontal: isSelected ? 16 : circleInset,
+      ),
+      decoration: BoxDecoration(
+        color: isSelected ? AppColors.primary : AppColors.gray50,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TweenAnimationBuilder<Color?>(
+            tween: ColorTween(end: isSelected ? Colors.white : idleColor),
+            duration: AppMotion.of(context, AppMotion.slow),
+            builder: (context, iconColor, _) => HugeIcon(
+              icon: icon,
+              color: iconColor ?? idleColor,
+              size: 22,
+            ),
+          ),
+          // The label unfolds beside the icon in the active pill.
+          ClipRect(
+            child: AnimatedAlign(
+              duration: duration,
+              curve: curve,
+              alignment: Alignment.centerLeft,
+              widthFactor: isSelected ? 1 : 0,
+              child: AnimatedOpacity(
+                duration: AppMotion.of(context, AppMotion.slow),
+                opacity: isSelected ? 1 : 0,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 110),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppFonts.jakarta(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
+        ],
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: badge > 0 ? '$label, $badge' : label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (!isSelected) HapticFeedback.selectionClick();
+          _selectNavIndex(index);
+        },
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            tab,
+            if (badge > 0)
+              Positioned(
+                right: -2,
+                top: -3,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: RollingNumber(
+                    value: badge,
+                    format: (value) => value > 99 ? '99+' : '${value.toInt()}',
+                    style: AppFonts.jakarta(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
