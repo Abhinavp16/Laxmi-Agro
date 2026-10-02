@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +42,10 @@ class _NegotiationDetailScreenState
   // keyboard stays open); only the send button waits.
   bool _isSending = false;
   bool _summaryExpanded = true;
+  // The summary shows for a moment when the deal opens, then folds away.
+  Timer? _autoCollapseTimer;
+  // The first load jumps straight to the newest message; later ones glide.
+  bool _openedAtBottom = false;
   String? _error;
   Map<String, dynamic>? _negotiation;
   final List<Map<String, dynamic>> _optimisticMessages = [];
@@ -54,6 +59,9 @@ class _NegotiationDetailScreenState
   Timer? _remoteTypingTimer;
   bool _isTyping = false;
   final NegotiationSocketService _socketService = NegotiationSocketService();
+  // Read once while mounted: `ref` can't be used in dispose(), where the
+  // socket still needs it to leave the room.
+  String? _userId;
   int _detailRequestSequence = 0;
   bool _refreshAfterInitialLoad = false;
   static const int maxMessageLength = 280;
@@ -99,6 +107,7 @@ class _NegotiationDetailScreenState
 
   void _initializeSocket() {
     final auth = ref.read(authProvider);
+    _userId = auth.user?.id;
 
     _socketService.onMessageReceived = (data) {
       if (data['negotiationId']?.toString() != widget.negotiationId) return;
@@ -192,6 +201,7 @@ class _NegotiationDetailScreenState
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _refreshTimer = null;
+    _autoCollapseTimer?.cancel();
     _localTypingTimer?.cancel();
     _remoteTypingTimer?.cancel();
     _emitStopTyping();
@@ -200,13 +210,10 @@ class _NegotiationDetailScreenState
     _counterMessageController.dispose();
     _scrollController.dispose();
 
-    // Disconnect from socket
-    final auth = ref.read(authProvider);
-    if (auth.user?.id != null) {
-      _socketService.leaveNegotiation(
-        userId: auth.user!.id,
-        userRole: 'wholesaler',
-      );
+    // Disconnect from socket (no `ref` here; it's gone once disposing).
+    final userId = _userId;
+    if (userId != null) {
+      _socketService.leaveNegotiation(userId: userId, userRole: 'wholesaler');
     }
     _socketService.disconnect();
 
@@ -250,10 +257,18 @@ class _NegotiationDetailScreenState
         final currentHistoryLength =
             (_negotiation?['history'] as List?)?.length ?? 0;
         if (!background || currentHistoryLength > previousHistoryLength) {
+          final animate = _openedAtBottom;
+          _openedAtBottom = true;
           Future.delayed(const Duration(milliseconds: 50), () {
-            if (mounted) _scrollToBottom();
+            if (mounted) _scrollToBottom(animate: animate);
           });
         }
+        // First load: show the summary for a moment, then fold it away.
+        _autoCollapseTimer ??= Timer(const Duration(milliseconds: 1200), () {
+          if (mounted && _summaryExpanded) {
+            setState(() => _summaryExpanded = false);
+          }
+        });
         return true;
       } else {
         if (!background) {
@@ -640,7 +655,11 @@ class _NegotiationDetailScreenState
         mainAxisSize: MainAxisSize.min,
         children: [
           Pressable(
-            onTap: () => setState(() => _summaryExpanded = !_summaryExpanded),
+            onTap: () {
+              // The user took over: no more folding it on a timer.
+              _autoCollapseTimer?.cancel();
+              setState(() => _summaryExpanded = !_summaryExpanded);
+            },
             scale: 0.99,
             borderRadius: BorderRadius.zero,
             semanticLabel: _summaryExpanded
@@ -1193,11 +1212,24 @@ class _NegotiationDetailScreenState
       }
     }
 
-    return ListView(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      children: children,
+    // Scrolling the chat folds the summary away, to give the chat the room.
+    // Only the chat list itself counts (depth 0), not scrollables inside it.
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0 &&
+            notification.direction != ScrollDirection.idle &&
+            _summaryExpanded) {
+          _autoCollapseTimer?.cancel();
+          setState(() => _summaryExpanded = false);
+        }
+        return false;
+      },
+      child: ListView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        children: children,
+      ),
     );
   }
 
@@ -1342,7 +1374,8 @@ class _NegotiationDetailScreenState
     _localTypingTimer = null;
     if (!_isTyping) return;
 
-    final userId = ref.read(authProvider).user?.id;
+    // Also runs from dispose(), so it uses the id saved at start.
+    final userId = _userId;
     if (userId != null) {
       _socketService.emitStopTyping(userId: userId);
     }
@@ -1422,18 +1455,34 @@ class _NegotiationDetailScreenState
     _sendChatMessage();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animate = true}) {
     if (_scrollController.positions.length != 1) return;
     final target = _scrollController.position.maxScrollExtent;
-    if (AppMotion.reduced(context)) {
+    if (!animate || AppMotion.reduced(context)) {
       _scrollController.jumpTo(target);
+      _settleAtBottom();
       return;
     }
-    _scrollController.animateTo(
-      target,
-      duration: AppMotion.slow,
-      curve: AppMotion.standard,
-    );
+    _scrollController
+        .animateTo(target, duration: AppMotion.slow, curve: AppMotion.standard)
+        .then((_) => _settleAtBottom());
+  }
+
+  /// The list only knows its full length once its last rows are laid out,
+  /// so a scroll to "the end" can stop short. Keep following the end for a
+  /// few frames until it stops moving.
+  void _settleAtBottom([int tries = 6]) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || tries == 0 || _scrollController.positions.length != 1) {
+        return;
+      }
+      final position = _scrollController.position;
+      if (position.maxScrollExtent - position.pixels > 1) {
+        _scrollController.jumpTo(position.maxScrollExtent);
+      }
+      // The end can still move on the next frame, so keep looking.
+      _settleAtBottom(tries - 1);
+    });
   }
 
   // ---------------------------------------------------------------------------
