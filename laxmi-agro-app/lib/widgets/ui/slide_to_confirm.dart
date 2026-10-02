@@ -9,10 +9,15 @@ import '../../core/theme/app_theme.dart';
 
 /// A fully rounded green track with a white knob: slide the knob to the end
 /// to confirm. Every couple of seconds a wave of light sweeps along the
-/// track and reveals dithered arrows pointing the way. Let go early and it
-/// springs back. While [onConfirmed] runs
-/// (or [loading] is set) the knob waits at the end with a spinner, then
-/// returns. Screen readers get a plain button that confirms on tap.
+/// track and reveals dithered arrows pointing the way.
+///
+/// It behaves like rubber: pulling past the end stretches the pill (with
+/// resistance) and squeezes it a little thinner; letting go past the middle
+/// springs the knob to the end and confirms; letting go before the middle
+/// springs it back, its overshoot stretching the pill to the left. While
+/// [onConfirmed] runs (or [loading] is set) the knob waits at the end with a
+/// spinner, then returns. Screen readers get a plain button that confirms on
+/// tap.
 class SlideToConfirm extends StatefulWidget {
   const SlideToConfirm({
     super.key,
@@ -39,12 +44,27 @@ class _SlideToConfirmState extends State<SlideToConfirm>
   static const double _inset = 4;
   static const double _knob = _height - _inset * 2;
 
-  /// How far along the knob is, 0 (start) to 1 (end).
+  /// Let go past this share of the way and it confirms.
+  static const double _confirmAt = 0.5;
+
+  /// The most the pill stretches, in logical pixels.
+  static const double _maxStretch = 22;
+
+  /// Where the knob is: 0 at the start, 1 at the end. It can go a little
+  /// past either end (springs overshooting, pulling past the end); that
+  /// overshoot is what stretches the pill.
   late final AnimationController _progress = AnimationController(
     vsync: this,
     duration: AppMotion.springDuration,
+    lowerBound: -0.5,
+    upperBound: 1.5,
+    value: 0,
   );
+
+  /// Where the finger would have put the knob, before the rubber band.
+  double _rawDrag = 0;
   bool _running = false;
+  bool _hitEnd = false;
 
   bool get _enabled =>
       widget.onConfirmed != null && !widget.loading && !_running;
@@ -55,17 +75,40 @@ class _SlideToConfirmState extends State<SlideToConfirm>
     super.dispose();
   }
 
+  /// Past the end the knob follows the finger less and less: a rubber band
+  /// that tops out at [_maxStretch].
+  double _rubber(double over, double travel) {
+    final px = over * travel;
+    final stretched = _maxStretch * (1 - 1 / (1 + px / (_maxStretch * 2)));
+    return stretched / travel;
+  }
+
+  void _dragStart() {
+    if (!_enabled) return;
+    _progress.stop();
+    _rawDrag = _progress.value.clamp(0.0, 1.0);
+    _hitEnd = false;
+  }
+
   void _drag(DragUpdateDetails details, double travel) {
     if (!_enabled || travel <= 0) return;
-    _progress.value = (_progress.value + details.delta.dx / travel).clamp(
-      0.0,
-      1.0,
-    );
+    _rawDrag = (_rawDrag + details.delta.dx / travel).clamp(-0.2, 3.0);
+    final next = _rawDrag <= 1
+        ? _rawDrag.clamp(0.0, 1.0)
+        : 1 + _rubber(_rawDrag - 1, travel);
+    // A tick when the knob first meets the end.
+    if (next >= 1 && !_hitEnd) {
+      _hitEnd = true;
+      HapticFeedback.lightImpact();
+    } else if (next < 0.98) {
+      _hitEnd = false;
+    }
+    _progress.value = next;
   }
 
   void _release() {
     if (!_enabled) return;
-    if (_progress.value >= 0.85) {
+    if (_progress.value >= _confirmAt) {
       _confirm();
     } else {
       _springBack();
@@ -85,10 +128,11 @@ class _SlideToConfirmState extends State<SlideToConfirm>
     if (onConfirmed == null) return;
     HapticFeedback.mediumImpact();
     setState(() => _running = true);
+    // Springs to the end; pulled past it, it snaps back with a small bulge.
     await _progress.animateTo(
       1,
-      duration: AppMotion.of(context, AppMotion.fast),
-      curve: AppMotion.standard,
+      duration: AppMotion.of(context, AppMotion.springDuration),
+      curve: AppMotion.spring,
     );
     try {
       await onConfirmed();
@@ -116,43 +160,89 @@ class _SlideToConfirmState extends State<SlideToConfirm>
             final travel = constraints.maxWidth - _knob - _inset * 2;
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => _dragStart(),
               onHorizontalDragUpdate: (details) => _drag(details, travel),
               onHorizontalDragEnd: (_) => _release(),
               onHorizontalDragCancel: _release,
               child: AnimatedBuilder(
                 animation: _progress,
                 builder: (context, _) {
-                  final t = _progress.value;
-                  return Container(
+                  final v = _progress.value;
+                  final t = v.clamp(0.0, 1.0);
+                  // Overshoot past either end becomes stretch on that side.
+                  final leftStretch = (-v * travel).clamp(0.0, _maxStretch);
+                  final rightStretch = ((v - 1) * travel).clamp(
+                    0.0,
+                    _maxStretch,
+                  );
+                  // Stretched rubber gets a little thinner.
+                  final squeeze = (leftStretch + rightStretch) * 0.08;
+                  final knobLeft =
+                      _inset + t * travel + rightStretch - leftStretch;
+
+                  return SizedBox(
                     height: _height,
-                    decoration: const ShapeDecoration(
-                      color: AppColors.primary,
-                      shape: StadiumBorder(),
-                    ),
-                    // Keeps the arrows inside the rounded ends.
-                    clipBehavior: Clip.antiAlias,
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        // Dithered arrows the shimmer reveals; they fade
-                        // out as the knob is dragged.
-                        Positioned.fill(
-                          child: Opacity(
-                            opacity: (1 - t * 1.6).clamp(0.0, 1.0),
-                            child: const _ShimmerArrows(
-                              start: _inset + _knob + 6,
-                            ),
-                          ),
-                        ),
-                        // A lighter trail behind the knob.
+                        // The pill, which stretches past its box when pulled.
                         Positioned(
-                          left: _inset,
-                          top: _inset,
-                          bottom: _inset,
-                          width: _knob + t * travel,
+                          left: -leftStretch,
+                          right: -rightStretch,
+                          top: squeeze,
+                          bottom: squeeze,
                           child: DecoratedBox(
                             decoration: ShapeDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
+                              color: AppColors.primary,
                               shape: const StadiumBorder(),
+                              shadows: [
+                                BoxShadow(
+                                  color: AppColors.primaryDeep.withValues(
+                                    alpha: 0.28,
+                                  ),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ClipPath(
+                              clipper: const ShapeBorderClipper(
+                                shape: StadiumBorder(),
+                              ),
+                              child: Stack(
+                                children: [
+                                  // Dithered arrows the shimmer reveals;
+                                  // they fade as the knob is dragged.
+                                  Positioned.fill(
+                                    child: Opacity(
+                                      opacity: (1 - t * 1.6).clamp(0.0, 1.0),
+                                      child: _ShimmerArrows(
+                                        start: _inset + _knob + 6 + leftStretch,
+                                      ),
+                                    ),
+                                  ),
+                                  // A lighter trail behind the knob.
+                                  Positioned(
+                                    left: _inset,
+                                    top: (_inset - squeeze).clamp(0.0, _inset),
+                                    bottom: (_inset - squeeze).clamp(
+                                      0.0,
+                                      _inset,
+                                    ),
+                                    // Up to the knob's right edge (the
+                                    // left stretch cancels out here).
+                                    width: _knob + t * travel + rightStretch,
+                                    child: DecoratedBox(
+                                      decoration: ShapeDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                        shape: const StadiumBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -177,7 +267,7 @@ class _SlideToConfirmState extends State<SlideToConfirm>
                           ),
                         ),
                         Positioned(
-                          left: _inset + t * travel,
+                          left: knobLeft,
                           top: _inset,
                           width: _knob,
                           height: _knob,

@@ -1544,25 +1544,13 @@ class _NegotiationDetailScreenState
   static const double _orderSliderGap = 12;
 
   /// Slide to order, so an order isn't started by a stray tap. Floats over
-  /// the chat with a soft shadow.
+  /// the chat (the slider draws its own shadow, which stretches with it).
   Widget _buildOrderSlider() {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        shape: const StadiumBorder(),
-        shadows: [
-          BoxShadow(
-            color: AppColors.primaryDeep.withValues(alpha: 0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: SlideToConfirm(
-        label: context.l10n.dealSlideToOrder,
-        icon: Icons.currency_rupee_rounded,
-        loading: _isActioning,
-        onConfirmed: _proceedToOrder,
-      ),
+    return SlideToConfirm(
+      label: context.l10n.dealSlideToOrder,
+      icon: Icons.currency_rupee_rounded,
+      loading: _isActioning,
+      onConfirmed: _proceedToOrder,
     );
   }
 
