@@ -7367,34 +7367,49 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                     ),
                   ],
                 ),
-                child: ClipPath(
-                  clipper: const ShapeBorderClipper(shape: StadiumBorder()),
-                  // Frosted glass: the page scrolling behind shows through.
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: DecoratedBox(
-                      decoration: ShapeDecoration(
-                        color: AppColors.surfaceLight.withValues(alpha: 0.84),
-                        shape: StadiumBorder(
-                          side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.7),
+                // Only the frosted backdrop is clipped to the pill; the tabs
+                // sit on top unclipped so a badge on the end tab isn't cut
+                // off by the rounded end.
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: ClipPath(
+                        clipper: const ShapeBorderClipper(
+                          shape: StadiumBorder(),
+                        ),
+                        // Frosted glass: the page scrolling behind shows
+                        // through.
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: AppColors.surfaceLight.withValues(
+                                alpha: 0.84,
+                              ),
+                              shape: StadiumBorder(
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(_navPadding),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var i = 0; i < items.length; i++) ...[
-                              if (i > 0) const SizedBox(width: _navGap),
-                              items[i],
-                            ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(_navPadding),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < items.length; i++) ...[
+                            if (i > 0) const SizedBox(width: _navGap),
+                            items[i],
                           ],
-                        ),
+                        ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
