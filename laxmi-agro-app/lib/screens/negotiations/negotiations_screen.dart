@@ -123,9 +123,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
           context.push('/previous-orders');
         }
       case DealTileAction.respond:
-      case DealTileAction.proceedToOrder:
       case DealTileAction.viewDetails:
-        // Legacy accepted rows (canPay) finish the order from the detail.
         _openDetail(negotiationId);
       case DealTileAction.underReview:
       case DealTileAction.declined:

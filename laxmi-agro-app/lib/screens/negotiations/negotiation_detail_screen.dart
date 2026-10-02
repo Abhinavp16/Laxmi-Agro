@@ -10,14 +10,10 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 
 import '../../core/config/api_config.dart';
-import '../../core/config/feature_flags.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/services/shipping_address_service.dart';
 import '../../core/services/negotiation_socket_service.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../widgets/app_image.dart';
-import '../../widgets/order_checkout_actions_sheet.dart';
-import '../../widgets/state_city_pincode_fields.dart';
 import '../../widgets/ui/ui.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
@@ -37,7 +33,6 @@ class _NegotiationDetailScreenState
     extends ConsumerState<NegotiationDetailScreen>
     with WidgetsBindingObserver {
   bool _isLoading = true;
-  bool _isActioning = false;
   // A chat message is on its way. The text field stays enabled (so the
   // keyboard stays open); only the send button waits.
   bool _isSending = false;
@@ -306,227 +301,8 @@ class _NegotiationDetailScreenState
   }
 
   // NOTE: wholesalers negotiate through chat messages only. Accept, counter
-  // and reject are admin/member actions performed from the admin panel, so the
-  // corresponding app actions were removed. _proceedToOrder below is kept as a
-  // legacy fallback for negotiations accepted before order auto-creation.
-  Future<void> _proceedToOrder() async {
-    debugPrint('_proceedToOrder called for ${widget.negotiationId}');
-    try {
-      final checkoutData = await _showAddressDialog();
-      debugPrint('Address dialog returned: $checkoutData');
-      if (checkoutData == null || !mounted) return;
-
-      final address = Map<String, String>.from(checkoutData);
-      final couponCode = (address.remove('couponCode') ?? '').trim();
-      final payload = <String, dynamic>{
-        'negotiationId': widget.negotiationId,
-        'shippingAddress': address,
-      };
-      if (couponCode.isNotEmpty) {
-        payload['couponCode'] = couponCode.toUpperCase();
-      }
-
-      setState(() => _isActioning = true);
-      try {
-        final api = ref.read(apiClientProvider);
-        final response = await api.post(
-          '/orders/from-negotiation',
-          data: payload,
-        );
-
-        if (!mounted) return;
-        if (response.data['success'] == true) {
-          await OrderCheckoutActionsSheet.handleSuccessfulCheckout(
-            context: context,
-            apiClient: api,
-            responseData: response.data,
-          );
-        }
-      } on DioException catch (e) {
-        if (mounted) {
-          _showError(
-            e.response?.data?['message']?.toString() ??
-                context.l10n.dealCreateOrderFailed,
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isActioning = false);
-      }
-    } catch (e) {
-      debugPrint('_proceedToOrder error: $e');
-      if (mounted) _showError(context.l10n.dealErrorWithDetails('$e'));
-    }
-  }
-
-  Future<Map<String, String>?> _showAddressDialog() async {
-    final savedAddress = await ShippingAddressService.getSelectedAddress();
-    if (!mounted) return null;
-    final auth = ref.read(authProvider);
-    final nameCtrl = TextEditingController(
-      text: savedAddress?.fullName ?? auth.user?.name ?? '',
-    );
-    final phoneCtrl = TextEditingController(
-      text: savedAddress?.phone ?? auth.user?.phone ?? '',
-    );
-    final addr1Ctrl = TextEditingController(
-      text: savedAddress?.addressLine1 ?? '',
-    );
-    final cityCtrl = TextEditingController(text: savedAddress?.city ?? '');
-    final stateCtrl = TextEditingController(text: savedAddress?.state ?? '');
-    final pinCtrl = TextEditingController(text: savedAddress?.pincode ?? '');
-    final couponCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final l10n = context.l10n;
-
-    Map<String, String>? result =
-        await showModalBottomSheet<Map<String, String>>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (ctx) => Container(
-            margin: EdgeInsets.only(top: MediaQuery.of(ctx).padding.top + 40),
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppRadius.xl),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SheetHandle(),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.dealShippingAddressTitle,
-                        style: AppFonts.jakarta(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _addrField(l10n.dealFieldFullName, nameCtrl),
-                      const SizedBox(height: 12),
-                      _addrField(
-                        l10n.dealFieldPhone,
-                        phoneCtrl,
-                        keyboard: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 12),
-                      _addrField(l10n.dealFieldAddressLine1, addr1Ctrl),
-                      const SizedBox(height: 12),
-                      StateCityPincodeFields(
-                        stateController: stateCtrl,
-                        cityController: cityCtrl,
-                        pincodeController: pinCtrl,
-                      ),
-                      if (!kHideOfferCouponUi) ...[
-                        const SizedBox(height: 12),
-                        _addrField(
-                          l10n.dealFieldCouponCode,
-                          couponCtrl,
-                          required: false,
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      AppButton(
-                        label: l10n.dealConfirmAndProceed,
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            Navigator.of(ctx).pop({
-                              'fullName': nameCtrl.text.trim(),
-                              'phone': phoneCtrl.text.trim(),
-                              'addressLine1': addr1Ctrl.text.trim(),
-                              'city': cityCtrl.text.trim(),
-                              'state': stateCtrl.text.trim(),
-                              'pincode': pinCtrl.text.trim(),
-                              'couponCode': couponCtrl.text
-                                  .trim()
-                                  .toUpperCase(),
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-
-    if (result != null) {
-      final address = ShippingAddress(
-        id: savedAddress?.id ?? ShippingAddress.generateId(),
-        slot: savedAddress?.slot ?? ShippingAddressService.slotPrimary,
-        fullName: result['fullName'] ?? '',
-        phone: result['phone'] ?? '',
-        addressLine1: result['addressLine1'] ?? '',
-        city: result['city'] ?? '',
-        state: result['state'] ?? '',
-        pincode: result['pincode'] ?? '',
-      );
-      await ShippingAddressService.upsertAddress(address);
-      await ShippingAddressService.setSelectedAddressId(address.id);
-      result = {
-        ...address.toOrderPayload(),
-        'couponCode': result['couponCode'] ?? '',
-      };
-    }
-
-    // The sheet's future completes as it starts closing, while its fields
-    // are still on screen for the slide-down; dispose them once that's done.
-    Future<void>.delayed(const Duration(milliseconds: 600), () {
-      nameCtrl.dispose();
-      phoneCtrl.dispose();
-      addr1Ctrl.dispose();
-      cityCtrl.dispose();
-      stateCtrl.dispose();
-      pinCtrl.dispose();
-      couponCtrl.dispose();
-    });
-    return result;
-  }
-
-  Widget _addrField(
-    String label,
-    TextEditingController ctrl, {
-    TextInputType? keyboard,
-    bool required = true,
-  }) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: keyboard,
-      validator: required
-          ? (v) => (v == null || v.trim().isEmpty)
-                ? context.l10n.commonRequired
-                : null
-          : null,
-      style: AppFonts.jakarta(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: AppColors.textPrimary,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.borderStrong),
-        ),
-      ),
-    );
-  }
+  // and reject are admin/member actions performed from the admin panel, and
+  // the deal ends at acceptance: there is no order step in the app.
 
   void _showError(String msg) {
     if (!mounted) return;
@@ -601,49 +377,22 @@ class _NegotiationDetailScreenState
     final n = _negotiation!;
     final status = n['status'] as String? ?? 'pending';
     final currentOfferBy = n['currentOfferBy'] as String? ?? '';
-    final canPay = n['canPay'] == true;
-
-    // An accepted deal that can be ordered floats its slider over the chat
-    // (which scrolls behind it) instead of sitting in a bottom bar.
-    final floatingOrder = status == 'accepted' && canPay;
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
 
     return Column(
       children: [
         _buildSummaryCard(n),
         Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: _fetchDetail,
-                  child: _buildChatList(
-                    n,
-                    // Room for the floating slider below the last message.
-                    bottomRoom: floatingOrder
-                        ? _orderSliderGap * 2 + 56 + safeBottom
-                        : 0,
-                  ),
-                ),
-              ),
-              if (floatingOrder)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: _orderSliderGap + safeBottom,
-                  child: _buildOrderSlider(),
-                ),
-            ],
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _fetchDetail,
+            child: _buildChatList(n),
           ),
         ),
 
         // Bottom Action Bar — chat stays open on converted orders so the
         // wholesaler can follow up; only closed states hide the composer.
-        if (floatingOrder)
-          const SizedBox.shrink()
-        else if (!['rejected', 'expired'].contains(status))
-          _buildBottomActions(status, currentOfferBy, canPay)
+        if (!['rejected', 'expired'].contains(status))
+          _buildBottomActions(status, currentOfferBy)
         else
           _buildClosedBar(n),
       ],
@@ -1201,7 +950,7 @@ class _NegotiationDetailScreenState
     return _sameDay(ta, tb) && tb.difference(ta).abs() <= _groupGap;
   }
 
-  Widget _buildChatList(Map<String, dynamic> n, {double bottomRoom = 0}) {
+  Widget _buildChatList(Map<String, dynamic> n) {
     final history = (n['history'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final entries = <Map<String, dynamic>>[...history, ..._optimisticMessages];
     final timeFormat = DateFormat(
@@ -1257,7 +1006,7 @@ class _NegotiationDetailScreenState
       child: ListView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + bottomRoom),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: children,
       ),
     );
@@ -1521,11 +1270,7 @@ class _NegotiationDetailScreenState
   // Bottom bar: composer / legacy proceed / completed
   // ---------------------------------------------------------------------------
 
-  Widget _buildBottomActions(
-    String status,
-    String currentOfferBy,
-    bool canPay,
-  ) {
+  Widget _buildBottomActions(String status, String currentOfferBy) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: const BoxDecoration(
@@ -1534,29 +1279,13 @@ class _NegotiationDetailScreenState
       ),
       child: SafeArea(
         top: false,
-        child: _buildActionRow(status, currentOfferBy, canPay),
+        child: _buildActionRow(status, currentOfferBy),
       ),
     );
   }
 
-  /// Gap between the floating order slider and the bottom edge (and the
-  /// last message above it).
-  static const double _orderSliderGap = 12;
-
-  /// Slide to order, so an order isn't started by a stray tap. Floats over
-  /// the chat (the slider draws its own shadow, which stretches with it).
-  Widget _buildOrderSlider() {
-    return SlideToConfirm(
-      label: context.l10n.dealSlideToOrder,
-      icon: Icons.currency_rupee_rounded,
-      loading: _isActioning,
-      onConfirmed: _proceedToOrder,
-    );
-  }
-
-  Widget _buildActionRow(String status, String currentOfferBy, bool canPay) {
-    if (status == 'accepted' && canPay) return _buildOrderSlider();
-
+  Widget _buildActionRow(String status, String currentOfferBy) {
+    // Accepted is where the deal ends: show it as completed.
     if (status == 'accepted') {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),

@@ -277,7 +277,7 @@ class DealInboxTile extends StatelessWidget {
   /// [onTap] opens the conversation.
   ///
   /// [onAction] is called with the row's [DealTileAction] when its button is
-  /// pressed (respond, proceedToOrder, viewOrder, viewDetails). Without it no
+  /// pressed (respond, viewOrder, viewDetails). Without it no
   /// button is shown. Passive actions (underReview, declined, expired) never
   /// show a button; "Under Review" is shown as a quiet line instead.
   ///
@@ -507,7 +507,6 @@ class DealInboxTile extends StatelessWidget {
 
   static bool _hasButton(DealTileAction action) => switch (action) {
     DealTileAction.respond ||
-    DealTileAction.proceedToOrder ||
     DealTileAction.viewOrder ||
     DealTileAction.viewDetails => true,
     DealTileAction.underReview ||
@@ -525,11 +524,6 @@ class DealInboxTile extends StatelessWidget {
       DealTileAction.respond => (
         l10n.homeRespondToCounter,
         HugeIcons.strokeRoundedBubbleChat,
-        AppButtonVariant.primary,
-      ),
-      DealTileAction.proceedToOrder => (
-        l10n.homeProceedToOrder,
-        HugeIcons.strokeRoundedWallet01,
         AppButtonVariant.primary,
       ),
       DealTileAction.viewOrder => (

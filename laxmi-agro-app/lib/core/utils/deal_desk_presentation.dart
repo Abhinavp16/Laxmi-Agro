@@ -138,9 +138,6 @@ class DealDeskPresentation {
       return DealTileAction.viewOrder;
     }
     if (needsReply(negotiation)) return DealTileAction.respond;
-    if (status == 'accepted' && negotiation['canPay'] == true) {
-      return DealTileAction.proceedToOrder;
-    }
     switch (status) {
       case 'pending':
         return DealTileAction.underReview;
@@ -244,7 +241,6 @@ enum DealStatusKind {
 /// [expired] are passive: nothing to tap.
 enum DealTileAction {
   respond,
-  proceedToOrder,
   viewOrder,
   viewDetails,
   underReview,
