@@ -389,27 +389,6 @@ class CartLineCard extends StatelessWidget {
                             : null,
                         semanticLabel: l10n.cartQtyTapToEdit,
                       ),
-                      if (item.stock > 0 && !hasIssue) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          l10n.cartInStockCount(
-                            item.isMeter
-                                ? contentsText(
-                                    l10n,
-                                    ContentUnit.meter,
-                                    item.stock,
-                                  )
-                                : _count(item.stock),
-                          ),
-                          style: AppFonts.jakarta(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: item.stock <= 5
-                                ? AppColors.warning
-                                : AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
