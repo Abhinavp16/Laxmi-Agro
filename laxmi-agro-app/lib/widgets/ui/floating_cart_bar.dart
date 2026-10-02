@@ -12,8 +12,9 @@ import '../app_image.dart';
 import 'pressable.dart';
 import 'quantity_stepper.dart';
 
-/// Green bar that rises from the bottom while the cart has items: product
-/// thumbnails, item count, total and "View cart".
+/// Green pill that rises from the bottom while the cart has items: round
+/// product thumbnails, item count, total and an arrow. It's only as wide as
+/// its contents, centred, and eases its width as the numbers change.
 class FloatingCartBar extends ConsumerWidget {
   const FloatingCartBar({super.key, required this.onTap, this.visible = true});
 
@@ -42,71 +43,76 @@ class FloatingCartBar extends ConsumerWidget {
           duration: duration,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: Pressable(
-              onTap: onTap,
-              haptic: true,
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              shape: AppShapes.squircle(AppRadius.lg),
-              semanticLabel: '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
-              child: Container(
-                height: 58,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: ShapeDecoration(
-                  shape: AppShapes.squircle(AppRadius.lg),
-                  shadows: [
-                    BoxShadow(
-                      color: AppColors.primaryDeep.withValues(alpha: 0.28),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    _Thumbs(items: cart.items),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RollingNumber(
-                            value: count,
-                            format: (value) => l10n.commonItemsCount(value.toInt()),
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                          ),
-                          RollingNumber(
-                            value: cart.subtotal,
-                            format: (value) => '₹${NumberFormatter.formatPrice(value)}',
-                            style: AppFonts.jakarta(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Pressable(
+                onTap: onTap,
+                haptic: true,
+                color: AppColors.primary,
+                shape: const StadiumBorder(),
+                semanticLabel:
+                    '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
+                child: Container(
+                  height: _height,
+                  // The round thumbnails sit concentric with the pill's ends.
+                  padding: const EdgeInsets.only(
+                    left: (_height - _Thumbs.size) / 2,
+                    right: 16,
+                  ),
+                  decoration: ShapeDecoration(
+                    shape: const StadiumBorder(),
+                    shadows: [
+                      BoxShadow(
+                        color: AppColors.primaryDeep.withValues(alpha: 0.28),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
+                    ],
+                  ),
+                  child: AnimatedSize(
+                    duration: duration,
+                    curve: AppMotion.standard,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _Thumbs(items: cart.items),
+                        const SizedBox(width: 10),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RollingNumber(
+                              value: count,
+                              format: (value) =>
+                                  l10n.commonItemsCount(value.toInt()),
+                              style: AppFonts.jakarta(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            RollingNumber(
+                              value: cart.subtotal,
+                              format: (value) =>
+                                  '₹${NumberFormatter.formatPrice(value)}',
+                              style: AppFonts.jakarta(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowRight01,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                      ],
                     ),
-                    Text(
-                      l10n.productViewCart,
-                      style: AppFonts.jakarta(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const HugeIcon(
-                      icon: HugeIcons.strokeRoundedArrowRight01,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -115,6 +121,8 @@ class FloatingCartBar extends ConsumerWidget {
       ),
     );
   }
+
+  static const double _height = 58;
 }
 
 class _Thumbs extends StatelessWidget {
@@ -122,10 +130,11 @@ class _Thumbs extends StatelessWidget {
 
   final List<CartItem> items;
 
+  static const double size = 36;
+
   @override
   Widget build(BuildContext context) {
     final shown = items.take(3).toList();
-    const size = 36.0;
     const overlap = 14.0;
     if (shown.isEmpty) return const SizedBox(width: size, height: size);
     return SizedBox(
@@ -147,11 +156,10 @@ class _Thumbs extends StatelessWidget {
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+                    shape: BoxShape.circle,
                     border: Border.all(color: AppColors.primary, width: 1.5),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.sm - 2),
+                  child: ClipOval(
                     child: AppImage(
                       imageUrl: shown[i].image ?? '',
                       category: shown[i].category ?? '',
