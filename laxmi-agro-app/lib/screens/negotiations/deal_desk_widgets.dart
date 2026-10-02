@@ -531,7 +531,8 @@ class DealInboxTile extends StatelessWidget {
         HugeIcons.strokeRoundedTruckDelivery,
         AppButtonVariant.tonal,
       ),
-      _ => (l10n.commonViewDetails, null, AppButtonVariant.secondary),
+      // Light green: solid green is kept for "Respond", which needs you.
+      _ => (l10n.commonViewDetails, null, AppButtonVariant.tonal),
     };
     return AppButton(
       label: actionLabel ?? label,
@@ -539,6 +540,7 @@ class DealInboxTile extends StatelessWidget {
       variant: variant,
       size: AppButtonSize.medium,
       loading: actionLoading,
+      pill: true,
       onPressed: () => onAction?.call(resolved),
     );
   }
