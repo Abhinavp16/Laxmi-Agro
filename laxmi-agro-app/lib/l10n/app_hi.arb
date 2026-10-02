@@ -1096,5 +1096,21 @@
   "homeHeadlineDealer": "आज कौन-सा माल मंगाना है?",
   "homeShopByCategory": "श्रेणी से खरीदें",
   "homeAllCategoriesTile": "सभी",
-  "profileMadeBy": "निर्माता"
+  "profileMadeBy": "निर्माता",
+  "notificationsMarkAllRead": "सभी पढ़ा हुआ करें",
+  "notificationsToday": "आज",
+  "notificationsYesterday": "कल",
+  "notificationsEarlier": "पहले",
+  "notificationsFilterAll": "सभी",
+  "notificationsFilterOrders": "ऑर्डर",
+  "notificationsFilterDeals": "डील",
+  "notificationsFilterOffers": "ऑफ़र",
+  "notificationsFilterEmpty": "यहाँ अभी कुछ नहीं है",
+  "notificationsLoadFailed": "आपकी सूचनाएँ लोड नहीं हो सकीं",
+  "notificationsLoadFailedHint": "अपना इंटरनेट जाँचें और फिर से कोशिश करें।",
+  "notificationsActionTrackOrder": "ऑर्डर ट्रैक करें",
+  "notificationsActionViewOrders": "ऑर्डर देखें",
+  "notificationsActionOpenDeal": "डील खोलें",
+  "notificationsActionShopNow": "अभी खरीदें",
+  "notificationsActionViewOrder": "ऑर्डर देखें"
 }

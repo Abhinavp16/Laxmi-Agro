@@ -3794,4 +3794,53 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get profileMadeBy => 'निर्माता';
+
+  @override
+  String get notificationsMarkAllRead => 'सभी पढ़ा हुआ करें';
+
+  @override
+  String get notificationsToday => 'आज';
+
+  @override
+  String get notificationsYesterday => 'कल';
+
+  @override
+  String get notificationsEarlier => 'पहले';
+
+  @override
+  String get notificationsFilterAll => 'सभी';
+
+  @override
+  String get notificationsFilterOrders => 'ऑर्डर';
+
+  @override
+  String get notificationsFilterDeals => 'डील';
+
+  @override
+  String get notificationsFilterOffers => 'ऑफ़र';
+
+  @override
+  String get notificationsFilterEmpty => 'यहाँ अभी कुछ नहीं है';
+
+  @override
+  String get notificationsLoadFailed => 'आपकी सूचनाएँ लोड नहीं हो सकीं';
+
+  @override
+  String get notificationsLoadFailedHint =>
+      'अपना इंटरनेट जाँचें और फिर से कोशिश करें।';
+
+  @override
+  String get notificationsActionTrackOrder => 'ऑर्डर ट्रैक करें';
+
+  @override
+  String get notificationsActionViewOrders => 'ऑर्डर देखें';
+
+  @override
+  String get notificationsActionOpenDeal => 'डील खोलें';
+
+  @override
+  String get notificationsActionShopNow => 'अभी खरीदें';
+
+  @override
+  String get notificationsActionViewOrder => 'ऑर्डर देखें';
 }

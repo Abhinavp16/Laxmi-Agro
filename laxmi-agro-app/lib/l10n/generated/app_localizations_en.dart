@@ -3829,4 +3829,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileMadeBy => 'Made by';
+
+  @override
+  String get notificationsMarkAllRead => 'Mark all read';
+
+  @override
+  String get notificationsToday => 'Today';
+
+  @override
+  String get notificationsYesterday => 'Yesterday';
+
+  @override
+  String get notificationsEarlier => 'Earlier';
+
+  @override
+  String get notificationsFilterAll => 'All';
+
+  @override
+  String get notificationsFilterOrders => 'Orders';
+
+  @override
+  String get notificationsFilterDeals => 'Deals';
+
+  @override
+  String get notificationsFilterOffers => 'Offers';
+
+  @override
+  String get notificationsFilterEmpty => 'Nothing here yet';
+
+  @override
+  String get notificationsLoadFailed => 'Couldn\'t load your notifications';
+
+  @override
+  String get notificationsLoadFailedHint =>
+      'Check your connection and try again.';
+
+  @override
+  String get notificationsActionTrackOrder => 'Track order';
+
+  @override
+  String get notificationsActionViewOrders => 'View orders';
+
+  @override
+  String get notificationsActionOpenDeal => 'Open deal';
+
+  @override
+  String get notificationsActionShopNow => 'Shop now';
+
+  @override
+  String get notificationsActionViewOrder => 'View order';
 }

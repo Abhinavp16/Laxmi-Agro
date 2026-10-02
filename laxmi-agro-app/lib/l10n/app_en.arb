@@ -1880,5 +1880,21 @@
   "homeHeadlineDealer": "What would you like to restock today?",
   "homeShopByCategory": "Shop by category",
   "homeAllCategoriesTile": "All",
-  "profileMadeBy": "Made by"
+  "profileMadeBy": "Made by",
+  "notificationsMarkAllRead": "Mark all read",
+  "notificationsToday": "Today",
+  "notificationsYesterday": "Yesterday",
+  "notificationsEarlier": "Earlier",
+  "notificationsFilterAll": "All",
+  "notificationsFilterOrders": "Orders",
+  "notificationsFilterDeals": "Deals",
+  "notificationsFilterOffers": "Offers",
+  "notificationsFilterEmpty": "Nothing here yet",
+  "notificationsLoadFailed": "Couldn't load your notifications",
+  "notificationsLoadFailedHint": "Check your connection and try again.",
+  "notificationsActionTrackOrder": "Track order",
+  "notificationsActionViewOrders": "View orders",
+  "notificationsActionOpenDeal": "Open deal",
+  "notificationsActionShopNow": "Shop now",
+  "notificationsActionViewOrder": "View order"
 }

@@ -6679,6 +6679,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Made by'**
   String get profileMadeBy;
+
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get notificationsMarkAllRead;
+
+  /// No description provided for @notificationsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get notificationsToday;
+
+  /// No description provided for @notificationsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get notificationsYesterday;
+
+  /// No description provided for @notificationsEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get notificationsEarlier;
+
+  /// No description provided for @notificationsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get notificationsFilterAll;
+
+  /// No description provided for @notificationsFilterOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get notificationsFilterOrders;
+
+  /// No description provided for @notificationsFilterDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Deals'**
+  String get notificationsFilterDeals;
+
+  /// No description provided for @notificationsFilterOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers'**
+  String get notificationsFilterOffers;
+
+  /// No description provided for @notificationsFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet'**
+  String get notificationsFilterEmpty;
+
+  /// No description provided for @notificationsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your notifications'**
+  String get notificationsLoadFailed;
+
+  /// No description provided for @notificationsLoadFailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get notificationsLoadFailedHint;
+
+  /// No description provided for @notificationsActionTrackOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Track order'**
+  String get notificationsActionTrackOrder;
+
+  /// No description provided for @notificationsActionViewOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'View orders'**
+  String get notificationsActionViewOrders;
+
+  /// No description provided for @notificationsActionOpenDeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open deal'**
+  String get notificationsActionOpenDeal;
+
+  /// No description provided for @notificationsActionShopNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop now'**
+  String get notificationsActionShopNow;
+
+  /// No description provided for @notificationsActionViewOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'View order'**
+  String get notificationsActionViewOrder;
 }
 
 class _AppLocalizationsDelegate

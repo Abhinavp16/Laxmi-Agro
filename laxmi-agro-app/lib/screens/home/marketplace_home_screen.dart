@@ -1603,7 +1603,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                               InkWell(
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  context.push('/notifications');
+                                  // Reading them there clears the badge.
+                                  context.push('/notifications').then((_) {
+                                    if (mounted) _fetchNotificationCount();
+                                  });
                                 },
                                 child: SizedBox(
                                   width: double.infinity,
@@ -4507,8 +4510,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                     semantic: l10n.profileUnreadCount(_unreadCount),
                   )
                 : null,
-            onTap: () =>
-                context.push('/notifications', extra: {'bottomTab': 4}),
+            onTap: () => context
+                .push('/notifications', extra: {'bottomTab': 4})
+                // Reading them there clears the badge.
+                .then((_) {
+                  if (mounted) _fetchNotificationCount();
+                }),
           ),
           SettingsTile(
             icon: HugeIcons.strokeRoundedShield01,
