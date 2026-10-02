@@ -1895,5 +1895,6 @@
   "notificationsActionTrackOrder": "Track order",
   "notificationsActionViewOrders": "View orders",
   "notificationsActionOpenDeal": "Open deal",
-  "notificationsActionViewOrder": "View order"
+  "notificationsActionViewOrder": "View order",
+  "dealSlideToOrder": "Slide to order"
 }

@@ -3875,4 +3875,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsActionViewOrder => 'View order';
+
+  @override
+  String get dealSlideToOrder => 'Slide to order';
 }

@@ -3840,4 +3840,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get notificationsActionViewOrder => 'ऑर्डर देखें';
+
+  @override
+  String get dealSlideToOrder => 'ऑर्डर के लिए स्लाइड करें';
 }

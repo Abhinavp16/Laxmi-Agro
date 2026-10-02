@@ -603,20 +603,46 @@ class _NegotiationDetailScreenState
     final currentOfferBy = n['currentOfferBy'] as String? ?? '';
     final canPay = n['canPay'] == true;
 
+    // An accepted deal that can be ordered floats its slider over the chat
+    // (which scrolls behind it) instead of sitting in a bottom bar.
+    final floatingOrder = status == 'accepted' && canPay;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+
     return Column(
       children: [
         _buildSummaryCard(n),
         Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _fetchDetail,
-            child: _buildChatList(n),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: _fetchDetail,
+                  child: _buildChatList(
+                    n,
+                    // Room for the floating slider below the last message.
+                    bottomRoom: floatingOrder
+                        ? _orderSliderGap * 2 + 56 + safeBottom
+                        : 0,
+                  ),
+                ),
+              ),
+              if (floatingOrder)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: _orderSliderGap + safeBottom,
+                  child: _buildOrderSlider(),
+                ),
+            ],
           ),
         ),
 
         // Bottom Action Bar — chat stays open on converted orders so the
         // wholesaler can follow up; only closed states hide the composer.
-        if (!['rejected', 'expired'].contains(status))
+        if (floatingOrder)
+          const SizedBox.shrink()
+        else if (!['rejected', 'expired'].contains(status))
           _buildBottomActions(status, currentOfferBy, canPay)
         else
           _buildClosedBar(n),
@@ -1175,7 +1201,7 @@ class _NegotiationDetailScreenState
     return _sameDay(ta, tb) && tb.difference(ta).abs() <= _groupGap;
   }
 
-  Widget _buildChatList(Map<String, dynamic> n) {
+  Widget _buildChatList(Map<String, dynamic> n, {double bottomRoom = 0}) {
     final history = (n['history'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final entries = <Map<String, dynamic>>[...history, ..._optimisticMessages];
     final timeFormat = DateFormat(
@@ -1231,7 +1257,7 @@ class _NegotiationDetailScreenState
       child: ListView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + bottomRoom),
         children: children,
       ),
     );
@@ -1513,19 +1539,35 @@ class _NegotiationDetailScreenState
     );
   }
 
+  /// Gap between the floating order slider and the bottom edge (and the
+  /// last message above it).
+  static const double _orderSliderGap = 12;
+
+  /// Slide to order, so an order isn't started by a stray tap. Floats over
+  /// the chat with a soft shadow.
+  Widget _buildOrderSlider() {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        shadows: [
+          BoxShadow(
+            color: AppColors.primaryDeep.withValues(alpha: 0.28),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SlideToConfirm(
+        label: context.l10n.dealSlideToOrder,
+        icon: Icons.currency_rupee_rounded,
+        loading: _isActioning,
+        onConfirmed: _proceedToOrder,
+      ),
+    );
+  }
+
   Widget _buildActionRow(String status, String currentOfferBy, bool canPay) {
-    if (status == 'accepted' && canPay) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        // Slide to confirm, so an order isn't started by a stray tap.
-        child: SlideToConfirm(
-          label: context.l10n.homeProceedToOrder,
-          icon: HugeIcons.strokeRoundedWallet01,
-          loading: _isActioning,
-          onConfirmed: _proceedToOrder,
-        ),
-      );
-    }
+    if (status == 'accepted' && canPay) return _buildOrderSlider();
 
     if (status == 'accepted') {
       return Container(

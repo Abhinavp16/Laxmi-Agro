@@ -6769,6 +6769,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View order'**
   String get notificationsActionViewOrder;
+
+  /// No description provided for @dealSlideToOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide to order'**
+  String get dealSlideToOrder;
 }
 
 class _AppLocalizationsDelegate
