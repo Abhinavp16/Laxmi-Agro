@@ -7475,10 +7475,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     );
   }
 
+  /// One bottom-nav tab. The active one is a solid green pill with a bigger
+  /// white icon and no label; the others keep a grey icon and label.
   Widget _buildNavItem(IconData icon, String label, int index, {int badge = 0}) {
     final isSelected = _selectedNavIndex == index;
     final duration = AppMotion.of(context, AppMotion.base);
-    final color = isSelected ? AppColors.primary : AppColors.textTertiary;
+    const color = AppColors.textTertiary;
 
     return Expanded(
       child: Semantics(
@@ -7505,20 +7507,34 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                   AnimatedContainer(
                     duration: duration,
                     curve: AppMotion.emphasized,
-                    width: isSelected ? 56 : 40,
-                    height: 30,
+                    width: isSelected ? 60 : 40,
+                    height: isSelected ? 40 : 30,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primarySoft
-                          : AppColors.primarySoft.withValues(alpha: 0),
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0),
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                   ),
-                  HugeIcon(icon: icon, color: color, size: 22),
+                  // Grows and turns white when its tab is active.
+                  TweenAnimationBuilder<Color?>(
+                    tween: ColorTween(end: isSelected ? Colors.white : color),
+                    duration: duration,
+                    builder: (context, iconColor, _) => AnimatedScale(
+                      scale: isSelected ? 26 / 22 : 1,
+                      duration: duration,
+                      curve: AppMotion.emphasized,
+                      child: HugeIcon(
+                        icon: icon,
+                        color: iconColor ?? color,
+                        size: 22,
+                      ),
+                    ),
+                  ),
                   if (badge > 0)
                     Positioned(
-                      right: isSelected ? 6 : 0,
-                      top: -4,
+                      right: isSelected ? 8 : 0,
+                      top: isSelected ? -2 : -4,
                       child: AnimatedScale(
                         scale: 1,
                         duration: duration,
@@ -7547,15 +7563,32 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: duration,
-                style: AppFonts.jakarta(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: color,
+              // The active tab's label fades and folds away; the pill
+              // says it.
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: duration,
+                  curve: AppMotion.emphasized,
+                  alignment: Alignment.topCenter,
+                  heightFactor: isSelected ? 0 : 1,
+                  child: AnimatedOpacity(
+                    duration: duration,
+                    opacity: isSelected ? 0 : 1,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.jakarta(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),
