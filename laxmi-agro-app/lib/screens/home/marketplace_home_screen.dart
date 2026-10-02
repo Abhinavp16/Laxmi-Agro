@@ -7586,13 +7586,19 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
               size: 22,
             ),
           ),
-          // The label unfolds beside the icon in the active pill.
+          // The label unfolds beside the icon in the active pill. The spring
+          // overshoots, so the fold is kept from going below zero (Align
+          // rejects a negative width factor).
           ClipRect(
-            child: AnimatedAlign(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: isSelected ? 1 : 0),
               duration: duration,
               curve: curve,
-              alignment: Alignment.centerLeft,
-              widthFactor: isSelected ? 1 : 0,
+              builder: (context, fold, child) => Align(
+                alignment: Alignment.centerLeft,
+                widthFactor: math.max(0, fold),
+                child: child,
+              ),
               child: AnimatedOpacity(
                 duration: AppMotion.of(context, AppMotion.slow),
                 opacity: isSelected ? 1 : 0,
