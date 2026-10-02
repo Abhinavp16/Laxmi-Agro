@@ -3906,8 +3906,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 ? null
                 : (_isWholesaler ? _sendCartAsRequirement : _proceedToCheckout),
           ),
-        // Keeps the checkout bar (or the list's end) clear of the nav.
-        SizedBox(height: _navOverlap),
+        // The checkout bar's own bottom safe area already covers the
+        // floating nav (the body's bottom padding includes it), so its white
+        // panel runs behind the nav to the bottom edge.
       ],
     );
   }

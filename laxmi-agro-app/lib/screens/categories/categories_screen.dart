@@ -1080,7 +1080,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       // grey area with a rounded top-left corner.
       child: Scaffold(
         backgroundColor: AppColors.surfaceLight,
+        // The panels run to the bottom edge (behind the Home tabs' floating
+        // nav); their lists keep their last items clear via [_bottomInset].
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
               _isRoute ? _buildBrandHeader() : _buildTabHeader(),
