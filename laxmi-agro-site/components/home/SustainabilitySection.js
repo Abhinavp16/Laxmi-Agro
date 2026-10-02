@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
+import Icon from '@/components/Icon';
+import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
 
 export default function SustainabilitySection() {
     return (
@@ -43,10 +45,7 @@ export default function SustainabilitySection() {
                             className="w-full sm:w-auto justify-center px-6 py-3.5 sm:px-8 sm:py-4 bg-brand-primary text-white rounded-full font-bold text-sm sm:text-base hover:bg-brand-secondary transition-all shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] flex items-center gap-3 group"
                         >
                             Join as a Dealer
-                            <svg className="group-hover:translate-x-1 transition-transform" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                            </svg>
+                            <Icon icon={ArrowRight02Icon} size={20} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
                         </Link>
                         <Link
                             href="/#products"

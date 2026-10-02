@@ -12,6 +12,7 @@ function getPageHeroIndex(pathname = '') {
     if (pathname === '/products' || pathname.startsWith('/products/') || pathname.startsWith('/category/')) return 2;
     if (pathname === '/dealership' || pathname === '/dealer-agreement' || pathname === '/dealer-pricing') return 3;
     if (pathname === '/contact') return 4;
+    if (pathname === '/insights') return 2;
     return 4;
 }
 

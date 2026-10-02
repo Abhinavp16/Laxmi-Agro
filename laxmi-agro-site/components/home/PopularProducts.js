@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
+import Icon from '@/components/Icon';
+import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
 import FeaturedProductCard from '@/components/products/FeaturedProductCard';
 import {
     defaultFeaturedProducts,
@@ -60,9 +62,7 @@ export default function PopularProducts() {
                         className="inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 bg-text-primary text-white font-bold rounded-full hover:bg-brand-primary transition-all duration-300 group shadow-xl"
                     >
                         View All Products
-                        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
+                        <Icon icon={ArrowRight02Icon} size={20} strokeWidth={2} className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>
             </div>
