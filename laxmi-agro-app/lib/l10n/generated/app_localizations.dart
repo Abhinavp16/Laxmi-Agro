@@ -6775,6 +6775,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slide to order'**
   String get dealSlideToOrder;
+
+  /// No description provided for @dealYourTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'your turn'**
+  String get dealYourTurn;
 }
 
 class _AppLocalizationsDelegate

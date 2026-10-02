@@ -1112,5 +1112,6 @@
   "notificationsActionViewOrders": "ऑर्डर देखें",
   "notificationsActionOpenDeal": "डील खोलें",
   "notificationsActionViewOrder": "ऑर्डर देखें",
-  "dealSlideToOrder": "ऑर्डर के लिए स्लाइड करें"
+  "dealSlideToOrder": "ऑर्डर के लिए स्लाइड करें",
+  "dealYourTurn": "आपकी बारी"
 }

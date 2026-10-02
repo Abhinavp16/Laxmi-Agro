@@ -3878,4 +3878,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dealSlideToOrder => 'Slide to order';
+
+  @override
+  String get dealYourTurn => 'your turn';
 }

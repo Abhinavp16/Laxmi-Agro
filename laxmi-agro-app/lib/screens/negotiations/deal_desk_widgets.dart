@@ -263,10 +263,13 @@ class DealStatusStepper extends StatelessWidget {
 // Inbox row
 // ---------------------------------------------------------------------------
 
-/// One Deal Desk conversation in an inbox list: thumbnail, product name (or
-/// cart summary), negotiation number and quantity, status chip, who moved
-/// last, your price / latest price / total, relative time, a needs-reply dot
-/// and an optional action button.
+/// One Deal Desk conversation in an inbox list, laid out around a progress
+/// tracker: thumbnail, product name (or cart summary) and one line of
+/// quantity · latest price · total, then Requested → Price talk → Agreed with
+/// the current step named (and "your turn" when Laxmi Agro is waiting), then
+/// an optional action button. Declined/expired deals show their status chip
+/// in place of the tracker. Relative time and a needs-reply dot sit top
+/// right.
 class DealInboxTile extends StatelessWidget {
   /// [negotiation]: a row from `GET /negotiations` (the detail response works
   /// too). Reads `product`/`productSnapshot`, optional `items`,
@@ -332,14 +335,18 @@ class DealInboxTile extends StatelessWidget {
       fallback: l10n.negotiationsUnknownProduct,
     );
     final imageUrl = (titleSource?['image'] ?? '').toString();
-    final number = (negotiation['negotiationNumber'] ?? '').toString();
     final quantity = DealDeskPresentation.quantityOf(negotiation);
+    final suffix = DealDeskPresentation.unitSuffix(product, l10n);
+    final price = negotiation['currentPricePerUnit'];
+    final total = negotiation['currentTotalPrice'];
+    // One line: quantity · latest price · total.
     final metaParts = <String>[
-      number.isNotEmpty ? number : l10n.negotiationTitleFallback,
       if (items.length > 1)
         l10n.commonItemsCount(items.length)
       else
         dealQuantityText(l10n, product, quantity),
+      if (price != null) '${DealDeskPresentation.rupees(price)}$suffix',
+      if (total != null) DealDeskPresentation.rupees(total),
     ];
     final time =
         _parseTime(negotiation['updatedAt']) ??
@@ -351,14 +358,8 @@ class DealInboxTile extends StatelessWidget {
           orderShortcut: orderShortcut,
         );
 
-    final offerBy = negotiation['currentOfferBy']?.toString() ?? '';
-    final String? lastMove = !DealDeskPresentation.isActive(negotiation)
-        ? null
-        : replyNeeded
-        ? l10n.dealLastMoveLaxmi
-        : offerBy == 'wholesaler' && kind != DealStatusKind.requested
-        ? l10n.dealLastMoveYou
-        : null;
+    final closed =
+        kind == DealStatusKind.declined || kind == DealStatusKind.expired;
 
     return Pressable(
       onTap: onTap,
@@ -381,16 +382,16 @@ class DealInboxTile extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   child: Container(
-                    width: 56,
-                    height: 56,
+                    width: 48,
+                    height: 48,
                     color: AppColors.gray50,
                     child: AppImage(
                       imageUrl: imageUrl,
                       blurHash: titleSource?['blurHash']?.toString(),
                       category: (titleSource?['category'] ?? '').toString(),
                       name: name,
-                      width: 56,
-                      height: 56,
+                      width: 48,
+                      height: 48,
                     ),
                   ),
                 ),
@@ -451,52 +452,13 @@ class DealInboxTile extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                DealStatusChip(negotiation: negotiation, dense: true),
-                if (lastMove != null)
-                  Text(
-                    lastMove,
-                    style: AppFonts.jakarta(
-                      fontSize: 12,
-                      fontWeight: replyNeeded
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: replyNeeded
-                          ? AppColors.primaryDeep
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                if (resolvedAction == DealTileAction.underReview)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const HugeIcon(
-                        icon: HugeIcons.strokeRoundedClock01,
-                        size: 14,
-                        color: AppColors.textTertiary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        l10n.homeUnderReview,
-                        style: AppFonts.jakarta(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _PricePanel(negotiation: negotiation, kind: kind, product: product),
+            const SizedBox(height: 14),
+            if (closed)
+              DealStatusChip(negotiation: negotiation, dense: true)
+            else
+              _DealTrack(kind: kind, yourTurn: replyNeeded),
             if (onAction != null && _hasButton(resolvedAction)) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _actionButton(context, resolvedAction),
             ],
           ],
@@ -546,116 +508,121 @@ class DealInboxTile extends StatelessWidget {
   }
 }
 
-/// Your price | latest price | total, in an inset panel.
-class _PricePanel extends StatelessWidget {
-  const _PricePanel({
-    required this.negotiation,
-    required this.kind,
-    required this.product,
-  });
+/// Requested → Price talk → Agreed, for an inbox card: done steps are
+/// green, the current one is a ring (amber while it's your turn, green once
+/// agreed) and named underneath. Deals with an order count as agreed; the
+/// app's deal flow ends there.
+class _DealTrack extends StatelessWidget {
+  const _DealTrack({required this.kind, required this.yourTurn});
 
-  final Map<String, dynamic> negotiation;
   final DealStatusKind kind;
-  final Map<String, dynamic>? product;
+  final bool yourTurn;
+
+  int get _current => switch (kind) {
+    DealStatusKind.requested => 0,
+    DealStatusKind.newPrice || DealStatusKind.yourCounter => 1,
+    _ => 2,
+  };
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final suffix = DealDeskPresentation.unitSuffix(product, l10n);
-    final agreed =
-        kind == DealStatusKind.acceptedOrderPending ||
-        kind == DealStatusKind.orderCreated;
-    final byLaxmi = negotiation['currentOfferBy']?.toString() == 'admin';
-    final latestLabel = agreed
-        ? l10n.dealPriceAgreed
-        : byLaxmi
-        ? l10n.dealPriceLaxmi
-        : l10n.dealPriceCurrent;
-    final highlight = agreed || byLaxmi;
+    final current = _current;
+    final labels = [
+      l10n.dealStepRequested,
+      l10n.dealStepTalking,
+      l10n.dealStepAgreed,
+    ];
+    final ringColor = yourTurn ? AppColors.accent : AppColors.primary;
+    // The current step's name, with what it's waiting on.
+    final currentLabel = yourTurn
+        ? '${labels[current]} · ${l10n.dealYourTurn}'
+        : labels[current];
 
-    Widget cell(
-      String label,
-      String value, {
-      String? unit,
-      Color color = AppColors.textPrimary,
-      CrossAxisAlignment align = CrossAxisAlignment.start,
-      bool strong = false,
-    }) {
-      return Expanded(
-        child: Column(
-          crossAxisAlignment: align,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppFonts.jakarta(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textTertiary,
-              ),
+    Widget dot(int i) {
+      final done = i < current;
+      final isCurrent = i == current;
+      if (isCurrent) {
+        final finished = current == labels.length - 1;
+        return Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: finished ? AppColors.primary : AppColors.surfaceLight,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: finished ? AppColors.primarySoft : ringColor,
+              width: 3.5,
             ),
-            const SizedBox(height: 3),
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: value,
-                    style: AppText.price(
-                      fontSize: strong ? 15 : 14,
-                      fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                  if (unit != null)
-                    TextSpan(
-                      text: unit,
-                      style: AppFonts.jakarta(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                ],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
+        );
+      }
+      return Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: done ? AppColors.primary : AppColors.border,
+          shape: BoxShape.circle,
         ),
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          cell(
-            l10n.dealPriceYours,
-            DealDeskPresentation.rupees(negotiation['requestedPricePerUnit']),
-            unit: suffix,
-          ),
-          const SizedBox(width: 8),
-          cell(
-            latestLabel,
-            DealDeskPresentation.rupees(negotiation['currentPricePerUnit']),
-            unit: suffix,
-            color: highlight ? AppColors.primaryDeep : AppColors.textPrimary,
-            align: CrossAxisAlignment.center,
-          ),
-          const SizedBox(width: 8),
-          cell(
-            l10n.commonTotal,
-            DealDeskPresentation.rupees(negotiation['currentTotalPrice']),
-            align: CrossAxisAlignment.end,
-            strong: true,
-          ),
-        ],
+    return Semantics(
+      label: currentLabel,
+      child: ExcludeSemantics(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                for (var i = 0; i < labels.length; i++) ...[
+                  dot(i),
+                  if (i < labels.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 3,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: i < current
+                              ? AppColors.primary
+                              : AppColors.border,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 7),
+            // Each name sits under its own dot (start, middle, end), so the
+            // longer "Price talk · your turn" still fits in the middle.
+            SizedBox(
+              height: 16,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < labels.length; i++)
+                    Align(
+                      alignment: Alignment(-1 + 2 * i / (labels.length - 1), 0),
+                      child: Text(
+                        i == current ? currentLabel : labels[i],
+                        maxLines: 1,
+                        style: AppFonts.jakarta(
+                          fontSize: 11.5,
+                          fontWeight: i == current
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: i == current
+                              ? (yourTurn
+                                    ? AppColors.warning
+                                    : AppColors.primaryDeep)
+                              : AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -681,7 +648,7 @@ class DealInboxSkeleton extends StatelessWidget {
           children: [
             Row(
               children: [
-                Skeleton(width: 56, height: 56, radius: AppRadius.md),
+                Skeleton(width: 48, height: 48, radius: AppRadius.md),
                 SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -689,7 +656,7 @@ class DealInboxSkeleton extends StatelessWidget {
                     children: [
                       Skeleton(height: 14),
                       SizedBox(height: 8),
-                      Skeleton(width: 140, height: 11),
+                      Skeleton(width: 170, height: 11),
                     ],
                   ),
                 ),
@@ -698,9 +665,28 @@ class DealInboxSkeleton extends StatelessWidget {
               ],
             ),
             SizedBox(height: 14),
-            Skeleton(width: 120, height: 20, radius: AppRadius.pill),
-            SizedBox(height: 12),
-            Skeleton(height: 46, radius: AppRadius.md),
+            // The progress tracker: three dots on a line, names under them.
+            Row(
+              children: [
+                Skeleton(width: 12, height: 12, radius: AppRadius.pill),
+                Expanded(child: Skeleton(height: 3)),
+                Skeleton(width: 18, height: 18, radius: AppRadius.pill),
+                Expanded(child: Skeleton(height: 3)),
+                Skeleton(width: 12, height: 12, radius: AppRadius.pill),
+              ],
+            ),
+            SizedBox(height: 7),
+            Row(
+              children: [
+                Skeleton(width: 56, height: 10),
+                Spacer(),
+                Skeleton(width: 60, height: 10),
+                Spacer(),
+                Skeleton(width: 44, height: 10),
+              ],
+            ),
+            SizedBox(height: 14),
+            Skeleton(height: 44, radius: AppRadius.pill),
           ],
         ),
       ),

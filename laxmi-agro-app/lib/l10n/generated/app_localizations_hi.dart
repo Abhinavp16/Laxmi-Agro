@@ -3843,4 +3843,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get dealSlideToOrder => 'ऑर्डर के लिए स्लाइड करें';
+
+  @override
+  String get dealYourTurn => 'आपकी बारी';
 }
