@@ -7408,10 +7408,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                     clipBehavior: Clip.none,
                     children: [
                       Positioned.fill(
-                        child: ClipPath(
-                          clipper: const ShapeBorderClipper(
-                            shape: StadiumBorder(),
-                          ),
+                        // A rounded-rect clip (not a path): it holds around
+                        // a blur under transforms too, and is cheaper.
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
                           // Frosted glass: the page scrolling behind shows
                           // through.
                           child: BackdropFilter.grouped(

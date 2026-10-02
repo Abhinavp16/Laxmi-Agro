@@ -96,65 +96,74 @@ class FloatingCartBar extends ConsumerWidget {
                     semanticLabel:
                         '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
                     // Frosted glass: the page behind shows through, blurred.
-                    // Grouped, so it shares the nav's backdrop read.
-                    child: BackdropFilter.grouped(
-                      filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
-                        height: _height,
-                        color: AppColors.primary.withValues(alpha: 0.82),
-                        // The round thumbnails sit concentric with the pill's ends.
-                        padding: const EdgeInsets.only(
-                          left: (_height - _Thumbs.size) / 2,
-                          right: 16,
-                        ),
-                        // The thumbnails and the text each spring to their
-                        // new widths, so the text slides along as the pill
-                        // grows instead of jumping.
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _Thumbs(items: cart.items),
-                            const SizedBox(width: 10),
-                            AnimatedSize(
-                              duration: AppMotion.of(context, _springDuration),
-                              curve: _spring,
-                              alignment: Alignment.centerLeft,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  RollingNumber(
-                                    value: count,
-                                    format: (value) =>
-                                        l10n.commonItemsCount(value.toInt()),
-                                    style: AppFonts.jakarta(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.85,
+                    // Grouped, so it shares the nav's backdrop read. Its own
+                    // rounded clip: under the press-scale transform the
+                    // Material's path clip is lost around a blur and the
+                    // pill turns square.
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(_height / 2),
+                      child: BackdropFilter.grouped(
+                        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          height: _height,
+                          color: AppColors.primary.withValues(alpha: 0.82),
+                          // The round thumbnails sit concentric with the pill's ends.
+                          padding: const EdgeInsets.only(
+                            left: (_height - _Thumbs.size) / 2,
+                            right: 16,
+                          ),
+                          // The thumbnails and the text each spring to their
+                          // new widths, so the text slides along as the pill
+                          // grows instead of jumping.
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _Thumbs(items: cart.items),
+                              const SizedBox(width: 10),
+                              AnimatedSize(
+                                duration: AppMotion.of(
+                                  context,
+                                  _springDuration,
+                                ),
+                                curve: _spring,
+                                alignment: Alignment.centerLeft,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    RollingNumber(
+                                      value: count,
+                                      format: (value) =>
+                                          l10n.commonItemsCount(value.toInt()),
+                                      style: AppFonts.jakarta(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  RollingNumber(
-                                    value: cart.subtotal,
-                                    format: (value) =>
-                                        '₹${NumberFormatter.formatPrice(value)}',
-                                    style: AppFonts.jakarta(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                    RollingNumber(
+                                      value: cart.subtotal,
+                                      format: (value) =>
+                                          '₹${NumberFormatter.formatPrice(value)}',
+                                      style: AppFonts.jakarta(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            const HugeIcon(
-                              icon: HugeIcons.strokeRoundedArrowRight01,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              const HugeIcon(
+                                icon: HugeIcons.strokeRoundedArrowRight01,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
