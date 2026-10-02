@@ -6764,12 +6764,6 @@ abstract class AppLocalizations {
   /// **'Open deal'**
   String get notificationsActionOpenDeal;
 
-  /// No description provided for @notificationsActionShopNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Shop now'**
-  String get notificationsActionShopNow;
-
   /// No description provided for @notificationsActionViewOrder.
   ///
   /// In en, this message translates to:

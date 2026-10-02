@@ -3839,8 +3839,5 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notificationsActionOpenDeal => 'डील खोलें';
 
   @override
-  String get notificationsActionShopNow => 'अभी खरीदें';
-
-  @override
   String get notificationsActionViewOrder => 'ऑर्डर देखें';
 }

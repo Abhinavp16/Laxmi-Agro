@@ -160,10 +160,15 @@ class _NotificationsCenterScreenState
     );
   }
 
-  /// The one action worth a button, named after where the notification
-  /// leads; null when it leads nowhere specific.
+  /// The action button for important notifications (orders and deals),
+  /// named after where it leads. Price updates, offers and anything else get
+  /// no button; tapping the row still opens wherever they lead, if anywhere.
   String? _actionLabel(Map<String, dynamic> notification) {
     final l10n = context.l10n;
+    final kind = _kindOf(notification['type']?.toString() ?? '');
+    if (kind != _NotificationKind.order && kind != _NotificationKind.deal) {
+      return null;
+    }
     final destination = NotificationNavigationService.instance.destinationFor(
       _payloadOf(notification),
     );
@@ -187,7 +192,6 @@ class _NotificationsCenterScreenState
       return l10n.notificationsActionOpenDeal;
     }
     if (route == '/previous-orders') return l10n.notificationsActionViewOrders;
-    if (route == '/home') return l10n.notificationsActionShopNow;
     return null;
   }
 

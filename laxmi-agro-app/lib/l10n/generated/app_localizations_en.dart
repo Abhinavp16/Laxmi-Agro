@@ -3874,8 +3874,5 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsActionOpenDeal => 'Open deal';
 
   @override
-  String get notificationsActionShopNow => 'Shop now';
-
-  @override
   String get notificationsActionViewOrder => 'View order';
 }
