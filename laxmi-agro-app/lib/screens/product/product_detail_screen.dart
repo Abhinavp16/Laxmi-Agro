@@ -350,6 +350,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         category: category,
         name: name,
         fit: BoxFit.contain,
+        // A fixed decode size while the photo flies in from its card, with
+        // the card's smaller copy shown until this sharper one is ready.
+        decodeWidth: MediaQuery.sizeOf(context).width,
+        previewFromSmaller: true,
       ),
     );
   }
@@ -812,8 +816,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final bp = MediaQuery.of(context).padding.bottom;
-    final tp = MediaQuery.of(context).padding.top;
+    final bp = MediaQuery.paddingOf(context).bottom;
+    final tp = MediaQuery.paddingOf(context).top;
 
     final String pageKey;
     final Widget page;
@@ -2351,7 +2355,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       debugPrint('Fetching related products for: ${widget.productId}');
       setState(() => _isRelatedLoading = true);
       final r = await _dio.get('/products/${widget.productId}/related');
-      debugPrint('Related products response: ${r.data}');
       if (mounted) {
         setState(() {
           _relatedProducts = r.data['data'] ?? [];

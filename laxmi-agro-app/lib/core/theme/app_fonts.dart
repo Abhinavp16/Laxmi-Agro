@@ -7,9 +7,14 @@ class AppFonts {
   // squeezes Hindi vowel signs together.
   static bool hindi = false;
 
-  static List<String> get _fallback => [
+  static final List<String> _fallback = [
     GoogleFonts.notoSansDevanagari().fontFamily!,
   ];
+
+  // Plus Jakarta Sans family name per weight/style. google_fonts resolves
+  // (and starts loading) each one once; after that a style is a plain
+  // TextStyle copy, which matters at hundreds of styles per rebuild.
+  static final Map<(FontWeight, FontStyle), String> _jakartaFamilies = {};
 
   /// Letter spacing actually used (negative spacing is removed for Hindi).
   static double? spacingFor(double? letterSpacing) {
@@ -38,8 +43,17 @@ class AppFonts {
     double? decorationThickness,
     List<Shadow>? shadows,
   }) {
-    return GoogleFonts.plusJakartaSans(
-      textStyle: textStyle,
+    final base = textStyle ?? const TextStyle();
+    final weight = fontWeight ?? base.fontWeight ?? FontWeight.w400;
+    final style = fontStyle ?? base.fontStyle ?? FontStyle.normal;
+    final family = _jakartaFamilies.putIfAbsent(
+      (weight, style),
+      () => GoogleFonts.plusJakartaSans(
+        fontWeight: weight,
+        fontStyle: style,
+      ).fontFamily!,
+    );
+    return base.copyWith(
       color: color,
       fontSize: sizeFor(fontSize),
       fontWeight: fontWeight,
@@ -50,7 +64,9 @@ class AppFonts {
       decorationColor: decorationColor,
       decorationThickness: decorationThickness,
       shadows: shadows,
-    ).copyWith(fontFamilyFallback: _fallback);
+      fontFamily: family,
+      fontFamilyFallback: _fallback,
+    );
   }
 
   // Headings used to be Montserrat. The app now uses one family, so this

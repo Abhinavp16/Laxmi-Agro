@@ -77,7 +77,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   static const Duration _guestPromptRepeatDuration = Duration(hours: 24);
   late int _selectedNavIndex;
   bool _isCheckingOut = false;
-  int _currentCarouselIndex = 0;
+  // The visible slide of each carousel. Notifiers, so a slide change
+  // rebuilds only the dots and video slides, not the whole screen.
+  final ValueNotifier<int> _currentCarouselIndex = ValueNotifier(0);
   // Slightly under full width so the next banner peeks in at the edge.
   final PageController _carouselController = PageController(
     viewportFraction: 0.94,
@@ -175,7 +177,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   // Promo banners from API (second carousel)
   List<Map<String, dynamic>> _promoBanners = [];
   bool _isLoadingPromoBanners = true;
-  int _currentPromoBannerIndex = 0;
+  final ValueNotifier<int> _currentPromoBannerIndex = ValueNotifier(0);
   final PageController _promoBannerController = PageController();
   Timer? _promoAutoRotateTimer;
 
@@ -412,7 +414,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       );
       if (!mounted) return;
       debugPrint('🟢 [BRANDS] Response status: ${response.statusCode}');
-      debugPrint('🟢 [BRANDS] Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -963,7 +964,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
 
   void _goToNextHeroSlide() {
     if (_carouselController.hasClients && _heroBanners.length > 1) {
-      final next = (_currentCarouselIndex + 1) % _heroBanners.length;
+      final next = (_currentCarouselIndex.value + 1) % _heroBanners.length;
       _carouselController.animateToPage(
         next,
         duration: const Duration(milliseconds: 400),
@@ -1000,7 +1001,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       _promoAutoRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         if (_promoBannerController.hasClients &&
             _isShowingOnHome(_promoCarouselKey)) {
-          final next = (_currentPromoBannerIndex + 1) % _promoBanners.length;
+          final next =
+              (_currentPromoBannerIndex.value + 1) % _promoBanners.length;
           _promoBannerController.animateToPage(
             next,
             duration: const Duration(milliseconds: 400),
@@ -1399,14 +1401,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             child: Stack(
               children: [
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 60,
+                  top: MediaQuery.paddingOf(ctx).top + 60,
                   right: 12,
                   child: GestureDetector(
                     onTap: () {}, // absorb taps on the popup itself
                     child: Material(
                       color: Colors.transparent,
                       child: Container(
-                        width: MediaQuery.of(context).size.width * 0.88,
+                        width: MediaQuery.sizeOf(ctx).width * 0.88,
                         constraints: const BoxConstraints(maxHeight: 420),
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
@@ -1811,6 +1813,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     _pinCtrl.dispose();
     _couponCtrl.dispose();
     _promoBannerController.dispose();
+    _currentCarouselIndex.dispose();
+    _currentPromoBannerIndex.dispose();
     _dealPages.dispose();
     super.dispose();
   }
@@ -3155,8 +3159,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 focusNode: _searchFocusNode,
                 onChanged: _handleSearchTextChanged,
                 onSubmitted: _submitSearch,
-                onTap: () => setState(() {}),
-                onTapOutside: (_) => setState(() {}),
                 textInputAction: TextInputAction.search,
                 style: AppFonts.jakarta(
                   fontSize: 15,
@@ -3720,7 +3722,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     if (ref.watch(guestModeProvider)) {
       return _buildCustomerPreviewCart();
     }
-    final cart = ref.watch(cartProvider);
+    // The cart is watched in here, so a cart change rebuilds this tab only.
+    return Consumer(
+      builder: (context, ref, _) => _buildCartBody(ref.watch(cartProvider)),
+    );
+  }
+
+  Widget _buildCartBody(CartState cart) {
     final l10n = context.l10n;
     final hasActiveCoupon = _hasActiveAppliedCoupon(cart);
     final isCouponLocked =
@@ -4359,7 +4367,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTablet = screenWidth >= 700;
     final profileMaxWidth = isTablet ? 720.0 : double.infinity;
-    final wishlistCount = ref.watch(wishlistProvider).items.length;
+    final wishlistCount = ref.watch(
+      wishlistProvider.select((w) => w.items.length),
+    );
     final ordersSnapshot =
         ref.watch(recentOrdersProvider).value ?? OrdersSnapshot.empty;
     final activeOrders = profileActiveOrders(ordersSnapshot.orders);
@@ -4811,32 +4821,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             _buildLanguageItem(LocaleNotifier.english, l10n.languageEnglish),
             _buildLanguageItem(LocaleNotifier.hindi, l10n.languageHindi),
           ],
-          // Round frosted language switch, sized like the bell next to it.
-          child: ClipOval(
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: AnimatedSwitcher(
-                  duration: AppMotion.of(context, AppMotion.base),
-                  child: Text(
-                    context.isHindi ? 'हि' : 'EN',
-                    key: ValueKey(context.isHindi),
-                    style: AppFonts.jakarta(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
+          // Round translucent language switch, sized like the bell next to
+          // it. No backdrop blur: only the header's green sits behind it.
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+            ),
+            child: AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.base),
+              child: Text(
+                context.isHindi ? 'हि' : 'EN',
+                key: ValueKey(context.isHindi),
+                style: AppFonts.jakarta(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -4915,7 +4919,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             itemCount: _heroBanners.length,
             physics: const BouncingScrollPhysics(),
             onPageChanged: (index) {
-              setState(() => _currentCarouselIndex = index);
+              _currentCarouselIndex.value = index;
               // Pause auto-rotate while a video slide is visible.
               final current = _heroBanners[index];
               final currentMedia = (current['mediaType'] ?? 'image').toString();
@@ -4939,23 +4943,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                   padding: padding,
                   child: ClipRRect(
                     borderRadius: radius,
-                    child: mediaType == 'youtube'
-                        ? _HeroYoutubeSlide(
-                            videoUrl: videoUrl,
-                            posterUrl: (item['imageUrl'] ?? '').toString(),
-                            linkUrl: linkUrl,
-                            isActive: _currentCarouselIndex == index,
-                            onOpenLink: () => _handleBannerTap(linkUrl),
-                            onVideoComplete: () => _goToNextHeroSlide(),
-                          )
-                        : _HeroVideoSlide(
-                            videoUrl: videoUrl,
-                            posterUrl: (item['imageUrl'] ?? '').toString(),
-                            linkUrl: linkUrl,
-                            isActive: _currentCarouselIndex == index,
-                            onOpenLink: () => _handleBannerTap(linkUrl),
-                            onVideoComplete: () => _goToNextHeroSlide(),
-                          ),
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _currentCarouselIndex,
+                      builder: (context, current, _) => mediaType == 'youtube'
+                          ? _HeroYoutubeSlide(
+                              videoUrl: videoUrl,
+                              posterUrl: (item['imageUrl'] ?? '').toString(),
+                              linkUrl: linkUrl,
+                              isActive: current == index,
+                              onOpenLink: () => _handleBannerTap(linkUrl),
+                              onVideoComplete: () => _goToNextHeroSlide(),
+                            )
+                          : _HeroVideoSlide(
+                              videoUrl: videoUrl,
+                              posterUrl: (item['imageUrl'] ?? '').toString(),
+                              linkUrl: linkUrl,
+                              isActive: current == index,
+                              onOpenLink: () => _handleBannerTap(linkUrl),
+                              onVideoComplete: () => _goToNextHeroSlide(),
+                            ),
+                    ),
                   ),
                 );
               }
@@ -5098,21 +5105,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         ),
         if (_heroBanners.length > 1) ...[
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _heroBanners.length,
-              (index) => AnimatedContainer(
-                duration: AppMotion.of(context, AppMotion.base),
-                curve: AppMotion.standard,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentCarouselIndex == index ? 18 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentCarouselIndex == index
-                      ? AppColors.primary
-                      : AppColors.gray300,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+          ValueListenableBuilder<int>(
+            valueListenable: _currentCarouselIndex,
+            builder: (context, current, _) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _heroBanners.length,
+                (index) => AnimatedContainer(
+                  duration: AppMotion.of(context, AppMotion.base),
+                  curve: AppMotion.standard,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: current == index ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: current == index
+                        ? AppColors.primary
+                        : AppColors.gray300,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
                 ),
               ),
             ),
@@ -5485,92 +5495,103 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     final rating = product['rating'];
     final reviewCount = product['reviewCount'] ?? product['reviews'];
     final inStock = product['inStock'] != false;
-    final isWishlisted = ref.watch(wishlistProvider).contains(productId);
     final pack = packInfoOf(product);
     final isMeter = isMeterProduct(product);
     final step = _isWholesaler && pack.isPack ? pack.size : 1;
     final minimum = _isWholesaler
         ? wholesaleMinimumOf(product)
         : customerMinimumOf(product);
-    final quantity = ref
-        .watch(cartProvider)
-        .items
-        .where((item) => item.productId == productId)
-        .map((item) => item.quantity)
-        .firstOrNull ??
-        0;
     final stock = product['stock'];
 
-    return ProductCard(
-      name: _getDisplayName(product),
-      brand: brand.isEmpty ? l10n.homeBrandLaxmiAgro : brand,
-      category: product['category']?.toString() ?? '',
-      imageUrl: product['image']?.toString(),
-      price: price,
-      mrp: mrp,
-      unit: pack.isPack || isMeter
-          ? (isMeter ? l10n.uiPerMeter : l10n.uiPerPiece)
-          : null,
-      packNote: pack.isPack ? packPriceText(l10n, pack, price) : null,
-      rating: rating is num ? rating.toDouble() : null,
-      reviewCount: reviewCount is num ? reviewCount.toInt() : null,
-      badge: badgeLabel,
-      badgeTone: badgeTone,
-      inStock: inStock,
-      soldOutLabel: l10n.commonOutOfStock,
-      offLabel: (percent) => l10n.commonPercentOff('$percent'),
-      heroTag: heroTag,
-      wishlisted: isWishlisted,
-      wishlistLabel: isWishlisted
-          ? l10n.uiRemoveFromWishlist
-          : l10n.uiAddToWishlist,
-      onWishlist: () {
-        if (ref.read(guestModeProvider)) {
-          _showGuestModePopup(l10n.homePreviewWishlistDisabled);
-          return;
-        }
-        ref
-            .read(wishlistProvider.notifier)
-            .toggle(
-              WishlistItem(
-                productId: productId,
-                name: product['name']?.toString() ?? '',
-                image: product['image']?.toString(),
-                price: price.toDouble(),
-                mrp: mrp?.toDouble(),
-                category: product['category']?.toString(),
-                nameHindi: product['nameHindi']?.toString(),
-                blurHash: product['blurHash']?.toString(),
-              ),
-            );
+    // Each card watches only its own heart and cart quantity, so a cart or
+    // wishlist change rebuilds the cards it touches, not the whole screen.
+    return Consumer(
+      builder: (context, ref, _) {
+        final isWishlisted = ref.watch(
+          wishlistProvider.select((w) => w.contains(productId)),
+        );
+        final quantity = ref.watch(
+          cartProvider.select(
+            (cart) =>
+                cart.items
+                    .where((item) => item.productId == productId)
+                    .map((item) => item.quantity)
+                    .firstOrNull ??
+                0,
+          ),
+        );
+        return ProductCard(
+          name: _getDisplayName(product),
+          brand: brand.isEmpty ? l10n.homeBrandLaxmiAgro : brand,
+          category: product['category']?.toString() ?? '',
+          imageUrl: product['image']?.toString(),
+          price: price,
+          mrp: mrp,
+          unit: pack.isPack || isMeter
+              ? (isMeter ? l10n.uiPerMeter : l10n.uiPerPiece)
+              : null,
+          packNote: pack.isPack ? packPriceText(l10n, pack, price) : null,
+          rating: rating is num ? rating.toDouble() : null,
+          reviewCount: reviewCount is num ? reviewCount.toInt() : null,
+          badge: badgeLabel,
+          badgeTone: badgeTone,
+          inStock: inStock,
+          soldOutLabel: l10n.commonOutOfStock,
+          offLabel: (percent) => l10n.commonPercentOff('$percent'),
+          heroTag: heroTag,
+          wishlisted: isWishlisted,
+          wishlistLabel: isWishlisted
+              ? l10n.uiRemoveFromWishlist
+              : l10n.uiAddToWishlist,
+          onWishlist: () {
+            if (ref.read(guestModeProvider)) {
+              _showGuestModePopup(l10n.homePreviewWishlistDisabled);
+              return;
+            }
+            ref
+                .read(wishlistProvider.notifier)
+                .toggle(
+                  WishlistItem(
+                    productId: productId,
+                    name: product['name']?.toString() ?? '',
+                    image: product['image']?.toString(),
+                    price: price.toDouble(),
+                    mrp: mrp?.toDouble(),
+                    category: product['category']?.toString(),
+                    nameHindi: product['nameHindi']?.toString(),
+                    blurHash: product['blurHash']?.toString(),
+                  ),
+                );
+          },
+          onTap: () => context.push(
+            '/product/$productId',
+            extra: {
+              'heroTag': heroTag,
+              'heroImage': product['image']?.toString(),
+              'heroBlurHash': product['blurHash']?.toString(),
+            },
+          ),
+          action: QuantityStepper(
+            quantity: quantity,
+            compact: true,
+            expand: true,
+            enabled: inStock,
+            step: step,
+            minimum: minimum,
+            maximum: stock is num && stock > 0 ? stock.toInt() : null,
+            addLabel: l10n.homeAdd,
+            decreaseLabel: l10n.uiDecreaseQuantity,
+            increaseLabel: l10n.uiIncreaseQuantity,
+            displayQuantity: step > 1 ? (value) => '${value ~/ step}' : null,
+            onLimitReached: () => showAppSnack(
+              context,
+              l10n.cartOnlyUnitsAvailable((stock as num).toInt()),
+              tone: SnackTone.error,
+            ),
+            onChanged: (value) => _setCardQuantity(product, value),
+          ),
+        );
       },
-      onTap: () => context.push(
-        '/product/$productId',
-        extra: {
-          'heroTag': heroTag,
-          'heroImage': product['image']?.toString(),
-          'heroBlurHash': product['blurHash']?.toString(),
-        },
-      ),
-      action: QuantityStepper(
-        quantity: quantity,
-        compact: true,
-        expand: true,
-        enabled: inStock,
-        step: step,
-        minimum: minimum,
-        maximum: stock is num && stock > 0 ? stock.toInt() : null,
-        addLabel: l10n.homeAdd,
-        decreaseLabel: l10n.uiDecreaseQuantity,
-        increaseLabel: l10n.uiIncreaseQuantity,
-        displayQuantity: step > 1 ? (value) => '${value ~/ step}' : null,
-        onLimitReached: () => showAppSnack(
-          context,
-          l10n.cartOnlyUnitsAvailable((stock as num).toInt()),
-          tone: SnackTone.error,
-        ),
-        onChanged: (value) => _setCardQuantity(product, value),
-      ),
     );
   }
 
@@ -6712,7 +6733,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             controller: _promoBannerController,
             itemCount: _promoBanners.length,
             physics: const ClampingScrollPhysics(),
-            onPageChanged: (i) => setState(() => _currentPromoBannerIndex = i),
+            onPageChanged: (i) => _currentPromoBannerIndex.value = i,
             itemBuilder: (context, index) {
               final banner = _promoBanners[index];
               final hasImage = (banner['imageUrl'] ?? '').toString().isNotEmpty;
@@ -6874,20 +6895,23 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         ),
         if (_promoBanners.length > 1) ...[
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _promoBanners.length,
-              (index) => AnimatedContainer(
-                duration: AppMotion.of(context, AppMotion.base),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentPromoBannerIndex == index ? 18 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentPromoBannerIndex == index
-                      ? AppColors.primary
-                      : AppColors.gray300,
-                  borderRadius: BorderRadius.circular(4),
+          ValueListenableBuilder<int>(
+            valueListenable: _currentPromoBannerIndex,
+            builder: (context, current, _) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _promoBanners.length,
+                (index) => AnimatedContainer(
+                  duration: AppMotion.of(context, AppMotion.base),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: current == index ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: current == index
+                        ? AppColors.primary
+                        : AppColors.gray300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
             ),
@@ -7279,10 +7303,14 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
 
   Widget _buildBottomNav() {
     final l10n = context.l10n;
-    final cart = ref.watch(cartProvider);
-    final cartCount = ref.watch(guestModeProvider)
+    final isGuest = ref.watch(guestModeProvider);
+    // Only the count: other cart changes don't rebuild the screen.
+    final cartCount = isGuest
         ? 0
-        : cart.displayItemCount(_isWholesaler);
+        : ref.watch(
+            cartProvider.select((c) => c.displayItemCount(_isWholesaler)),
+          );
+    final showCartPill = _selectedNavIndex <= 2 && !isGuest;
     final items = _isWholesaler
         ? [
             _buildNavItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
@@ -7338,81 +7366,88 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           // The floating cart pill rides above the nav, left-aligned with
           // it: the column is as wide as the nav, so they share a left edge
           // even while the nav's width springs between tabs.
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FloatingCartBar(
-                margin: const EdgeInsets.only(bottom: _cartNavGap),
-                visible:
-                    _selectedNavIndex <= 2 &&
-                    !ref.watch(guestModeProvider) &&
-                    MediaQuery.viewInsetsOf(context).bottom == 0,
-                onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
-              ),
-              // The shadow sits outside the pill's clip so it isn't cut off.
-              DecoratedBox(
-                decoration: ShapeDecoration(
-                  shape: const StadiumBorder(),
-                  shadows: [
-                    BoxShadow(
-                      color: AppColors.primaryDeep.withValues(alpha: 0.16),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+          // The cart pill's and the nav's blurs share one read of the page
+          // behind them.
+          child: BackdropGroup(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Its own context reads the keyboard inset, so the keyboard
+                // animating rebuilds only the pill, not every tab.
+                Builder(
+                  builder: (context) => FloatingCartBar(
+                    margin: const EdgeInsets.only(bottom: _cartNavGap),
+                    visible:
+                        showCartPill &&
+                        MediaQuery.viewInsetsOf(context).bottom == 0,
+                    onTap: () => _selectNavIndex(_isWholesaler ? 5 : 3),
+                  ),
                 ),
-                // Only the frosted backdrop is clipped to the pill; the tabs
-                // sit on top unclipped so a badge on the end tab isn't cut
-                // off by the rounded end.
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      child: ClipPath(
-                        clipper: const ShapeBorderClipper(
-                          shape: StadiumBorder(),
-                        ),
-                        // Frosted glass: the page scrolling behind shows
-                        // through.
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(
-                              color: AppColors.surfaceLight.withValues(
-                                alpha: 0.84,
-                              ),
-                              shape: StadiumBorder(
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                // The shadow sits outside the pill's clip so it isn't cut off.
+                DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: const StadiumBorder(),
+                    shadows: [
+                      BoxShadow(
+                        color: AppColors.primaryDeep.withValues(alpha: 0.16),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  // Only the frosted backdrop is clipped to the pill; the tabs
+                  // sit on top unclipped so a badge on the end tab isn't cut
+                  // off by the rounded end.
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: ClipPath(
+                          clipper: const ShapeBorderClipper(
+                            shape: StadiumBorder(),
+                          ),
+                          // Frosted glass: the page scrolling behind shows
+                          // through.
+                          child: BackdropFilter.grouped(
+                            filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                            child: DecoratedBox(
+                              decoration: ShapeDecoration(
+                                color: AppColors.surfaceLight.withValues(
+                                  alpha: 0.84,
+                                ),
+                                shape: StadiumBorder(
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(_navPadding),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < items.length; i++) ...[
-                            if (i > 0) const SizedBox(width: _navGap),
-                            items[i],
+                      Padding(
+                        padding: const EdgeInsets.all(_navPadding),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var i = 0; i < items.length; i++) ...[
+                              if (i > 0) const SizedBox(width: _navGap),
+                              items[i],
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -96,7 +96,8 @@ class FloatingCartBar extends ConsumerWidget {
                     semanticLabel:
                         '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
                     // Frosted glass: the page behind shows through, blurred.
-                    child: BackdropFilter(
+                    // Grouped, so it shares the nav's backdrop read.
+                    child: BackdropFilter.grouped(
                       filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                       child: Container(
                         height: _height,

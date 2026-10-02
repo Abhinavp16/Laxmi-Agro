@@ -326,8 +326,8 @@ class _GlassIconButton extends StatelessWidget {
 
 /// Liquid light on the identity card: soft pools of pale green that melt and
 /// shift like light on water. Holds still when the OS asks for reduced motion,
-/// and pauses with the tab (TickerMode). Without shader support the green
-/// stays plain.
+/// pauses with the tab (TickerMode) and while the card is scrolled off
+/// screen. Without shader support the green stays plain.
 class _CardLiquid extends StatefulWidget {
   const _CardLiquid();
 
@@ -344,10 +344,14 @@ class _CardLiquidState extends State<_CardLiquid>
   static const double _stillTime = 8;
 
   final ValueNotifier<double> _time = ValueNotifier(_stillTime);
+  // Where the motion resumes after a pause, so it doesn't jump back.
+  double _resumeAt = _stillTime;
   late final Ticker _ticker = createTicker(
-    (elapsed) => _time.value = _stillTime + elapsed.inMicroseconds / 1e6,
+    (elapsed) => _time.value = _resumeAt + elapsed.inMicroseconds / 1e6,
   );
   ui.FragmentShader? _shader;
+  ScrollPosition? _scroll;
+  bool _onScreen = true;
 
   @override
   void initState() {
@@ -360,16 +364,40 @@ class _CardLiquidState extends State<_CardLiquid>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final scroll = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+    if (scroll != _scroll) {
+      _scroll?.removeListener(_onScroll);
+      _scroll = scroll?..addListener(_onScroll);
+    }
+    _sync();
+  }
+
+  void _onScroll() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) return;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final onScreen =
+        top + box.size.height > 0 && top < MediaQuery.sizeOf(context).height;
+    if (onScreen == _onScreen) return;
+    _onScreen = onScreen;
+    _sync();
+  }
+
+  void _sync() {
     if (AppMotion.reduced(context)) {
       _ticker.stop();
-      _time.value = _stillTime;
-    } else if (!_ticker.isActive) {
+      _time.value = _resumeAt = _stillTime;
+    } else if (_onScreen && !_ticker.isActive) {
+      _resumeAt = _time.value;
       _ticker.start();
+    } else if (!_onScreen && _ticker.isActive) {
+      _ticker.stop();
     }
   }
 
   @override
   void dispose() {
+    _scroll?.removeListener(_onScroll);
     _ticker.dispose();
     _time.dispose();
     _shader?.dispose();

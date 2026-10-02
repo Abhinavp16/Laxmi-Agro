@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,6 +24,9 @@ final GlobalKey<ScaffoldMessengerState> scafoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
+  // Logs are for development: in profile/release builds they only cost time
+  // on the UI thread.
+  if (!kDebugMode) debugPrint = (String? message, {int? wrapWidth}) {};
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();

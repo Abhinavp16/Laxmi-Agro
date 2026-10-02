@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -149,7 +147,8 @@ class HeaderIconButton extends StatelessWidget {
   final String tooltip;
   final Color color;
 
-  /// Translucent white style for dark or coloured headers.
+  /// Translucent white style for dark or coloured headers. (No backdrop
+  /// blur: on the Home header only flat green sits behind it.)
   final bool onDark;
 
   /// Small count bubble; hidden when null or 0.
@@ -177,15 +176,6 @@ class HeaderIconButton extends StatelessWidget {
         color: onDark ? Colors.white : color,
       ),
     );
-    if (onDark) {
-      // Frosted glass: blur whatever sits behind the button.
-      button = ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: button,
-        ),
-      );
-    }
     return Stack(
       clipBehavior: Clip.none,
       children: [

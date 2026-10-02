@@ -154,6 +154,8 @@ class _PdpImageViewerState extends State<PdpImageViewer>
                           category: widget.category,
                           name: widget.name,
                           fit: BoxFit.contain,
+                          // Zooms up to 4x, so keep every pixel.
+                          fullResolution: true,
                         ),
                       ),
                     ),
