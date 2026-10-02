@@ -1,3 +1,5 @@
+import 'dart:ui' as ui show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -12,10 +14,10 @@ import '../app_image.dart';
 import 'pressable.dart';
 import 'quantity_stepper.dart';
 
-/// Green pill that rises from the bottom while the cart has items: round
-/// product thumbnails, item count, total and an arrow. It's only as wide as
-/// its contents, sits at the left (in line with the page's 16 px gutter),
-/// and eases its width as the numbers change.
+/// Frosted green pill that rises from the bottom while the cart has items:
+/// round thumbnails of the newest items, item count, total and an arrow.
+/// It's only as wide as its contents, sits at the left (in line with the
+/// page's 16 px gutter), and eases its width as things change.
 class FloatingCartBar extends ConsumerWidget {
   const FloatingCartBar({super.key, required this.onTap, this.visible = true});
 
@@ -46,72 +48,84 @@ class FloatingCartBar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Align(
               alignment: Alignment.bottomLeft,
-              child: Pressable(
-                onTap: onTap,
-                haptic: true,
-                color: AppColors.primary,
-                shape: const StadiumBorder(),
-                semanticLabel:
-                    '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
-                child: Container(
-                  height: _height,
-                  // The round thumbnails sit concentric with the pill's ends.
-                  padding: const EdgeInsets.only(
-                    left: (_height - _Thumbs.size) / 2,
-                    right: 16,
-                  ),
-                  decoration: ShapeDecoration(
-                    shape: const StadiumBorder(),
-                    shadows: [
-                      BoxShadow(
-                        color: AppColors.primaryDeep.withValues(alpha: 0.28),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
+              // The shadow sits outside the pill's clip so it isn't cut off.
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: const StadiumBorder(),
+                  shadows: [
+                    BoxShadow(
+                      color: AppColors.primaryDeep.withValues(alpha: 0.26),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Pressable(
+                  onTap: onTap,
+                  haptic: true,
+                  shape: const StadiumBorder(),
+                  semanticLabel:
+                      '${l10n.productViewCart}, ${l10n.commonItemsCount(count)}',
+                  // Frosted glass: the page behind shows through, blurred.
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      height: _height,
+                      color: AppColors.primary.withValues(alpha: 0.82),
+                      // The round thumbnails sit concentric with the pill's ends.
+                      padding: const EdgeInsets.only(
+                        left: (_height - _Thumbs.size) / 2,
+                        right: 16,
                       ),
-                    ],
-                  ),
-                  child: AnimatedSize(
-                    duration: duration,
-                    curve: AppMotion.standard,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _Thumbs(items: cart.items),
-                        const SizedBox(width: 10),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      child: AnimatedSize(
+                        duration: duration,
+                        curve: AppMotion.standard,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            RollingNumber(
-                              value: count,
-                              format: (value) =>
-                                  l10n.commonItemsCount(value.toInt()),
-                              style: AppFonts.jakarta(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.85),
-                              ),
+                            _Thumbs(items: cart.items),
+                            const SizedBox(width: 10),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                RollingNumber(
+                                  value: count,
+                                  format: (value) =>
+                                      l10n.commonItemsCount(value.toInt()),
+                                  style: AppFonts.jakarta(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                  ),
+                                ),
+                                RollingNumber(
+                                  value: cart.subtotal,
+                                  format: (value) =>
+                                      '₹${NumberFormatter.formatPrice(value)}',
+                                  style: AppFonts.jakarta(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                            RollingNumber(
-                              value: cart.subtotal,
-                              format: (value) =>
-                                  '₹${NumberFormatter.formatPrice(value)}',
-                              style: AppFonts.jakarta(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
+                            const SizedBox(width: 12),
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedArrowRight01,
+                              size: 20,
+                              color: Colors.white,
                             ),
                           ],
                         ),
-                        const SizedBox(width: 12),
-                        const HugeIcon(
-                          icon: HugeIcons.strokeRoundedArrowRight01,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -126,54 +140,159 @@ class FloatingCartBar extends ConsumerWidget {
   static const double _height = 58;
 }
 
-class _Thumbs extends StatelessWidget {
+/// Overlapping round thumbnails of the newest cart items (up to three). A
+/// new item pops in at the right, a removed one shrinks away where it was,
+/// and the rest slide into their new places.
+class _Thumbs extends StatefulWidget {
   const _Thumbs({required this.items});
 
   final List<CartItem> items;
 
   static const double size = 36;
+  static const double _overlap = 14;
+  static const int _max = 3;
+
+  @override
+  State<_Thumbs> createState() => _ThumbsState();
+}
+
+class _ThumbEntry {
+  _ThumbEntry(this.item);
+
+  CartItem item;
+  bool leaving = false;
+  int slot = 0;
+
+  String get key => item.cartItemKey;
+}
+
+class _ThumbsState extends State<_Thumbs> {
+  // Shown thumbnails in order, and ones still shrinking away.
+  final List<_ThumbEntry> _entries = [];
+  final List<_ThumbEntry> _leaving = [];
+
+  List<CartItem> get _newest {
+    final items = widget.items;
+    return items.length <= _Thumbs._max
+        ? items
+        : items.sublist(items.length - _Thumbs._max);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _entries.addAll(_newest.map(_ThumbEntry.new));
+  }
+
+  @override
+  void didUpdateWidget(_Thumbs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final exit = AppMotion.of(context, AppMotion.slow);
+    final next = _newest;
+    final nextKeys = {for (final item in next) item.cartItemKey};
+
+    for (final entry in [..._entries]) {
+      if (nextKeys.contains(entry.key)) continue;
+      _entries.remove(entry);
+      entry.leaving = true;
+      _leaving.add(entry);
+      Future<void>.delayed(exit, () {
+        if (mounted && _leaving.remove(entry)) setState(() {});
+      });
+    }
+
+    final current = {for (final entry in _entries) entry.key: entry};
+    final ordered = <_ThumbEntry>[];
+    for (final item in next) {
+      var entry = current[item.cartItemKey];
+      if (entry == null) {
+        // Added back while still shrinking away: grow it again.
+        final back = _leaving.where((e) => e.key == item.cartItemKey);
+        if (back.isNotEmpty) {
+          entry = back.first;
+          _leaving.remove(entry);
+          entry.leaving = false;
+        } else {
+          entry = _ThumbEntry(item);
+        }
+      }
+      entry.item = item;
+      ordered.add(entry);
+    }
+    _entries
+      ..clear()
+      ..addAll(ordered);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final shown = items.take(3).toList();
-    const overlap = 14.0;
-    if (shown.isEmpty) return const SizedBox(width: size, height: size);
+    const size = _Thumbs.size;
+    const step = size - _Thumbs._overlap;
+    final duration = AppMotion.of(context, AppMotion.slow);
+    for (var i = 0; i < _entries.length; i++) {
+      _entries[i].slot = i;
+    }
+    final count = _entries.isEmpty ? 1 : _entries.length;
+
+    Widget thumb(_ThumbEntry entry) => AnimatedPositioned(
+      key: ValueKey(entry.key),
+      duration: duration,
+      curve: AppMotion.emphasized,
+      left: entry.slot * step,
+      top: 0,
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        // Grows in when first shown; shrinks away when leaving.
+        tween: Tween(begin: 0, end: entry.leaving ? 0 : 1),
+        duration: duration,
+        curve: AppMotion.emphasized,
+        builder: (context, v, child) => Opacity(
+          opacity: v.clamp(0.0, 1.0),
+          child: Transform.scale(scale: 0.4 + 0.6 * v, child: child),
+        ),
+        child: _ThumbImage(item: entry.item),
+      ),
+    );
+
     return SizedBox(
-      width: size + (shown.length - 1) * (size - overlap),
+      width: size + (count - 1) * step,
       height: size,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (size - overlap),
-              child: AnimatedSwitcher(
-                duration: AppMotion.of(context, AppMotion.base),
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: Container(
-                  key: ValueKey(shown[i].cartItemKey),
-                  width: size,
-                  height: size,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 1.5),
-                  ),
-                  child: ClipOval(
-                    child: AppImage(
-                      imageUrl: shown[i].image ?? '',
-                      category: shown[i].category ?? '',
-                      name: shown[i].name,
-                      width: size,
-                      height: size,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          // Leaving ones underneath, so the others slide over them.
+          for (final entry in _leaving) thumb(entry),
+          for (final entry in _entries) thumb(entry),
         ],
+      ),
+    );
+  }
+}
+
+class _ThumbImage extends StatelessWidget {
+  const _ThumbImage({required this.item});
+
+  final CartItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 1.5),
+      ),
+      child: ClipOval(
+        child: AppImage(
+          imageUrl: item.image ?? '',
+          category: item.category ?? '',
+          name: item.name,
+          width: _Thumbs.size,
+          height: _Thumbs.size,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
