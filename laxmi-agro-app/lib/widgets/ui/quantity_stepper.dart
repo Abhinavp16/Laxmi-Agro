@@ -83,6 +83,7 @@ class QuantityStepper extends StatelessWidget {
     this.expand = false,
     this.decreaseLabel = 'Decrease quantity',
     this.increaseLabel = 'Increase quantity',
+    this.pill = false,
   });
 
   final int quantity;
@@ -101,7 +102,17 @@ class QuantityStepper extends StatelessWidget {
   final String decreaseLabel;
   final String increaseLabel;
 
+  /// Fully rounded ends instead of squircle corners.
+  final bool pill;
+
   double get _height => compact ? 34 : 44;
+
+  ShapeBorder _shape(
+    BorderRadius radius, [
+    BorderSide side = BorderSide.none,
+  ]) => pill
+      ? StadiumBorder(side: side)
+      : RoundedSuperellipseBorder(borderRadius: radius, side: side);
 
   void _increase() {
     final next = quantity <= 0 ? minimum : quantity + step;
@@ -122,7 +133,9 @@ class QuantityStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(compact ? AppRadius.sm : AppRadius.md);
+    final radius = pill
+        ? BorderRadius.circular(_height / 2)
+        : BorderRadius.circular(compact ? AppRadius.sm : AppRadius.md);
     final showStepper = quantity > 0;
     return AnimatedSwitcher(
       duration: AppMotion.of(context, AppMotion.base),
@@ -146,16 +159,16 @@ class QuantityStepper extends StatelessWidget {
       key: const ValueKey('add'),
       onTap: enabled ? _increase : null,
       borderRadius: radius,
-      shape: RoundedSuperellipseBorder(borderRadius: radius),
+      shape: _shape(radius),
       color: AppColors.surfaceLight,
       semanticLabel: addLabel,
       child: Container(
         height: _height,
         padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 20),
         decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: radius,
-            side: BorderSide(
+          shape: _shape(
+            radius,
+            BorderSide(
               color: enabled ? AppColors.primary : AppColors.border,
               width: 1.4,
             ),
@@ -206,7 +219,7 @@ class QuantityStepper extends StatelessWidget {
     final stepper = Material(
       key: const ValueKey('stepper'),
       color: AppColors.primary,
-      shape: RoundedSuperellipseBorder(borderRadius: radius),
+      shape: _shape(radius),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         height: _height,

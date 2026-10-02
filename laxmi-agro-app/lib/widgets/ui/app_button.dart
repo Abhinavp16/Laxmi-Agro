@@ -23,6 +23,7 @@ class AppButton extends StatelessWidget {
     this.loading = false,
     this.expand = true,
     this.haptic = true,
+    this.pill = false,
   });
 
   final String label;
@@ -34,6 +35,9 @@ class AppButton extends StatelessWidget {
   final bool loading;
   final bool expand;
   final bool haptic;
+
+  /// Fully rounded ends instead of squircle corners.
+  final bool pill;
 
   double get _height => switch (size) {
     AppButtonSize.large => 52,
@@ -106,10 +110,12 @@ class AppButton extends StatelessWidget {
         opacity: onPressed == null ? 0.5 : 1,
         child: Material(
           color: bg,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: radius,
-            side: side ?? BorderSide.none,
-          ),
+          shape: pill
+              ? StadiumBorder(side: side ?? BorderSide.none)
+              : RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: side ?? BorderSide.none,
+                ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: enabled
