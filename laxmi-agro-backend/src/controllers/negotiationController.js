@@ -113,6 +113,8 @@ exports.getMyNegotiations = async (req, res, next) => {
         canPay: negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId,
         orderId: negotiation.orderId?._id ? String(negotiation.orderId._id) : null,
         orderNumber: negotiation.orderId?.orderNumber || null,
+        // Lets the app keep a deal under Active until its order is paid.
+        orderStatus: negotiation.orderId?.status || null,
         approvedByRole: accepted?.actorRole || (accepted ? 'admin' : null),
         createdAt: negotiation.createdAt,
       };
