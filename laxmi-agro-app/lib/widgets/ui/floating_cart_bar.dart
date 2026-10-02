@@ -14,7 +14,8 @@ import 'quantity_stepper.dart';
 
 /// Green pill that rises from the bottom while the cart has items: round
 /// product thumbnails, item count, total and an arrow. It's only as wide as
-/// its contents, centred, and eases its width as the numbers change.
+/// its contents, sits at the left (in line with the page's 16 px gutter),
+/// and eases its width as the numbers change.
 class FloatingCartBar extends ConsumerWidget {
   const FloatingCartBar({super.key, required this.onTap, this.visible = true});
 
@@ -42,9 +43,9 @@ class FloatingCartBar extends ConsumerWidget {
           opacity: show ? 1 : 0,
           duration: duration,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Align(
-              alignment: Alignment.bottomCenter,
+              alignment: Alignment.bottomLeft,
               child: Pressable(
                 onTap: onTap,
                 haptic: true,
