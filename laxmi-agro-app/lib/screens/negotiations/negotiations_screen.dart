@@ -21,6 +21,8 @@ class NegotiationsScreen extends ConsumerStatefulWidget {
 class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     with WidgetsBindingObserver {
   int _selectedTab = 0;
+  // Active / Completed lists side by side: swipe or tap the switch.
+  final PageController _pages = PageController();
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _negotiations = [];
@@ -35,6 +37,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pages.dispose();
     super.dispose();
   }
 
@@ -96,8 +99,8 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       )
       .toList();
 
-  List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_selectedTab == 0) {
+  List<Map<String, dynamic>> _negotiationsForTab(int tab) {
+    if (tab == 0) {
       return DealDeskPresentation.sortNeedsReplyFirst(_activeNegotiations);
     }
     // Completed tab
@@ -132,11 +135,68 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     }
   }
 
+  /// Slides the lists to [tab] (the switch follows them).
+  void _showTab(int tab) {
+    if (!_pages.hasClients) {
+      setState(() => _selectedTab = tab);
+      return;
+    }
+    final duration = AppMotion.of(context, AppMotion.slow);
+    if (duration == Duration.zero) {
+      _pages.jumpToPage(tab);
+    } else {
+      _pages.animateToPage(tab, duration: duration, curve: AppMotion.standard);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final active = _activeNegotiations;
     final completed = _completedNegotiations;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        appBar: AppHeader(title: l10n.negotiationsTitle),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: DealSegmentedControl(
+                labels: [
+                  l10n.negotiationsTabActive,
+                  l10n.negotiationsTabCompleted,
+                ],
+                counts: _isLoading ? null : [active.length, completed.length],
+                selectedIndex: _selectedTab,
+                controller: _pages,
+                onChanged: _showTab,
+              ),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _pages,
+                onPageChanged: (index) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedTab = index);
+                },
+                children: [_buildPage(0), _buildPage(1)],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One list: 0 = active (needs-reply first), 1 = completed.
+  Widget _buildPage(int tab) {
+    final l10n = context.l10n;
+    final deals = _negotiationsForTab(tab);
     final duration = AppMotion.of(context, AppMotion.base);
 
     final Widget content;
@@ -164,15 +224,15 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
           ),
         ],
       );
-    } else if (_filteredNegotiations.isEmpty) {
+    } else if (deals.isEmpty) {
       content = ListView(
-        key: ValueKey('empty-$_selectedTab'),
+        key: const ValueKey('empty'),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 60),
           EmptyState(
             icon: HugeIcons.strokeRoundedAgreement02,
-            title: _selectedTab == 0
+            title: tab == 0
                 ? l10n.negotiationsEmptyActive
                 : l10n.negotiationsEmptyCompleted,
             message: l10n.negotiationsEmptyHint,
@@ -180,12 +240,11 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
         ],
       );
     } else {
-      final deals = _filteredNegotiations;
-      final replyCount = _selectedTab == 0
+      final replyCount = tab == 0
           ? deals.where(DealDeskPresentation.needsReply).length
           : 0;
       content = ListView.separated(
-        key: ValueKey('list-$_selectedTab'),
+        key: const ValueKey('list'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         itemCount: deals.length + (replyCount > 0 ? 1 : 0),
@@ -223,41 +282,14 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       );
     }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.backgroundLight,
-        appBar: AppHeader(title: l10n.negotiationsTitle),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: DealSegmentedControl(
-                labels: [
-                  l10n.negotiationsTabActive,
-                  l10n.negotiationsTabCompleted,
-                ],
-                counts: _isLoading ? null : [active.length, completed.length],
-                selectedIndex: _selectedTab,
-                onChanged: (index) => setState(() => _selectedTab = index),
-              ),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: _fetchNegotiations,
-                child: AnimatedSwitcher(
-                  duration: duration,
-                  switchInCurve: AppMotion.standard,
-                  switchOutCurve: AppMotion.exit,
-                  child: content,
-                ),
-              ),
-            ),
-          ],
-        ),
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _fetchNegotiations,
+      child: AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: AppMotion.standard,
+        switchOutCurve: AppMotion.exit,
+        child: content,
       ),
     );
   }

@@ -1811,6 +1811,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     _pinCtrl.dispose();
     _couponCtrl.dispose();
     _promoBannerController.dispose();
+    _dealPages.dispose();
     super.dispose();
   }
 
@@ -3912,6 +3913,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   }
 
   int _negotiationTab = 0;
+  // Active / Completed lists side by side: swipe or tap the switch.
+  final PageController _dealPages = PageController();
   bool _isNegotiationsLoading = false;
   bool _isFetchingNegotiations = false;
   List<Map<String, dynamic>> _negotiations = [];
@@ -4114,8 +4117,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     }
   }
 
-  List<Map<String, dynamic>> get _filteredNegotiations {
-    if (_negotiationTab == 0) {
+  List<Map<String, dynamic>> _negotiationsForTab(int tab) {
+    if (tab == 0) {
       // Active tab - pending and countered negotiations
       return _negotiations
           .where((n) => ['pending', 'countered'].contains(n['status']))
@@ -4140,11 +4143,26 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     if (result == true) _fetchNegotiations();
   }
 
+  /// Slides the Deal Desk lists to [tab] (the switch follows them).
+  void _showDealTab(int tab) {
+    if (!_dealPages.hasClients) {
+      setState(() => _negotiationTab = tab);
+      return;
+    }
+    final duration = AppMotion.of(context, AppMotion.slow);
+    if (duration == Duration.zero) {
+      _dealPages.jumpToPage(tab);
+    } else {
+      _dealPages.animateToPage(
+        tab,
+        duration: duration,
+        curve: AppMotion.standard,
+      );
+    }
+  }
+
   Widget _buildNegotiationsContent() {
     final l10n = context.l10n;
-    final deals = DealDeskPresentation.sortNeedsReplyFirst(
-      _filteredNegotiations,
-    );
     final activeCount = _negotiations
         .where(DealDeskPresentation.isActive)
         .length;
@@ -4152,56 +4170,6 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     final completedCount = _negotiations
         .where((n) => completedStatuses.contains(n['status']))
         .length;
-    final needReply = _dealsAwaitingReply;
-
-    Widget body;
-    if (_isNegotiationsLoading && _negotiations.isEmpty) {
-      body = ListView.separated(
-        key: const ValueKey('deals-loading'),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 4,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, _) => const DealInboxSkeleton(),
-      );
-    } else if (deals.isEmpty) {
-      body = RefreshIndicator(
-        key: const ValueKey('deals-empty'),
-        onRefresh: _fetchNegotiations,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 40),
-            EmptyState(
-              icon: HugeIcons.strokeRoundedAgreement02,
-              title: _negotiationTab == 0
-                  ? l10n.homeDealEmptyActive
-                  : l10n.homeDealEmptyCompleted,
-              message: l10n.homeDealEmptyHint,
-            ),
-          ],
-        ),
-      );
-    } else {
-      body = RefreshIndicator(
-        key: ValueKey('deals-$_negotiationTab'),
-        onRefresh: _fetchNegotiations,
-        child: ListView.separated(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
-          itemCount: deals.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final deal = deals[index];
-            final id = (deal['id'] ?? deal['_id'] ?? '').toString();
-            return DealInboxTile(
-              negotiation: deal,
-              onTap: () => _openDealDetail(id),
-              onAction: (_) => _openDealDetail(id),
-            );
-          },
-        ),
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4224,43 +4192,105 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             labels: [l10n.homeDealTabActive, l10n.homeDealTabCompleted],
             selectedIndex: _negotiationTab,
             counts: [activeCount, completedCount],
-            onChanged: (index) {
+            controller: _dealPages,
+            onChanged: _showDealTab,
+          ),
+        ),
+        Expanded(
+          child: PageView(
+            controller: _dealPages,
+            onPageChanged: (index) {
               HapticFeedback.selectionClick();
               setState(() => _negotiationTab = index);
             },
-          ),
-        ),
-        AnimatedSize(
-          duration: AppMotion.of(context, AppMotion.base),
-          curve: AppMotion.standard,
-          alignment: Alignment.topLeft,
-          child: _negotiationTab == 0 && needReply > 0
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 12, 16, 0),
-                  child: Row(
-                    children: [
-                      const DealNeedsReplyDot(size: 8),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.dealNeedsReplyCount(needReply),
-                        style: AppFonts.jakarta(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox(width: double.infinity),
-        ),
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: AppMotion.of(context, AppMotion.base),
-            child: body,
+            children: [_buildDealPage(0), _buildDealPage(1)],
           ),
         ),
       ],
+    );
+  }
+
+  /// One Deal Desk list: 0 = active (needs-reply first, under a count line),
+  /// 1 = completed.
+  Widget _buildDealPage(int tab) {
+    final l10n = context.l10n;
+    final deals = DealDeskPresentation.sortNeedsReplyFirst(
+      _negotiationsForTab(tab),
+    );
+    final needReply = tab == 0 ? _dealsAwaitingReply : 0;
+
+    Widget body;
+    if (_isNegotiationsLoading && _negotiations.isEmpty) {
+      body = ListView.separated(
+        key: const ValueKey('deals-loading'),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, _) => const DealInboxSkeleton(),
+      );
+    } else if (deals.isEmpty) {
+      body = RefreshIndicator(
+        key: const ValueKey('deals-empty'),
+        onRefresh: _fetchNegotiations,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 40),
+            EmptyState(
+              icon: HugeIcons.strokeRoundedAgreement02,
+              title: tab == 0
+                  ? l10n.homeDealEmptyActive
+                  : l10n.homeDealEmptyCompleted,
+              message: l10n.homeDealEmptyHint,
+            ),
+          ],
+        ),
+      );
+    } else {
+      final header = needReply > 0 ? 1 : 0;
+      body = RefreshIndicator(
+        key: const ValueKey('deals-list'),
+        onRefresh: _fetchNegotiations,
+        child: ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
+          itemCount: deals.length + header,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            if (index < header) {
+              return Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Row(
+                  children: [
+                    const DealNeedsReplyDot(size: 8),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.dealNeedsReplyCount(needReply),
+                      style: AppFonts.jakarta(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            final deal = deals[index - header];
+            final id = (deal['id'] ?? deal['_id'] ?? '').toString();
+            return DealInboxTile(
+              negotiation: deal,
+              onTap: () => _openDealDetail(id),
+              onAction: (_) => _openDealDetail(id),
+            );
+          },
+        ),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: AppMotion.of(context, AppMotion.base),
+      child: body,
     );
   }
 

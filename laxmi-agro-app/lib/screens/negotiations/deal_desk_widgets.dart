@@ -698,8 +698,10 @@ class DealInboxSkeleton extends StatelessWidget {
 // Active / Completed switch
 // ---------------------------------------------------------------------------
 
-/// Two (or more) segment switch with a green selected segment, used for the
-/// Deal Desk's Active / Completed lists.
+/// Two (or more) segment switch on a pill track, used for the Deal Desk's
+/// Active / Completed lists. The light green pill under the selected segment
+/// slides between segments; pass the [controller] of the swipeable lists it
+/// switches and the pill follows the finger too.
 class DealSegmentedControl extends StatelessWidget {
   /// [labels] are the segment names, [selectedIndex] the current one and
   /// [onChanged] is called with the tapped index. [counts] (same length as
@@ -710,91 +712,134 @@ class DealSegmentedControl extends StatelessWidget {
     required this.selectedIndex,
     required this.onChanged,
     this.counts,
+    this.controller,
   });
 
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
   final List<int?>? counts;
+  final PageController? controller;
 
   @override
   Widget build(BuildContext context) {
-    final duration = AppMotion.of(context, AppMotion.base);
+    final pages = controller;
     return Container(
       height: 48,
       padding: const EdgeInsets.all(4),
-      decoration: ShapeDecoration(
+      decoration: const ShapeDecoration(
         color: AppColors.surfaceLight,
-        shape: AppShapes.squircle(
-          AppRadius.md,
-          side: const BorderSide(color: AppColors.border),
-        ),
+        shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(
-              child: MergeSemantics(
-                child: Semantics(
-                  selected: i == selectedIndex,
-                  button: true,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: AppShapes.squircle(AppRadius.sm),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: i == selectedIndex ? null : () => onChanged(i),
-                      child: AnimatedContainer(
-                        duration: duration,
-                        curve: AppMotion.standard,
-                        alignment: Alignment.center,
-                        decoration: ShapeDecoration(
-                          color: i == selectedIndex
-                              ? AppColors.primarySoft
-                              : Colors.transparent,
-                          shape: AppShapes.squircle(AppRadius.sm),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                labels[i],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppFonts.jakarta(
-                                  fontSize: 14,
-                                  fontWeight: i == selectedIndex
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  color: i == selectedIndex
-                                      ? AppColors.primaryDeep
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                            if ((counts?.elementAtOrNull(i) ?? 0) > 0) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                '${counts![i]}',
-                                style: AppText.price(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: i == selectedIndex
-                                      ? AppColors.primaryDeep
-                                      : AppColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                          ],
+      child: pages == null
+          ? TweenAnimationBuilder<double>(
+              tween: Tween(end: selectedIndex.toDouble()),
+              duration: AppMotion.of(context, AppMotion.slow),
+              curve: AppMotion.standard,
+              builder: (context, position, _) => _track(position),
+            )
+          : AnimatedBuilder(
+              animation: pages,
+              builder: (context, _) => _track(_pageOf(pages)),
+            ),
+    );
+  }
+
+  /// Where the lists are, in pages (fractional mid-swipe).
+  double _pageOf(PageController pages) {
+    if (pages.hasClients && pages.positions.length == 1) {
+      return pages.page ?? selectedIndex.toDouble();
+    }
+    return selectedIndex.toDouble();
+  }
+
+  Widget _track(double position) {
+    final pill = position.clamp(0.0, labels.length - 1.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth / labels.length;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              left: pill * width,
+              top: 0,
+              bottom: 0,
+              width: width,
+              child: const DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: AppColors.primarySoft,
+                  shape: StadiumBorder(),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                for (var i = 0; i < labels.length; i++)
+                  Expanded(
+                    child: _segment(i, (1 - (pill - i).abs()).clamp(0.0, 1.0)),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Segment [i]; [t] is how much the pill covers it (1 = fully selected).
+  Widget _segment(int i, double t) {
+    final count = counts?.elementAtOrNull(i) ?? 0;
+    return MergeSemantics(
+      child: Semantics(
+        selected: i == selectedIndex,
+        button: true,
+        child: Material(
+          color: Colors.transparent,
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: i == selectedIndex ? null : () => onChanged(i),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      labels[i],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppFonts.jakarta(
+                        fontSize: 14,
+                        fontWeight: t > 0.5 ? FontWeight.w700 : FontWeight.w600,
+                        color: Color.lerp(
+                          AppColors.textSecondary,
+                          AppColors.primaryDeep,
+                          t,
                         ),
                       ),
                     ),
                   ),
-                ),
+                  if (count > 0) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '$count',
+                      style: AppText.price(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color.lerp(
+                          AppColors.textTertiary,
+                          AppColors.primaryDeep,
+                          t,
+                        )!,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
