@@ -1,6 +1,7 @@
 import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart' show SpringDescription, SpringSimulation;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -14,10 +15,33 @@ import '../app_image.dart';
 import 'pressable.dart';
 import 'quantity_stepper.dart';
 
+/// How long the pill's springy resizing (and the thumbnails' moves) take.
+const Duration _springDuration = Duration(milliseconds: 600);
+
+/// A light spring: a small overshoot that settles within [_springDuration].
+class _SpringCurve extends Curve {
+  const _SpringCurve();
+
+  static final SpringSimulation _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 180, ratio: 0.6),
+    0,
+    1,
+    0,
+  );
+
+  // Seconds of the spring mapped onto the curve's 0..1.
+  static const double _settle = 0.6;
+
+  @override
+  double transformInternal(double t) => _spring.x(t * _settle);
+}
+
+const Curve _spring = _SpringCurve();
+
 /// Frosted green pill that rises from the bottom while the cart has items:
 /// round thumbnails of the newest items, item count, total and an arrow.
 /// It's only as wide as its contents, sits at the left (in line with the
-/// page's 16 px gutter), and eases its width as things change.
+/// page's 16 px gutter), and springs to its new width as things change.
 class FloatingCartBar extends ConsumerWidget {
   const FloatingCartBar({super.key, required this.onTap, this.visible = true});
 
@@ -82,16 +106,19 @@ class FloatingCartBar extends ConsumerWidget {
                         left: (_height - _Thumbs.size) / 2,
                         right: 16,
                       ),
-                      child: AnimatedSize(
-                        duration: duration,
-                        curve: AppMotion.standard,
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _Thumbs(items: cart.items),
-                            const SizedBox(width: 10),
-                            Column(
+                      // The thumbnails and the text each spring to their
+                      // new widths, so the text slides along as the pill
+                      // grows instead of jumping.
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _Thumbs(items: cart.items),
+                          const SizedBox(width: 10),
+                          AnimatedSize(
+                            duration: AppMotion.of(context, _springDuration),
+                            curve: _spring,
+                            alignment: Alignment.centerLeft,
+                            child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -117,14 +144,14 @@ class FloatingCartBar extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(width: 12),
-                            const HugeIcon(
-                              icon: HugeIcons.strokeRoundedArrowRight01,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowRight01,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -187,7 +214,7 @@ class _ThumbsState extends State<_Thumbs> {
   @override
   void didUpdateWidget(_Thumbs oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final exit = AppMotion.of(context, AppMotion.slow);
+    final exit = AppMotion.of(context, _springDuration);
     final next = _newest;
     final nextKeys = {for (final item in next) item.cartItemKey};
 
@@ -228,7 +255,7 @@ class _ThumbsState extends State<_Thumbs> {
   Widget build(BuildContext context) {
     const size = _Thumbs.size;
     const step = size - _Thumbs._overlap;
-    final duration = AppMotion.of(context, AppMotion.slow);
+    final duration = AppMotion.of(context, _springDuration);
     for (var i = 0; i < _entries.length; i++) {
       _entries[i].slot = i;
     }
@@ -237,7 +264,7 @@ class _ThumbsState extends State<_Thumbs> {
     Widget thumb(_ThumbEntry entry) => AnimatedPositioned(
       key: ValueKey(entry.key),
       duration: duration,
-      curve: AppMotion.emphasized,
+      curve: _spring,
       left: entry.slot * step,
       top: 0,
       width: size,
@@ -246,7 +273,7 @@ class _ThumbsState extends State<_Thumbs> {
         // Grows in when first shown; shrinks away when leaving.
         tween: Tween(begin: 0, end: entry.leaving ? 0 : 1),
         duration: duration,
-        curve: AppMotion.emphasized,
+        curve: _spring,
         builder: (context, v, child) => Opacity(
           opacity: v.clamp(0.0, 1.0),
           child: Transform.scale(scale: 0.4 + 0.6 * v, child: child),
@@ -255,9 +282,13 @@ class _ThumbsState extends State<_Thumbs> {
       ),
     );
 
-    return SizedBox(
-      width: size + (count - 1) * step,
-      height: size,
+    // The row's width springs to fit, carrying the text beside it along.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: size + (count - 1) * step),
+      duration: duration,
+      curve: _spring,
+      builder: (context, width, child) =>
+          SizedBox(width: width, height: size, child: child),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
