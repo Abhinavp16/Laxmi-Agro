@@ -485,13 +485,17 @@ class _NegotiationDetailScreenState
       };
     }
 
-    nameCtrl.dispose();
-    phoneCtrl.dispose();
-    addr1Ctrl.dispose();
-    cityCtrl.dispose();
-    stateCtrl.dispose();
-    pinCtrl.dispose();
-    couponCtrl.dispose();
+    // The sheet's future completes as it starts closing, while its fields
+    // are still on screen for the slide-down; dispose them once that's done.
+    Future<void>.delayed(const Duration(milliseconds: 600), () {
+      nameCtrl.dispose();
+      phoneCtrl.dispose();
+      addr1Ctrl.dispose();
+      cityCtrl.dispose();
+      stateCtrl.dispose();
+      pinCtrl.dispose();
+      couponCtrl.dispose();
+    });
     return result;
   }
 
@@ -1317,6 +1321,8 @@ class _NegotiationDetailScreenState
           : null,
       message: showMessage ? message : null,
       time: formattedTime,
+      // The accepted price gets the green, dithered card.
+      highlight: action == 'accepted',
     );
   }
 
@@ -1511,10 +1517,12 @@ class _NegotiationDetailScreenState
     if (status == 'accepted' && canPay) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: AppButton(
+        // Slide to confirm, so an order isn't started by a stray tap.
+        child: SlideToConfirm(
           label: context.l10n.homeProceedToOrder,
           icon: HugeIcons.strokeRoundedWallet01,
-          onPressed: _proceedToOrder,
+          loading: _isActioning,
+          onConfirmed: _proceedToOrder,
         ),
       );
     }
@@ -1822,69 +1830,204 @@ class _QuickReplyChip extends StatelessWidget {
 }
 
 /// Loading placeholder: summary card and a few chat bubbles.
+/// Placeholder laid out like the loaded screen: the pinned summary (open,
+/// as it is for the first moment), a date, an offer card from you and a reply,
+/// then the composer bar at the bottom.
 class _DetailSkeleton extends StatelessWidget {
   const _DetailSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    Widget bubble({required bool right, double width = 200}) => Align(
-      alignment: right ? Alignment.centerRight : Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Skeleton(width: width, height: 44, radius: AppRadius.lg),
-      ),
+    final card = BoxDecoration(
+      color: AppColors.surfaceLight,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      border: Border.all(color: AppColors.border),
     );
 
-    return SkeletonShimmer(
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Column(
+    Widget dot() =>
+        const Skeleton(width: 16, height: 16, radius: AppRadius.pill);
+    Widget line() => const Expanded(child: Skeleton(height: 3));
+
+    final summary = Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      decoration: card,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      child: SkeletonShimmer(
+        child: Column(
+          children: [
+            const Row(
               children: [
-                Row(
-                  children: [
-                    Skeleton(width: 48, height: 48, radius: AppRadius.md),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                Skeleton(width: 48, height: 48, radius: AppRadius.md),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton(width: 170, height: 15),
+                      SizedBox(height: 8),
+                      Row(
                         children: [
-                          Skeleton(height: 14),
-                          SizedBox(height: 8),
-                          Skeleton(width: 120, height: 11),
+                          Skeleton(width: 48, height: 11),
+                          SizedBox(width: 8),
+                          Skeleton(
+                            width: 110,
+                            height: 20,
+                            radius: AppRadius.pill,
+                          ),
                         ],
                       ),
-                    ),
-                    SizedBox(width: 24),
-                    Skeleton(width: 56, height: 14),
-                  ],
+                    ],
+                  ),
                 ),
-                SizedBox(height: 14),
-                Row(
+                SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Expanded(child: Skeleton(height: 56, radius: AppRadius.md)),
-                    SizedBox(width: 8),
-                    Expanded(child: Skeleton(height: 56, radius: AppRadius.md)),
+                    Skeleton(width: 72, height: 15),
+                    SizedBox(height: 6),
+                    Skeleton(width: 52, height: 11),
                   ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-          bubble(right: true, width: 240),
-          bubble(right: false),
-          bubble(right: false, width: 150),
-          bubble(right: true, width: 180),
-        ],
+            const SizedBox(height: 14),
+            const Row(
+              children: [
+                Expanded(child: Skeleton(height: 56, radius: AppRadius.md)),
+                SizedBox(width: 8),
+                Expanded(child: Skeleton(height: 56, radius: AppRadius.md)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Skeleton(width: 110, height: 16),
+                Spacer(),
+                Skeleton(width: 84, height: 18),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(children: [dot(), line(), dot(), line(), dot(), line(), dot()]),
+          ],
+        ),
       ),
+    );
+
+    final offer = Align(
+      alignment: Alignment.centerRight,
+      child: FractionallySizedBox(
+        widthFactor: 0.86,
+        child: Container(
+          decoration: card,
+          clipBehavior: Clip.antiAlias,
+          child: const SkeletonShimmer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Skeleton(height: 34, radius: 0),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton(width: 170, height: 14),
+                      SizedBox(height: 6),
+                      Skeleton(width: 56, height: 11),
+                      SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Skeleton(width: 60, height: 12),
+                          Spacer(),
+                          Skeleton(width: 80, height: 12),
+                        ],
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Skeleton(width: 40, height: 12),
+                          Spacer(),
+                          Skeleton(width: 64, height: 12),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return Column(
+      children: [
+        summary,
+        Expanded(
+          child: ListView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            children: [
+              const SkeletonShimmer(
+                child: Center(
+                  child: Skeleton(
+                    width: 92,
+                    height: 24,
+                    radius: AppRadius.pill,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: SkeletonShimmer(child: Skeleton(width: 28, height: 11)),
+              ),
+              const SizedBox(height: 6),
+              offer,
+              const SizedBox(height: 14),
+              const SkeletonShimmer(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Skeleton(width: 200, height: 44, radius: AppRadius.lg),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // The composer bar: quick replies above the message field.
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceLight,
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: const SafeArea(
+            top: false,
+            child: SkeletonShimmer(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Skeleton(width: 150, height: 32, radius: AppRadius.pill),
+                      SizedBox(width: 8),
+                      Skeleton(width: 150, height: 32, radius: AppRadius.pill),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Skeleton(height: 44, radius: AppRadius.pill),
+                      ),
+                      SizedBox(width: 8),
+                      Skeleton(width: 44, height: 44, radius: AppRadius.pill),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

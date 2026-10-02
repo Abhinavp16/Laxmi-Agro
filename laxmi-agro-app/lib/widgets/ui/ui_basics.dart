@@ -419,12 +419,14 @@ class SummaryRow extends StatelessWidget {
     required this.value,
     this.emphasize = false,
     this.valueColor,
+    this.labelColor,
   });
 
   final String label;
   final String value;
   final bool emphasize;
   final Color? valueColor;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
@@ -438,7 +440,11 @@ class SummaryRow extends StatelessWidget {
               style: AppFonts.jakarta(
                 fontSize: emphasize ? 16 : 14,
                 fontWeight: emphasize ? FontWeight.w800 : FontWeight.w500,
-                color: emphasize ? AppColors.textPrimary : AppColors.textSecondary,
+                color:
+                    labelColor ??
+                    (emphasize
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary),
               ),
             ),
           ),

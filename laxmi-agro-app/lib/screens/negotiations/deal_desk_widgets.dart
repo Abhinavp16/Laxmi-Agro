@@ -1001,7 +1001,8 @@ class DealOfferCard extends StatelessWidget {
   /// [quantityText] describe what is priced; [pricePerUnit] (already
   /// formatted, e.g. "₹18,500") with [unitSuffix] ("/unit") and [total]
   /// ("₹3,70,000") are shown when given. [message] is the note sent with the
-  /// price and [time] the formatted time.
+  /// price and [time] the formatted time. [highlight] turns the card solid
+  /// green with moving dither light and white text (the accepted deal).
   const DealOfferCard({
     super.key,
     required this.title,
@@ -1016,6 +1017,7 @@ class DealOfferCard extends StatelessWidget {
     this.total,
     this.message,
     this.time,
+    this.highlight = false,
   });
 
   final String title;
@@ -1030,26 +1032,150 @@ class DealOfferCard extends StatelessWidget {
   final String? total;
   final String? message;
   final String? time;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final toneColor = switch (tone) {
-      ChipTone.brand || ChipTone.success => AppColors.primaryDeep,
-      ChipTone.info => AppColors.secondary,
-      ChipTone.warning => AppColors.warning,
-      ChipTone.error => AppColors.error,
-      ChipTone.accent => AppColors.accent,
-      ChipTone.neutral => AppColors.textSecondary,
-    };
-    final toneBg = switch (tone) {
-      ChipTone.brand || ChipTone.success => AppColors.primarySoft,
-      ChipTone.info => AppColors.infoSoft,
-      ChipTone.warning => AppColors.warningSoft,
-      ChipTone.error => AppColors.errorSoft,
-      ChipTone.accent => AppColors.accentSoft,
-      ChipTone.neutral => AppColors.gray100,
-    };
+    final toneColor = highlight
+        ? Colors.white
+        : switch (tone) {
+            ChipTone.brand || ChipTone.success => AppColors.primaryDeep,
+            ChipTone.info => AppColors.secondary,
+            ChipTone.warning => AppColors.warning,
+            ChipTone.error => AppColors.error,
+            ChipTone.accent => AppColors.accent,
+            ChipTone.neutral => AppColors.textSecondary,
+          };
+    final toneBg = highlight
+        ? AppColors.primaryDeep.withValues(alpha: 0.35)
+        : switch (tone) {
+            ChipTone.brand || ChipTone.success => AppColors.primarySoft,
+            ChipTone.info => AppColors.infoSoft,
+            ChipTone.warning => AppColors.warningSoft,
+            ChipTone.error => AppColors.errorSoft,
+            ChipTone.accent => AppColors.accentSoft,
+            ChipTone.neutral => AppColors.gray100,
+          };
+    // Text colours: white on the green highlight, the usual greys otherwise.
+    final ink = highlight ? Colors.white : AppColors.textPrimary;
+    final softInk = highlight
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.textTertiary;
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          color: toneBg,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: Row(
+            children: [
+              HugeIcon(icon: icon, size: 16, color: toneColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppFonts.jakarta(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: toneColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                itemName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppFonts.jakarta(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: ink,
+                ),
+              ),
+              if (quantityText?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 2),
+                Text(
+                  quantityText!,
+                  style: AppFonts.jakarta(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: softInk,
+                  ),
+                ),
+              ],
+              if (pricePerUnit != null || total != null) ...[
+                const SizedBox(height: 8),
+                Divider(
+                  height: 1,
+                  color: highlight
+                      ? Colors.white.withValues(alpha: 0.24)
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                if (pricePerUnit != null)
+                  SummaryRow(
+                    label: l10n.dealOfferPerUnit,
+                    value: '$pricePerUnit${unitSuffix ?? ''}',
+                    labelColor: highlight ? softInk : null,
+                    valueColor: highlight ? ink : null,
+                  ),
+                if (total != null)
+                  SummaryRow(
+                    label: l10n.commonTotal,
+                    value: total!,
+                    labelColor: highlight ? softInk : null,
+                    valueColor: ink,
+                  ),
+              ],
+              if (message?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: highlight
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : AppColors.gray50,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Text(
+                    message!,
+                    style: AppFonts.jakarta(
+                      fontSize: 13,
+                      color: ink,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+              if (time?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    time!,
+                    style: AppFonts.jakarta(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: softInk,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -1076,115 +1202,29 @@ class DealOfferCard extends StatelessWidget {
             widthFactor: 0.86,
             alignment: fromLaxmi ? Alignment.centerLeft : Alignment.centerRight,
             child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.border),
-              ),
+              decoration: highlight
+                  ? BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.primary, AppColors.primaryDeep],
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    )
+                  : BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: AppColors.border),
+                    ),
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    color: toneBg,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                    child: Row(
+              child: highlight
+                  ? Stack(
                       children: [
-                        HugeIcon(icon: icon, size: 16, color: toneColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: AppFonts.jakarta(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: toneColor,
-                            ),
-                          ),
-                        ),
+                        const Positioned.fill(child: DitherGlow(opacity: 0.14)),
+                        body,
                       ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          itemName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFonts.jakarta(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (quantityText?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            quantityText!,
-                            style: AppFonts.jakarta(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textTertiary,
-                            ),
-                          ),
-                        ],
-                        if (pricePerUnit != null || total != null) ...[
-                          const SizedBox(height: 8),
-                          const Divider(height: 1),
-                          const SizedBox(height: 4),
-                          if (pricePerUnit != null)
-                            SummaryRow(
-                              label: l10n.dealOfferPerUnit,
-                              value: '$pricePerUnit${unitSuffix ?? ''}',
-                            ),
-                          if (total != null)
-                            SummaryRow(
-                              label: l10n.commonTotal,
-                              value: total!,
-                              valueColor: AppColors.textPrimary,
-                            ),
-                        ],
-                        if (message?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.gray50,
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                            ),
-                            child: Text(
-                              message!,
-                              style: AppFonts.jakarta(
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (time?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              time!,
-                              style: AppFonts.jakarta(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                    )
+                  : body,
             ),
           ),
         ],
