@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart' show SpringDescription, SpringSimulation;
 import 'package:google_fonts/google_fonts.dart';
 import 'app_fonts.dart';
 
@@ -138,6 +139,33 @@ class AppShadows {
 }
 
 /// Motion tokens. Keep animation short and quiet; honour "reduce motion".
+/// A curve that follows an underdamped spring starting at rest, so motion
+/// eases off the mark, overshoots slightly and settles. The spring's first
+/// [settle] seconds are mapped onto the curve.
+class SpringCurve extends Curve {
+  const SpringCurve({
+    this.stiffness = 180,
+    this.dampingRatio = 0.6,
+    this.settle = 0.6,
+  });
+
+  final double stiffness;
+  final double dampingRatio;
+  final double settle;
+
+  @override
+  double transformInternal(double t) => SpringSimulation(
+    SpringDescription.withDampingRatio(
+      mass: 1,
+      stiffness: stiffness,
+      ratio: dampingRatio,
+    ),
+    0,
+    1,
+    0,
+  ).x(t * settle);
+}
+
 class AppMotion {
   static const Duration fast = Duration(milliseconds: 150);
   static const Duration base = Duration(milliseconds: 220);
@@ -147,6 +175,11 @@ class AppMotion {
   static const Curve standard = Curves.easeOutCubic;
   static const Curve emphasized = Curves.easeOutQuart;
   static const Curve exit = Curves.easeInCubic;
+
+  /// A light spring from rest: eases off the mark, overshoots a little and
+  /// settles. Pair it with [springDuration].
+  static const Curve spring = SpringCurve();
+  static const Duration springDuration = Duration(milliseconds: 600);
 
   /// True when the user asked the OS to reduce motion.
   static bool reduced(BuildContext context) =>

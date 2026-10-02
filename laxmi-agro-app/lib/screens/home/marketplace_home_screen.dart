@@ -7460,6 +7460,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             ),
             _buildNavItem(HugeIcons.strokeRoundedUser, l10n.homeNavProfile, 4),
           ];
+    // The tab index behind each item above, in the same order.
+    final navIndexes = _isWholesaler
+        ? const [0, 1, 2, 5, 3]
+        : const [0, 1, 2, 3, 4];
+    final slot = navIndexes.indexOf(_selectedNavIndex);
+    final duration = AppMotion.of(context, _navMotion);
+    const barHeight = 66.0;
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.surfaceLight,
@@ -7468,18 +7475,57 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 66,
-          child: Row(children: items),
+          height: barHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final slotWidth = constraints.maxWidth / items.length;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  // One green pill that slides under whichever tab is
+                  // active (hidden when the open tab isn't in the bar).
+                  AnimatedPositioned(
+                    duration: AppMotion.of(context, AppMotion.springDuration),
+                    curve: AppMotion.spring,
+                    left:
+                        (slot < 0 ? 0 : slot) * slotWidth +
+                        (slotWidth - _navPillWidth) / 2,
+                    top: (barHeight - _navPillHeight) / 2,
+                    width: _navPillWidth,
+                    height: _navPillHeight,
+                    child: AnimatedOpacity(
+                      duration: duration,
+                      opacity: slot < 0 ? 0 : 1,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(AppRadius.pill),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Row(children: items),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  /// One bottom-nav tab. The active one is a solid green pill with a bigger
-  /// white icon and no label; the others keep a grey icon and label.
+  /// Bottom-nav motion: the pill sliding, icons growing, labels folding.
+  static const Duration _navMotion = Duration(milliseconds: 450);
+  static const double _navPillWidth = 60;
+  static const double _navPillHeight = 40;
+
+  /// One bottom-nav tab. The active one sits on the sliding green pill with a
+  /// bigger white icon and no label; the others keep a grey icon and label.
   Widget _buildNavItem(IconData icon, String label, int index, {int badge = 0}) {
     final isSelected = _selectedNavIndex == index;
-    final duration = AppMotion.of(context, AppMotion.base);
+    final duration = AppMotion.of(context, _navMotion);
     const color = AppColors.textTertiary;
 
     return Expanded(
@@ -7504,17 +7550,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 clipBehavior: Clip.none,
                 alignment: Alignment.center,
                 children: [
+                  // Room for the pill (drawn by the bar, so it can slide).
                   AnimatedContainer(
                     duration: duration,
                     curve: AppMotion.emphasized,
-                    width: isSelected ? 60 : 40,
-                    height: isSelected ? 40 : 30,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.primary.withValues(alpha: 0),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
+                    width: isSelected ? _navPillWidth : 40,
+                    height: isSelected ? _navPillHeight : 30,
                   ),
                   // Grows and turns white when its tab is active.
                   TweenAnimationBuilder<Color?>(

@@ -1,7 +1,6 @@
 import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart' show SpringDescription, SpringSimulation;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -15,28 +14,9 @@ import '../app_image.dart';
 import 'pressable.dart';
 import 'quantity_stepper.dart';
 
-/// How long the pill's springy resizing (and the thumbnails' moves) take.
-const Duration _springDuration = Duration(milliseconds: 600);
-
-/// A light spring: a small overshoot that settles within [_springDuration].
-class _SpringCurve extends Curve {
-  const _SpringCurve();
-
-  static final SpringSimulation _spring = SpringSimulation(
-    SpringDescription.withDampingRatio(mass: 1, stiffness: 180, ratio: 0.6),
-    0,
-    1,
-    0,
-  );
-
-  // Seconds of the spring mapped onto the curve's 0..1.
-  static const double _settle = 0.6;
-
-  @override
-  double transformInternal(double t) => _spring.x(t * _settle);
-}
-
-const Curve _spring = _SpringCurve();
+// The pill's resizing and the thumbnails' moves use the shared spring.
+const Duration _springDuration = AppMotion.springDuration;
+const Curve _spring = AppMotion.spring;
 
 /// Frosted green pill that rises from the bottom while the cart has items:
 /// round thumbnails of the newest items, item count, total and an arrow.
