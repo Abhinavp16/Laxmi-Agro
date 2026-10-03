@@ -80,14 +80,13 @@ exports.getOrderReceipt = async (req, res, next) => {
     const order = await Order.findById(req.params.id).lean();
     if (!order) throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
 
-    // Deal orders also carry the deal (NGT) and requirement (REQ) numbers.
+    // Orders from a cart requirement also show its requirement (REQ) number.
     const dealIds = [...new Set([order.negotiationId, ...(order.negotiationIds || [])].filter(Boolean).map(String))];
     const deals = dealIds.length
-      ? await Negotiation.find({ _id: { $in: dealIds } }).select('negotiationNumber requestGroup').lean()
+      ? await Negotiation.find({ _id: { $in: dealIds } }).select('requestGroup').lean()
       : [];
     const references = [
       ['Requirement', deals.find((deal) => deal.requestGroup?.number)?.requestGroup.number || ''],
-      ['Deal Ref', deals.map((deal) => deal.negotiationNumber).filter(Boolean).join(', ')],
     ];
 
     const settings = await Settings.getSettings();
