@@ -2002,7 +2002,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 const SizedBox(height: 26),
                 _buildCarousel(),
                 if (_isWholesaler) ...[
-                  const SizedBox(height: 20),
+                  // The dealer section headers bring 20 of their own, so
+                  // this makes the usual 28 between sections.
+                  const SizedBox(height: 8),
                   _buildScheduledChanges(),
                   _buildContinueDeals(),
                   _buildTrackHomeOrders(),
