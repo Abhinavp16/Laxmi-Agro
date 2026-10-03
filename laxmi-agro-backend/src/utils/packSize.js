@@ -99,8 +99,33 @@ const describePack = (product = {}) => {
   return `${packUnit}s of ${size}${contentUnit === 'meter' ? ' m' : ' pieces'}`;
 };
 
+const formatAmount = (value) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(value) || 0);
+const PACK_LABELS = { packet: ['Packet', 'Packets'], coil: ['Coil', 'Coils'], bundle: ['Bundle', 'Bundles'] };
+
+// "30 pcs" / "1,000 m" for an amount in pieces or meters; else the number.
+const contentsShortText = (product = {}, amount = 0) => {
+  const { contentUnit } = getPackInfo(product);
+  if (contentUnit === 'meter') return `${formatAmount(amount)} m`;
+  if (contentUnit === 'piece') return `${formatAmount(amount)} pcs`;
+  return formatAmount(amount);
+};
+
+// "2 Packets (30 pieces)" / "1 Coil (500 m)" for pack products, else null.
+const packQuantityText = (product = {}, amount = 0) => {
+  const { size, packUnit, contentUnit } = getPackInfo(product);
+  if (!packUnit) return null;
+  const packs = Number(amount) / size;
+  const label = PACK_LABELS[packUnit][packs === 1 ? 0 : 1];
+  const contents = contentUnit === 'meter'
+    ? `${formatAmount(amount)} m`
+    : `${formatAmount(amount)} ${Number(amount) === 1 ? 'piece' : 'pieces'}`;
+  return `${formatAmount(packs)} ${label} (${contents})`;
+};
+
 module.exports = {
   describePack,
+  contentsShortText,
+  packQuantityText,
   isPacketUnit,
   isCoilUnit,
   isBundleUnit,

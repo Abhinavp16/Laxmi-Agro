@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
-const { Order, Payment, StockLog } = require('../../models');
+const { Negotiation, Order, Payment, Settings, StockLog } = require('../../models');
+const { createOrderReceiptPdfBuffer, receiptFileName } = require('../../utils/orderReceiptPdf');
+const { orderWhatsAppNumber } = require('../../config/publicBusiness');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse } = require('../../utils/helpers');
 const { ORDER_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
@@ -66,6 +68,36 @@ exports.getOrders = async (req, res, next) => {
       ...formatPaginationResponse(ordersWithPayments, total, page, limit),
       approvalCounts: { pending: pendingApprovalTotal },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Receipt PDF for any order (admin + member panel: Deal Desk → Receipt).
+exports.getOrderReceipt = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
+    const order = await Order.findById(req.params.id).lean();
+    if (!order) throw new NotFoundError('Order not found', 'ORDER_NOT_FOUND');
+
+    // Deal orders also carry the deal (NGT) and requirement (REQ) numbers.
+    const dealIds = [...new Set([order.negotiationId, ...(order.negotiationIds || [])].filter(Boolean).map(String))];
+    const deals = dealIds.length
+      ? await Negotiation.find({ _id: { $in: dealIds } }).select('negotiationNumber requestGroup').lean()
+      : [];
+    const references = [
+      ['Requirement', deals.find((deal) => deal.requestGroup?.number)?.requestGroup.number || ''],
+      ['Deal Ref', deals.map((deal) => deal.negotiationNumber).filter(Boolean).join(', ')],
+    ];
+
+    const settings = await Settings.getSettings();
+    const buffer = await createOrderReceiptPdfBuffer({ order, settings, whatsappNumber: orderWhatsAppNumber, references });
+    const fileName = receiptFileName(order);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    res.setHeader('X-Receipt-Filename', encodeURIComponent(fileName));
+    res.setHeader('Content-Length', buffer.length);
+    res.send(Buffer.from(buffer));
   } catch (error) {
     next(error);
   }

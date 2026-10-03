@@ -1,3 +1,5 @@
+const { contentsShortText, packQuantityText } = require('./packSize');
+
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 42;
@@ -77,7 +79,7 @@ const buildAddressLines = (shippingAddress = {}) => {
   return lines.filter(Boolean);
 };
 
-const buildVariantDetails = (variantSnapshot = {}) => {
+const buildVariantDetails = (variantSnapshot = {}, { skipPacking = false } = {}) => {
   const parts = [];
   if (variantSnapshot.displayName || variantSnapshot.name) {
     parts.push(variantSnapshot.displayName || variantSnapshot.name);
@@ -90,10 +92,10 @@ const buildVariantDetails = (variantSnapshot = {}) => {
         .join(', ')
     );
   }
-  if (variantSnapshot.packing) {
+  if (variantSnapshot.packing && !skipPacking) {
     parts.push(`Packing: ${variantSnapshot.packing}`);
   }
-  if (variantSnapshot.priceUnit) {
+  if (variantSnapshot.priceUnit && !skipPacking) {
     parts.push(`Unit: ${variantSnapshot.priceUnit}`);
   }
   return parts.join(' | ');
@@ -148,7 +150,8 @@ const createPdfBuffer = (pages) => {
   return Buffer.from(output, 'utf8');
 };
 
-const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) => {
+// references: extra [label, value] rows, e.g. the deal / requirement numbers.
+const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber, references = [] }) => {
   const pages = [];
   let commands = [];
   let cursorY = PAGE_HEIGHT - MARGIN;
@@ -205,10 +208,12 @@ const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) 
   const metaPairs = [
     ['Order Number', order.orderNumber || '-'],
     ['Order Date', formatDateTime(order.createdAt)],
+    ...(order.customerSnapshot?.businessName ? [['Shop', order.customerSnapshot.businessName]] : []),
     ['Customer', order.customerSnapshot?.name || order.shippingAddress?.fullName || '-'],
     ['Phone', order.customerSnapshot?.phone || order.shippingAddress?.phone || '-'],
     ['Email', order.customerSnapshot?.email || '-'],
     ['Order Type', order.orderType === 'wholesale' ? 'Wholesale' : 'Retail'],
+    ...references.filter(([, value]) => value),
   ];
 
   metaPairs.forEach(([label, value]) => {
@@ -233,31 +238,33 @@ const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) 
   drawLine(MARGIN, cursorY, PAGE_WIDTH - MARGIN, cursorY, 0.8);
   cursorY -= 16;
   drawText('Product', MARGIN, cursorY, { size: 11, font: 'F2' });
-  drawText('Qty', MARGIN + 315, cursorY, { size: 11, font: 'F2' });
-  drawText('Rate', MARGIN + 380, cursorY, { size: 11, font: 'F2' });
-  drawText('Total', MARGIN + 460, cursorY, { size: 11, font: 'F2' });
+  drawText('Qty', MARGIN + 290, cursorY, { size: 11, font: 'F2' });
+  drawText('Rate', MARGIN + 355, cursorY, { size: 11, font: 'F2' });
+  drawText('Total', MARGIN + 435, cursorY, { size: 11, font: 'F2' });
   cursorY -= 10;
   drawLine(MARGIN, cursorY, PAGE_WIDTH - MARGIN, cursorY, 0.8);
   cursorY -= 14;
 
   for (const [index, item] of order.items.entries()) {
     const productLabel = item.productSnapshot?.name || `Item ${index + 1}`;
-    const variantDetails = buildVariantDetails(item.variantSnapshot);
+    const packText = packQuantityText(item.variantSnapshot, item.quantity);
+    const variantDetails = buildVariantDetails(item.variantSnapshot, { skipPacking: Boolean(packText) });
     const productLines = [
       ...wrapText(productLabel, 42),
+      ...(packText ? [`Qty: ${packText}`] : []),
       ...(variantDetails ? wrapText(variantDetails, 50) : []),
     ];
 
-    const rowHeight = Math.max(24, (productLines.length * 12) + 4);
+    const rowHeight = Math.max(28, (productLines.length * 12) + 12);
     ensureSpace(rowHeight + 12);
 
     drawText(productLines[0], MARGIN, cursorY, {
       size: 10,
       font: 'F2',
     });
-    drawText(String(item.quantity || 0), MARGIN + 315, cursorY, { size: 10 });
-    drawText(formatCurrency(item.pricePerUnit), MARGIN + 380, cursorY, { size: 10 });
-    drawText(formatCurrency(item.totalPrice), MARGIN + 460, cursorY, { size: 10 });
+    drawText(contentsShortText(item.variantSnapshot, item.quantity || 0), MARGIN + 290, cursorY, { size: 10 });
+    drawText(formatCurrency(item.pricePerUnit), MARGIN + 355, cursorY, { size: 10 });
+    drawText(formatCurrency(item.totalPrice), MARGIN + 435, cursorY, { size: 10 });
 
     let lineY = cursorY - 12;
     for (let lineIndex = 1; lineIndex < productLines.length; lineIndex += 1) {
@@ -266,7 +273,7 @@ const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) 
     }
 
     cursorY -= rowHeight;
-    drawLine(MARGIN, cursorY + 6, PAGE_WIDTH - MARGIN, cursorY + 6, 0.35);
+    drawLine(MARGIN, cursorY + 13, PAGE_WIDTH - MARGIN, cursorY + 13, 0.35);
   }
 
   cursorY -= 8;
@@ -285,7 +292,7 @@ const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) 
       size: label === 'Grand Total' ? 12 : 10,
       font: label === 'Grand Total' ? 'F2' : 'F1',
     });
-    drawText(value, MARGIN + 430, cursorY, {
+    drawText(value, MARGIN + 435, cursorY, {
       size: label === 'Grand Total' ? 12 : 10,
       font: label === 'Grand Total' ? 'F2' : 'F1',
     });
@@ -310,6 +317,24 @@ const createOrderReceiptPdfBuffer = async ({ order, settings, whatsappNumber }) 
   return createPdfBuffer(pages);
 };
 
+// "Ravi-Traders-ORD-2026-9001.pdf": shop name (else customer name) + order number.
+const receiptFileName = (order = {}) => {
+  const clean = (value) => String(value || '')
+    .normalize('NFKD')
+    .replace(/[^\w\s.-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 60);
+  const who = clean(order.customerSnapshot?.businessName)
+    || clean(order.customerSnapshot?.name)
+    || clean(order.shippingAddress?.fullName)
+    || 'Receipt';
+  const number = clean(order.orderNumber) || String(order._id || '');
+  return `${who}-${number}.pdf`;
+};
+
 module.exports = {
   createOrderReceiptPdfBuffer,
+  receiptFileName,
 };
