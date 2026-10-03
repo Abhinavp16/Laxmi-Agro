@@ -3794,7 +3794,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get homeHeadlineCustomer => 'आज आपके खेत को क्या चाहिए?';
 
   @override
-  String get homeHeadlineDealer => 'आज कौन-सा माल मंगाना है?';
+  String get homeHeadlineDealer => 'आज क्या मंगवाना चाहेंगे?';
 
   @override
   String get homeShopByCategory => 'श्रेणी से खरीदें';
