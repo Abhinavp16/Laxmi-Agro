@@ -40,6 +40,22 @@ String packQuantityText(AppLocalizations l10n, PackInfo info, int amount) =>
       contentsText(l10n, info.contentUnit!, amount),
     );
 
+/// "Bundle 500 m" and "₹26,000": one pack and its price, short enough for a
+/// product card, from the per-meter / per-piece [unitPrice].
+({String label, String price}) packCardParts(
+  AppLocalizations l10n,
+  PackInfo info,
+  num unitPrice,
+) => (
+  label: l10n.productCardPack(
+    packUnitLabel(l10n, info.packUnit!),
+    info.contentUnit == ContentUnit.meter
+        ? l10n.productMetersCount(NumberFormatter.formatPrice(info.size))
+        : l10n.productPcsCount(info.size),
+  ),
+  price: '₹${NumberFormatter.formatPrice(unitPrice * info.size)}',
+);
+
 /// "1 Coil (500 m) = ₹37,500" from the per-meter / per-piece [unitPrice].
 String packPriceText(AppLocalizations l10n, PackInfo info, num unitPrice) =>
     l10n.productPackPrice(

@@ -24,6 +24,7 @@ class ProductCard extends StatelessWidget {
     this.mrp,
     this.unit,
     this.packNote,
+    this.packPrice,
     this.rating,
     this.reviewCount,
     this.badge,
@@ -55,6 +56,10 @@ class ProductCard extends StatelessWidget {
   /// One short line under the price, e.g. "Coil 500 m = ₹37,500".
   final String? packNote;
 
+  /// One pack's price ("₹26,000"), shown in bold after [packNote]; it never
+  /// gets cut off (the note shortens instead).
+  final String? packPrice;
+
   /// Shown only when not null and above zero.
   final double? rating;
   final int? reviewCount;
@@ -78,6 +83,15 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A discount goes on the photo ("16% OFF") unless the caller set a badge,
+    // so the price row always fits on one line.
+    final m = mrp;
+    final percent = m != null && m > 0 && m > price
+        ? (((m - price) / m) * 100).round()
+        : 0;
+    final tag =
+        badge ?? (percent > 0 && offLabel != null ? offLabel!(percent) : null);
+    final tagTone = badge != null ? badgeTone : ChipTone.success;
     Widget image = Container(
       decoration: BoxDecoration(
         color: AppColors.gray50,
@@ -135,15 +149,11 @@ class ProductCard extends StatelessWidget {
                         dense: true,
                       ),
                     ),
-                  if (badge != null && badge!.isNotEmpty)
+                  if (tag != null && tag.isNotEmpty)
                     Positioned(
                       left: 6,
                       top: 6,
-                      child: StatusChip(
-                        label: badge!,
-                        tone: badgeTone,
-                        dense: true,
-                      ),
+                      child: StatusChip(label: tag, tone: tagTone, dense: true),
                     ),
                   if (onWishlist != null)
                     Positioned(
@@ -203,21 +213,12 @@ class ProductCard extends StatelessWidget {
                       mrp: mrp,
                       unit: unit,
                       size: 15,
-                      offLabel: offLabel,
+                      wrap: false,
                     ),
                     if (packNote != null && packNote!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          packNote!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFonts.jakarta(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
+                        child: _PackLine(note: packNote!, price: packPrice),
                       ),
                     if (action != null) ...[
                       const SizedBox(height: 8),
@@ -230,6 +231,47 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Bundle 500 m · ₹26,000": the note shortens if space runs out, the
+/// bold pack price never does.
+class _PackLine extends StatelessWidget {
+  const _PackLine({required this.note, this.price});
+
+  final String note;
+  final String? price;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppFonts.jakarta(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textTertiary,
+    );
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            note,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+        if (price != null) ...[
+          Text(' · ', style: style),
+          Text(
+            price!,
+            maxLines: 1,
+            style: style.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

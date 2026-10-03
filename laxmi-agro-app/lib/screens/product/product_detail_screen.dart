@@ -2486,8 +2486,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       badgeLabel = l10n.productBadgeHot;
       badgeTone = ChipTone.error;
     } else if (discount > 0) {
-      badgeLabel = l10n.productBadgeSale;
-      badgeTone = ChipTone.accent;
+      // No badge: the card tags the photo with the discount ("16% OFF").
     } else if (item['isNew'] == true) {
       badgeLabel = l10n.productBadgeNew;
       badgeTone = ChipTone.info;
@@ -2497,6 +2496,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       name: displayName,
       price: priceValue,
       mrp: hasMrp ? mrp : null,
+      offLabel: (percent) => l10n.commonPercentOff('$percent'),
       imageUrl: image,
       category: item['category']?.toString() ?? '',
       brand: brand.isEmpty ? l10n.productBrandFallback : brand,

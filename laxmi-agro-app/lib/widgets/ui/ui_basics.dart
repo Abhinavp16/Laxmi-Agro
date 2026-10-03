@@ -379,11 +379,15 @@ class PriceView extends StatelessWidget {
       if (percent > 0)
         Text(
           '₹${NumberFormatter.formatPrice(mrp)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppText.mrp(fontSize: (size * 0.72).clamp(11, 13).toDouble()),
         ),
       if (percent > 0 && offLabel != null)
         Text(
           offLabel!(percent),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppFonts.jakarta(
             fontSize: (size * 0.72).clamp(11, 13).toDouble(),
             fontWeight: FontWeight.w800,
@@ -392,13 +396,17 @@ class PriceView extends StatelessWidget {
         ),
     ];
     if (!wrap) {
+      // One line: the price stays whole, the MRP / discount shorten instead.
       return Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Flexible(child: main),
-          for (final e in extras) ...[const SizedBox(width: 6), e],
+          main,
+          for (final e in extras) ...[
+            const SizedBox(width: 6),
+            Flexible(child: e),
+          ],
         ],
       );
     }

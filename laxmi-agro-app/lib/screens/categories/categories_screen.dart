@@ -2089,13 +2089,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final pending = product['pendingPriceChange'];
     final inStock = product['inStock'] != false;
     final image = product['image']?.toString() ?? '';
+    final packParts = catalogPackParts(l10n, product, price);
 
     return ProductCard(
       name: _getDisplayName(product),
       price: price,
       mrp: hasDiscount ? mrp : null,
       unit: catalogUnitSuffix(l10n, product),
-      packNote: catalogPackNote(l10n, product, price),
+      packNote: packParts?.label,
+      packPrice: packParts?.price,
       imageUrl: image,
       category: product['category']?.toString() ?? '',
       // Stars only for products that have a rating.

@@ -5972,6 +5972,18 @@ abstract class AppLocalizations {
   /// **'{pack} = ₹{price}'**
   String productPackPrice(String pack, String price);
 
+  /// No description provided for @productCardPack.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} {contents}'**
+  String productCardPack(String unit, String contents);
+
+  /// No description provided for @productPcsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pcs'**
+  String productPcsCount(int count);
+
   /// No description provided for @productUnitCoil.
   ///
   /// In en, this message translates to:

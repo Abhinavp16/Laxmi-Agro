@@ -5484,8 +5484,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       badgeLabel = l10n.homeBadgeHot;
       badgeTone = ChipTone.error;
     } else if (discount > 0) {
-      badgeLabel = l10n.homeBadgeSale;
-      badgeTone = ChipTone.accent;
+      // No badge: the card tags the photo with the discount ("16% OFF").
     } else if (product['isNew'] == true) {
       badgeLabel = l10n.homeBadgeNew;
       badgeTone = ChipTone.info;
@@ -5502,6 +5501,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         ? wholesaleMinimumOf(product)
         : customerMinimumOf(product);
     final stock = product['stock'];
+    final packParts = pack.isPack ? packCardParts(l10n, pack, price) : null;
 
     // Each card watches only its own heart and cart quantity, so a cart or
     // wishlist change rebuilds the cards it touches, not the whole screen.
@@ -5530,7 +5530,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           unit: pack.isPack || isMeter
               ? (isMeter ? l10n.uiPerMeter : l10n.uiPerPiece)
               : null,
-          packNote: pack.isPack ? packPriceText(l10n, pack, price) : null,
+          packNote: packParts?.label,
+          packPrice: packParts?.price,
           rating: rating is num ? rating.toDouble() : null,
           reviewCount: reviewCount is num ? reviewCount.toInt() : null,
           badge: badgeLabel,

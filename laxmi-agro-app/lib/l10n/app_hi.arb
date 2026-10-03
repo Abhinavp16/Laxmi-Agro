@@ -979,6 +979,8 @@
   "productBundlesCount": "{count} बंडल",
   "productPackWithContents": "{pack} ({contents})",
   "productPackPrice": "{pack} = ₹{price}",
+  "productCardPack": "{unit} {contents}",
+  "productPcsCount": "{count} पीस",
   "productUnitCoil": "कॉइल",
   "productUnitBundle": "बंडल",
   "productMinOrderQuantity": "न्यूनतम ऑर्डर: {quantity}",

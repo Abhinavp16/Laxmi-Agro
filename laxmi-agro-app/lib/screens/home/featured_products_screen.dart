@@ -294,13 +294,13 @@ class _FeaturedProductsScreenState
     final inStock = product['inStock'] != false;
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
     final displayName = localizedName(context, product);
+    final packParts = catalogPackParts(l10n, product, price);
 
     // No HOT tag on the Hot Deals page: the page title already says it.
     String? badgeLabel;
     var badgeTone = ChipTone.brand;
     if (discount > 0) {
-      badgeLabel = l10n.productBadgeSale;
-      badgeTone = ChipTone.accent;
+      // No badge: the card tags the photo with the discount ("16% OFF").
     } else if (product['isNew'] == true) {
       badgeLabel = l10n.productBadgeNew;
       badgeTone = ChipTone.info;
@@ -310,8 +310,10 @@ class _FeaturedProductsScreenState
       name: displayName,
       price: price,
       unit: catalogUnitSuffix(l10n, product),
-      packNote: catalogPackNote(l10n, product, price),
+      packNote: packParts?.label,
+      packPrice: packParts?.price,
       mrp: hasDiscount ? originalPrice : null,
+      offLabel: (percent) => l10n.commonPercentOff('$percent'),
       imageUrl: product['image']?.toString() ?? '',
       category: product['category']?.toString() ?? '',
       brand: brand.isEmpty ? l10n.productBrandFallback : brand,

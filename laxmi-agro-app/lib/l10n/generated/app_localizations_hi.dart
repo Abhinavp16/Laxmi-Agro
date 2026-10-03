@@ -3385,6 +3385,16 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
+  String productCardPack(String unit, String contents) {
+    return '$unit $contents';
+  }
+
+  @override
+  String productPcsCount(int count) {
+    return '$count पीस';
+  }
+
+  @override
   String get productUnitCoil => 'कॉइल';
 
   @override

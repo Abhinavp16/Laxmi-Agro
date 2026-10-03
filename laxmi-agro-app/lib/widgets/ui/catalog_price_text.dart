@@ -35,14 +35,14 @@ String? catalogUnitSuffix(AppLocalizations l10n, Map<dynamic, dynamic> product) 
   return '/$raw';
 }
 
-/// "1 Coil (500 m) = ₹37,500" for pack products, from the per-meter /
-/// per-piece [price]; null for everything else.
-String? catalogPackNote(
+/// "Bundle 500 m" and "₹26,000" for a pack product's card, from the
+/// per-meter / per-piece [price]; null for everything else.
+({String label, String price})? catalogPackParts(
   AppLocalizations l10n,
   Map<dynamic, dynamic> product,
   num price,
 ) {
   final pack = packInfoOf(product);
   if (!pack.isPack || price <= 0) return null;
-  return packPriceText(l10n, pack, price);
+  return packCardParts(l10n, pack, price);
 }
