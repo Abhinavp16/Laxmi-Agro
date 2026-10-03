@@ -22,6 +22,7 @@ import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import '../../widgets/cart_requirement.dart';
 import '../../widgets/language_picker_sheet.dart';
+import '../../widgets/language_wave.dart';
 import '../../core/config/api_config.dart';
 import '../../core/config/feature_flags.dart';
 import '../../core/providers/cart_provider.dart';
@@ -4817,7 +4818,15 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           tooltip: l10n.languageTitle,
           onSelected: (Locale value) {
             HapticFeedback.selectionClick();
-            ref.read(localeProvider.notifier).setLocale(value);
+            if (value.languageCode == ref.read(localeProvider).languageCode) {
+              return;
+            }
+            // Waits for the menu to close so it isn't in the wave's snapshot.
+            LanguageWave.run(
+              context,
+              () => ref.read(localeProvider.notifier).setLocale(value),
+              settle: const Duration(milliseconds: 300),
+            );
           },
           itemBuilder: (_) => [
             _buildLanguageItem(LocaleNotifier.english, l10n.languageEnglish),

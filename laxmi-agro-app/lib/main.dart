@@ -19,6 +19,7 @@ import 'l10n/l10n.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/app_lifecycle_service.dart';
+import 'widgets/language_wave.dart';
 
 final GlobalKey<ScaffoldMessengerState> scafoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -149,12 +150,15 @@ class _NotificationBootstrapState extends ConsumerState<_NotificationBootstrap>
       ],
       routerConfig: appRouter,
       // Dark status-bar icons unless a screen asks otherwise (Home's green
-      // header asks for light ones).
-      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark.copyWith(
-          statusBarColor: Colors.transparent,
+      // header asks for light ones). A language switch plays as a wave over
+      // the whole app.
+      builder: (context, child) => LanguageWave(
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.dark.copyWith(
+            statusBarColor: Colors.transparent,
+          ),
+          child: child ?? const SizedBox.shrink(),
         ),
-        child: child ?? const SizedBox.shrink(),
       ),
     );
   }

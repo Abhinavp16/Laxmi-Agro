@@ -6,6 +6,7 @@ import '../core/providers/locale_provider.dart';
 import '../core/theme/app_fonts.dart';
 import '../core/theme/app_theme.dart';
 import '../l10n/l10n.dart';
+import 'language_wave.dart';
 import 'ui/ui.dart';
 
 /// Bottom sheet to switch the app between English and Hindi. The choice is
@@ -93,7 +94,13 @@ Future<void> showLanguagePicker(BuildContext context, WidgetRef ref) async {
     },
   );
   if (picked == null || picked.languageCode == current) return;
-  await ref.read(localeProvider.notifier).setLocale(picked);
+  if (!context.mounted) return;
+  // Waits for the sheet to close so it isn't in the wave's snapshot.
+  await LanguageWave.run(
+    context,
+    () => ref.read(localeProvider.notifier).setLocale(picked),
+    settle: const Duration(milliseconds: 300),
+  );
   if (!context.mounted) return;
   showAppSnack(
     context,

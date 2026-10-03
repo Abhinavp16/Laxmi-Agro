@@ -13,6 +13,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
+import '../../widgets/language_wave.dart';
 import '../../widgets/ui/ui.dart';
 
 class PermissionsOnboardingScreen extends ConsumerStatefulWidget {
@@ -186,7 +187,13 @@ class _LanguageChoice extends ConsumerWidget {
         child: Semantics(
           selected: selected,
           child: Pressable(
-            onTap: () => ref.read(localeProvider.notifier).setLocale(locale),
+            onTap: () {
+              if (selected) return;
+              LanguageWave.run(
+                context,
+                () => ref.read(localeProvider.notifier).setLocale(locale),
+              );
+            },
             semanticLabel: label,
             haptic: true,
             color: selected ? AppColors.primarySoft : AppColors.surfaceLight,
