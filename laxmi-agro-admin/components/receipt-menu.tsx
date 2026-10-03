@@ -28,6 +28,7 @@ type Action = "download" | "share" | "print"
 // "Receipt ▾" → Download / Share / Print the order receipt PDF.
 export function ReceiptMenu({ apiBase, orderId, orderNumber, size = "sm" }: ReceiptMenuProps) {
     const [busy, setBusy] = useState<Action | null>(null)
+    const [open, setOpen] = useState(false)
     const cached = useRef<File | null>(null)
 
     async function run(action: Action) {
@@ -50,6 +51,8 @@ export function ReceiptMenu({ apiBase, orderId, orderNumber, size = "sm" }: Rece
             toast.error(error instanceof Error ? error.message : "Could not load the receipt")
         } finally {
             setBusy(null)
+            // Stays open while the PDF loads (spinner), closes when done.
+            setOpen(false)
         }
     }
 
@@ -67,7 +70,7 @@ export function ReceiptMenu({ apiBase, orderId, orderNumber, size = "sm" }: Rece
     )
 
     return (
-        <DropdownMenu>
+        <DropdownMenu open={open} onOpenChange={(next) => !busy && setOpen(next)}>
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="outline"

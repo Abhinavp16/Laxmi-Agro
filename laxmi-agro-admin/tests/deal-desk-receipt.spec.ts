@@ -97,11 +97,13 @@ test("admin Deal Desk: Receipt menu downloads, shares and prints the order PDF",
         navigator.canShare = () => true
         navigator.share = async (data?: ShareData) => { w.__shared = data?.files?.[0]?.name }
     })
+    await row.getByRole("button", { name: /^Receipt/ }).click()
     await page.getByRole("menuitem", { name: "Share" }).click()
     await expect.poll(() => page.evaluate(() => (window as unknown as { __shared?: string }).__shared)).toBe(FILE_NAME)
 
     // Browsers that can't share files get the PDF downloaded instead.
     await page.evaluate(() => { navigator.canShare = () => false })
+    await row.getByRole("button", { name: /^Receipt/ }).click()
     const [shared] = await Promise.all([
         page.waitForEvent("download"),
         page.getByRole("menuitem", { name: "Share" }).click(),
@@ -109,13 +111,15 @@ test("admin Deal Desk: Receipt menu downloads, shares and prints the order PDF",
     expect(shared.suggestedFilename()).toBe(FILE_NAME)
     await expect(page.getByText(/can't share files/)).toBeVisible()
 
+    await row.getByRole("button", { name: /^Receipt/ }).click()
     await page.getByRole("menuitem", { name: "Print" }).click()
     await expect(page.locator('iframe[src^="blob:"]')).toHaveCount(1)
     // The PDF was fetched once and reused.
     expect(requests).toHaveLength(1)
 
     // The grouped requirement's row shares the combined order's receipt.
-    await page.keyboard.press("Escape")
+    // The menu closes once an action finishes.
+    await expect(page.getByRole("menu")).toHaveCount(0)
     await page.getByTestId("requirement-group-row").getByRole("button", { name: /^Receipt/ }).click()
     await page.getByRole("menuitem", { name: "Download PDF" }).click()
     await expect.poll(() => requests.at(-1)).toBe("/admin/orders/order-2/receipt")
