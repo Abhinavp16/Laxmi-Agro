@@ -41,6 +41,7 @@ import { useNegotiationSocket } from "@/lib/hooks/useNegotiationSocket"
 import { quantityWithPacks } from "@/lib/pack-size"
 import { RequirementGroupAcceptDialog } from "@/components/requirement-group-accept-dialog"
 import { DeliveryChargeInput, parseDeliveryCharge } from "@/components/accept-order-fields"
+import { ReceiptMenu } from "@/components/receipt-menu"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
@@ -346,6 +347,7 @@ export default function NegotiationsPage() {
                                     <TableHead className="text-gray-400 text-right">Req. Price</TableHead>
                                     <TableHead className="text-gray-400 text-center">Status</TableHead>
                                     <TableHead className="text-gray-400">Approved By</TableHead>
+                                    <TableHead className="text-gray-400 text-center">Receipt</TableHead>
                                     <TableHead className="text-gray-400 text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -367,6 +369,7 @@ export default function NegotiationsPage() {
                                             const members = groups.get(groupId) || []
                                             const open = members.filter((m) => OPEN_STATUSES.includes(m.status) && !m.orderId)
                                             const value = members.reduce((sum, m) => sum + Number(m.currentTotalPrice ?? m.requestedTotalPrice ?? 0), 0)
+                                            const groupOrderId = members.find((m) => m.orderId)?.orderId
                                             rows.push(
                                                 <TableRow key={`group-${groupId}`} className="border-[#333] bg-sky-500/[0.06] hover:bg-sky-500/[0.08]" data-testid="requirement-group-row">
                                                     <TableCell colSpan={7} className="text-sm text-white">
@@ -374,6 +377,9 @@ export default function NegotiationsPage() {
                                                         {' · '}{negotiation.wholesaler?.name || 'Unknown'}
                                                         {' · '}{members.length} products · ₹{value.toLocaleString('en-IN')}
                                                         {open.length < members.length && <span className="text-gray-400"> · {open.length} open</span>}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {groupOrderId && <ReceiptMenu apiBase="/admin" orderId={groupOrderId} />}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         {open.length > 0 && (
@@ -403,6 +409,11 @@ export default function NegotiationsPage() {
                                             <TableCell className="text-gray-300 text-sm">
                                                 {negotiation.approvedBy
                                                     ? `${isMemberRole(negotiation.approvedBy.role) ? 'Member' : 'Admin'} · ${negotiation.approvedBy.name}`
+                                                    : <span className="text-gray-600">—</span>}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {negotiation.orderId
+                                                    ? <ReceiptMenu apiBase="/admin" orderId={negotiation.orderId} />
                                                     : <span className="text-gray-600">—</span>}
                                             </TableCell>
                                             <TableCell className="text-right">
@@ -814,6 +825,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
                             </span> : <span className="block text-xs text-emerald-700">Tap to open order</span>}
                         </span>
                     </button>
+                )}
+                {orderReference && (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <span className="text-xs font-medium text-slate-600">Order receipt (PDF)</span>
+                        <ReceiptMenu apiBase="/admin" orderId={orderReference} orderNumber={orderObj?.orderNumber} />
+                    </div>
                 )}
 
                 <Separator className="bg-slate-200" />
