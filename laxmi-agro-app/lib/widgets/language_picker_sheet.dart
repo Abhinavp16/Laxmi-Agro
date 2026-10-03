@@ -99,7 +99,7 @@ Future<void> showLanguagePicker(BuildContext context, WidgetRef ref) async {
   await LanguageWave.run(
     context,
     () => ref.read(localeProvider.notifier).setLocale(picked),
-    settle: const Duration(milliseconds: 300),
+    settle: const Duration(milliseconds: 250),
   );
   if (!context.mounted) return;
   showAppSnack(

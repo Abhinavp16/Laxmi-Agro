@@ -123,12 +123,21 @@ class _LanguageWaveState extends State<LanguageWave>
       return change();
     }
 
-    // The snapshot goes on top in the same frame the language switches,
-    // and the wave starts once that frame is out.
+    // Strict order, so the new language never shows before the cover:
+    // 1. The snapshot goes on top (it looks exactly like the screen) and is
+    //    given two frames to be on the display.
+    _wave.value = 0;
     setState(() => _snapshot = image);
+    await SchedulerBinding.instance.endOfFrame;
+    await SchedulerBinding.instance.endOfFrame;
+    if (!mounted) return change();
+    // 2. The language switches underneath it, and the new screen gets two
+    //    frames to build.
     final switched = change();
     await SchedulerBinding.instance.endOfFrame;
+    await SchedulerBinding.instance.endOfFrame;
     if (!mounted) return switched;
+    // 3. The wave reveals it.
     _wave.forward(from: 0).whenCompleteOrCancel(() {
       if (!mounted) return;
       final old = _snapshot;
