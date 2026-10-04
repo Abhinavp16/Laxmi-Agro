@@ -6,6 +6,7 @@ const { adminValidation } = require('../validations');
 const adminOrderController = require('../controllers/admin/orderController');
 const adminPaymentController = require('../controllers/admin/paymentController');
 const staffOperationsController = require('../controllers/staffOperationsController');
+const adminAnalyticsController = require('../controllers/admin/analyticsController');
 
 router.use(protect, staffOnly);
 
@@ -27,5 +28,8 @@ router.get('/negotiations', staffOperationsController.getNegotiations);
 router.get('/negotiations/:id', staffOperationsController.getNegotiationById);
 router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), staffOperationsController.acceptNegotiation);
 router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiation), staffOperationsController.counterNegotiation);
+
+// Leads (same list as the admin panel)
+router.get('/analytics/potential-customers', adminAnalyticsController.getPotentialCustomers);
 
 module.exports = router;
