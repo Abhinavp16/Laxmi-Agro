@@ -4,6 +4,7 @@ const { protect, staffOnly } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
 const { adminValidation } = require('../validations');
 const adminOrderController = require('../controllers/admin/orderController');
+const adminNegotiationController = require('../controllers/admin/negotiationController');
 const adminPaymentController = require('../controllers/admin/paymentController');
 const staffOperationsController = require('../controllers/staffOperationsController');
 const adminAnalyticsController = require('../controllers/admin/analyticsController');
@@ -28,6 +29,8 @@ router.get('/negotiations', staffOperationsController.getNegotiations);
 router.get('/negotiations/:id', staffOperationsController.getNegotiationById);
 router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), staffOperationsController.acceptNegotiation);
 router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiation), staffOperationsController.counterNegotiation);
+router.put('/negotiations/:id/reject', validate(adminValidation.rejectNegotiation), adminNegotiationController.rejectNegotiation);
+router.put('/negotiations/groups/:groupId/reject', validate(adminValidation.rejectNegotiation), adminNegotiationController.rejectRequirementGroup);
 
 // Leads (same list as the admin panel)
 router.get('/analytics/potential-customers', adminAnalyticsController.getPotentialCustomers);

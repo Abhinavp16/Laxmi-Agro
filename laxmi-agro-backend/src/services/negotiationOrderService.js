@@ -599,7 +599,91 @@ async function acceptRequirementGroupAndCreateOrder({
   return { order, negotiations: finalized.map(({ updated }) => updated) };
 }
 
+const DECLINABLE = [NEGOTIATION_STATUS.PENDING, NEGOTIATION_STATUS.COUNTERED];
+
+// Declines requirements (admin or member). With groupId, every open product
+// in that requirement is declined and the wholesaler gets one notification.
+async function declineNegotiations({ negotiationId = null, groupId = null, reason = '', actor, io }) {
+  const text = String(reason || '').trim();
+  let negotiations;
+  if (groupId) {
+    negotiations = await Negotiation.find({ 'requestGroup.id': groupId });
+    if (negotiations.length === 0) throw new NotFoundError('Requirement not found', 'REQUIREMENT_GROUP_NOT_FOUND');
+  } else {
+    const negotiation = await Negotiation.findById(negotiationId);
+    if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
+    negotiations = [negotiation];
+  }
+
+  const open = negotiations.filter((n) => DECLINABLE.includes(n.status));
+  if (open.length === 0) {
+    throw new BadRequestError('Nothing left to decline: these requirements are already accepted, ordered or declined', 'INVALID_NEGOTIATION_STATUS');
+  }
+
+  for (const negotiation of open) {
+    negotiation.history.push({
+      action: NEGOTIATION_ACTIONS.REJECTED,
+      by: 'admin',
+      actorId: actor.id,
+      actorRole: actor.role,
+      message: text || undefined,
+    });
+    negotiation.status = NEGOTIATION_STATUS.REJECTED;
+    await negotiation.save();
+    emitToNegotiationRoom(io, negotiation._id.toString(), 'negotiation-rejected', {
+      negotiationId: negotiation._id.toString(),
+      reason: text || null,
+      timestamp: new Date(),
+    });
+  }
+
+  const first = open[0];
+  await recordAudit({
+    actorId: actor.id,
+    action: groupId ? 'requirement_group.declined' : 'negotiation.declined',
+    entityType: 'negotiation',
+    entityId: first._id,
+    metadata: {
+      negotiationIds: open.map((n) => String(n._id)),
+      requestNumber: first.requestGroup?.number || null,
+      reason: text || null,
+      role: actor.role,
+    },
+  }).catch(() => null);
+
+  try {
+    if (groupId) {
+      await notificationService.sendLocalizedToUser(first.wholesalerId, text ? 'requirementGroupDeclinedWithReason' : 'requirementGroupDeclined', {
+        requestNumber: first.requestGroup?.number || '',
+        count: open.length,
+        reason: text,
+      }, {
+        type: 'negotiation_rejected',
+        negotiationId: first._id.toString(),
+      });
+    } else {
+      await notificationService.sendLocalizedToUser(first.wholesalerId, text ? 'requirementDeclinedWithReason' : 'requirementDeclined', {
+        productName: first.productSnapshot.name,
+        productNameHindi: first.productSnapshot.nameHindi,
+        reason: text,
+      }, {
+        type: 'negotiation_rejected',
+        negotiationId: first._id.toString(),
+      });
+    }
+  } catch (error) {
+    console.error('Failed to send requirement declined notification:', error.message);
+  }
+
+  return {
+    declined: open.map((n) => String(n._id)),
+    skipped: negotiations.filter((n) => !open.includes(n)).map((n) => String(n._id)),
+    requestNumber: first.requestGroup?.number || null,
+  };
+}
+
 module.exports = {
+  declineNegotiations,
   acceptNegotiationAndCreateOrder,
   acceptRequirementGroupAndCreateOrder,
   resolveAcceptAddress,

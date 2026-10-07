@@ -52,6 +52,14 @@ const TEMPLATES = {
     en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement for {productName}. Open it to view the reason.' },
     hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो {productName} की रिक्वायरमेंट कन्फर्म नहीं कर सका। कारण देखने के लिए खोलें।' },
   },
+  requirementGroupDeclinedWithReason: {
+    en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement {requestNumber} ({count} products): {reason}' },
+    hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) कन्फर्म नहीं कर सका: {reason}' },
+  },
+  requirementGroupDeclined: {
+    en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement {requestNumber} ({count} products). Open it to view the details.' },
+    hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) कन्फर्म नहीं कर सका। विवरण देखने के लिए खोलें।' },
+  },
   requirementNewPrice: {
     en: { title: 'New Price from Laxmi Agro', body: 'Laxmi Agro shared a new price ₹{price}/unit for {productName}. Review and respond.' },
     hi: { title: 'लक्ष्मी एग्रो से नई कीमत', body: 'लक्ष्मी एग्रो ने {productName} के लिए नई कीमत ₹{price}/यूनिट भेजी है। देखें और जवाब दें।' },

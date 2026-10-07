@@ -8,6 +8,7 @@ const {
   acceptNegotiationAndCreateOrder,
   acceptRequirementGroupAndCreateOrder,
   emitToNegotiationRoom,
+  declineNegotiations,
   notifyWholesaler,
 } = require('../../services/negotiationOrderService');
 
@@ -361,53 +362,34 @@ exports.acceptRequirementGroup = async (req, res, next) => {
   }
 };
 
+// Declines a requirement. Admin and member panels (req.user.role).
 exports.rejectNegotiation = async (req, res, next) => {
   try {
-    const { reason } = req.body;
-
-    const negotiation = await Negotiation.findById(req.params.id);
-    if (!negotiation) {
-      throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
-    }
-
-    if ([NEGOTIATION_STATUS.REJECTED, NEGOTIATION_STATUS.CONVERTED, NEGOTIATION_STATUS.ACCEPTED].includes(negotiation.status)) {
-      throw new BadRequestError('Cannot reject in current status', 'INVALID_NEGOTIATION_STATUS');
-    }
-
-    negotiation.history.push({
-      action: NEGOTIATION_ACTIONS.REJECTED,
-      by: 'admin',
-      actorId: req.user._id,
-      actorRole: 'admin',
-      message: reason,
+    const result = await declineNegotiations({
+      negotiationId: req.params.id,
+      reason: req.body?.reason,
+      actor: { id: req.user._id, role: req.user.role === 'staff' ? 'staff' : 'admin' },
+      io: req.app.locals.io,
     });
+    res.json({ success: true, message: 'Requirement declined', data: result });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    negotiation.status = NEGOTIATION_STATUS.REJECTED;
-    await negotiation.save();
-
-    emitToNegotiationRoom(req.app.locals.io, negotiation._id.toString(), 'negotiation-rejected', {
-      negotiationId: negotiation._id.toString(),
-      reason: reason || null,
-      timestamp: new Date(),
+// Declines every open product in a requirement (sent together from the cart).
+exports.rejectRequirementGroup = async (req, res, next) => {
+  try {
+    const result = await declineNegotiations({
+      groupId: req.params.groupId,
+      reason: req.body?.reason,
+      actor: { id: req.user._id, role: req.user.role === 'staff' ? 'staff' : 'admin' },
+      io: req.app.locals.io,
     });
-
-    // Send push notification to user
-    try {
-      await notificationService.sendLocalizedToUser(negotiation.wholesalerId, reason ? 'requirementDeclinedWithReason' : 'requirementDeclined', {
-        productName: negotiation.productSnapshot.name,
-        productNameHindi: negotiation.productSnapshot.nameHindi,
-        reason,
-      }, {
-        type: 'negotiation_rejected',
-        negotiationId: negotiation._id.toString(),
-      });
-    } catch (notifErr) {
-      console.error('Failed to send negotiation rejected notification:', notifErr.message);
-    }
-
     res.json({
       success: true,
-      message: 'Negotiation rejected',
+      message: `Requirement ${result.requestNumber || ''} declined (${result.declined.length} products)`.replace('  ', ' '),
+      data: result,
     });
   } catch (error) {
     next(error);
