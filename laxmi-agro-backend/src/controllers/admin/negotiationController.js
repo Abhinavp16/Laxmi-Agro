@@ -468,3 +468,46 @@ exports.counterNegotiation = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: remove a declined requirement from the Deal Desk (and the database).
+exports.deleteDeclinedNegotiation = async (req, res, next) => {
+  try {
+    const negotiation = await Negotiation.findById(req.params.id).select('status negotiationNumber').lean();
+    if (!negotiation) throw new NotFoundError('Negotiation not found', 'NEGOTIATION_NOT_FOUND');
+    if (negotiation.status !== NEGOTIATION_STATUS.REJECTED) {
+      throw new BadRequestError('Only declined requirements can be deleted', 'NEGOTIATION_NOT_DECLINED');
+    }
+    await Negotiation.deleteOne({ _id: negotiation._id, status: NEGOTIATION_STATUS.REJECTED });
+    await recordAudit({
+      actorId: req.user._id,
+      action: 'negotiation.deleted',
+      entityType: 'negotiation',
+      entityId: negotiation._id,
+      metadata: { negotiationNumber: negotiation.negotiationNumber },
+    }).catch(() => null);
+    res.json({ success: true, message: 'Declined requirement deleted', data: { deleted: 1 } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: clear every declined requirement from the Deal Desk.
+exports.clearDeclinedNegotiations = async (req, res, next) => {
+  try {
+    const declined = await Negotiation.find({ status: NEGOTIATION_STATUS.REJECTED }).select('_id').lean();
+    if (declined.length === 0) {
+      return res.json({ success: true, message: 'No declined requirements to clear', data: { deleted: 0 } });
+    }
+    const { deletedCount } = await Negotiation.deleteMany({ _id: { $in: declined.map((n) => n._id) }, status: NEGOTIATION_STATUS.REJECTED });
+    await recordAudit({
+      actorId: req.user._id,
+      action: 'negotiation.declined_cleared',
+      entityType: 'negotiation',
+      entityId: declined[0]._id,
+      metadata: { count: deletedCount },
+    }).catch(() => null);
+    res.json({ success: true, message: `Cleared ${deletedCount} declined requirement${deletedCount === 1 ? '' : 's'}`, data: { deleted: deletedCount } });
+  } catch (error) {
+    next(error);
+  }
+};

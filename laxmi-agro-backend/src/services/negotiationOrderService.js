@@ -629,6 +629,7 @@ async function declineNegotiations({ negotiationId = null, groupId = null, reaso
       message: text || undefined,
     });
     negotiation.status = NEGOTIATION_STATUS.REJECTED;
+    negotiation.rejectedAt = new Date();
     await negotiation.save();
     emitToNegotiationRoom(io, negotiation._id.toString(), 'negotiation-rejected', {
       negotiationId: negotiation._id.toString(),

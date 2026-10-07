@@ -129,6 +129,12 @@ const negotiationSchema = new mongoose.Schema({
     default: null,
   },
 
+  // When the requirement was declined; declined ones are removed after 5 days.
+  rejectedAt: {
+    type: Date,
+    default: null,
+  },
+
   expiresAt: {
     type: Date,
     required: true,
@@ -144,6 +150,7 @@ negotiationSchema.index({ 'requestGroup.id': 1 });
 negotiationSchema.index({ variantId: 1 });
 negotiationSchema.index({ status: 1, createdAt: -1 });
 negotiationSchema.index({ expiresAt: 1 });
+negotiationSchema.index({ status: 1, rejectedAt: 1 });
 
 negotiationSchema.pre('save', function (next) {
   if (!this.negotiationNumber) {

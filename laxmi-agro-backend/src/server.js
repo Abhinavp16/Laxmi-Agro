@@ -8,6 +8,7 @@ const { startPriceChangeScheduler } = require('./services/productPriceSchedulerS
 const { startHindiNameScheduler } = require('./services/hindiNameSchedulerService');
 const { startBannerMediaSweepScheduler } = require('./services/bannerMediaCleanupService');
 const { startProductLaunchScheduler } = require('./services/productLaunchService');
+const { startDeclinedNegotiationCleanupScheduler } = require('./services/declinedNegotiationCleanupService');
 const NegotiationSocketService = require('./services/negotiationSocketService');
 const logger = require('./utils/logger');
 
@@ -48,6 +49,7 @@ const startServer = async () => {
     startHindiNameScheduler();
     startBannerMediaSweepScheduler();
     startProductLaunchScheduler();
+    startDeclinedNegotiationCleanupScheduler();
 
     server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
