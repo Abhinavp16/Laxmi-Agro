@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, MessageSquare, Check, X, Send, Search, Package, CheckCircle2 } from "@/components/hugeicons"
+import { Loader2, MessageSquare, Check, X, Send, Search, Package, CheckCircle2, Trash2 } from "@/components/hugeicons"
 import { toast } from "sonner"
 import {
     Sheet,
@@ -43,6 +43,17 @@ import { RequirementGroupAcceptDialog } from "@/components/requirement-group-acc
 import { DeliveryChargeInput, parseDeliveryCharge } from "@/components/accept-order-fields"
 import { ReceiptMenu } from "@/components/receipt-menu"
 import { DeclineRequirementDialog, type DeclineTarget } from "@/components/decline-requirement-dialog"
+import { RequirementGroupPanel } from "@/components/requirement-group-panel"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
@@ -194,6 +205,12 @@ export default function NegotiationsPage() {
     const [negotiations, setNegotiations] = useState<NegotiationList[]>([])
     const [groupToAccept, setGroupToAccept] = useState<string | null>(null)
     const [declineTarget, setDeclineTarget] = useState<DeclineTarget | null>(null)
+    // Side panel: one requirement (negotiation) or a cart requirement group.
+    const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+    const [groupRefresh, setGroupRefresh] = useState(0)
+    // Removing declined requirements: one row, or all of them.
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; number: string } | 'all' | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
     const closeGroupAccept = useCallback(() => setGroupToAccept(null), [])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -268,8 +285,39 @@ export default function NegotiationsPage() {
     }, [hasMore, isLoadingMore, page])
 
     function openDetails(id: string) {
+        setSelectedGroupId(null)
         setSelectedId(id)
         setIsSheetOpen(true)
+    }
+
+    function openGroup(groupId: string) {
+        setSelectedId(null)
+        setSelectedGroupId(groupId)
+        setIsSheetOpen(true)
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return
+        setIsDeleting(true)
+        try {
+            const path = deleteTarget === 'all' ? '/admin/negotiations/declined' : `/admin/negotiations/${deleteTarget.id}`
+            const res = await apiFetch(path, { method: 'DELETE' })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.message || 'Could not delete')
+            toast.success(data?.message || 'Deleted')
+            setDeleteTarget(null)
+            fetchNegotiations(1, true)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not delete')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    // After an accept / decline: refresh the table and the open group panel.
+    function refreshAfterChange() {
+        fetchNegotiations(1, true)
+        setGroupRefresh((value) => value + 1)
     }
 
     const getStatusBadge = (status: string) => {
@@ -328,8 +376,19 @@ export default function NegotiationsPage() {
             </form>
 
             <Card className="bg-[#161616] border-[#333]">
-                <CardHeader>
-                    <CardTitle className="text-white">Active Requests</CardTitle>
+                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+                    <div>
+                        <CardTitle className="text-white">Active Requests</CardTitle>
+                        <p className="mt-1 text-xs text-gray-400">Declined requirements are removed automatically 5 days after they are declined.</p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleteTarget('all')}
+                    >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Clear declined
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -374,38 +433,28 @@ export default function NegotiationsPage() {
                                             const groupOrderId = members.find((m) => m.orderId)?.orderId
                                             rows.push(
                                                 <TableRow key={`group-${groupId}`} className="border-[#333] bg-sky-500/[0.06] hover:bg-sky-500/[0.08]" data-testid="requirement-group-row">
-                                                    {/* One wide cell so the group's buttons don't widen the Actions column. */}
-                                                    <TableCell colSpan={9} className="text-sm text-white">
+                                                    <TableCell colSpan={8} className="text-sm text-white">
                                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                                             <span>
                                                                 <span className="font-semibold text-sky-300">{negotiation.requestGroup?.number}</span>
                                                                 {' · '}{negotiation.wholesaler?.name || 'Unknown'}
                                                                 {' · '}{members.length} products · ₹{value.toLocaleString('en-IN')}
-                                                                {open.length < members.length && <span className="text-gray-400"> · {open.length} open</span>}
+                                                                {open.length > 0
+                                                                    ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{open.length} awaiting review</span>
+                                                                    : <span className="text-gray-400"> · 0 open</span>}
                                                             </span>
-                                                            <span className="flex items-center gap-2">
-                                                                {groupOrderId && <ReceiptMenu apiBase="/admin" orderId={groupOrderId} />}
-                                                                {open.length > 0 && (
-                                                                    <>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            className="h-8 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
-                                                                            onClick={() => setDeclineTarget({
-                                                                                kind: 'group',
-                                                                                id: groupId,
-                                                                                summary: `${negotiation.requestGroup?.number} · ${open.length} open ${open.length === 1 ? 'product' : 'products'} · ₹${value.toLocaleString('en-IN')}`,
-                                                                            })}
-                                                                        >
-                                                                            <X className="mr-1 h-3.5 w-3.5" /> Decline
-                                                                        </Button>
-                                                                        <Button size="sm" className="h-8 bg-blue-600 text-white hover:bg-blue-700" onClick={() => setGroupToAccept(groupId)}>
-                                                                            Accept & Create Order
-                                                                        </Button>
-                                                                    </>
-                                                                )}
-                                                            </span>
+                                                            {groupOrderId && <ReceiptMenu apiBase="/admin" orderId={groupOrderId} />}
                                                         </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            size="sm"
+                                                            className={open.length > 0 ? "h-8 bg-blue-600 px-3 text-white hover:bg-blue-700" : "h-8 bg-slate-100 px-3 text-slate-700 hover:bg-slate-200"}
+                                                            aria-label={`Open requirement ${negotiation.requestGroup?.number}`}
+                                                            onClick={() => openGroup(groupId)}
+                                                        >
+                                                            <Package className="mr-1.5 h-3.5 w-3.5" /> {open.length > 0 ? 'Review' : 'View'}
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>,
                                             )
@@ -414,7 +463,7 @@ export default function NegotiationsPage() {
                                         <TableRow key={negotiation.id} className={`border-[#333] hover:bg-[#1A1A1A] ${negotiation.requestGroup ? "bg-sky-500/[0.03]" : ""}`}>
                                             <TableCell className="text-white font-medium">{negotiation.negotiationNumber}</TableCell>
                                             <TableCell className="text-white">{negotiation.wholesaler?.name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-gray-400">
+                                            <TableCell className="font-medium text-slate-900">
                                                 {negotiation.product?.name || 'Unknown'}
                                                 {negotiation.requestGroup && (
                                                     <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-300">{negotiation.requestGroup.number}</span>
@@ -437,6 +486,18 @@ export default function NegotiationsPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
+                                                    {negotiation.status === 'rejected' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            aria-label={`Delete ${negotiation.negotiationNumber}`}
+                                                            title="Delete declined requirement"
+                                                            className="h-8 w-8 p-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                                                            onClick={() => setDeleteTarget({ id: negotiation.id, number: negotiation.negotiationNumber })}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                     {!negotiation.requestGroup && ['pending', 'countered'].includes(negotiation.status) && (
                                                         <Button
                                                             variant="ghost"
@@ -475,18 +536,41 @@ export default function NegotiationsPage() {
                 </CardContent>
             </Card>
 
+            <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !isDeleting) setDeleteTarget(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{deleteTarget === 'all' ? 'Clear all declined requirements?' : `Delete ${deleteTarget?.number}?`}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {deleteTarget === 'all'
+                                ? 'Every declined requirement is removed from the Deal Desk and the database, including its chat. This cannot be undone.'
+                                : 'This declined requirement and its chat are removed from the Deal Desk and the database. This cannot be undone.'}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 text-white hover:bg-red-700"
+                            disabled={isDeleting}
+                            onClick={(event) => { event.preventDefault(); void confirmDelete() }}
+                        >
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : deleteTarget === 'all' ? 'Clear declined' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <DeclineRequirementDialog
                 key={declineTarget?.id || 'none'}
                 apiBase="/admin"
                 target={declineTarget}
                 onClose={() => setDeclineTarget(null)}
-                onDeclined={() => fetchNegotiations(1, true)}
+                onDeclined={refreshAfterChange}
             />
 
             <RequirementGroupAcceptDialog
                 groupId={groupToAccept}
                 onClose={closeGroupAccept}
-                onAccepted={() => fetchNegotiations(1, true)}
+                onAccepted={refreshAfterChange}
             />
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -495,6 +579,14 @@ export default function NegotiationsPage() {
                         <NegotiationChatPanel
                             negotiationId={selectedId}
                             onChanged={() => fetchNegotiations(1, true)}
+                        />
+                    )}
+                    {selectedGroupId && (
+                        <RequirementGroupPanel
+                            groupId={selectedGroupId}
+                            refreshKey={groupRefresh}
+                            onAccept={(id) => setGroupToAccept(id)}
+                            onDecline={({ id, summary }) => setDeclineTarget({ kind: 'group', id, summary })}
                         />
                     )}
                 </SheetContent>
@@ -782,6 +874,7 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
     if (isLoading || !detail) {
         return (
             <div className="flex flex-1 items-center justify-center">
+                <SheetTitle className="sr-only">Requirement Details</SheetTitle>
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         )
@@ -806,8 +899,12 @@ function NegotiationChatPanel({ negotiationId, onChanged }: { negotiationId: str
         <>
             <SheetHeader>
                 <SheetTitle className="text-slate-900">Requirement Details</SheetTitle>
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-base font-semibold leading-snug text-blue-900" data-testid="requirement-product">
+                    <Package className="h-4 w-4 shrink-0 text-blue-600" />
+                    <span className="min-w-0 break-words">{detail.productSnapshot?.name || 'Product'}</span>
+                </div>
                 <SheetDescription className="text-slate-500">
-                    {detail.negotiationNumber} · {detail.productSnapshot?.name}
+                    {detail.negotiationNumber}
                 </SheetDescription>
                 <SheetDescription className="text-slate-500">
                     {detail.wholesalerId?.businessInfo?.businessName || detail.wholesalerId?.name || 'Wholesaler'}

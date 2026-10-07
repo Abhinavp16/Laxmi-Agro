@@ -113,7 +113,12 @@ test("products sent together are accepted into one order with one delivery charg
   await expect(header).toContainText("REQ-2026-00120012")
   await expect(header).toContainText("3 products")
   await expect(header).toContainText("₹1,14,600")
-  await header.getByRole("button", { name: "Accept & Create Order" }).click()
+  // Review opens the requirement's products; accept from there.
+  await header.getByRole("button", { name: /Open requirement/ }).click()
+  const panel = page.getByTestId("requirement-group-panel")
+  await expect(panel.getByTestId("group-panel-item")).toHaveCount(3)
+  await page.screenshot({ path: "test-results/deal-desk-group-panel.png" })
+  await panel.getByRole("button", { name: "Accept & Create Order" }).click()
 
   const dialog = page.getByTestId("group-accept-dialog")
   await expect(dialog.getByTestId("group-item")).toHaveCount(3)
@@ -140,7 +145,8 @@ test("products sent together are accepted into one order with one delivery charg
 test("a negative delivery charge can't be submitted", async ({ page }) => {
   await mockApi(page)
   await page.goto("/negotiations")
-  await page.getByTestId("requirement-group-row").getByRole("button", { name: "Accept & Create Order" }).click()
+  await page.getByTestId("requirement-group-row").getByRole("button", { name: /Open requirement/ }).click()
+  await page.getByTestId("requirement-group-panel").getByRole("button", { name: "Accept & Create Order" }).click()
   const dialog = page.getByTestId("group-accept-dialog")
   await dialog.getByLabel("Delivery charge (₹)").fill("-10")
   await expect(dialog).toContainText("Enter 0 or a positive amount.")
