@@ -150,7 +150,7 @@ test("a negative delivery charge can't be submitted", async ({ page }) => {
 test("single requirement: delivery charge is added to the order total", async ({ page }) => {
   const writes = await mockApi(page)
   await page.goto("/negotiations")
-  await page.getByRole("row", { name: /1 HP MCB Panel/ }).getByRole("button").click()
+  await page.getByRole("button", { name: "Open NGT-n4" }).click()
   await page.getByRole("button", { name: /Accept Deal & Create Order/ }).click()
 
   const dialog = page.getByRole("dialog", { name: "Accept Deal & Create Order" })

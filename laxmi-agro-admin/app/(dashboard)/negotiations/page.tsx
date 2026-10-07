@@ -42,6 +42,7 @@ import { quantityWithPacks } from "@/lib/pack-size"
 import { RequirementGroupAcceptDialog } from "@/components/requirement-group-accept-dialog"
 import { DeliveryChargeInput, parseDeliveryCharge } from "@/components/accept-order-fields"
 import { ReceiptMenu } from "@/components/receipt-menu"
+import { DeclineRequirementDialog, type DeclineTarget } from "@/components/decline-requirement-dialog"
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.laxmiagroenterprises.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
@@ -192,6 +193,7 @@ function actorDisplayName(entry: HistoryEntry, dealerFallback = 'Dealer'): strin
 export default function NegotiationsPage() {
     const [negotiations, setNegotiations] = useState<NegotiationList[]>([])
     const [groupToAccept, setGroupToAccept] = useState<string | null>(null)
+    const [declineTarget, setDeclineTarget] = useState<DeclineTarget | null>(null)
     const closeGroupAccept = useCallback(() => setGroupToAccept(null), [])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -372,21 +374,38 @@ export default function NegotiationsPage() {
                                             const groupOrderId = members.find((m) => m.orderId)?.orderId
                                             rows.push(
                                                 <TableRow key={`group-${groupId}`} className="border-[#333] bg-sky-500/[0.06] hover:bg-sky-500/[0.08]" data-testid="requirement-group-row">
-                                                    <TableCell colSpan={7} className="text-sm text-white">
-                                                        <span className="font-semibold text-sky-300">{negotiation.requestGroup?.number}</span>
-                                                        {' · '}{negotiation.wholesaler?.name || 'Unknown'}
-                                                        {' · '}{members.length} products · ₹{value.toLocaleString('en-IN')}
-                                                        {open.length < members.length && <span className="text-gray-400"> · {open.length} open</span>}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {groupOrderId && <ReceiptMenu apiBase="/admin" orderId={groupOrderId} />}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {open.length > 0 && (
-                                                            <Button size="sm" className="h-8 bg-blue-600 text-white hover:bg-blue-700" onClick={() => setGroupToAccept(groupId)}>
-                                                                Accept & Create Order
-                                                            </Button>
-                                                        )}
+                                                    {/* One wide cell so the group's buttons don't widen the Actions column. */}
+                                                    <TableCell colSpan={9} className="text-sm text-white">
+                                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                                            <span>
+                                                                <span className="font-semibold text-sky-300">{negotiation.requestGroup?.number}</span>
+                                                                {' · '}{negotiation.wholesaler?.name || 'Unknown'}
+                                                                {' · '}{members.length} products · ₹{value.toLocaleString('en-IN')}
+                                                                {open.length < members.length && <span className="text-gray-400"> · {open.length} open</span>}
+                                                            </span>
+                                                            <span className="flex items-center gap-2">
+                                                                {groupOrderId && <ReceiptMenu apiBase="/admin" orderId={groupOrderId} />}
+                                                                {open.length > 0 && (
+                                                                    <>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="h-8 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                                            onClick={() => setDeclineTarget({
+                                                                                kind: 'group',
+                                                                                id: groupId,
+                                                                                summary: `${negotiation.requestGroup?.number} · ${open.length} open ${open.length === 1 ? 'product' : 'products'} · ₹${value.toLocaleString('en-IN')}`,
+                                                                            })}
+                                                                        >
+                                                                            <X className="mr-1 h-3.5 w-3.5" /> Decline
+                                                                        </Button>
+                                                                        <Button size="sm" className="h-8 bg-blue-600 text-white hover:bg-blue-700" onClick={() => setGroupToAccept(groupId)}>
+                                                                            Accept & Create Order
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                            </span>
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>,
                                             )
@@ -417,14 +436,33 @@ export default function NegotiationsPage() {
                                                     : <span className="text-gray-600">—</span>}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 text-white hover:bg-[#333]"
-                                                    onClick={() => openDetails(negotiation.id)}
-                                                >
-                                                    <MessageSquare className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex justify-end gap-1">
+                                                    {!negotiation.requestGroup && ['pending', 'countered'].includes(negotiation.status) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            aria-label={`Decline ${negotiation.negotiationNumber}`}
+                                                            title="Decline requirement"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                                                            onClick={() => setDeclineTarget({
+                                                                kind: 'negotiation',
+                                                                id: negotiation.id,
+                                                                summary: `${negotiation.negotiationNumber} · ${negotiation.product?.name || 'Product'} · ${negotiation.wholesaler?.name || 'Dealer'}`,
+                                                            })}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        aria-label={`Open ${negotiation.negotiationNumber}`}
+                                                        className="h-8 w-8 p-0 text-white hover:bg-[#333]"
+                                                        onClick={() => openDetails(negotiation.id)}
+                                                    >
+                                                        <MessageSquare className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                         )
@@ -436,6 +474,14 @@ export default function NegotiationsPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <DeclineRequirementDialog
+                key={declineTarget?.id || 'none'}
+                apiBase="/admin"
+                target={declineTarget}
+                onClose={() => setDeclineTarget(null)}
+                onDeclined={() => fetchNegotiations(1, true)}
+            />
 
             <RequirementGroupAcceptDialog
                 groupId={groupToAccept}
