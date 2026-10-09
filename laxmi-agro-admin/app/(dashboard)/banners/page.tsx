@@ -159,6 +159,17 @@ function youtubeThumbnailUrl(url: unknown) {
     return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : ""
 }
 
+// The backend's reason for a failed save ("Banner 2: …"), else the fallback.
+async function saveErrorText(res: Response, fallback: string) {
+    const data = await res.json().catch(() => null)
+    const detail = data?.error?.details?.[0]
+    if (detail?.field && detail?.message) {
+        const match = /^(?:hero|promo)Banners\.(\d+)\./.exec(detail.field)
+        return match ? `Banner ${Number(match[1]) + 1}: ${detail.message}` : `${fallback}: ${detail.message}`
+    }
+    return data?.message ? `${fallback}: ${data.message}` : fallback
+}
+
 let bannerKeySeed = 0
 const nextBannerKey = () => `banner-${Date.now().toString(36)}-${(bannerKeySeed += 1)}`
 
@@ -646,7 +657,7 @@ export default function BannersPage() {
                 setOrderDirty((prev) => ({ ...prev, hero: false }))
                 toast.success("Hero banners saved successfully")
             } else {
-                toast.error("Failed to save hero banners")
+                toast.error(await saveErrorText(res, "Failed to save hero banners"))
             }
         } catch {
             toast.error("Error saving hero banners")
@@ -679,7 +690,7 @@ export default function BannersPage() {
                 setOrderDirty((prev) => ({ ...prev, promo: false }))
                 toast.success("Promo banners saved successfully")
             } else {
-                toast.error("Failed to save promo banners")
+                toast.error(await saveErrorText(res, "Failed to save promo banners"))
             }
         } catch {
             toast.error("Error saving promo banners")
