@@ -137,8 +137,6 @@ class CartState {
   int displayItemCount(bool isWholesaler) =>
       items.fold(0, (sum, item) => sum + item.badgeCount(isWholesaler));
   double get subtotal => items.fold(0, (sum, item) => sum + item.total);
-  double get deliveryFee => subtotal > 0 ? 50 : 0;
-  double get grandTotal => subtotal + deliveryFee;
   bool get hasStockIssues => items.any((item) => item.hasStockIssue);
 }
 

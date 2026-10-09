@@ -22,7 +22,10 @@ _NotificationKind _kindOf(String type) {
     return _NotificationKind.order;
   }
   if (type.startsWith('negotiation')) return _NotificationKind.deal;
-  if (type == 'promotion' || type.startsWith('price_change')) {
+  if (type == 'promotion' ||
+      type.startsWith('price_change') ||
+      type == 'product_launched' ||
+      type == 'new_product') {
     return _NotificationKind.offer;
   }
   return _NotificationKind.other;
@@ -576,6 +579,10 @@ class _NotificationsCenterScreenState
         return HugeIcons.strokeRoundedAgreement02;
       case 'promotion':
         return HugeIcons.strokeRoundedMegaphone01;
+      // A Coming Soon product went on sale.
+      case 'product_launched':
+      case 'new_product':
+        return HugeIcons.strokeRoundedNewReleases;
       case 'system':
         return HugeIcons.strokeRoundedInformationCircle;
     }

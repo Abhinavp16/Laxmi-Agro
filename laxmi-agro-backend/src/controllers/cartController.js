@@ -7,6 +7,7 @@ const {
   getVariantDisplayName,
 } = require('../utils/productVariants');
 const { buildDiscountMap, discountsFor } = require('../services/productDiscountService');
+const { assertPurchasable, isComingSoon } = require('../utils/productAvailability');
 const {
   describePack,
   getPackSize,
@@ -173,6 +174,7 @@ exports.addItem = async (req, res, next) => {
     if (!product) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
+    assertPurchasable(product);
 
     const resolved = resolveVariantForCart(product, null);
     const requestedQuantity = Number(quantity);
@@ -224,6 +226,7 @@ exports.updateItemQuantity = async (req, res, next) => {
     if (!product) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
+    assertPurchasable(product);
 
     const resolved = resolveVariantForCart(product, variantId);
     const requestedQuantity = Number(quantity);
@@ -290,7 +293,7 @@ exports.validateCart = async (req, res, next) => {
     const userRole = req.user?.role || 'guest';
     const productIds = [...new Set(cart.items.map(item => item.productId.toString()))];
     const products = await Product.find({ _id: { $in: productIds } })
-      .select('name stock retailPrice status minWholesaleQuantity minCustomerQuantity priceUnit packing')
+      .select('name stock retailPrice status minWholesaleQuantity minCustomerQuantity priceUnit packing comingSoon')
       .lean();
 
     const productMap = buildProductMap(products);
@@ -321,6 +324,20 @@ exports.validateCart = async (req, res, next) => {
           name: product.name,
           type: 'unavailable',
           message: `${product.name} is currently unavailable`,
+          availableStock: 0,
+          requestedQty: item.quantity,
+        });
+        continue;
+      }
+
+      if (isComingSoon(product)) {
+        issues.push({
+          productId: item.productId.toString(),
+          variantId: itemVariantId,
+          cartItemKey: buildCartItemKey(item.productId.toString(), itemVariantId),
+          name: product.name,
+          type: 'coming_soon',
+          message: `${product.name} is coming soon and can't be ordered yet`,
           availableStock: 0,
           requestedQty: item.quantity,
         });

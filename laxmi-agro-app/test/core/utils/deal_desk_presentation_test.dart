@@ -97,5 +97,45 @@ void main() {
         isNull,
       );
     });
+
+    test('a deal stays Active until its order is paid', () {
+      bool done(Map<String, dynamic> n) => DealDeskPresentation.isCompleted(n);
+      expect(done({'status': 'pending'}), isFalse);
+      expect(done({'status': 'countered'}), isFalse);
+      // Accepted before orders were created on acceptance.
+      expect(done({'status': 'accepted', 'orderId': null}), isFalse);
+      expect(
+        done({
+          'status': 'converted',
+          'orderId': 'o1',
+          'orderStatus': 'pending_payment',
+        }),
+        isFalse,
+      );
+      expect(
+        done({
+          'status': 'converted',
+          'orderId': 'o1',
+          'orderStatus': 'payment_uploaded',
+        }),
+        isFalse,
+      );
+      expect(done({'status': 'converted', 'orderId': 'o1'}), isFalse);
+      for (final status in [
+        'payment_verified',
+        'processing',
+        'shipped',
+        'delivered',
+        'cancelled',
+      ]) {
+        expect(
+          done({'status': 'converted', 'orderId': 'o1', 'orderStatus': status}),
+          isTrue,
+          reason: status,
+        );
+      }
+      expect(done({'status': 'rejected'}), isTrue);
+      expect(done({'status': 'expired'}), isTrue);
+    });
   });
 }

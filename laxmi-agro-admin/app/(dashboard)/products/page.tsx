@@ -47,6 +47,7 @@ interface Product {
   rating: number;
   isFeatured?: boolean;
   isHot?: boolean;
+  comingSoon?: { enabled?: boolean; expectedDate?: string | null };
   effectivePricing?: EffectivePricing;
 }
 
@@ -209,6 +210,11 @@ function ProductCard({
             Hot
           </Badge>
         ) : null}
+        {product.comingSoon?.enabled ? (
+          <Badge className="bg-sky-500/10 text-sky-700 hover:bg-sky-500/20" data-testid="coming-soon-badge">
+            Coming Soon
+          </Badge>
+        ) : null}
       </div>
 
       <div className="mt-auto flex items-end justify-between gap-4 border-t border-[#edf0e2] pt-3">
@@ -236,6 +242,7 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<"list" | "card">("card");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [comingSoonOnly, setComingSoonOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -245,7 +252,7 @@ export default function ProductsPage() {
     fetchProducts(1, true);
   }, []);
 
-  async function fetchProducts(pageNum: number = 1, reset: boolean = false) {
+  async function fetchProducts(pageNum: number = 1, reset: boolean = false, onlyComingSoon: boolean = comingSoonOnly) {
     if (reset) {
       setIsLoading(true);
       setPage(1);
@@ -260,6 +267,7 @@ export default function ProductsPage() {
       if (searchQuery.trim()) {
         params.append("search", searchQuery.trim());
       }
+      if (onlyComingSoon) params.append("comingSoon", "true");
 
       const res = await apiFetch(`/admin/products?${params.toString()}`);
       const data = await res.json();
@@ -477,6 +485,19 @@ export default function ProductsPage() {
         >
           Search
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          aria-pressed={comingSoonOnly}
+          onClick={() => {
+            const next = !comingSoonOnly;
+            setComingSoonOnly(next);
+            fetchProducts(1, true, next);
+          }}
+          className={`w-full sm:w-auto ${comingSoonOnly ? "border-sky-400 bg-sky-50 text-sky-700" : "border-[#d8dfca] bg-white text-slate-700"}`}
+        >
+          Coming Soon
+        </Button>
         {searchQuery ? (
           <Button
             type="button"
@@ -599,6 +620,11 @@ export default function ProductsPage() {
                         >
                           {product.status}
                         </Badge>
+                        {product.comingSoon?.enabled ? (
+                          <Badge className="ml-1 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20">
+                            Coming Soon
+                          </Badge>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

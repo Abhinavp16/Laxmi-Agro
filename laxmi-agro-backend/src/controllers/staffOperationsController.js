@@ -210,6 +210,7 @@ exports.acceptNegotiation = async (req, res, next) => {
       message: req.body.message,
       shippingAddress: req.body.shippingAddress,
       customerNote: req.body.customerNote,
+      deliveryCharge: req.body.deliveryCharge,
       io: req.app.locals.io,
     });
     if (!order) {

@@ -14,6 +14,25 @@ class DealDeskPresentation {
     return orderId.isNotEmpty && orderId.toLowerCase() != 'null';
   }
 
+  // Order states after payment is marked; the deal is then done.
+  static const _settledOrderStatuses = {
+    'payment_verified',
+    'processing',
+    'shipped',
+    'delivered',
+    'cancelled',
+  };
+
+  /// Completed tab: declined/expired deals, and deals whose order is paid,
+  /// shipped, delivered or cancelled. Everything else is still Active.
+  static bool isCompleted(Map<String, dynamic> negotiation) {
+    final status = negotiation['status']?.toString().toLowerCase() ?? '';
+    if (status == 'rejected' || status == 'expired') return true;
+    if (!hasLinkedOrder(negotiation)) return false;
+    final orderStatus = negotiation['orderStatus']?.toString().toLowerCase();
+    return _settledOrderStatuses.contains(orderStatus);
+  }
+
   /// Order status of a negotiation/deal, or null when no order is involved.
   static DealOrderStatus? orderStatus(Map<String, dynamic> negotiation) {
     final status = negotiation['status']?.toString().toLowerCase() ?? '';

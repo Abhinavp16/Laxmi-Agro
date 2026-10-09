@@ -8,6 +8,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
+import '../../widgets/deal_desk_groups.dart';
 import '../../widgets/ui/ui.dart';
 import 'deal_desk_widgets.dart';
 
@@ -84,20 +85,13 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
     }
   }
 
+  // Active until the order is paid (or the deal is declined/expired).
   List<Map<String, dynamic>> get _activeNegotiations => _negotiations
-      .where((n) => ['pending', 'countered'].contains(n['status']))
+      .where((n) => !DealDeskPresentation.isCompleted(n))
       .toList();
 
-  List<Map<String, dynamic>> get _completedNegotiations => _negotiations
-      .where(
-        (n) => [
-          'accepted',
-          'rejected',
-          'expired',
-          'converted',
-        ].contains(n['status']),
-      )
-      .toList();
+  List<Map<String, dynamic>> get _completedNegotiations =>
+      _negotiations.where(DealDeskPresentation.isCompleted).toList();
 
   List<Map<String, dynamic>> _negotiationsForTab(int tab) {
     if (tab == 0) {
@@ -243,16 +237,29 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
       final replyCount = tab == 0
           ? deals.where(DealDeskPresentation.needsReply).length
           : 0;
-      content = ListView.separated(
+      // Products sent together sit under one requirement header.
+      final entries = dealDeskEntries(
+        context,
+        deals,
+        (negotiation) => DealInboxTile(
+          negotiation: negotiation,
+          orderShortcut: true,
+          onTap: () => _openDetail(_idOf(negotiation)),
+          onAction: (action) => _handleAction(negotiation, action),
+        ),
+        color: AppColors.primaryDeep,
+        gap: 12,
+      );
+      final header = replyCount > 0 ? 1 : 0;
+      content = ListView.builder(
         key: const ValueKey('list'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        itemCount: deals.length + (replyCount > 0 ? 1 : 0),
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        itemCount: entries.length + header,
         itemBuilder: (context, index) {
-          if (replyCount > 0 && index == 0) {
+          if (index < header) {
             return Padding(
-              padding: const EdgeInsets.only(left: 4, top: 4),
+              padding: const EdgeInsets.only(left: 4, top: 4, bottom: 12),
               child: Row(
                 children: [
                   const DealNeedsReplyDot(size: 8),
@@ -271,13 +278,7 @@ class _NegotiationsScreenState extends ConsumerState<NegotiationsScreen>
               ),
             );
           }
-          final negotiation = deals[index - (replyCount > 0 ? 1 : 0)];
-          return DealInboxTile(
-            negotiation: negotiation,
-            orderShortcut: true,
-            onTap: () => _openDetail(_idOf(negotiation)),
-            onAction: (action) => _handleAction(negotiation, action),
-          );
+          return entries[index - header];
         },
       );
     }

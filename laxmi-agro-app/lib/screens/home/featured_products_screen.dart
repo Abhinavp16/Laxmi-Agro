@@ -13,15 +13,19 @@ import '../../widgets/ui/product_cart_stepper.dart';
 import '../../widgets/ui/catalog_price_text.dart';
 import '../../widgets/ui/ui.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/coming_soon.dart';
 
 class FeaturedProductsScreen extends ConsumerStatefulWidget {
   final bool isHotDeals;
   final String? brandName;
+  // Products marked Coming Soon by the admin.
+  final bool comingSoon;
 
   const FeaturedProductsScreen({
     super.key,
     this.isHotDeals = false,
     this.brandName,
+    this.comingSoon = false,
   });
 
   @override
@@ -79,9 +83,13 @@ class _FeaturedProductsScreenState
         final response = await _dio.get(
           '/products',
           queryParameters: {
-            if (widget.brandName != null) 'brand': widget.brandName,
-            if (widget.brandName == null && widget.isHotDeals) 'hot': true,
-            if (widget.brandName == null && !widget.isHotDeals)
+            if (widget.comingSoon)
+              'comingSoon': true
+            else if (widget.brandName != null)
+              'brand': widget.brandName
+            else if (widget.isHotDeals)
+              'hot': true
+            else
               'featured': true,
             'page': page,
             'limit': 50,
@@ -131,6 +139,9 @@ class _FeaturedProductsScreenState
           'reviewCount':
               item['reviewCount'] ?? item['review'] ?? item['reviews'] ?? '',
           'inStock': item['inStock'] != false,
+          'comingSoon': item['comingSoon'] == true,
+          'priceHidden': item['priceHidden'] == true,
+          'expectedDate': item['expectedDate'],
           'minWholesaleQuantity': item['minWholesaleQuantity'],
           'priceUnit': item['priceUnit'],
           'packing': item['packing'],
@@ -173,7 +184,9 @@ class _FeaturedProductsScreenState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDealer = ref.watch(effectiveIsWholesalerProvider);
-    final title = widget.brandName != null
+    final title = widget.comingSoon
+        ? l10n.homeComingSoonSection
+        : widget.brandName != null
         ? widget.brandName!
         : widget.isHotDeals
         ? (isDealer
@@ -200,7 +213,9 @@ class _FeaturedProductsScreenState
     } else if (_products.isEmpty) {
       key = 'empty';
       body = EmptyState(
-        icon: widget.isHotDeals
+        icon: widget.comingSoon
+            ? HugeIcons.strokeRoundedClock01
+            : widget.isHotDeals
             ? HugeIcons.strokeRoundedFire
             : HugeIcons.strokeRoundedStar,
         title: l10n.featuredEmpty,
@@ -292,6 +307,7 @@ class _FeaturedProductsScreenState
         : double.tryParse(rawRating?.toString() ?? '');
     final reviewCount = int.tryParse('${product['reviewCount'] ?? ''}');
     final inStock = product['inStock'] != false;
+    final comingSoon = isComingSoonProduct(product);
     final isWishlisted = ref.watch(wishlistProvider).contains(productId);
     final displayName = localizedName(context, product);
     final packParts = catalogPackParts(l10n, product, price);
@@ -314,6 +330,8 @@ class _FeaturedProductsScreenState
       packPrice: packParts?.price,
       mrp: hasDiscount ? originalPrice : null,
       offLabel: (percent) => l10n.commonPercentOff('$percent'),
+      comingSoon: comingSoon,
+      comingSoonPrice: isPriceHidden(product) ? l10n.comingSoonPrice : null,
       imageUrl: product['image']?.toString() ?? '',
       category: product['category']?.toString() ?? '',
       brand: brand.isEmpty ? l10n.productBrandFallback : brand,

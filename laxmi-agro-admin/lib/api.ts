@@ -139,6 +139,12 @@ export function unregisterStoredPushToken() {
   try {
     const fcmToken = localStorage.getItem('adminFcmToken')
     const accessToken = localStorage.getItem('accessToken')
+    // Alerts were on here: switch them back on after the next login.
+    if (fcmToken) {
+      const user = getUser()
+      const userId = user?._id || user?.id
+      if (userId) localStorage.setItem(`adminPushWanted:${userId}`, '1')
+    }
     if (fcmToken && accessToken) {
       fetch(buildApiUrl('/notifications/unregister-token'), {
         method: 'POST',

@@ -1,19 +1,23 @@
 import Link from 'next/link';
+import { getInsightPost } from '@/lib/insights';
+import Icon from '@/components/Icon';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 
 export default function ModernMachineryYields() {
+    const post = getInsightPost('/insights/modern-machinery-yields');
     return (
-        <main className="pt-24 pb-16 bg-neutral-surface min-h-screen">
+        <main className="pt-32 sm:pt-36 lg:pt-44 pb-16 bg-neutral-surface min-h-screen">
             <div className="max-w-4xl mx-auto px-6">
-                <Link href="/" className="inline-flex items-center text-brand-primary hover:underline mb-8 font-medium">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    Back to Home
+                <Link href="/insights" className="inline-flex items-center text-brand-primary hover:underline mb-8 font-medium">
+                    <Icon icon={ArrowLeft01Icon} size={16} strokeWidth={2} className="w-4 h-4 mr-2" />
+                    All Insights
                 </Link>
 
                 <article className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="relative h-64 md:h-96 w-full">
                         <img
-                            src="/images/insights/pump-selection.svg"
-                            alt="Farm water supply pump selection"
+                            src={post.image}
+                            alt={post.imageAlt}
                             className="w-full h-full object-cover"
                         />
                     </div>

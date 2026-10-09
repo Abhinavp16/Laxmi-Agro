@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 const { Product, StockLog, WebsiteSettings, Category, Settings, PriceChangeAudit } = require('../../models');
 const { NotFoundError, BadRequestError } = require('../../utils/errors');
 const { paginate, formatPaginationResponse, generateSKU } = require('../../utils/helpers');
@@ -10,6 +11,17 @@ const { PRODUCT_STATUS } = require('../../utils/constants');
 const { createPriceSnapshotWorkbookBuffer } = require('../../utils/priceSnapshotWorkbook');
 const { updateProductCount } = require('../categoryController');
 const { v4: uuidv4 } = require('uuid');
+const { isComingSoon } = require('../../utils/productAvailability');
+const { notifyLaunch, sweepAutoLaunches, waitingCount } = require('../../services/productLaunchService');
+
+// Coming Soon settings from the form, merged onto what's stored. Turning it on
+// again clears the "already notified" mark so the next launch notifies.
+function mergeComingSoon(current = {}, incoming = {}) {
+  const merged = { ...current, ...incoming };
+  merged.expectedDate = merged.expectedDate ? new Date(merged.expectedDate) : null;
+  if (incoming.enabled && !current?.enabled) merged.launchNotifiedAt = null;
+  return merged;
+}
 const sharp = require('sharp');
 const slugify = require('slugify');
 const { encode } = require('blurhash');
@@ -210,6 +222,10 @@ function prepareProductData(productData) {
   }
 
   prepared.variants = normalizeVariantsForPersistence(prepared.variants, prepared);
+  if (typeof prepared.comingSoon === 'string') {
+    prepared.comingSoon = parseStructuredField(prepared.comingSoon, undefined);
+  }
+  if (prepared.comingSoon && !prepared.comingSoon.expectedDate) prepared.comingSoon.expectedDate = null;
 
   return prepared;
 }
@@ -404,6 +420,9 @@ exports.getProducts = async (req, res, next) => {
     } else {
       query.status = { $ne: PRODUCT_STATUS.ARCHIVED };
     }
+    if (req.query.comingSoon === 'true') query['comingSoon.enabled'] = true;
+    // Catch auto-launch dates that have passed (in case no timer ran).
+    await sweepAutoLaunches().catch((error) => logger.warn(`[ProductLaunch] sweep failed: ${error.message}`));
 
     if (categoryId) {
       if (!mongoose.isValidObjectId(categoryId)) {
@@ -522,6 +541,8 @@ exports.getProductById = async (req, res, next) => {
     const data = product.toObject();
     data.variants = [];
     data.effectivePricing = getEffectivePricing(data, discountsFor(await buildDiscountMap([data]), data));
+    data.notifyCount = await waitingCount(product._id);
+    data.isComingSoonNow = isComingSoon(data);
 
     res.json({
       success: true,
@@ -637,9 +658,24 @@ exports.updateProduct = async (req, res, next) => {
     Object.assign(updateData, hindiDecision.set);
 
     updateData.variants = [];
+    const wasComingSoon = isComingSoon(product);
+    if (updateData.comingSoon) {
+      const current = product.comingSoon?.toObject?.() || product.comingSoon || {};
+      updateData.comingSoon = mergeComingSoon(current, updateData.comingSoon);
+    }
     Object.assign(product, updateData);
     await product.save();
     if (hindiDecision.generate) scheduleHindiNameFill(Product, product._id);
+
+    // Coming Soon turned off (or its launch date reached): tell everyone waiting.
+    let launchNotified = 0;
+    if (wasComingSoon && !isComingSoon(product)) {
+      try {
+        launchNotified = await notifyLaunch(product._id);
+      } catch (error) {
+        logger.warn(`[ProductLaunch] notify after save failed: ${error.message}`);
+      }
+    }
 
     if (priceChangeResult?.isScheduled) {
       await registerPriceChangeCampaign();
@@ -658,6 +694,7 @@ exports.updateProduct = async (req, res, next) => {
       success: true,
       message: 'Product updated successfully',
       data: product,
+      launchNotified,
     });
   } catch (error) {
     next(error);

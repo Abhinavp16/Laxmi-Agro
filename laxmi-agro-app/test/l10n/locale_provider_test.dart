@@ -47,7 +47,8 @@ void main() {
     expect(AppFonts.sizeFor(14), 14);
     AppFonts.hindi = false;
     expect(AppFonts.spacingFor(-0.7), -0.7);
-    expect(AppFonts.sizeFor(8), 8);
+    // No text goes below 10 in either language.
+    expect(AppFonts.sizeFor(8), 10);
   });
 
   test('stored Hindi names are shown with Latin digits', () {

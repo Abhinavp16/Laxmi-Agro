@@ -14,6 +14,14 @@ const generateNegotiationNumber = () => {
   return `NGT-${year}-${timestamp}${random}`;
 };
 
+// Number shared by products a wholesaler sent together from the cart.
+const generateRequestNumber = () => {
+  const year = new Date().getFullYear();
+  const random = crypto.randomInt(1000, 9999);
+  const timestamp = Date.now().toString().slice(-4);
+  return `REQ-${year}-${timestamp}${random}`;
+};
+
 const generatePaymentNumber = () => {
   const year = new Date().getFullYear();
   const random = crypto.randomInt(1000, 9999);
@@ -74,6 +82,7 @@ const formatPrice = (price) => {
 module.exports = {
   generateOrderNumber,
   generateNegotiationNumber,
+  generateRequestNumber,
   generatePaymentNumber,
   generateSKU,
   paginate,

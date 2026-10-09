@@ -1,5 +1,5 @@
-const { Product, Analytics, WebsiteSettings, Company, ProductInterest } = require('../models');
-const { NotFoundError } = require('../utils/errors');
+const { Product, Analytics, WebsiteSettings, Company, ProductInterest, ProductAlert } = require('../models');
+const { NotFoundError, BadRequestError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { PRODUCT_STATUS, ANALYTICS_EVENTS } = require('../utils/constants');
 const mongoose = require('mongoose');
@@ -24,12 +24,13 @@ const { buildDiscountMap, discountsFor } = require('../services/productDiscountS
 const { isLeadRole, sanitizeWatchSeconds } = require('../utils/leadInterest');
 const { buildSearchTerms, groupPattern, normalizeSearchText } = require('../utils/searchQuery');
 const logger = require('../utils/logger');
+const { comingSoonPayload, hidePriceIfNeeded, isComingSoon } = require('../utils/productAvailability');
 
 const formatProductCard = (product, userRole, req, discounts = null) => {
   const pricing = getPriceForUser(product, userRole, null, discounts);
   const stock = getProductStockTotal(product);
 
-  return {
+  return hidePriceIfNeeded({
     id: product._id,
     name: product.name,
     nameHindi: product.nameHindi,
@@ -53,7 +54,8 @@ const formatProductCard = (product, userRole, req, discounts = null) => {
     purchaseCountMin: product.purchaseCountMin,
     purchaseCountMax: product.purchaseCountMax,
     pendingPriceChange: getPendingPriceChangeForUser(product, userRole, null, discounts),
-  };
+    ...comingSoonPayload(product),
+  });
 };
 
 // Products must include company, categoryRef and category for brand/category discounts.
@@ -160,6 +162,14 @@ exports.getProducts = async (req, res, next) => {
     if (isTrueQuery(inStock)) query.stock = { $gt: 0 };
     if (isTrueQuery(featured)) query.isFeatured = true;
     if (isTrueQuery(hot)) query.isHot = true;
+    if (isTrueQuery(req.query.comingSoon)) {
+      // Still coming soon (an auto-launch date in the past means it's live).
+      query['comingSoon.enabled'] = true;
+      query.$and = [
+        ...(Array.isArray(query.$and) ? query.$and : []),
+        { $or: [{ 'comingSoon.autoLaunch': { $ne: true } }, { 'comingSoon.expectedDate': null }, { 'comingSoon.expectedDate': { $gt: new Date() } }] },
+      ];
+    }
 
     applyCategoryAccessToProductQuery(query, req.user);
 
@@ -173,10 +183,12 @@ exports.getProducts = async (req, res, next) => {
       const sortOrder = sort.startsWith('-') ? -1 : 1;
       sortOption = { [sortField]: sortOrder };
     }
+    // Coming-soon products come after the ones that can be bought.
+    sortOption = { 'comingSoon.enabled': 1, ...sortOption };
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
+        .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity comingSoon negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
         .populate('company', 'name')
         .sort(sortOption)
         .skip(skip)
@@ -263,7 +275,10 @@ exports.getProductBySlug = async (req, res, next) => {
         .filter(Boolean);
     }
 
-    const responseData = {
+    const notifyMe = req.user && isComingSoon(product)
+      ? Boolean(await ProductAlert.exists({ userId: req.user._id, productId: product._id, notifiedAt: null }))
+      : false;
+    const responseData = hidePriceIfNeeded({
       ...product,
       id: product._id,
       primaryImage: normalizeMediaUrl(product.primaryImage, req),
@@ -274,7 +289,9 @@ exports.getProductBySlug = async (req, res, next) => {
       labels: resolvedLabels,
       stock: getProductStockTotal(product),
       pendingPriceChange: getPendingPriceChangeForUser(product, userRole, null, discounts),
-    };
+      ...comingSoonPayload(product),
+      notifyMe,
+    });
 
     // Remove raw price fields for non-admin users, but keep for wholesalers so they can see customer price
     if (userRole !== 'admin' && userRole !== 'wholesaler') {
@@ -380,7 +397,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
     }, req.user);
 
     const products = await Product.find(query)
-      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
+      .select('name slug shortDescription category mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity comingSoon negotiationEnabled stock priceUnit packing images isFeatured isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef')
       .limit(10)
       .lean();
 
@@ -395,7 +412,7 @@ exports.getFeaturedProducts = async (req, res, next) => {
   }
 };
 
-const SEARCH_RESULT_FIELDS = 'name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef createdAt';
+const SEARCH_RESULT_FIELDS = 'name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity comingSoon negotiationEnabled stock priceUnit packing images isHot isNew rating purchaseCountMin purchaseCountMax company categoryRef createdAt';
 
 // Relevance: words found in the product name (English or Hindi) score
 // highest, all words in the name score a bonus; description/category-only
@@ -426,7 +443,7 @@ async function runSearch(filter, termGroups, skip, limit) {
       ? Product.aggregate([
         { $match: castFilter },
         { $addFields: { _searchScore: searchScoreExpression(termGroups) } },
-        { $sort: { _searchScore: -1, createdAt: -1, _id: -1 } },
+        { $sort: { 'comingSoon.enabled': 1, _searchScore: -1, createdAt: -1, _id: -1 } },
         { $skip: skip },
         { $limit: limit },
         { $project: Object.fromEntries(SEARCH_RESULT_FIELDS.split(' ').map((field) => [field, 1])) },
@@ -434,7 +451,7 @@ async function runSearch(filter, termGroups, skip, limit) {
       : Product.find(filter)
         .select(SEARCH_RESULT_FIELDS)
         .populate('company', 'name')
-        .sort({ createdAt: -1, _id: -1 })
+        .sort({ 'comingSoon.enabled': 1, createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -729,7 +746,7 @@ exports.getRelatedProducts = async (req, res, next) => {
     }, req.user);
 
     const relatedProducts = await Product.find(relatedQuery)
-      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company categoryRef')
+      .select('name nameHindi slug shortDescription category brand mrp retailPrice wholesalePrice pendingRetailPrice pendingWholesalePrice priceChangeScheduledAt priceChangeEffectiveAt minWholesaleQuantity minCustomerQuantity comingSoon negotiationEnabled stock priceUnit packing images rating isFeatured isHot isNew purchaseCountMin purchaseCountMax company categoryRef')
       .populate('company', 'name')
       .limit(limit)
       .lean();
@@ -771,6 +788,39 @@ exports.getScheduledPriceChanges = async (req, res, next) => {
         effectiveAt: p.priceChangeEffectiveAt,
       })),
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// "Notify me when available" on a coming-soon product (logged-in users).
+exports.subscribeNotifyMe = async (req, res, next) => {
+  try {
+    const product = await Product.findOne({ _id: req.params.id, status: PRODUCT_STATUS.ACTIVE })
+      .select('name comingSoon')
+      .lean();
+    if (!product) {
+      throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+    if (!isComingSoon(product)) {
+      throw new BadRequestError('This product is already available', 'PRODUCT_NOT_COMING_SOON');
+    }
+    await ProductAlert.updateOne(
+      { userId: req.user._id, productId: product._id },
+      { $set: { notifiedAt: null } },
+      { upsert: true },
+    );
+    res.json({ success: true, data: { notifyMe: true } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.unsubscribeNotifyMe = async (req, res, next) => {
+  try {
+    await ProductAlert.deleteOne({ userId: req.user._id, productId: req.params.id });
+    res.json({ success: true, data: { notifyMe: false } });
   } catch (error) {
     next(error);
   }

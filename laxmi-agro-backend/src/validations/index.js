@@ -172,6 +172,7 @@ const productValidation = {
     inStock: Joi.boolean(),
     featured: Joi.boolean(),
     hot: Joi.boolean(),
+    comingSoon: Joi.boolean(),
     sort: Joi.string().valid('price', '-price', 'name', '-name', 'createdAt', '-createdAt'),
   }),
 
@@ -267,6 +268,16 @@ const orderValidation = {
   }),
 };
 
+const acceptShippingAddress = Joi.object({
+  fullName: Joi.string().required().max(100),
+  phone: Joi.string().required(),
+  addressLine1: Joi.string().required().max(200),
+  addressLine2: Joi.string().allow('', null).max(200),
+  city: Joi.string().required().max(100),
+  state: Joi.string().required().max(100),
+  pincode: Joi.string().required().max(10),
+}).allow(null);
+
 const adminValidation = {
   createProduct: Joi.object({
     name: Joi.string().required().max(200),
@@ -303,6 +314,12 @@ const adminValidation = {
     status: Joi.string().valid('active', 'draft', 'archived').default('draft'),
     isFeatured: Joi.boolean().default(false),
     isHot: Joi.boolean().default(false),
+    comingSoon: Joi.object({
+      enabled: Joi.boolean(),
+      showPrice: Joi.boolean(),
+      expectedDate: Joi.date().allow(null, ''),
+      autoLaunch: Joi.boolean(),
+    }),
     labelIds: Joi.array().items(Joi.string()),
     rating: Joi.number().min(0).max(5).default(4.5),
     purchaseCountMin: Joi.number().integer().min(0).default(0),
@@ -347,6 +364,12 @@ const adminValidation = {
     status: Joi.string().valid('active', 'draft', 'archived'),
     isFeatured: Joi.boolean(),
     isHot: Joi.boolean(),
+    comingSoon: Joi.object({
+      enabled: Joi.boolean(),
+      showPrice: Joi.boolean(),
+      expectedDate: Joi.date().allow(null, ''),
+      autoLaunch: Joi.boolean(),
+    }),
     labelIds: Joi.array().items(Joi.string()),
     rating: Joi.number().min(0).max(5),
     purchaseCountMin: Joi.number().integer().min(0),
@@ -406,18 +429,25 @@ const adminValidation = {
     messageId: Joi.string().trim().pattern(/^[A-Za-z0-9:_-]+$/).max(100),
   }),
 
+  // Customer order: delivery charge typed by the admin.
+  acceptOrder: Joi.object({
+    deliveryCharge: Joi.number().min(0).max(10000000),
+  }),
+
   acceptNegotiation: Joi.object({
     message: Joi.string().max(500).allow('', null),
     customerNote: Joi.string().max(500).allow('', null),
-    shippingAddress: Joi.object({
-      fullName: Joi.string().required().max(100),
-      phone: Joi.string().required(),
-      addressLine1: Joi.string().required().max(200),
-      addressLine2: Joi.string().allow('', null).max(200),
-      city: Joi.string().required().max(100),
-      state: Joi.string().required().max(100),
-      pincode: Joi.string().required().max(10),
-    }).allow(null),
+    shippingAddress: acceptShippingAddress,
+    // Delivery charge added to the order total by the admin (₹).
+    deliveryCharge: Joi.number().min(0).max(10000000).default(0),
+  }),
+
+  acceptRequirementGroup: Joi.object({
+    negotiationIds: Joi.array().items(Joi.string().hex().length(24)).min(1).max(200).unique().required(),
+    message: Joi.string().max(500).allow('', null),
+    customerNote: Joi.string().max(500).allow('', null),
+    shippingAddress: acceptShippingAddress,
+    deliveryCharge: Joi.number().min(0).max(10000000).default(0),
   }),
 
   updateOrderStatus: Joi.object({
@@ -483,7 +513,9 @@ const adminValidation = {
       buttonIcon: Joi.string().allow('', null),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
-    })),
+    // The admin page also sends helper fields (_id, linkType, linkedProductId…):
+    // drop them instead of failing the save (this route validates strictly).
+    }).options({ stripUnknown: true })),
     promoBanners: Joi.array().items(Joi.object({
       title: Joi.string().required(),
       subtitle: Joi.string().allow('', null),
@@ -494,7 +526,7 @@ const adminValidation = {
       buttonIcon: Joi.string().allow('', null),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
-    })),
+    }).options({ stripUnknown: true })),
     socialLinks: Joi.object({
       whatsapp: Joi.string().allow('', null),
       instagram: Joi.string().allow('', null),

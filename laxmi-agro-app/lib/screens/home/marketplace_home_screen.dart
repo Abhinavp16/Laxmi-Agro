@@ -15,12 +15,15 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+import '../../core/utils/coming_soon.dart';
 import '../../core/utils/packing.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import '../../widgets/cart_requirement.dart';
+import '../../widgets/coming_soon_badge.dart';
+import '../../widgets/deal_desk_groups.dart';
 import '../../widgets/language_picker_sheet.dart';
 import '../../widgets/language_wave.dart';
 import '../../core/config/api_config.dart';
@@ -141,6 +144,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   List<Map<String, dynamic>> _products = [];
   List<Map<String, dynamic>> _featuredProducts = [];
   List<Map<String, dynamic>> _hotProducts = [];
+  List<Map<String, dynamic>> _comingSoonProducts = [];
   bool _isLoadingBrands = true;
   bool _isLoadingProducts = true;
 
@@ -214,6 +218,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     _loadRecentSearches();
     _fetchBrands();
     _fetchProducts();
+    _fetchComingSoonProducts();
     _fetchCategories();
     _fetchPromoBanners();
     _fetchOffers();
@@ -520,6 +525,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         'isHot': item['isHot'] == true,
         'isNew': item['isNew'] == true,
         'inStock': item['inStock'] != false,
+        'comingSoon': item['comingSoon'] == true,
+        'priceHidden': item['priceHidden'] == true,
+        'expectedDate': item['expectedDate'],
         'discount': 0,
         'rating': item['rating'] ?? 4.5,
         'reviewCount': item['reviewCount'] ?? item['reviews'] ?? '',
@@ -533,6 +541,25 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       };
     }
     return productsById.values.toList();
+  }
+
+  // Home "Coming Soon" row; hidden when there are none.
+  Future<void> _fetchComingSoonProducts() async {
+    try {
+      final response = await _dio.get(
+        '/products',
+        queryParameters: {'comingSoon': true, 'limit': 6},
+      );
+      if (!mounted) return;
+      final List<dynamic> items = response.data['data'] ?? const [];
+      setState(() {
+        _comingSoonProducts = _mapProductItems(
+          items,
+        ).where(isComingSoonProduct).toList();
+      });
+    } catch (e) {
+      debugPrint('Coming soon products not loaded: $e');
+    }
   }
 
   Future<void> _fetchProducts() async {
@@ -1020,6 +1047,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     await Future.wait([
       _fetchBrands(),
       _fetchProducts(),
+      _fetchComingSoonProducts(),
       _fetchCategories(),
       _fetchPromoBanners(),
       _fetchOffers(),
@@ -1067,6 +1095,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           item['blurHash']?.toString() ??
           '',
       'inStock': item['inStock'] == true,
+      'comingSoon': item['comingSoon'] == true,
+      'priceHidden': item['priceHidden'] == true,
+      'expectedDate': item['expectedDate'],
       'shortDescription': item['shortDescription']?.toString() ?? '',
       'rating': item['rating'],
       'purchaseCountMin': item['purchaseCountMin'] ?? 0,
@@ -2014,6 +2045,17 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 if (!kHideOfferCouponUi && !_isWholesaler) ...[
                   const SizedBox(height: 20),
                   _buildOfferSection(),
+                ],
+                // Launching soon; hidden when there are none.
+                if (_comingSoonProducts.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  _buildProductsSection(
+                    l10n.homeComingSoonSection,
+                    false,
+                    items: _comingSoonProducts,
+                    subtitle: l10n.homeComingSoonSubtitle,
+                    onSeeAll: () => context.push('/coming-soon'),
+                  ),
                 ],
                 const SizedBox(height: 28),
                 _buildProductsSection(
@@ -3665,8 +3707,22 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                       ),
                   ],
                 ),
+                if (isComingSoonProduct(product)) ...[
+                  const SizedBox(height: 6),
+                  const ComingSoonBadge(compact: true),
+                ],
                 const SizedBox(height: 8),
-                PriceView(
+                if (isPriceHidden(product))
+                  Text(
+                    l10n.comingSoonPrice,
+                    style: AppFonts.jakarta(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: comingSoonColor,
+                    ),
+                  )
+                else
+                  PriceView(
                   price: price,
                   mrp: mrp,
                   size: 15,
@@ -3738,15 +3794,13 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         _appliedCouponCode != null &&
         _normalizedCouponInput == _appliedCouponCode;
     final couponDiscount = hasActiveCoupon ? _appliedCouponDiscount : 0.0;
-    final payableTotal = math
-        .max(cart.grandTotal - couponDiscount, 0)
-        .toDouble();
+    // Delivery is set by Laxmi Agro when the order is confirmed.
+    final payableTotal = math.max(cart.subtotal - couponDiscount, 0).toDouble();
     final hasAddress = _addr1Ctrl.text.trim().isNotEmpty;
     final addressText = [
       _addr1Ctrl.text.trim(),
       _cityCtrl.text.trim(),
     ].where((part) => part.isNotEmpty).join(', ');
-
     return Column(
       children: [
         Padding(
@@ -3876,13 +3930,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                       ],
                       CartBillCard(
                         itemTotal: cart.subtotal,
-                        deliveryFee: cart.deliveryFee,
                         total: payableTotal,
                         discount: couponDiscount,
                         couponCode: hasActiveCoupon ? _appliedCouponCode : null,
                         savings: cartMrpSavings(cart.items) + couponDiscount,
                         itemCount: cart.displayItemCount(_isWholesaler),
-                        totalLabel: hasActiveCoupon ? l10n.homePayableTotal : null,
                       ),
                     ],
                   ),
@@ -4129,22 +4181,10 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
   }
 
   List<Map<String, dynamic>> _negotiationsForTab(int tab) {
-    if (tab == 0) {
-      // Active tab - pending and countered negotiations
-      return _negotiations
-          .where((n) => ['pending', 'countered'].contains(n['status']))
-          .toList();
-    }
-    // Completed tab - accepted, rejected, expired, converted negotiations
+    // Active until the order is paid (or the deal is declined/expired).
+    final completed = tab == 1;
     return _negotiations
-        .where(
-          (n) => [
-            'accepted',
-            'rejected',
-            'expired',
-            'converted',
-          ].contains(n['status']),
-        )
+        .where((n) => DealDeskPresentation.isCompleted(n) == completed)
         .toList();
   }
 
@@ -4174,13 +4214,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
 
   Widget _buildNegotiationsContent() {
     final l10n = context.l10n;
-    final activeCount = _negotiations
-        .where(DealDeskPresentation.isActive)
-        .length;
-    const completedStatuses = {'accepted', 'rejected', 'expired', 'converted'};
+    // Active until the order is paid (or the deal is declined/expired).
     final completedCount = _negotiations
-        .where((n) => completedStatuses.contains(n['status']))
+        .where(DealDeskPresentation.isCompleted)
         .length;
+    final activeCount = _negotiations.length - completedCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4260,17 +4298,31 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       );
     } else {
       final header = needReply > 0 ? 1 : 0;
+      // Products sent together sit under one requirement header.
+      final entries = dealDeskEntries(
+        context,
+        deals,
+        (deal) {
+          final id = (deal['id'] ?? deal['_id'] ?? '').toString();
+          return DealInboxTile(
+            negotiation: deal,
+            onTap: () => _openDealDetail(id),
+            onAction: (_) => _openDealDetail(id),
+          );
+        },
+        color: AppColors.primaryDeep,
+        gap: 10,
+      );
       body = RefreshIndicator(
         key: const ValueKey('deals-list'),
         onRefresh: _fetchNegotiations,
-        child: ListView.separated(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 110 + _navOverlap),
-          itemCount: deals.length + header,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
+        child: ListView.builder(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 100 + _navOverlap),
+          itemCount: entries.length + header,
           itemBuilder: (context, index) {
             if (index < header) {
               return Padding(
-                padding: const EdgeInsets.only(left: 2),
+                padding: const EdgeInsets.only(left: 2, bottom: 10),
                 child: Row(
                   children: [
                     const DealNeedsReplyDot(size: 8),
@@ -4287,13 +4339,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 ),
               );
             }
-            final deal = deals[index - header];
-            final id = (deal['id'] ?? deal['_id'] ?? '').toString();
-            return DealInboxTile(
-              negotiation: deal,
-              onTap: () => _openDealDetail(id),
-              onAction: (_) => _openDealDetail(id),
-            );
+            return entries[index - header];
           },
         ),
       );
@@ -5287,26 +5333,37 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     String title,
     bool isFeatured, {
     bool grid = false,
+    // Another product list (e.g. Coming Soon) with its own subtitle and
+    // "See all" destination.
+    List<Map<String, dynamic>>? items,
+    String? subtitle,
+    VoidCallback? onSeeAll,
   }) {
-    final sectionProducts = isFeatured ? _featuredProducts : _hotProducts;
+    final sectionProducts =
+        items ?? (isFeatured ? _featuredProducts : _hotProducts);
     final products = sectionProducts.take(12).toList();
+    // Unique photo-flight tags when a product sits in two rows.
+    final heroScope = isFeatured ? 'popular' : (items != null ? 'soon' : 'hot');
     final l10n = context.l10n;
-    final subtitle = _isWholesaler
+    final sectionSubtitle =
+        subtitle ??
+        (_isWholesaler
         ? isFeatured
               ? l10n.homePopularSubtitleDealer
               : l10n.homeHotDealsSubtitleDealer
         : isFeatured
         ? l10n.homePopularSubtitleCustomer
-        : l10n.homeHotDealsSubtitleCustomer;
+        : l10n.homeHotDealsSubtitleCustomer);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = screenWidth >= 600 ? 184.0 : 158.0;
     final railHeight = cardWidth + 176;
     final header = SectionHeader(
       title: title,
-      subtitle: subtitle,
+      subtitle: sectionSubtitle,
       actionLabel: l10n.commonSeeAll,
-      onAction: () =>
-          context.push(isFeatured ? '/popular-products' : '/hot-deals'),
+      onAction:
+          onSeeAll ??
+          () => context.push(isFeatured ? '/popular-products' : '/hot-deals'),
     );
 
     // With enough products the grid becomes two rows that scroll sideways;
@@ -5338,7 +5395,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
               itemBuilder: (context, index) => _buildProductCard(
                 gridProducts[index],
                 showHotBadge: false,
-                heroScope: isFeatured ? 'popular' : 'hot',
+                heroScope: heroScope,
               ),
             ),
           ),
@@ -5388,7 +5445,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                         products[index],
                         // No HOT tag: the section title already says it.
                         showHotBadge: false,
-                        heroScope: isFeatured ? 'popular' : 'hot',
+                        heroScope: heroScope,
                       ),
                     ),
                   ),
@@ -5550,6 +5607,8 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
           inStock: inStock,
           soldOutLabel: l10n.commonOutOfStock,
           offLabel: (percent) => l10n.commonPercentOff('$percent'),
+          comingSoon: isComingSoonProduct(product),
+          comingSoonPrice: isPriceHidden(product) ? l10n.comingSoonPrice : null,
           heroTag: heroTag,
           wishlisted: isWishlisted,
           wishlistLabel: isWishlisted

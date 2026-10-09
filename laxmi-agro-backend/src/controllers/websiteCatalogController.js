@@ -162,6 +162,8 @@ const visibleCategoryQuery = {
 const visibleProductQuery = {
   status: PRODUCT_STATUS.ACTIVE,
   showOnWebsite: { $ne: false },
+  // Coming-soon products are app-only until they launch.
+  'comingSoon.enabled': { $ne: true },
 };
 
 async function findVisibleBrand(slug) {

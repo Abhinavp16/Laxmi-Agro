@@ -368,6 +368,7 @@ const memberNavGroups: NavGroup[] = [
       { href: "/member/products", label: "PRODUCTS", icon: Package01Icon },
       { href: "/member/orders", label: "ORDERS", icon: DeliveryTruck01Icon },
       { href: "/member/negotiations", label: "DEAL DESK", icon: Message01Icon },
+      { href: "/member/leads", label: "LEADS", icon: UserSearch01Icon },
     ],
   },
 ]

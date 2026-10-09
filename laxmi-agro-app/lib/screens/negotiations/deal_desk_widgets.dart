@@ -457,7 +457,31 @@ class DealInboxTile extends StatelessWidget {
               DealStatusChip(negotiation: negotiation, dense: true)
             else
               _DealTrack(kind: kind, yourTurn: replyNeeded),
-            if (onAction != null && _hasButton(resolvedAction)) ...[
+            // Accepted before orders were created on acceptance: Laxmi Agro
+            // creates the order from the admin panel, so nothing to tap.
+            if (kind == DealStatusKind.acceptedOrderPending) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedClock01,
+                    size: 16,
+                    color: AppColors.primaryDeep,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      l10n.dealOrderBeingPrepared,
+                      style: AppFonts.jakarta(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryDeep,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (onAction != null && _hasButton(resolvedAction)) ...[
               const SizedBox(height: 14),
               _actionButton(context, resolvedAction),
             ],

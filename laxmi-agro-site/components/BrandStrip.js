@@ -1,3 +1,6 @@
+import Icon from '@/components/Icon';
+import { Layers01Icon, Leaf01Icon, Wrench01Icon } from '@hugeicons/core-free-icons';
+
 const brandItems = [
     {
         id: 'laxmi-agro',
@@ -22,9 +25,7 @@ const brandItems = [
         type: 'icon',
         label: 'AgriPlus',
         icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-primary">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
+            <Icon icon={Layers01Icon} size={32} strokeWidth={2} className="text-brand-primary" />
         ),
     },
     {
@@ -32,10 +33,7 @@ const brandItems = [
         type: 'icon',
         label: 'V-Flow',
         icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-primary">
-                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.77 10-10 10Z" />
-                <path d="M2 21c0-3 1.85-5.36 5.08-6" />
-            </svg>
+            <Icon icon={Leaf01Icon} size={32} strokeWidth={2} className="text-brand-primary" />
         ),
     },
     {
@@ -43,9 +41,7 @@ const brandItems = [
         type: 'icon',
         label: 'HeavyDuty',
         icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-primary">
-                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-            </svg>
+            <Icon icon={Wrench01Icon} size={32} strokeWidth={2} className="text-brand-primary" />
         ),
     },
 ];

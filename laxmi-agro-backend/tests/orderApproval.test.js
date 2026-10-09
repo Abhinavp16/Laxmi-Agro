@@ -177,8 +177,20 @@ async function cleanup() {
   if (mongoose.connection.readyState) await mongoose.disconnect();
 }
 
+// The lifecycle part writes users, products and orders, so it only runs
+// against a database on this machine (never the live database in .env).
+function isLocalDatabase(uri) {
+  return /^mongodb:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//i.test(String(uri || ''));
+}
+
 async function run() {
   testSchemaAndRoutes();
+  const uri = process.env.ORDER_APPROVAL_TEST_MONGODB_URI;
+  if (!isLocalDatabase(uri)) {
+    console.log('Order approval schema/route tests passed (lifecycle skipped: set ORDER_APPROVAL_TEST_MONGODB_URI to a local test database to run it)');
+    return;
+  }
+  process.env.MONGODB_URI = uri;
   try {
     await runLifecycle();
     console.log('Order approval tests passed');

@@ -5,6 +5,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../app_image.dart';
+import '../coming_soon_badge.dart';
 import 'pressable.dart';
 import 'ui_basics.dart';
 
@@ -40,6 +41,8 @@ class ProductCard extends StatelessWidget {
     this.extra,
     this.offLabel,
     this.semanticLabel,
+    this.comingSoon = false,
+    this.comingSoonPrice,
   });
 
   final String name;
@@ -80,6 +83,13 @@ class ProductCard extends StatelessWidget {
   final Widget? extra;
   final String Function(int percent)? offLabel;
   final String? semanticLabel;
+
+  /// Coming Soon (set by the admin): a "Coming Soon" badge in place of any
+  /// other tag, no sold-out veil and no add button; it isn't for sale yet.
+  final bool comingSoon;
+
+  /// Shown instead of the price when the admin hid it ("Price coming soon").
+  final String? comingSoonPrice;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +146,7 @@ class ProductCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   image,
-                  if (!inStock)
+                  if (!inStock && !comingSoon)
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.62),
@@ -149,7 +159,13 @@ class ProductCard extends StatelessWidget {
                         dense: true,
                       ),
                     ),
-                  if (tag != null && tag.isNotEmpty)
+                  if (comingSoon)
+                    const Positioned(
+                      left: 6,
+                      top: 6,
+                      child: ComingSoonBadge(compact: true),
+                    )
+                  else if (tag != null && tag.isNotEmpty)
                     Positioned(
                       left: 6,
                       top: 6,
@@ -208,19 +224,32 @@ class ProductCard extends StatelessWidget {
                     ],
                     if (extra != null) ...[const SizedBox(height: 4), extra!],
                     const Spacer(),
-                    PriceView(
-                      price: price,
-                      mrp: mrp,
-                      unit: unit,
-                      size: 15,
-                      wrap: false,
-                    ),
-                    if (packNote != null && packNote!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: _PackLine(note: packNote!, price: packPrice),
+                    if (comingSoonPrice != null)
+                      Text(
+                        comingSoonPrice!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.jakarta(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: comingSoonColor,
+                        ),
+                      )
+                    else ...[
+                      PriceView(
+                        price: price,
+                        mrp: mrp,
+                        unit: unit,
+                        size: 15,
+                        wrap: false,
                       ),
-                    if (action != null) ...[
+                      if (packNote != null && packNote!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: _PackLine(note: packNote!, price: packPrice),
+                        ),
+                    ],
+                    if (action != null && !comingSoon) ...[
                       const SizedBox(height: 8),
                       PressScaleExclude(child: action!),
                     ],

@@ -68,6 +68,25 @@ const ROWS = [
   [8, '2.5', '25', 243],
 ];
 
+// Customer-facing text. Pricing stays out of descriptions.
+function wallText(thicknessMm) {
+  const mm = Number(thicknessMm);
+  if (mm >= 2.5) return 'A heavy wall, suited to high-pressure lines and tough outdoor or borewell use.';
+  if (mm >= 2.0) return 'A medium wall, suited to regular water supply and pump delivery lines.';
+  return 'A lighter wall, suited to household plumbing and low-pressure water lines.';
+}
+
+function descriptionFor(sizeLabel, thicknessMm) {
+  return `${sizeLabel} Iskcon GI (galvanised iron) pipe with ${thicknessMm}mm wall thickness, ` +
+    `6 metre (about 20 feet) long. ${wallText(thicknessMm)} ` +
+    'The zinc coating protects against rust, so it lasts in water supply, plumbing, ' +
+    'irrigation and farm installations. Works with standard threaded GI fittings. Sold per piece.';
+}
+
+function shortDescriptionFor(sizeLabel, thicknessMm) {
+  return `${sizeLabel} Iskcon GI pipe, ${thicknessMm}mm wall, 6 metre length.`;
+}
+
 function pricesFor(rate) {
   const base = rate * 20;
   return {
@@ -81,8 +100,7 @@ function productDoc(sub, thicknessMm, thicknessCode, rate, company, subCat, bran
   const { mrp, retailPrice, wholesalePrice } = pricesFor(rate);
   const name = `${sub.sizeLabel} ${thicknessMm}mm 6mtr Iskcon GI Pipe`;
   const sku = `GI-ISK-${sub.sizeCode}-${thicknessCode}-6M`.toUpperCase();
-  const shortDescription =
-    `${sub.sizeLabel} Iskcon GI pipe, ${thicknessMm}mm thickness, 6 metre length. GST inclusive.`.slice(0, 300);
+  const shortDescription = shortDescriptionFor(sub.sizeLabel, thicknessMm);
   return {
     name,
     category: subCat.slug,
@@ -101,11 +119,7 @@ function productDoc(sub, thicknessMm, thicknessCode, rate, company, subCat, bran
     showOnWebsite: true,
     priceUnit: 'piece',
     packing: 'Per piece',
-    description:
-      `Iskcon GI pipe for water supply and plumbing lines. Size ${sub.sizeLabel}, ` +
-      `wall thickness ${thicknessMm}mm, length 6 metre (approx 20 feet), sold per piece. ` +
-      `Per-feet list rate Rs ${rate} (GST inclusive); 6mtr base Rs ${round2(rate * 20)}. ` +
-      `Customer price is base + 10%, dealer price base + 5%, MRP base + 20%.`,
+    description: descriptionFor(sub.sizeLabel, thicknessMm),
     shortDescription,
     tags: ['gi', 'gi-pipes', 'iskcon', 'gi-pipe', sub.sizeLabel, `${thicknessMm}mm`, '6mtr'],
     specifications: [
@@ -119,6 +133,8 @@ function productDoc(sub, thicknessMm, thicknessCode, rate, company, subCat, bran
     ],
   };
 }
+
+module.exports = { SUBS, ROWS, descriptionFor, shortDescriptionFor };
 
 async function main() {
   const apply = process.argv.includes('--apply');
@@ -146,7 +162,7 @@ async function main() {
       name: ROOT_NAME,
       company: company._id,
       parent: null,
-      description: 'Iskcon GI pipes, 6 metre length, GST inclusive price list.',
+      description: 'Iskcon GI (galvanised iron) pipes in 6 metre lengths for water supply, plumbing and irrigation.',
       order: 0,
       isActive: true,
       showOnWebsite: true,
@@ -181,7 +197,7 @@ async function main() {
         name: sub.name,
         company: company._id,
         parent: root._id,
-        description: `${sub.sizeLabel} Iskcon GI pipes, 6 metre length, GST inclusive.`,
+        description: `${sub.sizeLabel} Iskcon GI pipes in 6 metre lengths, in a choice of wall thicknesses.`,
         order: sub.order,
         isActive: true,
         showOnWebsite: true,
@@ -279,7 +295,9 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

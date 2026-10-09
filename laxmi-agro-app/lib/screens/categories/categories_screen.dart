@@ -17,6 +17,7 @@ import '../../widgets/ui/ui.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/coming_soon.dart';
 
 enum _CatalogStage { categories, subcategories, products }
 
@@ -801,6 +802,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         item['primaryImage']?.toString() ?? '',
       ),
       'inStock': item['inStock'] != false,
+      'comingSoon': item['comingSoon'] == true,
+      'priceHidden': item['priceHidden'] == true,
+      'expectedDate': item['expectedDate'],
       'shortDescription': item['shortDescription']?.toString() ?? '',
       // Real ratings only: no stars when the product has none.
       'rating': item['averageRating'] ?? item['rating'],
@@ -2106,6 +2110,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       inStock: inStock,
       soldOutLabel: l10n.commonOutOfStock,
       offLabel: (percent) => l10n.commonPercentOff('$percent'),
+      comingSoon: isComingSoonProduct(product),
+      comingSoonPrice: isPriceHidden(product) ? l10n.comingSoonPrice : null,
       extra: pending is Map<String, dynamic>
           ? PendingPriceChangeNotice(
               pendingPriceChange: pending,

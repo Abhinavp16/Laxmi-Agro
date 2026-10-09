@@ -1,6 +1,7 @@
 const { Negotiation, Product, Settings, Cart } = require('../models');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
-const { paginate, formatPaginationResponse } = require('../utils/helpers');
+const { paginate, formatPaginationResponse, generateRequestNumber } = require('../utils/helpers');
+const crypto = require('crypto');
 const { NEGOTIATION_STATUS, NEGOTIATION_ACTIONS } = require('../utils/constants');
 const {
   getVariantById,
@@ -10,10 +11,11 @@ const { buildDiscountMap, discountsFor } = require('../services/productDiscountS
 const { notifyAdmins } = require('../services/adminNotificationService');
 const { planCartRequirement, describeCartRequirement } = require('../utils/cartRequirement');
 const { describePack, getPackInfo, isWholePacks } = require('../utils/packSize');
+const { assertPurchasable } = require('../utils/productAvailability');
 
 // Fields for a new wholesaler request (shared by the single-product and the
 // whole-cart requests).
-function buildNegotiationData({ product, user, quantity, pricePerUnit, message, discounts, expiresAt }) {
+function buildNegotiationData({ product, user, quantity, pricePerUnit, message, discounts, expiresAt, requestGroup = null }) {
   const resolved = getVariantById(product, null);
   if (!resolved) {
     throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
@@ -40,6 +42,7 @@ function buildNegotiationData({ product, user, quantity, pricePerUnit, message, 
       priceUnit: product.priceUnit || '',
       packing: product.packing || '',
     },
+    requestGroup: requestGroup || { id: null, number: null },
     requestedQuantity: quantity,
     requestedPricePerUnit: unitPrice,
     requestedTotalPrice: totalPrice,
@@ -95,7 +98,10 @@ exports.getMyNegotiations = async (req, res, next) => {
           nameHindi: negotiation.productSnapshot.nameHindi || '',
           image: negotiation.productSnapshot.image,
           currentPrice: negotiation.productSnapshot.price,
+          priceUnit: negotiation.productSnapshot.priceUnit || '',
+          packing: negotiation.productSnapshot.packing || '',
         },
+        requestGroup: negotiation.requestGroup?.id ? negotiation.requestGroup : null,
         requestedQuantity: negotiation.requestedQuantity,
         requestedPricePerUnit: negotiation.requestedPricePerUnit,
         requestedTotalPrice: negotiation.requestedTotalPrice,
@@ -107,6 +113,8 @@ exports.getMyNegotiations = async (req, res, next) => {
         canPay: negotiation.status === NEGOTIATION_STATUS.ACCEPTED && !negotiation.orderId,
         orderId: negotiation.orderId?._id ? String(negotiation.orderId._id) : null,
         orderNumber: negotiation.orderId?.orderNumber || null,
+        // Lets the app keep a deal under Active until its order is paid.
+        orderStatus: negotiation.orderId?.status || null,
         approvedByRole: accepted?.actorRole || (accepted ? 'admin' : null),
         createdAt: negotiation.createdAt,
       };
@@ -129,6 +137,8 @@ exports.createNegotiation = async (req, res, next) => {
     if (!product) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
     }
+
+    assertPurchasable(product);
 
     if (!product.negotiationEnabled) {
       throw new BadRequestError('Negotiation is not enabled for this product', 'NEGOTIATION_DISABLED');
@@ -206,6 +216,10 @@ exports.createFromCart = async (req, res, next) => {
 
     const discountMap = await buildDiscountMap(lines.map((line) => line.product));
     const expiresAt = await negotiationExpiryDate();
+    // One requirement number for everything sent together (accepted into one order).
+    const requestGroup = lines.length > 1
+      ? { id: crypto.randomUUID(), number: generateRequestNumber() }
+      : null;
     for (const { product, quantity } of lines) {
       const negotiation = await Negotiation.create(buildNegotiationData({
         product,
@@ -214,6 +228,7 @@ exports.createFromCart = async (req, res, next) => {
         message,
         discounts: discountsFor(discountMap, product),
         expiresAt,
+        requestGroup,
       }));
       created.push({ negotiation, product, quantity });
     }
@@ -246,6 +261,7 @@ exports.createFromCart = async (req, res, next) => {
       success: true,
       message: 'Requirement sent',
       data: {
+        requestGroup,
         negotiations: created.map(({ negotiation, product, quantity }) => ({
           id: negotiation._id,
           negotiationNumber: negotiation.negotiationNumber,

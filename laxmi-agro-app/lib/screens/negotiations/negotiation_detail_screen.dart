@@ -301,8 +301,8 @@ class _NegotiationDetailScreenState
   }
 
   // NOTE: wholesalers negotiate through chat messages only. Accept, counter
-  // and reject are admin/member actions performed from the admin panel, and
-  // the deal ends at acceptance: there is no order step in the app.
+  // and reject are admin/member actions performed from the admin panel, which
+  // also creates the order, so the app has no order step.
 
   void _showError(String msg) {
     if (!mounted) return;
@@ -1285,7 +1285,40 @@ class _NegotiationDetailScreenState
   }
 
   Widget _buildActionRow(String status, String currentOfferBy) {
-    // Accepted is where the deal ends: show it as completed.
+    if (status == 'accepted' &&
+        !DealDeskPresentation.hasLinkedOrder(_negotiation ?? const {})) {
+      // Accepted before orders were created on acceptance: Laxmi Agro
+      // creates the order (with delivery charges) from the admin panel.
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.successSoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedClock01,
+              color: AppColors.primaryDeep,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                context.l10n.dealAwaitingOrderConfirmation,
+                style: AppFonts.jakarta(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryDeep,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Accepted with its order: the deal is done.
     if (status == 'accepted') {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),

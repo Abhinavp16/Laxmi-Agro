@@ -344,6 +344,7 @@ router.get('/settings/website-content', async (req, res, next) => {
       ? await Product.find({
           _id: { $in: linkedProductIds },
           status: PRODUCT_STATUS.ACTIVE,
+          'comingSoon.enabled': { $ne: true },
         })
           .select('name slug category shortDescription description sku mrp retailPrice wholesalePrice stock priceUnit packing status images')
           .lean()

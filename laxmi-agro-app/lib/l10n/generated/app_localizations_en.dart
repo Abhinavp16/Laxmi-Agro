@@ -236,6 +236,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please order at least the minimum quantity.';
 
   @override
+  String get apiErrorProductComingSoon =>
+      'This product is coming soon and can\'t be ordered yet.';
+
+  @override
+  String get apiErrorProductUnavailable =>
+      'This product isn\'t available right now.';
+
+  @override
   String get apiErrorMinWholesaleQuantity =>
       'Please order at least the minimum wholesale quantity.';
 
@@ -804,6 +812,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonDate => 'Date';
+
+  @override
+  String get comingSoonBadge => 'Coming Soon';
+
+  @override
+  String comingSoonExpected(String date) {
+    return 'Expected $date';
+  }
+
+  @override
+  String get comingSoonPrice => 'Price coming soon';
+
+  @override
+  String get comingSoonNotifyMe => 'Notify me when available';
+
+  @override
+  String get comingSoonNotifying => 'We\'ll notify you';
+
+  @override
+  String get comingSoonNotifyOn =>
+      'We\'ll let you know as soon as it\'s available.';
+
+  @override
+  String get comingSoonNotifyOff => 'You won\'t be notified for this product.';
+
+  @override
+  String get comingSoonLoginToNotify =>
+      'Log in to get notified when it\'s available.';
+
+  @override
+  String get homeComingSoonSection => 'Coming Soon';
+
+  @override
+  String get homeComingSoonSubtitle =>
+      'Launching soon. Tap Notify me to hear first.';
 
   @override
   String get commonDelete => 'Delete';
@@ -1692,6 +1735,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeCurrentLabel => 'Current:';
+
+  @override
+  String get dealDeliveryNote =>
+      '+ Delivery charges, if any, will be added by Laxmi Agro when your order is confirmed.';
+
+  @override
+  String get dealDeliveryOnConfirmation => 'Added on confirmation';
+
+  @override
+  String get dealEstimatedTotal => 'Estimated total';
+
+  @override
+  String get dealOrderBeingPrepared => 'Laxmi Agro is preparing your order';
+
+  @override
+  String get dealAwaitingOrderConfirmation =>
+      'Accepted. Laxmi Agro will create your order and confirm delivery charges.';
+
+  @override
+  String dealDeskRequirementGroup(String number, int count, String total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count products',
+      one: '1 product',
+    );
+    return 'Requirement $number · $_temp0 · ₹$total';
+  }
 
   @override
   String get homeDealDeskTitle => 'Deal Desk';
@@ -2743,7 +2814,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productBulkUpiNote =>
-      'Bulk orders require manual UPI verification before processing.';
+      'Bulk orders require manual payment verification before processing.';
 
   @override
   String get productBuyNow => 'Buy Now';

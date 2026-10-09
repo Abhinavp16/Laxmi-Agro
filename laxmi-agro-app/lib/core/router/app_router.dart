@@ -81,6 +81,11 @@ final appRouter = GoRouter(
           const FeaturedProductsScreen(isHotDeals: true),
     ),
     GoRoute(
+      path: '/coming-soon',
+      builder: (context, state) =>
+          const FeaturedProductsScreen(comingSoon: true),
+    ),
+    GoRoute(
       path: '/brand/:id',
       builder: (context, state) => CategoriesScreen(
         brandId: state.pathParameters['id'],

@@ -74,6 +74,13 @@ const negotiationSchema = new mongoose.Schema({
     packing: { type: String, default: '' },
   },
 
+  // Products sent together from the cart share one requirement, accepted
+  // together into one order. null for single-product requirements.
+  requestGroup: {
+    id: { type: String, default: null },
+    number: { type: String, default: null },
+  },
+
   requestedQuantity: {
     type: Number,
     required: [true, 'Quantity is required'],
@@ -122,6 +129,12 @@ const negotiationSchema = new mongoose.Schema({
     default: null,
   },
 
+  // When the requirement was declined; declined ones are removed after 5 days.
+  rejectedAt: {
+    type: Date,
+    default: null,
+  },
+
   expiresAt: {
     type: Date,
     required: true,
@@ -133,9 +146,11 @@ const negotiationSchema = new mongoose.Schema({
 negotiationSchema.index({ negotiationNumber: 1 }, { unique: true });
 negotiationSchema.index({ wholesalerId: 1, status: 1 });
 negotiationSchema.index({ productId: 1 });
+negotiationSchema.index({ 'requestGroup.id': 1 });
 negotiationSchema.index({ variantId: 1 });
 negotiationSchema.index({ status: 1, createdAt: -1 });
 negotiationSchema.index({ expiresAt: 1 });
+negotiationSchema.index({ status: 1, rejectedAt: 1 });
 
 negotiationSchema.pre('save', function (next) {
   if (!this.negotiationNumber) {

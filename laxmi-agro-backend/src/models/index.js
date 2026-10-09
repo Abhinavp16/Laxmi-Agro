@@ -24,6 +24,7 @@ const AccountDeletionRequest = require('./AccountDeletionRequest');
 const AuditLog = require('./AuditLog');
 const AdminNotification = require('./AdminNotification');
 const ProductInterest = require('./ProductInterest');
+const ProductAlert = require('./ProductAlert');
 
 module.exports = {
   User,
@@ -52,4 +53,5 @@ module.exports = {
   AuditLog,
   AdminNotification,
   ProductInterest,
+  ProductAlert,
 };

@@ -80,6 +80,7 @@ import {
   packingHint,
 } from "@/components/pack-preview";
 import { getPackInfo, packLabel, packQuantityText } from "@/lib/pack-size";
+import { ComingSoonFields, comingSoonPayload, toDateInputValue } from "@/components/coming-soon-fields";
 import { HINDI_AUTO_NOTE, SuggestHindiButton } from "@/components/hindi-name-tools";
 
 interface Category {
@@ -234,6 +235,10 @@ const productSchema = z.object({
   status: z.enum(["active", "draft", "archived"]),
   isFeatured: z.boolean().default(false),
   isHot: z.boolean().default(false),
+  comingSoonEnabled: z.boolean().default(false),
+  comingSoonShowPrice: z.boolean().default(true),
+  comingSoonExpectedDate: z.string().optional().default(""),
+  comingSoonAutoLaunch: z.boolean().default(false),
   company: z.string().optional(),
   videoUrl: z.string().optional(),
   shippingTerms: z.string().optional(),
@@ -280,6 +285,9 @@ export default function AddProductPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
   const [isCustomPriceUnit, setIsCustomPriceUnit] = useState(false);
+  // Coming Soon: people waiting, and whether it was coming soon when loaded.
+  const [notifyCount, setNotifyCount] = useState(0);
+  const [wasComingSoon, setWasComingSoon] = useState(false);
   const [lockedCategoryId, setLockedCategoryId] = useState<string | null>(null);
   const isCategoryLocked = !isEditMode && lockedCategoryId !== null;
 
@@ -308,6 +316,10 @@ export default function AddProductPage() {
       status: "active",
       isFeatured: false,
       isHot: false,
+      comingSoonEnabled: false,
+      comingSoonShowPrice: true,
+      comingSoonExpectedDate: "",
+      comingSoonAutoLaunch: false,
       company: "",
       videoUrl: "",
       shippingTerms:
@@ -379,6 +391,8 @@ export default function AddProductPage() {
       const product = data.data;
 
       if (!product) throw new Error("Product data is empty");
+      setNotifyCount(Number(product.notifyCount || 0));
+      setWasComingSoon(Boolean(product.isComingSoonNow));
 
       const productCompanyId = product.company?._id || product.company || "";
       const matchedCategory = loadedCategories.find((category) => {
@@ -440,6 +454,10 @@ export default function AddProductPage() {
         status: product.status || "draft",
         isFeatured: product.isFeatured || false,
         isHot: product.isHot || false,
+        comingSoonEnabled: Boolean(product.comingSoon?.enabled),
+        comingSoonShowPrice: product.comingSoon?.showPrice !== false,
+        comingSoonExpectedDate: toDateInputValue(product.comingSoon?.expectedDate),
+        comingSoonAutoLaunch: Boolean(product.comingSoon?.autoLaunch),
         company: product.company?._id || product.company || "none",
         videoUrl: product.videoUrl || "",
         shippingTerms: product.shippingTerms || "",
@@ -796,6 +814,7 @@ export default function AddProductPage() {
         negotiationEnabled: values.negotiationEnabled,
         isFeatured: values.isFeatured,
         isHot: values.isHot,
+        comingSoon: comingSoonPayload(values),
         company: selectedCategoryCompany || null,
         labelIds: normalizedLabelIds,
         images: normalizedImages,
@@ -843,9 +862,13 @@ export default function AddProductPage() {
         throw new Error(errorMessage);
       }
 
+      const saved = await response.json().catch(() => ({}));
+      const notified = Number(saved?.launchNotified || 0);
       toast.success(
         isEditMode
-          ? "Product updated successfully"
+          ? notified > 0
+            ? `Product updated — ${notified} ${notified === 1 ? "customer was" : "customers were"} notified it's available`
+            : "Product updated successfully"
           : "Product created successfully",
       );
       router.push(returnPath);
@@ -2189,6 +2212,14 @@ export default function AddProductPage() {
                         </FormItem>
                       );
                     }}
+                  />
+
+                  <ComingSoonFields
+                    control={form.control}
+                    enabled={form.watch("comingSoonEnabled")}
+                    hasDate={Boolean(form.watch("comingSoonExpectedDate"))}
+                    notifyCount={notifyCount}
+                    wasComingSoon={wasComingSoon}
                   />
 
                   {/* Featured & Hot Product Toggles */}

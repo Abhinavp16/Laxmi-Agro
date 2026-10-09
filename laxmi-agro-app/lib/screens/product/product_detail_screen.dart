@@ -26,11 +26,14 @@ import '../../widgets/ui/ui.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/number_formatter.dart';
+import '../../core/utils/coming_soon.dart';
 import '../../core/utils/packing.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import 'pdp_widgets.dart';
+import '../../widgets/coming_soon_badge.dart';
+import '../../widgets/delivery_note.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -74,6 +77,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   // _isFav removed â€“ now using wishlistProvider
   bool _shippingOpen = false;
   bool _isBuyNowLoading = false;
+  bool _isNotifyLoading = false;
   YoutubePlayerController? _ytCtrl;
   bool _videoReady = false;
   Map<String, dynamic>? _product;
@@ -1044,7 +1048,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                       pendingPriceChange,
                       stock,
                       inStock,
-                      !isWholesaler,
+                      !isWholesaler && !_isComingSoon,
                       isWholesaler,
                       l10n,
                     ),
@@ -1115,7 +1119,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     ),
                   ),
                   const SizedBox(height: 1),
-                  _buildStockStatus(inStock ? 1 : 0, l10n, dense: true),
+                  if (_isComingSoon)
+                    Text(
+                      l10n.comingSoonBadge,
+                      style: AppFonts.jakarta(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: comingSoonColor,
+                      ),
+                    )
+                  else
+                    _buildStockStatus(inStock ? 1 : 0, l10n, dense: true),
                 ],
               ),
             ),
@@ -1590,6 +1604,35 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             child: Divider(height: 1, thickness: 1, color: AppColors.border),
           ),
 
+          // Coming Soon: badge + expected date; the price may be hidden.
+          if (_isComingSoon) ...[
+            Row(
+              children: [
+                const ComingSoonBadge(fontSize: 11, uppercase: false),
+                if (_expectedLaunchLabel != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.comingSoonExpected(_expectedLaunchLabel!),
+                      style: AppFonts.jakarta(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: comingSoonColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (isPriceHidden(_product))
+            Text(
+              l10n.comingSoonPrice,
+              style: AppText.price(fontSize: 22, color: comingSoonColor),
+            )
+          else ...[
+
           // Price block
           if (price != null) ...[
             Text(
@@ -1744,6 +1787,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ? pendingPriceChange
                   : null,
             ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
             child: Divider(height: 1, thickness: 1, color: AppColors.border),
@@ -1785,12 +1829,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
             children: [
               Expanded(
                 child: _factRow(
-                  icon: inStock
+                  icon: _isComingSoon
+                      ? HugeIcons.strokeRoundedClock01
+                      : inStock
                       ? HugeIcons.strokeRoundedCheckmarkCircle02
                       : HugeIcons.strokeRoundedCancelCircle,
-                  iconColor: inStock ? AppColors.primary : AppColors.error,
-                  text: inStock ? l10n.commonInStock : l10n.commonOutOfStock,
-                  textColor: inStock ? AppColors.primary : AppColors.error,
+                  iconColor: _isComingSoon
+                      ? comingSoonColor
+                      : inStock
+                      ? AppColors.primary
+                      : AppColors.error,
+                  text: _isComingSoon
+                      ? l10n.comingSoonBadge
+                      : inStock
+                      ? l10n.commonInStock
+                      : l10n.commonOutOfStock,
+                  textColor: _isComingSoon
+                      ? comingSoonColor
+                      : inStock
+                      ? AppColors.primary
+                      : AppColors.error,
                   weight: FontWeight.w700,
                 ),
               ),
@@ -1800,7 +1858,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   label: l10n.productBulkOrder,
                   onTap: () => _openCustomerChat(name, sku, price),
                 ),
-              ] else ...[
+              ] else if (!isPriceHidden(_product)) ...[
                 Text(
                   l10n.productInclTaxes,
                   style: AppFonts.jakarta(
@@ -2497,6 +2555,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       price: priceValue,
       mrp: hasMrp ? mrp : null,
       offLabel: (percent) => l10n.commonPercentOff('$percent'),
+      comingSoon: isComingSoonProduct(item),
+      comingSoonPrice: isPriceHidden(item) ? l10n.comingSoonPrice : null,
       imageUrl: image,
       category: item['category']?.toString() ?? '',
       brand: brand.isEmpty ? l10n.productBrandFallback : brand,
@@ -2814,6 +2874,146 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     return EdgeInsets.fromLTRB(16, 0, 16, 120 + bottomInset);
   }
 
+  // -- COMING SOON --
+  bool get _isComingSoon => isComingSoonProduct(_product);
+
+  String? get _expectedLaunchLabel => expectedLaunchText(
+    _product,
+    Localizations.localeOf(context).languageCode,
+  );
+
+  bool get _notifyMe => _product?['notifyMe'] == true;
+
+  Future<void> _toggleNotifyMe(AppLocalizations l10n) async {
+    if (_isNotifyLoading) return;
+    if (ref.read(guestModeProvider)) {
+      _showGuestModePopup(l10n.comingSoonNotifyMe);
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    SnackBar snack(String text) => SnackBar(
+      content: Text(text),
+      duration: const Duration(seconds: 3),
+      behavior: SnackBarBehavior.floating,
+      margin: _snackBarMarginAboveBottomBar(),
+    );
+    if (!ref.read(authProvider).isAuthenticated) {
+      _showCartSnackBar(messenger, snack(l10n.comingSoonLoginToNotify));
+      return;
+    }
+    final turnOn = !_notifyMe;
+    setState(() => _isNotifyLoading = true);
+    try {
+      final path = '/products/${widget.productId}/notify-me';
+      if (turnOn) {
+        await _dio.post(path);
+      } else {
+        await _dio.delete(path);
+      }
+      if (!mounted) return;
+      setState(() => _product?['notifyMe'] = turnOn);
+      _showCartSnackBar(
+        messenger,
+        snack(turnOn ? l10n.comingSoonNotifyOn : l10n.comingSoonNotifyOff),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      _showCartSnackBar(messenger, snack(apiErrorText(context, error)));
+      // It may have just gone live: reload so the buy buttons come back.
+      if (error.response?.data is Map &&
+          (error.response!.data['error'] is Map) &&
+          error.response!.data['error']['code'] == 'PRODUCT_NOT_COMING_SOON') {
+        _fetchProduct();
+      }
+    } finally {
+      if (mounted) setState(() => _isNotifyLoading = false);
+    }
+  }
+
+  // Coming Soon products can't be bought yet: one "Notify me" button.
+  Widget _comingSoonBar(double bp, AppLocalizations l10n) {
+    final on = _notifyMe;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, bp + 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_expectedLaunchLabel != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  l10n.comingSoonExpected(_expectedLaunchLabel!),
+                  textAlign: TextAlign.center,
+                  style: AppFonts.jakarta(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: comingSoonColor,
+                  ),
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                key: const ValueKey('coming-soon-notify-button'),
+                onPressed: _isNotifyLoading
+                    ? null
+                    : () => _toggleNotifyMe(l10n),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: on
+                      ? AppColors.surfaceLight
+                      : comingSoonColor,
+                  foregroundColor: on ? comingSoonColor : Colors.white,
+                  elevation: 0,
+                  side: on
+                      ? const BorderSide(color: comingSoonColor, width: 1.5)
+                      : null,
+                  shape: const StadiumBorder(),
+                ),
+                icon: _isNotifyLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        on
+                            ? Icons.notifications_active
+                            : Icons.notifications_none,
+                        size: 20,
+                      ),
+                label: Text(
+                  on
+                      ? '${l10n.comingSoonNotifying} ✓'
+                      : l10n.comingSoonNotifyMe,
+                  style: AppFonts.jakarta(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // -- BOTTOM BAR --
   Widget _bottomBar(
     String name,
@@ -2827,6 +3027,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     dynamic minQty,
     AppLocalizations l10n,
   ) {
+    if (_isComingSoon) return _comingSoonBar(bp, l10n);
     final unitLabel = _quantityUnitLabel();
     final isWholesaler = ref.watch(effectiveIsWholesalerProvider);
     final minimumQuantity = minQty is num
@@ -3739,6 +3940,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              const DeliveryNote(),
             ],
           ),
         ),

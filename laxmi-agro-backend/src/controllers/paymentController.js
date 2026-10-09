@@ -38,6 +38,11 @@ exports.uploadScreenshot = async (req, res, next) => {
       throw new BadRequestError('Payment already processed', 'PAYMENT_ALREADY_PROCESSED');
     }
 
+    // The admin adds delivery when accepting, so pay only after that.
+    if (order.acceptanceStatus === 'pending') {
+      throw new BadRequestError('Your order is awaiting confirmation. Pay after Laxmi Agro accepts it.', 'ORDER_AWAITING_ACCEPTANCE');
+    }
+
     let payment = await Payment.findOne({ orderId });
     if (!payment) {
       payment = await Payment.create({

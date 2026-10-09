@@ -15,6 +15,7 @@ import '../../core/utils/packing.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/delivery_note.dart';
 import '../../widgets/ui/ui.dart';
 
 // -----------------------------------------------------------------------------
@@ -31,18 +32,6 @@ double cartMrpSavings(Iterable<CartItem> items) => items.fold(0.0, (sum, item) {
   if (mrp == null || mrp <= item.price) return sum;
   return sum + (mrp - item.price) * item.quantity;
 });
-
-/// The delivery fee a server response states (`data.deliveryFee`, or a
-/// top-level `deliveryFee`), or null when it has none. Today the backend only
-/// sends it with the coupon preview and the created order, not with `/cart`.
-double? deliveryFeeFromResponse(dynamic responseData) {
-  if (responseData is! Map) return null;
-  final data = responseData['data'];
-  final raw =
-      (data is Map ? data['deliveryFee'] : null) ?? responseData['deliveryFee'];
-  if (raw is num) return raw.toDouble();
-  return double.tryParse(raw?.toString() ?? '');
-}
 
 /// "2 Coils (1,000 m)", "50 m", "15 pieces" or "Qty: 3" for [quantity]
 /// (default: the line's quantity) of [item].
@@ -829,12 +818,13 @@ class _CartQuantitySheetState extends State<_CartQuantitySheet> {
 /// Bill card: the total with a green "You save" line, and a collapsed
 /// "View breakup" with item total, delivery and coupon rows.
 class CartBillCard extends StatefulWidget {
-  /// [itemTotal] + [deliveryFee] − [discount] = [total]; [savings] (MRP
-  /// savings plus any coupon) shows in green beside the total when above 0.
+  /// [itemTotal] − [discount] = [total], an estimate: Laxmi Agro adds
+  /// delivery when it confirms the order, which the card says (with the
+  /// delivery note under the total). [savings] (MRP savings plus any coupon)
+  /// shows in green beside the total when above 0.
   const CartBillCard({
     super.key,
     required this.itemTotal,
-    required this.deliveryFee,
     required this.total,
     this.discount = 0,
     this.couponCode,
@@ -845,7 +835,6 @@ class CartBillCard extends StatefulWidget {
   });
 
   final double itemTotal;
-  final double deliveryFee;
   final double total;
   final double discount;
 
@@ -856,7 +845,7 @@ class CartBillCard extends StatefulWidget {
   /// Shown after "Item total" when given.
   final int? itemCount;
 
-  /// Replaces "Total" (e.g. "Payable Total" with a coupon).
+  /// Replaces "Estimated total".
   final String? totalLabel;
   final bool initiallyExpanded;
 
@@ -943,7 +932,7 @@ class _CartBillCardState extends State<CartBillCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.totalLabel ?? l10n.commonTotal,
+                        widget.totalLabel ?? l10n.dealEstimatedTotal,
                         style: AppFonts.jakarta(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -988,6 +977,10 @@ class _CartBillCardState extends State<CartBillCard> {
               ],
             ),
           ),
+          const Padding(
+            padding: EdgeInsets.only(top: 8, right: 8),
+            child: DeliveryNote(),
+          ),
           AnimatedSize(
             duration: duration,
             curve: AppMotion.standard,
@@ -1006,7 +999,7 @@ class _CartBillCardState extends State<CartBillCard> {
                         ),
                         SummaryRow(
                           label: l10n.cartDeliveryFee,
-                          value: _rupees(l10n, widget.deliveryFee),
+                          value: l10n.dealDeliveryOnConfirmation,
                         ),
                         if (widget.discount > 0)
                           SummaryRow(
@@ -1024,7 +1017,7 @@ class _CartBillCardState extends State<CartBillCard> {
                         const Divider(height: 1),
                         const SizedBox(height: 4),
                         SummaryRow(
-                          label: l10n.cartGrandTotal,
+                          label: l10n.dealEstimatedTotal,
                           value: _rupees(l10n, widget.total),
                           emphasize: true,
                         ),

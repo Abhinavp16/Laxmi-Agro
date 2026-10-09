@@ -65,6 +65,8 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  // Lets the admin panel name downloaded receipts.
+  exposedHeaders: ["Content-Disposition", "X-Receipt-Filename"],
 };
 
 app.use(cors(corsOptions));

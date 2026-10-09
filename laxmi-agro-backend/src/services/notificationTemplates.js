@@ -25,8 +25,8 @@ const TEMPLATES = {
     hi: { title: 'ऑर्डर अपडेट', body: 'आपके ऑर्डर की स्थिति अपडेट की गई है।' },
   },
   orderAccepted: {
-    en: { title: 'Order Accepted', body: 'Your order {orderNumber} has been accepted. You can now complete payment.' },
-    hi: { title: 'ऑर्डर स्वीकार किया गया', body: 'आपका ऑर्डर {orderNumber} स्वीकार कर लिया गया है। अब आप भुगतान कर सकते हैं।' },
+    en: { title: 'Order Accepted', body: 'Your order {orderNumber} has been accepted. Total to pay: ₹{total} (incl. delivery). You can now complete payment.' },
+    hi: { title: 'ऑर्डर स्वीकार किया गया', body: 'आपका ऑर्डर {orderNumber} स्वीकार कर लिया गया है। कुल भुगतान: ₹{total} (डिलीवरी सहित)। अब आप भुगतान कर सकते हैं।' },
   },
   orderRejected: {
     en: { title: 'Order Rejected', body: 'Your order {orderNumber} was rejected: {reason}' },
@@ -52,6 +52,14 @@ const TEMPLATES = {
     en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement for {productName}. Open it to view the reason.' },
     hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो {productName} की रिक्वायरमेंट कन्फर्म नहीं कर सका। कारण देखने के लिए खोलें।' },
   },
+  requirementGroupDeclinedWithReason: {
+    en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement {requestNumber} ({count} products): {reason}' },
+    hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) कन्फर्म नहीं कर सका: {reason}' },
+  },
+  requirementGroupDeclined: {
+    en: { title: 'Requirement Declined', body: 'Laxmi Agro could not confirm requirement {requestNumber} ({count} products). Open it to view the details.' },
+    hi: { title: 'रिक्वायरमेंट अस्वीकार हुई', body: 'लक्ष्मी एग्रो रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) कन्फर्म नहीं कर सका। विवरण देखने के लिए खोलें।' },
+  },
   requirementNewPrice: {
     en: { title: 'New Price from Laxmi Agro', body: 'Laxmi Agro shared a new price ₹{price}/unit for {productName}. Review and respond.' },
     hi: { title: 'लक्ष्मी एग्रो से नई कीमत', body: 'लक्ष्मी एग्रो ने {productName} के लिए नई कीमत ₹{price}/यूनिट भेजी है। देखें और जवाब दें।' },
@@ -63,6 +71,14 @@ const TEMPLATES = {
   requirementAccepted: {
     en: { title: 'Order Created! ✅', body: 'Laxmi Agro accepted your requirement for {productName} at ₹{price}/unit. Order {orderNumber} is ready to view.' },
     hi: { title: 'ऑर्डर बन गया! ✅', body: 'लक्ष्मी एग्रो ने {productName} की आपकी रिक्वायरमेंट ₹{price}/यूनिट पर स्वीकार कर ली है। ऑर्डर {orderNumber} देखें।' },
+  },
+  productLaunched: {
+    en: { title: 'Now available! 🎉', body: '{productName} is now available. Order it in the app.' },
+    hi: { title: 'अब उपलब्ध! 🎉', body: '{productName} अब उपलब्ध है। ऐप में ऑर्डर करें।' },
+  },
+  requirementGroupAccepted: {
+    en: { title: 'Order Created! ✅', body: 'Laxmi Agro accepted your requirement {requestNumber} for {count} products. Order {orderNumber} · total ₹{total}.' },
+    hi: { title: 'ऑर्डर बन गया! ✅', body: 'लक्ष्मी एग्रो ने आपकी रिक्वायरमेंट {requestNumber} ({count} प्रोडक्ट) स्वीकार कर ली है। ऑर्डर {orderNumber} · कुल ₹{total}।' },
   },
   negotiationUpdate: {
     en: { title: 'Negotiation Update', body: '{message}' },

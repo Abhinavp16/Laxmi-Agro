@@ -45,9 +45,6 @@ class BuyNowScreen extends ConsumerStatefulWidget {
 class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
   bool _isCheckingOut = false;
 
-  // Fixed delivery fee; the backend charges the same ₹50 on every order.
-  static const double _deliveryFee = 50;
-
   // Address state
   List<ShippingAddress> _savedAddresses = [];
   String _selectedAddressId = '';
@@ -151,15 +148,15 @@ class _BuyNowScreenState extends ConsumerState<BuyNowScreen> {
                 const SizedBox(height: 12),
                 CartBillCard(
                   itemTotal: _itemTotal,
-                  deliveryFee: _deliveryFee,
-                  total: _itemTotal + _deliveryFee,
+                  // Laxmi Agro adds delivery when it confirms the order.
+                  total: _itemTotal,
                   savings: _mrpSavings,
                 ),
               ],
             ),
           ),
           CartCheckoutBar(
-            total: _itemTotal + _deliveryFee,
+            total: _itemTotal,
             label: l10n.cartPlaceOrderRequest,
             icon: HugeIcons.strokeRoundedSent,
             loading: _isCheckingOut,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +42,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   /// Delivery fee the server stated (coupon preview); the cart endpoint
   /// doesn't send one, so the cart's own fee is used until then.
-  double? _serverDeliveryFee;
 
   @override
   void initState() {
@@ -141,7 +142,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           _appliedCouponCode = _couponCode;
           _couponSuccess = true;
           _couponError = null;
-          _serverDeliveryFee = deliveryFeeFromResponse(response.data);
         });
       } else {
         setState(() {
@@ -612,8 +612,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   Widget _buildContent(CartState cart, bool isWholesaler) {
     final l10n = context.l10n;
-    final deliveryFee = _serverDeliveryFee ?? cart.deliveryFee;
-    final total = cart.subtotal + deliveryFee - _discount;
+    // Delivery is added by Laxmi Agro when it confirms the order.
+    final total = math.max(cart.subtotal - _discount, 0).toDouble();
     final savings = cartMrpSavings(cart.items) + _discount;
     final busy = _isCheckingOut || _isValidating;
 
@@ -659,7 +659,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ],
                 CartBillCard(
                   itemTotal: cart.subtotal,
-                  deliveryFee: deliveryFee,
                   discount: _discount,
                   couponCode: _appliedCouponCode,
                   total: total,

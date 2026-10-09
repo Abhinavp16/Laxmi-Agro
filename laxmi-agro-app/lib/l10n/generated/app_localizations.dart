@@ -518,6 +518,18 @@ abstract class AppLocalizations {
   /// **'Please order at least the minimum quantity.'**
   String get apiErrorMinCustomerQuantity;
 
+  /// No description provided for @apiErrorProductComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'This product is coming soon and can\'t be ordered yet.'**
+  String get apiErrorProductComingSoon;
+
+  /// No description provided for @apiErrorProductUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This product isn\'t available right now.'**
+  String get apiErrorProductUnavailable;
+
   /// No description provided for @apiErrorMinWholesaleQuantity.
   ///
   /// In en, this message translates to:
@@ -1441,6 +1453,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Date'**
   String get commonDate;
+
+  /// No description provided for @comingSoonBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming Soon'**
+  String get comingSoonBadge;
+
+  /// No description provided for @comingSoonExpected.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected {date}'**
+  String comingSoonExpected(String date);
+
+  /// No description provided for @comingSoonPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price coming soon'**
+  String get comingSoonPrice;
+
+  /// No description provided for @comingSoonNotifyMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me when available'**
+  String get comingSoonNotifyMe;
+
+  /// No description provided for @comingSoonNotifying.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll notify you'**
+  String get comingSoonNotifying;
+
+  /// No description provided for @comingSoonNotifyOn.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll let you know as soon as it\'s available.'**
+  String get comingSoonNotifyOn;
+
+  /// No description provided for @comingSoonNotifyOff.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t be notified for this product.'**
+  String get comingSoonNotifyOff;
+
+  /// No description provided for @comingSoonLoginToNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to get notified when it\'s available.'**
+  String get comingSoonLoginToNotify;
+
+  /// No description provided for @homeComingSoonSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming Soon'**
+  String get homeComingSoonSection;
+
+  /// No description provided for @homeComingSoonSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Launching soon. Tap Notify me to hear first.'**
+  String get homeComingSoonSubtitle;
 
   /// No description provided for @commonDelete.
   ///
@@ -2983,6 +3055,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Current:'**
   String get homeCurrentLabel;
+
+  /// No description provided for @dealDeliveryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Delivery charges, if any, will be added by Laxmi Agro when your order is confirmed.'**
+  String get dealDeliveryNote;
+
+  /// No description provided for @dealDeliveryOnConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Added on confirmation'**
+  String get dealDeliveryOnConfirmation;
+
+  /// No description provided for @dealEstimatedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated total'**
+  String get dealEstimatedTotal;
+
+  /// No description provided for @dealOrderBeingPrepared.
+  ///
+  /// In en, this message translates to:
+  /// **'Laxmi Agro is preparing your order'**
+  String get dealOrderBeingPrepared;
+
+  /// No description provided for @dealAwaitingOrderConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted. Laxmi Agro will create your order and confirm delivery charges.'**
+  String get dealAwaitingOrderConfirmation;
+
+  /// No description provided for @dealDeskRequirementGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Requirement {number} · {count, plural, =1{1 product} other{{count} products}} · ₹{total}'**
+  String dealDeskRequirementGroup(String number, int count, String total);
 
   /// No description provided for @homeDealDeskTitle.
   ///
@@ -4853,7 +4961,7 @@ abstract class AppLocalizations {
   /// No description provided for @productBulkUpiNote.
   ///
   /// In en, this message translates to:
-  /// **'Bulk orders require manual UPI verification before processing.'**
+  /// **'Bulk orders require manual payment verification before processing.'**
   String get productBulkUpiNote;
 
   /// No description provided for @productBuyNow.

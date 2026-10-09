@@ -70,6 +70,11 @@ router.post('/hindi-name/suggest', adminProductController.suggestHindiName);
 
 // Negotiations
 router.get('/negotiations', adminNegotiationController.getNegotiations);
+router.delete('/negotiations/declined', adminNegotiationController.clearDeclinedNegotiations);
+router.delete('/negotiations/:id', adminNegotiationController.deleteDeclinedNegotiation);
+router.get('/negotiations/groups/:groupId', adminNegotiationController.getRequirementGroup);
+router.put('/negotiations/groups/:groupId/accept', validate(adminValidation.acceptRequirementGroup), adminNegotiationController.acceptRequirementGroup);
+router.put('/negotiations/groups/:groupId/reject', validate(adminValidation.rejectNegotiation), adminNegotiationController.rejectRequirementGroup);
 router.get('/negotiations/:id', adminNegotiationController.getNegotiationById);
 router.post('/negotiations/:id/message', validate(adminValidation.negotiationMessage), adminNegotiationController.sendMessage);
 router.put('/negotiations/:id/accept', validate(adminValidation.acceptNegotiation), adminNegotiationController.acceptNegotiation);
@@ -80,7 +85,8 @@ router.put('/negotiations/:id/counter', validate(adminValidation.counterNegotiat
 router.get('/orders', adminOrderController.getOrders);
 router.get('/orders/:id', adminOrderController.getOrderById);
 router.delete('/orders/:id', adminOrderController.deleteOrder);
-router.put('/orders/:id/accept', adminOrderController.acceptOrder);
+router.get('/orders/:id/receipt', adminOrderController.getOrderReceipt);
+router.put('/orders/:id/accept', validate(adminValidation.acceptOrder), adminOrderController.acceptOrder);
 router.put('/orders/:id/reject', validate(adminValidation.rejectOrder), adminOrderController.rejectOrder);
 router.put('/orders/:id/mark-payment-complete', adminOrderController.markPaymentCompleted);
 router.put('/orders/:id/status', validate(adminValidation.updateOrderStatus), adminOrderController.updateOrderStatus);

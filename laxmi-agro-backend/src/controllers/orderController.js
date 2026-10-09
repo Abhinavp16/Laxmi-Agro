@@ -1,5 +1,6 @@
 const { Order, Cart, Product, Negotiation, Settings, AffiliateCode, Offer } = require('../models');
 const { getMinimumWholesaleQuantity, getMinimumCustomerQuantity, isWholePacks } = require('../utils/packSize');
+const { purchaseBlockCode } = require('../utils/productAvailability');
 const { NotFoundError, BadRequestError, UnauthorizedError } = require('../utils/errors');
 const { paginate, formatPaginationResponse } = require('../utils/helpers');
 const { ORDER_STATUS, ORDER_TYPES, NEGOTIATION_STATUS, USER_ROLES } = require('../utils/constants');
@@ -420,6 +421,22 @@ const prepareOrderItems = ({ itemsToProcess, productMap, userRole, discountMap =
       continue;
     }
 
+    // Draft / archived / coming-soon products can't be ordered.
+    const blocked = purchaseBlockCode(product);
+    if (blocked) {
+      stockIssues.push({
+        productId: item.productId.toString(),
+        variantId: normalizedVariantId,
+        cartItemKey: cartItemKey(item.productId.toString(), normalizedVariantId),
+        name: product.name,
+        type: blocked === 'PRODUCT_COMING_SOON' ? 'coming_soon' : 'unavailable',
+        message: blocked === 'PRODUCT_COMING_SOON'
+          ? `${product.name} is coming soon and can't be ordered yet`
+          : `${product.name} is currently unavailable`,
+      });
+      continue;
+    }
+
     const minimumQuantity = getMinimumWholesaleQuantity(product);
     if (
       userRole === USER_ROLES.WHOLESALER &&
@@ -536,7 +553,8 @@ exports.previewCouponForCart = async (req, res, next) => {
       userRole,
     });
 
-    const deliveryFee = subtotal > 0 ? 50 : 0;
+    // Delivery is added by the admin when accepting the order.
+    const deliveryFee = 0;
     const totalBeforeDiscount = subtotal + deliveryFee;
     const payableTotal = Math.max(totalBeforeDiscount - discount, 0);
 
@@ -681,7 +699,9 @@ exports.createOrderFromCart = async (req, res, next) => {
       const msg = stockIssues.map((issue) => issue.message).join('; ');
       const hasIssue = (type) => stockIssues.some((issue) => issue.type === type);
       let code = 'INSUFFICIENT_STOCK';
-      if (hasIssue('minimum_wholesale_quantity')) code = 'MIN_WHOLESALE_QUANTITY_NOT_MET';
+      if (hasIssue('coming_soon')) code = 'PRODUCT_COMING_SOON';
+      else if (hasIssue('unavailable')) code = 'PRODUCT_UNAVAILABLE';
+      else if (hasIssue('minimum_wholesale_quantity')) code = 'MIN_WHOLESALE_QUANTITY_NOT_MET';
       else if (hasIssue('minimum_customer_quantity')) code = 'MIN_CUSTOMER_QUANTITY_NOT_MET';
       return res.status(400).json({
         success: false,
@@ -705,7 +725,8 @@ exports.createOrderFromCart = async (req, res, next) => {
       subtotal,
       userRole,
     });
-    const deliveryFee = subtotal > 0 ? 50 : 0;
+    // Delivery is added by the admin when accepting the order.
+    const deliveryFee = 0;
     const total = round2(Math.max(subtotal + deliveryFee - discount, 0));
 
     let order = null;
@@ -831,6 +852,9 @@ exports.createOrderFromNegotiation = async (req, res, next) => {
     const product = await Product.findById(negotiation.productId);
     if (!product) {
       throw new NotFoundError('Product not found', 'PRODUCT_NOT_FOUND');
+    }
+    if (purchaseBlockCode(product)) {
+      throw new BadRequestError(`${product.name} can't be ordered right now`, purchaseBlockCode(product));
     }
 
     const resolved = getVariantById(product, null);
