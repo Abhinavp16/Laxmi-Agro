@@ -513,7 +513,9 @@ const adminValidation = {
       buttonIcon: Joi.string().allow('', null),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
-    })),
+    // The admin page also sends helper fields (_id, linkType, linkedProductId…):
+    // drop them instead of failing the save (this route validates strictly).
+    }).options({ stripUnknown: true })),
     promoBanners: Joi.array().items(Joi.object({
       title: Joi.string().required(),
       subtitle: Joi.string().allow('', null),
@@ -524,7 +526,7 @@ const adminValidation = {
       buttonIcon: Joi.string().allow('', null),
       isActive: Joi.boolean(),
       order: Joi.number().integer(),
-    })),
+    }).options({ stripUnknown: true })),
     socialLinks: Joi.object({
       whatsapp: Joi.string().allow('', null),
       instagram: Joi.string().allow('', null),

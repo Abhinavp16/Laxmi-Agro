@@ -53,6 +53,7 @@
     "test:pack-size": "node tests/packSize.test.js",
     "test:meter-pack-migration": "node tests/meterPackMigration.test.js",
     "test:banner-media": "node tests/bannerMedia.test.js",
+    "test:settings-validation": "node tests/settingsValidation.test.js",
     "test:product-availability": "node tests/productAvailability.test.js",
     "media:banner-cleanup": "node src/scripts/cleanupBannerMedia.js",
     "catalog:meter-packs": "node src/scripts/convertMeterPacks.js",
