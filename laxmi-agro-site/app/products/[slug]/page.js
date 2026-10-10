@@ -4,6 +4,8 @@ import ScrollReveal from '@/components/ScrollReveal';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import ProductVariantShowcase from '@/components/products/ProductVariantShowcase';
 import VariantAwareInquiryButton from '@/components/products/VariantAwareInquiryButton';
+import OpenInApp from '@/components/OpenInApp';
+import { getAppProductBySlug } from '@/lib/app-product';
 import {
     buildFeaturedProductInquiryProps,
     featuredProductFallbackImage,
@@ -12,27 +14,62 @@ import {
     getFeaturedProducts,
 } from '@/lib/featured-products';
 
+const SITE_ORIGIN = 'https://www.laxmiagroenterprises.com';
+const APP_STORE_ID = '6804305521';
+
+// A featured product (website content) or, for links shared from the app,
+// any active product from the app's catalogue.
+async function findProduct(slug) {
+    const products = await getFeaturedProducts();
+    return findFeaturedProductBySlug(products, slug) || getAppProductBySlug(slug);
+}
+
 export async function generateMetadata({ params }) {
     const resolvedParams = await params;
-    const products = await getFeaturedProducts();
-    const product = findFeaturedProductBySlug(products, resolvedParams.slug);
+    const product = await findProduct(resolvedParams.slug);
+    const path = `/products/${encodeURIComponent(resolvedParams.slug)}`;
+    const title = product ? `${product.name} - Laxmi Agro Enterprises` : 'Product Details - Laxmi Agro Enterprises';
+    const description = product
+        ? [product.price, getFeaturedDescription(product)]
+            .filter(Boolean)
+            .join(' · ')
+            .replace(/\s+/g, ' ')
+            .slice(0, 200)
+        : 'View detailed product information and request the latest price.';
+    const image = product?.images?.[0] || product?.image;
 
     return {
-        title: product ? `${product.name} - Laxmi Agro Enterprises` : 'Product Details - Laxmi Agro Enterprises',
-        description: product ? getFeaturedDescription(product) : 'View detailed product information and request the latest price.',
+        title,
+        description,
+        // Preview card in WhatsApp and other chats.
+        openGraph: {
+            title: product?.name || title,
+            description,
+            url: `${SITE_ORIGIN}${path}`,
+            siteName: 'Laxmi Agro Enterprises',
+            type: 'website',
+            ...(image ? { images: [{ url: image }] } : {}),
+        },
+        // Safari's own "Open in app / Get" banner.
+        other: {
+            'apple-itunes-app': `app-id=${APP_STORE_ID}, app-argument=${SITE_ORIGIN}${path}`,
+        },
     };
 }
 
 export default async function FeaturedProductDetailPage({ params }) {
     const resolvedParams = await params;
-    const products = await getFeaturedProducts();
-    const product = findFeaturedProductBySlug(products, resolvedParams.slug);
+    const product = await findProduct(resolvedParams.slug);
+    const appPath = `/products/${encodeURIComponent(resolvedParams.slug)}`;
 
     if (!product) {
         return (
             <div className="page-transition min-h-[60vh] flex flex-col items-center justify-center px-6 text-center">
                 <h1 className="mb-6 text-4xl font-primary font-bold text-text-primary md:text-5xl">Product Not Found</h1>
-                <p className="mb-8 text-lg text-text-secondary">We couldn't find the product you were looking for.</p>
+                <p className="mb-8 text-lg text-text-secondary">We couldn&apos;t find the product you were looking for.</p>
+                <div className="mb-8 w-full max-w-xl text-left">
+                    <OpenInApp path={appPath} redirect={false} />
+                </div>
                 <Link
                     href="/products"
                     className="rounded-full bg-brand-primary px-8 py-3 font-bold text-white shadow-cta transition-colors hover:bg-orange-600"
@@ -83,6 +120,10 @@ export default async function FeaturedProductDetailPage({ params }) {
                             <p className="mt-5 text-2xl font-black text-brand-primary">
                                 {product.price}
                             </p>
+
+                            <div className="mt-6">
+                                <OpenInApp path={appPath} />
+                            </div>
 
                             {/* Always show short description if available */}
                             {product.shortDescription && (
