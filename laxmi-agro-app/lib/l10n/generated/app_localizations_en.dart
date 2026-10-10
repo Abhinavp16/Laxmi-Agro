@@ -3540,9 +3540,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uiRemoveFromWishlist => 'Remove from wishlist';
 
   @override
-  String get uiOpenCart => 'Open cart';
-
-  @override
   String get uiPerMeter => '/m';
 
   @override
@@ -3646,19 +3643,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dealLastMoveLaxmi => 'Laxmi Agro replied · your turn';
-
-  @override
-  String get dealLastMoveYou => 'Waiting for Laxmi Agro';
-
-  @override
   String get dealPriceYours => 'Your price';
 
   @override
   String get dealPriceLaxmi => 'Laxmi Agro\'s price';
-
-  @override
-  String get dealPriceCurrent => 'Current price';
 
   @override
   String get dealPriceAgreed => 'Agreed price';
@@ -3956,9 +3944,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsActionViewOrder => 'View order';
-
-  @override
-  String get dealSlideToOrder => 'Slide to order';
 
   @override
   String get dealYourTurn => 'your turn';

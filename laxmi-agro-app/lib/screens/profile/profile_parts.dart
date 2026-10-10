@@ -325,7 +325,8 @@ class _GlassIconButton extends StatelessWidget {
 }
 
 /// Liquid light on the identity card: soft pools of pale green that melt and
-/// shift like light on water. Holds still when the OS asks for reduced motion,
+/// shift like light on water for a few seconds whenever the card comes into
+/// view, then hold still. Holds still when the OS asks for reduced motion,
 /// pauses with the tab (TickerMode) and while the card is scrolled off
 /// screen. Without shader support the green stays plain.
 class _CardLiquid extends StatefulWidget {
@@ -343,12 +344,18 @@ class _CardLiquidState extends State<_CardLiquid>
   /// Where the still frame sits when motion is reduced.
   static const double _stillTime = 8;
 
+  /// The light moves this long each time the card comes into view, then
+  /// holds still, so the shader doesn't repaint every frame for as long as
+  /// Profile stays open.
+  static const Duration _motionBudget = Duration(seconds: 6);
+
   final ValueNotifier<double> _time = ValueNotifier(_stillTime);
   // Where the motion resumes after a pause, so it doesn't jump back.
   double _resumeAt = _stillTime;
-  late final Ticker _ticker = createTicker(
-    (elapsed) => _time.value = _resumeAt + elapsed.inMicroseconds / 1e6,
-  );
+  late final Ticker _ticker = createTicker((elapsed) {
+    _time.value = _resumeAt + elapsed.inMicroseconds / 1e6;
+    if (elapsed >= _motionBudget) _ticker.stop();
+  });
   ui.FragmentShader? _shader;
   ScrollPosition? _scroll;
   bool _onScreen = true;
@@ -947,7 +954,7 @@ class _BuildoryCredit extends StatelessWidget {
     const size = 21.0;
     return Pressable(
       onTap: () => launchUrl(_site, mode: LaunchMode.externalApplication),
-      semanticLabel: 'Made by Buildory',
+      semanticLabel: '${context.l10n.profileMadeBy} Buildory',
       borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

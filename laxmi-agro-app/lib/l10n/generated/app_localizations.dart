@@ -6158,12 +6158,6 @@ abstract class AppLocalizations {
   /// **'Remove from wishlist'**
   String get uiRemoveFromWishlist;
 
-  /// No description provided for @uiOpenCart.
-  ///
-  /// In en, this message translates to:
-  /// **'Open cart'**
-  String get uiOpenCart;
-
   /// No description provided for @uiPerMeter.
   ///
   /// In en, this message translates to:
@@ -6338,18 +6332,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 deal needs your reply} other{{count} deals need your reply}}'**
   String dealNeedsReplyCount(int count);
 
-  /// No description provided for @dealLastMoveLaxmi.
-  ///
-  /// In en, this message translates to:
-  /// **'Laxmi Agro replied · your turn'**
-  String get dealLastMoveLaxmi;
-
-  /// No description provided for @dealLastMoveYou.
-  ///
-  /// In en, this message translates to:
-  /// **'Waiting for Laxmi Agro'**
-  String get dealLastMoveYou;
-
   /// No description provided for @dealPriceYours.
   ///
   /// In en, this message translates to:
@@ -6361,12 +6343,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Laxmi Agro\'s price'**
   String get dealPriceLaxmi;
-
-  /// No description provided for @dealPriceCurrent.
-  ///
-  /// In en, this message translates to:
-  /// **'Current price'**
-  String get dealPriceCurrent;
 
   /// No description provided for @dealPriceAgreed.
   ///
@@ -6889,12 +6865,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View order'**
   String get notificationsActionViewOrder;
-
-  /// No description provided for @dealSlideToOrder.
-  ///
-  /// In en, this message translates to:
-  /// **'Slide to order'**
-  String get dealSlideToOrder;
 
   /// No description provided for @dealYourTurn.
   ///

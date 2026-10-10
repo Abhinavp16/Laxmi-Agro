@@ -3506,9 +3506,6 @@ class AppLocalizationsHi extends AppLocalizations {
   String get uiRemoveFromWishlist => 'विशलिस्ट से हटाएं';
 
   @override
-  String get uiOpenCart => 'कार्ट खोलें';
-
-  @override
   String get uiPerMeter => '/मी';
 
   @override
@@ -3606,19 +3603,10 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get dealLastMoveLaxmi => 'Laxmi Agro ने जवाब दिया · अब आपकी बारी';
-
-  @override
-  String get dealLastMoveYou => 'Laxmi Agro के जवाब का इंतज़ार';
-
-  @override
   String get dealPriceYours => 'आपका रेट';
 
   @override
-  String get dealPriceLaxmi => 'Laxmi Agro का रेट';
-
-  @override
-  String get dealPriceCurrent => 'मौजूदा रेट';
+  String get dealPriceLaxmi => 'लक्ष्मी एग्रो का रेट';
 
   @override
   String get dealPriceAgreed => 'तय रेट';
@@ -3914,9 +3902,6 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get notificationsActionViewOrder => 'ऑर्डर देखें';
-
-  @override
-  String get dealSlideToOrder => 'ऑर्डर के लिए स्लाइड करें';
 
   @override
   String get dealYourTurn => 'आपकी बारी';
