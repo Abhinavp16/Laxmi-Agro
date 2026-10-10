@@ -28,6 +28,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/number_formatter.dart';
 import '../../core/utils/coming_soon.dart';
 import '../../core/utils/packing.dart';
+import '../../core/utils/product_share.dart';
 import '../../l10n/api_error_text.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/pack_text.dart';
@@ -78,6 +79,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   bool _shippingOpen = false;
   bool _isBuyNowLoading = false;
   bool _isNotifyLoading = false;
+
+  /// The product's database id. The page may be opened by slug (a shared
+  /// link, `/product/<slug>`); once loaded, calls that need the id use it.
+  String get _productId =>
+      (_product?['_id'] ?? _product?['id'])?.toString() ?? widget.productId;
   YoutubePlayerController? _ytCtrl;
   bool _videoReady = false;
   Map<String, dynamic>? _product;
@@ -374,7 +380,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   Future<void> _fetchProduct() async {
     try {
-      final r = await _dio.get('/products/${widget.productId}');
+      final r = await _dio.get(
+        '/products/${Uri.encodeComponent(widget.productId)}',
+      );
       if (r.statusCode == 200) {
         final rawData = r.data['data'] ?? r.data;
         final productData = rawData is Map<String, dynamic>
@@ -542,7 +550,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     if (seconds < 1 || token == null) return;
     _dio
         .post(
-          '/products/${widget.productId}/watch-time',
+          '/products/$_productId/watch-time',
           data: {'seconds': seconds},
           options: Options(headers: {'Authorization': 'Bearer $token'}),
         )
@@ -561,7 +569,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ..start();
       }
       await _dio.post(
-        '/products/${widget.productId}/view',
+        '/products/$_productId/view',
         data: {'source': 'direct'},
         options: token != null
             ? Options(headers: {'Authorization': 'Bearer $token'})
@@ -576,7 +584,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           ? null
           : await StorageService.getAccessToken();
       await _dio.post(
-        '/products/${widget.productId}/event',
+        '/products/$_productId/event',
         data: {'event': event, 'source': 'direct'},
         options: token != null
             ? Options(headers: {'Authorization': 'Bearer $token'})
@@ -1155,19 +1163,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   p,
                   fallback: l10n.productPlaceholderProduct,
                 );
-                final pPrice = ref.read(guestModeProvider)
-                    ? p['retailPrice'] ?? p['price']
-                    : p['price'] ?? p['retailPrice'];
-                final productUrl = PublicBusinessConfig.productUrl(
-                  p['slug']?.toString(),
-                );
-                final shareText = pPrice != null
-                    ? l10n.productShareTextWithPrice(
-                        pName,
-                        _fmt(pPrice),
-                        productUrl,
-                      )
-                    : l10n.productShareText(pName, productUrl);
+                // Retail price only, and the link that opens the app.
+                final shareText = productShareMessage(l10n, p, name: pName);
                 SharePlus.instance.share(ShareParams(text: shareText));
               },
             ),
@@ -1177,7 +1174,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                 final isCustomerPreview = ref.watch(guestModeProvider);
                 final isFav =
                     !isCustomerPreview &&
-                    ref.watch(wishlistProvider).contains(widget.productId);
+                    ref.watch(wishlistProvider).contains(_productId);
                 return HeaderIconButton(
                   icon: isFav
                       ? Icons.favorite_rounded
@@ -1195,7 +1192,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                     if (p == null) return;
                     HapticFeedback.selectionClick();
                     final item = WishlistItem(
-                      productId: widget.productId,
+                      productId: _productId,
                       name: p['name']?.toString() ?? '',
                       image: _images.isNotEmpty ? _images.first : null,
                       price: (p['retailPrice'] ?? p['price'] ?? 0).toDouble(),
@@ -1814,7 +1811,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
               final dayOfYear = DateTime.now()
                   .difference(DateTime(DateTime.now().year))
                   .inDays;
-              final productIdHash = widget.productId.toString().hashCode.abs();
+              final productIdHash = _productId.hashCode.abs();
               final seed = productIdHash + dayOfYear;
               final range = effectiveMax - pMin;
               final count = range > 0 ? pMin + (seed % (range + 1)) : pMin;
@@ -2420,9 +2417,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
 
   Future<void> _fetchRelatedProducts() async {
     try {
-      debugPrint('Fetching related products for: ${widget.productId}');
+      debugPrint('Fetching related products for: $_productId');
       setState(() => _isRelatedLoading = true);
-      final r = await _dio.get('/products/${widget.productId}/related');
+      final r = await _dio.get('/products/$_productId/related');
       if (mounted) {
         setState(() {
           _relatedProducts = r.data['data'] ?? [];
@@ -2813,7 +2810,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final error = await ref
         .read(cartProvider.notifier)
         .addItem(
-          productId: widget.productId,
+          productId: _productId,
           name: _product?['name']?.toString() ?? name,
           nameHindi: _product?['nameHindi']?.toString(),
           image: img,
@@ -2914,7 +2911,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     final turnOn = !_notifyMe;
     setState(() => _isNotifyLoading = true);
     try {
-      final path = '/products/${widget.productId}/notify-me';
+      final path = '/products/$_productId/notify-me';
       if (turnOn) {
         await _dio.post(path);
       } else {
@@ -3192,7 +3189,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                                 context.push(
                                   '/buy-now',
                                   extra: {
-                                    'productId': widget.productId,
+                                    'productId': _productId,
                                     'productName': name,
                                     'productImage': img,
                                     'price': productPrice,
@@ -4041,7 +4038,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       final response = await apiClient.post(
         '/negotiations',
         data: {
-          'productId': widget.productId,
+          'productId': _productId,
           'quantity': qty,
           'pricePerUnit': pricePerUnit,
         },

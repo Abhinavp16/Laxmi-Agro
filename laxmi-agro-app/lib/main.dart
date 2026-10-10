@@ -16,6 +16,7 @@ import 'core/providers/auth_provider.dart';
 import 'core/providers/app_update_provider.dart';
 import 'core/providers/locale_provider.dart';
 import 'l10n/l10n.dart';
+import 'core/services/deep_link_service.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/app_lifecycle_service.dart';
@@ -45,6 +46,8 @@ Future<void> main() async {
   final savedLocale = await LocaleNotifier.loadSaved();
   await initializeDateFormatting('en');
   await initializeDateFormatting('hi');
+  // Shared product links (https://www.laxmiagroenterprises.com/products/…).
+  DeepLinkService.instance.initialize();
   runApp(
     ProviderScope(
       overrides: [

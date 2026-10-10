@@ -107,6 +107,11 @@ final appRouter = GoRouter(
         );
       },
     ),
+    // Website product links, should one reach the router directly.
+    GoRoute(
+      path: '/products/:slug',
+      redirect: (context, state) => '/product/${state.pathParameters['slug']}',
+    ),
     GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
     GoRoute(
       path: '/negotiations',

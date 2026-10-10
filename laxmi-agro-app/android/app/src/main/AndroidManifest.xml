@@ -37,6 +37,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Shared product links open the product in the app (App Links,
+                 verified by the site's /.well-known/assetlinks.json). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+                <data android:host="www.laxmiagroenterprises.com"/>
+                <data android:pathPrefix="/products/"/>
+            </intent-filter>
+            <!-- Links are routed by DeepLinkService (app_links), not Flutter's
+                 built-in deep linking. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
