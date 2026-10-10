@@ -3962,4 +3962,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dealYourTurn => 'your turn';
+
+  @override
+  String get uiMuteVideo => 'Mute video';
+
+  @override
+  String get uiUnmuteVideo => 'Turn on video sound';
 }

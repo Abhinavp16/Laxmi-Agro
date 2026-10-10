@@ -3920,4 +3920,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get dealYourTurn => 'आपकी बारी';
+
+  @override
+  String get uiMuteVideo => 'वीडियो की आवाज़ बंद करें';
+
+  @override
+  String get uiUnmuteVideo => 'वीडियो की आवाज़ चालू करें';
 }

@@ -313,8 +313,8 @@ class _GlassIconButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.pill),
         semanticLabel: tooltip,
         child: SizedBox(
-          width: 38,
-          height: 38,
+          width: 44,
+          height: 44,
           child: Center(
             child: HugeIcon(icon: icon, size: 18, color: Colors.white),
           ),

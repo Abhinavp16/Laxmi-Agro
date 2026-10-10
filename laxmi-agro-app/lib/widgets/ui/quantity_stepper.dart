@@ -201,8 +201,10 @@ class QuantityStepper extends StatelessWidget {
         child: InkWell(
           onTap: enabled ? onTap : null,
           borderRadius: radius,
+          // Full-width card steppers have room for 44 px wide buttons, an
+          // easier tap than the 34 px compact square.
           child: SizedBox(
-            width: compact ? 34 : 44,
+            width: compact && !expand ? 34 : 44,
             height: _height,
             child: Center(
               child: HugeIcon(

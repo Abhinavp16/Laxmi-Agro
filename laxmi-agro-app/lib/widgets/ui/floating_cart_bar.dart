@@ -101,16 +101,21 @@ class FloatingCartBar extends ConsumerWidget {
                     // Material's path clip is lost around a blur and the
                     // pill turns square.
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(_height / 2),
+                      // Fully round ends at any height.
+                      borderRadius: BorderRadius.circular(999),
                       child: BackdropFilter.grouped(
                         filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                         child: Container(
-                          height: _height,
+                          // At least [_height]; grows with a larger text
+                          // size instead of clipping the two lines.
+                          constraints: const BoxConstraints(minHeight: _height),
                           color: AppColors.primary.withValues(alpha: 0.82),
                           // The round thumbnails sit concentric with the pill's ends.
                           padding: const EdgeInsets.only(
                             left: (_height - _Thumbs.size) / 2,
                             right: 16,
+                            top: 4,
+                            bottom: 4,
                           ),
                           // The thumbnails and the text each spring to their
                           // new widths, so the text slides along as the pill

@@ -156,6 +156,35 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(HomeHeroHeaderDelegate oldDelegate) => true;
 }
 
+/// Text size factor for budgeting heights: 1.0 up to 1.6.
+double homeTextScale(BuildContext context) =>
+    (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6);
+
+/// Height of the Home category rail for [tileWidth]: square art, a 6 px gap
+/// and up to two lines of 11.5 px name. Devanagari lines are taller, and both
+/// grow with the text size.
+double homeCategoryRailHeight(
+  double tileWidth, {
+  required double textScale,
+  required bool hindi,
+}) {
+  final lineHeight = 11.5 * (hindi ? 1.6 : 1.25);
+  return tileWidth + 6 + 2 * lineHeight * textScale + 2;
+}
+
+/// Height of a Home product rail card [cardWidth] wide, the same budget as
+/// the Popular/Hot Deals pages: card padding and photo, then brand, name,
+/// rating, the one-line price and the Add stepper, which grow with the text
+/// size; plus the pack line ("Packet 10 pcs · ₹8,000") when any card has one.
+double homeProductRailHeight(
+  double cardWidth, {
+  required double textScale,
+  required bool hasPackNote,
+}) {
+  final text = 2 + 16 + 34 + 20 + 38 + 12 + (hasPackNote ? 16 : 0);
+  return (cardWidth - 12) + 12 + 10 + 42 + text * textScale;
+}
+
 /// One square category shortcut in the Home grid: photo on white, name below.
 /// With [isAll] it is the last tile that opens every category.
 class HomeCategoryTile extends StatelessWidget {

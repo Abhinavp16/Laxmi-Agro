@@ -1921,5 +1921,7 @@
   "notificationsActionOpenDeal": "Open deal",
   "notificationsActionViewOrder": "View order",
   "dealSlideToOrder": "Slide to order",
-  "dealYourTurn": "your turn"
+  "dealYourTurn": "your turn",
+  "uiMuteVideo": "Mute video",
+  "uiUnmuteVideo": "Turn on video sound"
 }

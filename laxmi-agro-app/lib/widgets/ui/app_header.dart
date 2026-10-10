@@ -88,33 +88,38 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                       const SizedBox(width: 8),
                     ],
                     Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.jakarta(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          if (subtitle != null && subtitle!.isNotEmpty)
+                      // The bar's height is fixed, so its title and subtitle
+                      // stop growing at 1.3x text size instead of clipping.
+                      child: MediaQuery.withClampedTextScaling(
+                        maxScaleFactor: 1.3,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              subtitle!,
+                              title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppFonts.jakarta(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textTertiary,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                        ],
+                            if (subtitle != null && subtitle!.isNotEmpty)
+                              Text(
+                                subtitle!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFonts.jakarta(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     ...actions,

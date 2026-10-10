@@ -3304,7 +3304,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         },
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: SizedBox(
-          width: 38,
+          width: 44,
           height: 48,
           child: Center(
             child: HugeIcon(icon: icon, size: 18, color: AppColors.primary),

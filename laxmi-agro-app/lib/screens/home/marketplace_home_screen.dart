@@ -2772,8 +2772,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     final l10n = context.l10n;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final tileWidth = screenWidth >= 600 ? 100.0 : 84.0;
-    // Square art plus up to two lines of name.
-    final railHeight = tileWidth + 36;
+    // Square art plus up to two lines of name, at the current text size.
+    final railHeight = homeCategoryRailHeight(
+      tileWidth,
+      textScale: homeTextScale(context),
+      hindi: context.isHindi,
+    );
 
     final categories = _categoryData.isNotEmpty ? _categoryData : [];
     if (categories.isEmpty && !_isLoadingCategories) {
@@ -5356,7 +5360,11 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         : l10n.homeHotDealsSubtitleCustomer);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = screenWidth >= 600 ? 184.0 : 158.0;
-    final railHeight = cardWidth + 176;
+    final railHeight = homeProductRailHeight(
+      cardWidth,
+      textScale: homeTextScale(context),
+      hasPackNote: products.any((p) => packInfoOf(p).isPack),
+    );
     final header = SectionHeader(
       title: title,
       subtitle: sectionSubtitle,
@@ -7382,26 +7390,35 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             cartProvider.select((c) => c.displayItemCount(_isWholesaler)),
           );
     final showCartPill = _selectedNavIndex <= 2 && !isGuest;
+    final (labelWidth, navGap) = _navLayout([
+      l10n.homeNavHome,
+      l10n.homeNavSearch,
+      l10n.homeNavCategories,
+      l10n.homeNavCart,
+      _isWholesaler ? l10n.homeNavDealDesk : l10n.homeNavProfile,
+    ]);
+    Widget navItem(IconData icon, String label, int index, {int badge = 0}) =>
+        _buildNavItem(icon, label, index, labelWidth: labelWidth, badge: badge);
     final items = _isWholesaler
         ? [
-            _buildNavItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
-            _buildNavItem(
+            navItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
+            navItem(
               HugeIcons.strokeRoundedSearch01,
               l10n.homeNavSearch,
               1,
             ),
-            _buildNavItem(
+            navItem(
               HugeIcons.strokeRoundedDashboardSquare01,
               l10n.homeNavCategories,
               2,
             ),
-            _buildNavItem(
+            navItem(
               HugeIcons.strokeRoundedShoppingCart01,
               l10n.homeNavCart,
               5,
               badge: cartCount,
             ),
-            _buildNavItem(
+            navItem(
               HugeIcons.strokeRoundedBriefcase01,
               l10n.homeNavDealDesk,
               3,
@@ -7409,24 +7426,24 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
             ),
           ]
         : [
-            _buildNavItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
-            _buildNavItem(
+            navItem(HugeIcons.strokeRoundedHome01, l10n.homeNavHome, 0),
+            navItem(
               HugeIcons.strokeRoundedSearch01,
               l10n.homeNavSearch,
               1,
             ),
-            _buildNavItem(
+            navItem(
               HugeIcons.strokeRoundedDashboardSquare01,
               l10n.homeNavCategories,
               2,
             ),
-            _buildNavItem(
+            navItem(
               HugeIcons.strokeRoundedShoppingCart01,
               l10n.homeNavCart,
               3,
               badge: cartCount,
             ),
-            _buildNavItem(HugeIcons.strokeRoundedUser, l10n.homeNavProfile, 4),
+            navItem(HugeIcons.strokeRoundedUser, l10n.homeNavProfile, 4),
           ];
     return SafeArea(
       top: false,
@@ -7435,8 +7452,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
         child: Center(
           heightFactor: 1,
           // The floating cart pill rides above the nav, left-aligned with
-          // it: the column is as wide as the nav, so they share a left edge
-          // even while the nav's width springs between tabs.
+          // it: the column is as wide as the nav, so they share a left edge.
+          // Every tab's label gets the same width, so the nav keeps one
+          // width whichever tab is open.
           // The cart pill's and the nav's blurs share one read of the page
           // behind them.
           child: BackdropGroup(
@@ -7508,7 +7526,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (var i = 0; i < items.length; i++) ...[
-                              if (i > 0) const SizedBox(width: _navGap),
+                              if (i > 0) SizedBox(width: navGap),
                               items[i],
                             ],
                           ],
@@ -7525,13 +7543,53 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
     );
   }
 
+  static final _navLabelStyle = AppFonts.jakarta(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Colors.white,
+  );
+
+  /// Width of the active tab's label and the gap between tabs. The label
+  /// gets the widest of [labels], but never more than the room the nav
+  /// leaves on this screen (four round tabs, gaps, padding and the active
+  /// pill's icon), so it can't overflow a 360 dp phone or a larger text
+  /// size. When it doesn't fit, the tabs close up first; a label that still
+  /// doesn't fit is drawn slightly smaller.
+  (double, double) _navLayout(List<String> labels) {
+    final scaler = MediaQuery.textScalerOf(context);
+    var widest = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _navLabelStyle),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      widest = math.max(widest, painter.width.ceilToDouble());
+      painter.dispose();
+    }
+    double room(double gap) =>
+        MediaQuery.sizeOf(context).width -
+        MediaQuery.paddingOf(context).horizontal -
+        24 - // side padding
+        _navPadding * 2 -
+        _navItemSize * 4 -
+        gap * 4 -
+        (16 * 2 + 22 + 8) - // active pill: padding, icon, gap
+        4; // slack for the spring
+    final target = math.min(widest, 110.0);
+    final gap = room(_navGap) >= target ? _navGap : 1.0;
+    return (math.max(0.0, math.min(target, room(gap))), gap);
+  }
+
   /// One tab of the floating nav: a grey circle with its icon, or, while
-  /// active, a green pill with a white icon and its label. Switching tabs
-  /// springs one pill open and the other closed.
+  /// active, a green pill with a white icon and its label ([labelWidth]
+  /// wide). Switching tabs springs one pill open and the other closed.
   Widget _buildNavItem(
     IconData icon,
     String label,
     int index, {
+    required double labelWidth,
     int badge = 0,
   }) {
     final isSelected = _selectedNavIndex == index;
@@ -7575,7 +7633,9 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
               curve: curve,
               builder: (context, fold, child) => Align(
                 alignment: Alignment.centerLeft,
-                widthFactor: math.max(0, fold),
+                // Never wider than the label: the nav's width was budgeted
+                // for it (see _navLabelWidth).
+                widthFactor: fold.clamp(0.0, 1.0),
                 child: child,
               ),
               child: AnimatedOpacity(
@@ -7583,17 +7643,12 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
                 opacity: isSelected ? 1 : 0,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 110),
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppFonts.jakarta(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                  child: SizedBox(
+                    width: labelWidth,
+                    // Shrinks a label that's wider than the room left.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label, maxLines: 1, style: _navLabelStyle),
                     ),
                   ),
                 ),
@@ -8314,26 +8369,43 @@ class _HeroVideoSlideState extends State<_HeroVideoSlide>
                 ),
               ),
             ),
-            // Mute toggle (does not navigate).
+            // Mute toggle (does not navigate). A 44 px tap area around the
+            // 34 px circle.
             Positioned(
-              right: 12,
-              bottom: 12,
-              child: GestureDetector(
-                onTap: () async {
-                  final next = !_muted;
-                  await _controller?.setVolume(next ? 0 : 1);
-                  if (mounted) setState(() => _muted = next);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                    size: 18,
-                    color: Colors.white,
+              right: 7,
+              bottom: 7,
+              child: Semantics(
+                button: true,
+                label: _muted
+                    ? context.l10n.uiUnmuteVideo
+                    : context.l10n.uiMuteVideo,
+                excludeSemantics: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () async {
+                    final next = !_muted;
+                    await _controller?.setVolume(next ? 0 : 1);
+                    if (mounted) setState(() => _muted = next);
+                  },
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _muted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

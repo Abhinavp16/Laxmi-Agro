@@ -1133,5 +1133,7 @@
   "notificationsActionOpenDeal": "डील खोलें",
   "notificationsActionViewOrder": "ऑर्डर देखें",
   "dealSlideToOrder": "ऑर्डर के लिए स्लाइड करें",
-  "dealYourTurn": "आपकी बारी"
+  "dealYourTurn": "आपकी बारी",
+  "uiMuteVideo": "वीडियो की आवाज़ बंद करें",
+  "uiUnmuteVideo": "वीडियो की आवाज़ चालू करें"
 }

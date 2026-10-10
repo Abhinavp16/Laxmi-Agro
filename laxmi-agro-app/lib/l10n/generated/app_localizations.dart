@@ -6901,6 +6901,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'your turn'**
   String get dealYourTurn;
+
+  /// No description provided for @uiMuteVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute video'**
+  String get uiMuteVideo;
+
+  /// No description provided for @uiUnmuteVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on video sound'**
+  String get uiUnmuteVideo;
 }
 
 class _AppLocalizationsDelegate
