@@ -3769,6 +3769,7 @@ class _MarketplaceHomeScreenState extends ConsumerState<MarketplaceHomeScreen>
       context,
       l10n.uiItemRemoved(pickLocalizedName(context, item.name, item.nameHindi)),
       actionLabel: l10n.uiUndo,
+      duration: const Duration(seconds: 5),
       onAction: () async {
         final error = await restoreCartItem(notifier, item);
         if (!mounted) return;

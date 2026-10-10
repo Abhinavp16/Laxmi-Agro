@@ -8,7 +8,8 @@ import 'app_button.dart';
 
 enum SnackTone { neutral, success, error, info }
 
-/// Short floating message at the bottom. Replaces the current one.
+/// Short floating message at the bottom. Replaces the current one and goes
+/// away after [duration], even with an action button (Undo, Retry, …).
 void showAppSnack(
   BuildContext context,
   String message, {
@@ -37,6 +38,9 @@ void showAppSnack(
     ..showSnackBar(
       SnackBar(
         duration: duration,
+        // Flutter keeps a snack bar with an action until it's tapped unless
+        // told otherwise; ours always time out.
+        persist: false,
         content: Row(
           children: [
             if (icon != null) ...[

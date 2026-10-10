@@ -546,7 +546,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       context,
       l10n.uiItemRemoved(pickLocalizedName(context, item.name, item.nameHindi)),
       actionLabel: l10n.uiUndo,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 5),
       onAction: () async {
         final error = await restoreCartItem(notifier, item);
         if (error != null && mounted) {
