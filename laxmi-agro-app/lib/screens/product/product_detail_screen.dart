@@ -97,6 +97,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         ..interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
+              // The page was closed before this (e.g. related products or
+              // tracking) request started: drop it.
+              if (!mounted) {
+                return handler.reject(
+                  DioException(
+                    requestOptions: options,
+                    type: DioExceptionType.cancel,
+                  ),
+                );
+              }
               if (ref.read(guestModeProvider)) {
                 options.headers.remove('Authorization');
                 return handler.next(options);
